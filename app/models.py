@@ -1,0 +1,57 @@
+from __future__ import annotations
+
+from dataclasses import dataclass
+from enum import Enum
+from typing import Optional
+
+
+class IPAssetType(str, Enum):
+    VM = "VM"
+    PHYSICAL = "PHYSICAL"
+    IPMI_ILO = "IPMI_ILO"
+    VIP = "VIP"
+    OTHER = "OTHER"
+
+
+class UserRole(str, Enum):
+    VIEWER = "Viewer"
+    EDITOR = "Editor"
+    ADMIN = "Admin"
+
+
+@dataclass
+class Project:
+    id: int
+    name: str
+    description: Optional[str]
+
+
+@dataclass
+class Owner:
+    id: int
+    name: str
+    contact: Optional[str]
+
+
+@dataclass
+class User:
+    id: int
+    username: str
+    hashed_password: str
+    role: UserRole
+    is_active: bool
+
+
+@dataclass
+class IPAsset:
+    id: int
+    ip_address: str
+    subnet: str
+    gateway: str
+    asset_type: IPAssetType
+    project_id: Optional[int]
+    owner_id: Optional[int]
+    notes: Optional[str]
+    archived: bool
+    created_at: str
+    updated_at: str

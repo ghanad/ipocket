@@ -13,6 +13,19 @@ source .venv/bin/activate
 pip install -r requirements.txt
 ```
 
+Initialize the database (creates tables):
+
+```bash
+python -c "from app.db import connect, init_db; conn = connect('ipocket.db'); init_db(conn); conn.close()"
+```
+
+Reset the database for local dev (removes data):
+
+```bash
+rm -f ipocket.db
+python -c "from app.db import connect, init_db; conn = connect('ipocket.db'); init_db(conn); conn.close()"
+```
+
 Run the web app:
 
 ```bash
