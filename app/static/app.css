@@ -1,0 +1,99 @@
+.app-header {
+  border-bottom: 1px solid var(--pico-muted-border-color);
+  background: var(--pico-card-background-color);
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+.app-header nav {
+  padding: 0.75rem 0;
+}
+
+.nav-brand {
+  margin-right: 1rem;
+}
+
+.nav-links a {
+  font-weight: 600;
+}
+
+.nav-actions form {
+  margin: 0;
+}
+
+main.container {
+  padding-top: 1.5rem;
+  padding-bottom: 2rem;
+}
+
+.filters {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  align-items: end;
+}
+
+.actions {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+}
+
+.tabs {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+
+.tab.active {
+  font-weight: 700;
+  text-decoration: underline;
+}
+
+.errors {
+  background: #ffe0e0;
+  color: #b00020;
+  padding: 12px;
+  border-radius: 6px;
+  margin-bottom: 1rem;
+}
+
+.unassigned {
+  color: #b00020;
+  font-weight: 600;
+}
+
+.badge {
+  display: inline-block;
+  padding: 0.2rem 0.5rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.badge-warning {
+  background: #fff1c2;
+  color: #8f5b00;
+}
+
+.badge-info {
+  background: #d7ecff;
+  color: #0b4f8a;
+}
+
+.badge-danger {
+  background: #ffd6d6;
+  color: #b00020;
+}
+
+table td {
+  vertical-align: top;
+}
+
+.stacked {
+  margin-bottom: 1.5rem;
+}
