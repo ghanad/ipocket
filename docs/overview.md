@@ -32,10 +32,16 @@ ipocket is a lightweight, modular IP inventory web app with a simple UI and Prom
 
 ## UI Pages (MVP)
 - `GET /ui/ip-assets`: IP list with search and filters (project, owner, type, unassigned-only).
+- `GET /ui/ip-assets/needs-assignment`: dedicated view to focus on IPs missing Owner and/or Project, with tabs for Needs Owner, Needs Project, and Needs Both.
 - `GET /ui/ip-assets/{ip_address}`: IP detail page with assignment status.
 - `GET /ui/ip-assets/new`: add IP form (Editor/Admin).
 - `GET /ui/ip-assets/{ip_address}/edit`: edit IP form (Editor/Admin).
 - `POST /ui/ip-assets/{ip_address}/archive`: archive action (Editor/Admin).
+
+## Assignment workflow (MVP)
+- Use the **Needs Assignment** page to filter IPs missing Owner and/or Project.
+- Editors/Admins can use the Quick Assign form to select an IP and set Owner and/or Project in one action.
+- Viewers can browse the page but will receive a 403 if they attempt assignments.
 
 ## Bootstrap Admin (local dev)
 - Set `ADMIN_BOOTSTRAP_USERNAME` and `ADMIN_BOOTSTRAP_PASSWORD` before startup.

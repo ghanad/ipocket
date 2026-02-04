@@ -186,6 +186,12 @@ def _parse_optional_str(value: Optional[str]) -> Optional[str]:
     return stripped if stripped else None
 
 
+def _normalize_assignment_filter(value: Optional[str]) -> str:
+    if value in {"owner", "project", "both"}:
+        return value
+    return "owner"
+
+
 def _build_asset_view_models(
     assets: list[IPAsset],
     project_lookup: dict[int, str],
@@ -226,6 +232,9 @@ def _html_page(title: str, body: str, status_code: int = 200) -> HTMLResponse:
     .filters {{ margin-bottom: 16px; }}
     .filters label {{ margin-right: 12px; }}
     .actions {{ margin-bottom: 16px; }}
+    .tabs {{ display: flex; gap: 8px; margin-bottom: 16px; }}
+    .tab {{ padding: 6px 12px; border: 1px solid #ddd; border-radius: 6px; text-decoration: none; color: #333; }}
+    .tab.active {{ background: #f5f5f5; font-weight: bold; }}
     label {{ display: block; margin-top: 12px; }}
     input, select, textarea {{ width: 320px; padding: 6px; }}
     textarea {{ height: 90px; }}
@@ -298,6 +307,7 @@ def _render_list_page(
   <h1>IP Assets</h1>
   <div class="actions">
     <a href="/ui/ip-assets/new">Add IP (Editor/Admin)</a>
+    <a href="/ui/ip-assets/needs-assignment">Needs Assignment</a>
   </div>
   <form class="filters" method="get" action="/ui/ip-assets">
     <label>
@@ -351,6 +361,128 @@ def _render_list_page(
   </table>
 """
     return _html_page("ipocket - IP Assets", body)
+
+
+def _render_needs_assignment_page(
+    assets: list[dict],
+    projects: list,
+    owners: list,
+    selected_filter: str,
+    errors: list[str],
+    form_state: dict,
+) -> HTMLResponse:
+    project_options = "\n".join(
+        [
+            f'<option value="{project.id}"'
+            f'{" selected" if form_state["project_id"] == project.id else ""}>{html.escape(project.name)}</option>'
+            for project in projects
+        ]
+    )
+    owner_options = "\n".join(
+        [
+            f'<option value="{owner.id}"'
+            f'{" selected" if form_state["owner_id"] == owner.id else ""}>{html.escape(owner.name)}</option>'
+            for owner in owners
+        ]
+    )
+    ip_options = "\n".join(
+        [
+            f'<option value="{html.escape(asset["ip_address"])}"'
+            f'{" selected" if form_state["ip_address"] == asset["ip_address"] else ""}>{html.escape(asset["ip_address"])}</option>'
+            for asset in assets
+        ]
+    )
+    error_html = ""
+    if errors:
+        error_items = "\n".join([f"<li>{html.escape(error)}</li>" for error in errors])
+        error_html = f"""
+    <div class="errors">
+      <strong>Fix the following:</strong>
+      <ul>
+        {error_items}
+      </ul>
+    </div>
+"""
+    rows = []
+    for asset in assets:
+        project_unassigned = asset["project_name"] == "UNASSIGNED"
+        owner_unassigned = asset["owner_name"] == "UNASSIGNED"
+        rows.append(
+            f"""
+            <tr>
+              <td><a href="/ui/ip-assets/{html.escape(asset['ip_address'])}">{html.escape(asset['ip_address'])}</a></td>
+              <td>{html.escape(asset['subnet'])}</td>
+              <td>{html.escape(asset['gateway'])}</td>
+              <td>{html.escape(asset['type'])}</td>
+              <td class="{'unassigned' if project_unassigned else ''}">
+                {html.escape(asset['project_name'])}
+                {'<span class="badge">UNASSIGNED</span>' if project_unassigned else ''}
+              </td>
+              <td class="{'unassigned' if owner_unassigned else ''}">
+                {html.escape(asset['owner_name'])}
+                {'<span class="badge">UNASSIGNED</span>' if owner_unassigned else ''}
+              </td>
+              <td>{html.escape(asset['notes'])}</td>
+            </tr>
+            """
+        )
+    rows_html = "\n".join(rows) if rows else "<tr><td colspan=\"7\">No IP assets found.</td></tr>"
+    body = f"""
+  <h1>Needs Assignment</h1>
+  <p><a href="/ui/ip-assets">Back to list</a></p>
+  <div class="tabs">
+    <a class="tab {'active' if selected_filter == 'owner' else ''}" href="/ui/ip-assets/needs-assignment?filter=owner">Needs Owner</a>
+    <a class="tab {'active' if selected_filter == 'project' else ''}" href="/ui/ip-assets/needs-assignment?filter=project">Needs Project</a>
+    <a class="tab {'active' if selected_filter == 'both' else ''}" href="/ui/ip-assets/needs-assignment?filter=both">Needs Both</a>
+  </div>
+
+  <h2>Quick Assign (Editor/Admin)</h2>
+  <p>Choose an IP plus the Owner and/or Project to assign.</p>
+  {error_html}
+  <form method="post" action="/ui/ip-assets/needs-assignment/assign?filter={html.escape(selected_filter)}">
+    <label>
+      IP Address
+      <select name="ip_address">
+        <option value="">Select an IP</option>
+        {ip_options}
+      </select>
+    </label>
+    <label>
+      Project
+      <select name="project_id">
+        <option value="">Leave unassigned</option>
+        {project_options}
+      </select>
+    </label>
+    <label>
+      Owner
+      <select name="owner_id">
+        <option value="">Leave unassigned</option>
+        {owner_options}
+      </select>
+    </label>
+    <button type="submit">Assign</button>
+  </form>
+
+  <h2>Matching IPs</h2>
+  <table>
+    <thead>
+      <tr>
+        <th>IP</th>
+        <th>Subnet</th>
+        <th>Gateway</th>
+        <th>Type</th>
+        <th>Project</th>
+        <th>Owner</th>
+        <th>Notes</th>
+      </tr>
+    </thead>
+    <tbody>
+      {rows_html}
+    </tbody>
+  </table>
+"""
+    return _html_page("ipocket - Needs Assignment", body)
 
 
 def _render_detail_page(asset: dict) -> HTMLResponse:
@@ -742,6 +874,95 @@ def ui_list_ip_assets(
         },
     }
     return _render_list_page(**context)
+
+
+@app.get("/ui/ip-assets/needs-assignment", response_class=HTMLResponse)
+def ui_needs_assignment(
+    request: Request,
+    filter: Optional[str] = None,
+    connection=Depends(get_connection),
+):
+    assignment_filter = _normalize_assignment_filter(filter)
+    assets = list(
+        repository.list_ip_assets_needing_assignment(connection, assignment_filter)
+    )
+    projects = list(repository.list_projects(connection))
+    owners = list(repository.list_owners(connection))
+    project_lookup = {project.id: project.name for project in projects}
+    owner_lookup = {owner.id: owner.name for owner in owners}
+    view_models = _build_asset_view_models(assets, project_lookup, owner_lookup)
+    form_state = {
+        "ip_address": view_models[0]["ip_address"] if view_models else "",
+        "project_id": None,
+        "owner_id": None,
+    }
+    return _render_needs_assignment_page(
+        assets=view_models,
+        projects=projects,
+        owners=owners,
+        selected_filter=assignment_filter,
+        errors=[],
+        form_state=form_state,
+    )
+
+
+@app.post("/ui/ip-assets/needs-assignment/assign", response_class=HTMLResponse)
+async def ui_needs_assignment_assign(
+    request: Request,
+    filter: Optional[str] = None,
+    connection=Depends(get_connection),
+    _user=Depends(require_editor),
+):
+    assignment_filter = _normalize_assignment_filter(filter)
+    form_data = await _parse_form_data(request)
+    ip_address = (form_data.get("ip_address") or "").strip()
+    project_id = _parse_optional_int(form_data.get("project_id"))
+    owner_id = _parse_optional_int(form_data.get("owner_id"))
+
+    errors = []
+    if not ip_address:
+        errors.append("Select an IP address.")
+    if project_id is None and owner_id is None:
+        errors.append("Assign at least one of Owner or Project.")
+
+    asset = None
+    if ip_address:
+        asset = repository.get_ip_asset_by_ip(connection, ip_address)
+        if asset is None or asset.archived:
+            errors.append("Selected IP address was not found.")
+
+    if errors:
+        assets = list(
+            repository.list_ip_assets_needing_assignment(connection, assignment_filter)
+        )
+        projects = list(repository.list_projects(connection))
+        owners = list(repository.list_owners(connection))
+        project_lookup = {project.id: project.name for project in projects}
+        owner_lookup = {owner.id: owner.name for owner in owners}
+        view_models = _build_asset_view_models(assets, project_lookup, owner_lookup)
+        return _render_needs_assignment_page(
+            assets=view_models,
+            projects=projects,
+            owners=owners,
+            selected_filter=assignment_filter,
+            errors=errors,
+            form_state={
+                "ip_address": ip_address,
+                "project_id": project_id,
+                "owner_id": owner_id,
+            },
+        )
+
+    repository.update_ip_asset(
+        connection,
+        ip_address=ip_address,
+        project_id=project_id,
+        owner_id=owner_id,
+    )
+    return RedirectResponse(
+        url=f"/ui/ip-assets/needs-assignment?filter={assignment_filter}",
+        status_code=303,
+    )
 
 
 @app.get("/ui/ip-assets/{ip_address}", response_class=HTMLResponse)

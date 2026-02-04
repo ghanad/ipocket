@@ -258,6 +258,23 @@ def list_active_ip_assets(
     return [_row_to_ip_asset(row) for row in rows]
 
 
+def list_ip_assets_needing_assignment(
+    connection: sqlite3.Connection, filter_mode: str
+) -> Iterable[IPAsset]:
+    query = "SELECT * FROM ip_assets WHERE archived = 0"
+    if filter_mode == "owner":
+        query += " AND owner_id IS NULL"
+    elif filter_mode == "project":
+        query += " AND project_id IS NULL"
+    elif filter_mode == "both":
+        query += " AND owner_id IS NULL AND project_id IS NULL"
+    else:
+        raise ValueError("Invalid assignment filter mode.")
+    query += " ORDER BY ip_address"
+    rows = connection.execute(query).fetchall()
+    return [_row_to_ip_asset(row) for row in rows]
+
+
 def archive_ip_asset(connection: sqlite3.Connection, ip_address: str) -> None:
     connection.execute(
         """
