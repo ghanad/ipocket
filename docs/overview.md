@@ -30,6 +30,13 @@ ipocket is a lightweight, modular IP inventory web app with a simple UI and Prom
 - `POST /owners`: create owner (Editor/Admin).
 - `PATCH /owners/{owner_id}`: update owner (Editor/Admin).
 
+## UI Pages (MVP)
+- `GET /ui/ip-assets`: IP list with search and filters (project, owner, type, unassigned-only).
+- `GET /ui/ip-assets/{ip_address}`: IP detail page with assignment status.
+- `GET /ui/ip-assets/new`: add IP form (Editor/Admin).
+- `GET /ui/ip-assets/{ip_address}/edit`: edit IP form (Editor/Admin).
+- `POST /ui/ip-assets/{ip_address}/archive`: archive action (Editor/Admin).
+
 ## Bootstrap Admin (local dev)
 - Set `ADMIN_BOOTSTRAP_USERNAME` and `ADMIN_BOOTSTRAP_PASSWORD` before startup.
 - The app creates the first Admin user only if the users table is empty.
