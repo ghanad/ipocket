@@ -286,6 +286,14 @@ def test_ui_includes_app_css(client) -> None:
     assert "/static/app.css" in response.text
 
 
+def test_ui_ip_assets_allows_empty_filter_query_values(client) -> None:
+    test_client, _db_path = client
+    response = test_client.get("/ui/ip-assets?owner_id=&type=")
+
+    assert response.status_code == 200
+    assert "IP Assets" in response.text
+
+
 def test_editor_can_create_project_via_ui(client) -> None:
     test_client, db_path = client
     _create_user(db_path, "editor", "editor-pass", UserRole.EDITOR)
