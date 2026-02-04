@@ -36,6 +36,19 @@ Endpoints:
 - Health check: http://127.0.0.1:8000/health
 - Metrics: http://127.0.0.1:8000/metrics
 
+## UI login (browser)
+Bootstrap a local Admin user before startup:
+
+```bash
+export ADMIN_BOOTSTRAP_USERNAME=admin
+export ADMIN_BOOTSTRAP_PASSWORD=admin-pass
+```
+
+Start the app and sign in:
+- Visit http://127.0.0.1:8000/ui/login
+- Login with the bootstrap credentials.
+- Editors/Admins can add or edit IPs from the UI.
+
 ## Example API calls
 Login and capture a token:
 

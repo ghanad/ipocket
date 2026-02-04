@@ -216,6 +216,17 @@ def get_ip_asset_by_ip(
     return _row_to_ip_asset(row)
 
 
+def get_ip_asset_by_id(
+    connection: sqlite3.Connection, asset_id: int
+) -> Optional[IPAsset]:
+    row = connection.execute(
+        "SELECT * FROM ip_assets WHERE id = ?", (asset_id,)
+    ).fetchone()
+    if row is None:
+        return None
+    return _row_to_ip_asset(row)
+
+
 def list_projects(connection: sqlite3.Connection) -> Iterable[Project]:
     rows = connection.execute(
         "SELECT id, name, description FROM projects ORDER BY name"

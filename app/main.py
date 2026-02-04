@@ -1,8 +1,11 @@
 from __future__ import annotations
 
+import hashlib
+import hmac
 import html
 import ipaddress
 import os
+import secrets
 import sqlite3
 from typing import Optional
 from urllib.parse import parse_qs
@@ -10,11 +13,13 @@ from urllib.parse import parse_qs
 from fastapi import Depends, FastAPI, Header, HTTPException, Query, Request, Response, status
 from fastapi.responses import HTMLResponse, RedirectResponse
 from pydantic import BaseModel, Field
-
 from app import auth, db, repository
 from app.models import IPAsset, IPAssetType, UserRole
 
 app = FastAPI()
+
+SESSION_COOKIE = "ipocket_session"
+SESSION_SECRET = os.getenv("SESSION_SECRET", "dev-session-secret").encode("utf-8")
 
 
 class LoginRequest(BaseModel):
@@ -143,6 +148,52 @@ def require_editor(user=Depends(get_current_user)):
     return user
 
 
+def _sign_session_value(value: str) -> str:
+    signature = hmac.new(
+        SESSION_SECRET, value.encode("utf-8"), hashlib.sha256
+    ).hexdigest()
+    return f"{value}.{signature}"
+
+
+def _verify_session_value(value: Optional[str]) -> Optional[str]:
+    if not value:
+        return None
+    if "." not in value:
+        return None
+    payload, signature = value.rsplit(".", 1)
+    expected = hmac.new(
+        SESSION_SECRET, payload.encode("utf-8"), hashlib.sha256
+    ).hexdigest()
+    if not secrets.compare_digest(signature, expected):
+        return None
+    return payload
+
+
+def get_current_ui_user(
+    request: Request, connection=Depends(get_connection)
+):
+    signed_session = request.cookies.get(SESSION_COOKIE)
+    user_id = _verify_session_value(signed_session)
+    if not user_id:
+        raise HTTPException(
+            status_code=status.HTTP_303_SEE_OTHER,
+            headers={"Location": "/ui/login"},
+        )
+    user = repository.get_user_by_id(connection, int(user_id))
+    if user is None or not user.is_active:
+        raise HTTPException(
+            status_code=status.HTTP_303_SEE_OTHER,
+            headers={"Location": "/ui/login"},
+        )
+    return user
+
+
+def require_ui_editor(user=Depends(get_current_ui_user)):
+    if user.role not in (UserRole.EDITOR, UserRole.ADMIN):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN)
+    return user
+
+
 def validate_ip_address(value: str) -> None:
     try:
         ipaddress.ip_address(value)
@@ -203,6 +254,7 @@ def _build_asset_view_models(
         owner_name = owner_lookup.get(asset.owner_id, "")
         view_models.append(
             {
+                "id": asset.id,
                 "ip_address": asset.ip_address,
                 "subnet": asset.subnet,
                 "gateway": asset.gateway,
@@ -221,29 +273,24 @@ def _html_page(title: str, body: str, status_code: int = 200) -> HTMLResponse:
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css" />
   <title>{html.escape(title)}</title>
   <style>
-    body {{ font-family: Arial, sans-serif; margin: 24px; }}
-    table {{ border-collapse: collapse; width: 100%; }}
-    th, td {{ border: 1px solid #ddd; padding: 8px; text-align: left; }}
-    th {{ background-color: #f5f5f5; }}
     .unassigned {{ color: #b00020; font-weight: bold; }}
     .badge {{ background: #ffe0e0; color: #b00020; padding: 2px 6px; border-radius: 4px; }}
-    .filters {{ margin-bottom: 16px; }}
-    .filters label {{ margin-right: 12px; }}
-    .actions {{ margin-bottom: 16px; }}
-    .tabs {{ display: flex; gap: 8px; margin-bottom: 16px; }}
-    .tab {{ padding: 6px 12px; border: 1px solid #ddd; border-radius: 6px; text-decoration: none; color: #333; }}
-    .tab.active {{ background: #f5f5f5; font-weight: bold; }}
-    label {{ display: block; margin-top: 12px; }}
-    input, select, textarea {{ width: 320px; padding: 6px; }}
-    textarea {{ height: 90px; }}
+    .filters {{ display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); }}
+    .actions {{ display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 12px; }}
+    .tabs {{ display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap; }}
+    .tab.active {{ font-weight: bold; }}
     .errors {{ background: #ffe0e0; color: #b00020; padding: 12px; border-radius: 4px; }}
     dt {{ font-weight: bold; margin-top: 12px; }}
+    main.container {{ padding-top: 24px; }}
   </style>
 </head>
 <body>
+<main class="container">
 {body}
+</main>
 </body>
 </html>
 """
@@ -285,7 +332,7 @@ def _render_list_page(
         rows.append(
             f"""
             <tr>
-              <td><a href="/ui/ip-assets/{html.escape(asset['ip_address'])}">{html.escape(asset['ip_address'])}</a></td>
+              <td><a href="/ui/ip-assets/{asset['id']}">{html.escape(asset['ip_address'])}</a></td>
               <td>{html.escape(asset['subnet'])}</td>
               <td>{html.escape(asset['gateway'])}</td>
               <td>{html.escape(asset['type'])}</td>
@@ -298,7 +345,7 @@ def _render_list_page(
                 {'<span class="badge">UNASSIGNED</span>' if owner_unassigned else ''}
               </td>
               <td>{html.escape(asset['notes'])}</td>
-              <td><a href="/ui/ip-assets/{html.escape(asset['ip_address'])}/edit">Edit</a></td>
+              <td><a href="/ui/ip-assets/{asset['id']}/edit">Edit</a></td>
             </tr>
             """
         )
@@ -410,7 +457,7 @@ def _render_needs_assignment_page(
         rows.append(
             f"""
             <tr>
-              <td><a href="/ui/ip-assets/{html.escape(asset['ip_address'])}">{html.escape(asset['ip_address'])}</a></td>
+              <td><a href="/ui/ip-assets/{asset['id']}">{html.escape(asset['ip_address'])}</a></td>
               <td>{html.escape(asset['subnet'])}</td>
               <td>{html.escape(asset['gateway'])}</td>
               <td>{html.escape(asset['type'])}</td>
@@ -519,9 +566,9 @@ def _render_detail_page(asset: dict) -> HTMLResponse:
 
   <h2>Actions (Editor/Admin)</h2>
   <p>
-    <a href="/ui/ip-assets/{html.escape(asset['ip_address'])}/edit">Edit</a>
+    <a href="/ui/ip-assets/{asset['id']}/edit">Edit</a>
   </p>
-  <form method="post" action="/ui/ip-assets/{html.escape(asset['ip_address'])}/archive">
+  <form method="post" action="/ui/ip-assets/{asset['id']}/archive">
     <button type="submit">Archive</button>
   </form>
 """
@@ -572,7 +619,7 @@ def _render_form_page(
     action_url = (
         "/ui/ip-assets/new"
         if mode == "create"
-        else f"/ui/ip-assets/{html.escape(asset['ip_address'])}/edit"
+        else f"/ui/ip-assets/{asset['id']}/edit"
     )
     read_only = "readonly" if mode == "edit" else ""
     body = f"""
@@ -829,6 +876,75 @@ def ui_home(request: Request):
     return RedirectResponse(url="/ui/ip-assets")
 
 
+@app.get("/ui/login", response_class=HTMLResponse)
+def ui_login_form(request: Request) -> HTMLResponse:
+    body = """
+  <h1>Sign in</h1>
+  <form method="post" action="/ui/login">
+    <label>
+      Username
+      <input type="text" name="username" required />
+    </label>
+    <label>
+      Password
+      <input type="password" name="password" required />
+    </label>
+    <button type="submit">Login</button>
+  </form>
+"""
+    return _html_page("ipocket - Login", body)
+
+
+@app.post("/ui/login", response_class=HTMLResponse)
+async def ui_login_submit(
+    request: Request, connection=Depends(get_connection)
+) -> HTMLResponse:
+    form_data = await _parse_form_data(request)
+    username = (form_data.get("username") or "").strip()
+    password = form_data.get("password") or ""
+
+    user = None
+    if username:
+        user = repository.get_user_by_username(connection, username)
+    if (
+        user is None
+        or not user.is_active
+        or not auth.verify_password(password, user.hashed_password)
+    ):
+        body = """
+  <h1>Sign in</h1>
+  <div class="errors">Invalid username or password.</div>
+  <form method="post" action="/ui/login">
+    <label>
+      Username
+      <input type="text" name="username" required />
+    </label>
+    <label>
+      Password
+      <input type="password" name="password" required />
+    </label>
+    <button type="submit">Login</button>
+  </form>
+"""
+        return _html_page("ipocket - Login", body, status_code=401)
+
+    response = RedirectResponse(url="/ui/ip-assets", status_code=303)
+    response.set_cookie(
+        SESSION_COOKIE,
+        _sign_session_value(str(user.id)),
+        httponly=True,
+        samesite="lax",
+    )
+    return response
+
+
+@app.post("/ui/logout")
+def ui_logout(request: Request) -> Response:
+    response = RedirectResponse(url="/ui/login", status_code=303)
+    response.delete_cookie(SESSION_COOKIE)
+    return response
+
+
 @app.get("/ui/ip-assets", response_class=HTMLResponse)
 def ui_list_ip_assets(
     request: Request,
@@ -914,7 +1030,7 @@ async def ui_needs_assignment_assign(
     request: Request,
     filter: Optional[str] = None,
     connection=Depends(get_connection),
-    _user=Depends(require_editor),
+    _user=Depends(require_ui_editor),
 ):
     assignment_filter = _normalize_assignment_filter(filter)
     form_data = await _parse_form_data(request)
@@ -968,35 +1084,17 @@ async def ui_needs_assignment_assign(
     )
 
 
-@app.get("/ui/ip-assets/{ip_address}", response_class=HTMLResponse)
-def ui_ip_asset_detail(
-    request: Request,
-    ip_address: str,
-    connection=Depends(get_connection),
-):
-    asset = repository.get_ip_asset_by_ip(connection, ip_address)
-    if asset is None or asset.archived:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
-    project_lookup = {
-        project.id: project.name for project in repository.list_projects(connection)
-    }
-    owner_lookup = {
-        owner.id: owner.name for owner in repository.list_owners(connection)
-    }
-    view_model = _build_asset_view_models([asset], project_lookup, owner_lookup)[0]
-    return _render_detail_page(view_model)
-
-
 @app.get("/ui/ip-assets/new", response_class=HTMLResponse)
 def ui_add_ip_form(
     request: Request,
     connection=Depends(get_connection),
-    _user=Depends(require_editor),
+    _user=Depends(require_ui_editor),
 ):
     projects = list(repository.list_projects(connection))
     owners = list(repository.list_owners(connection))
     return _render_form_page(
         asset={
+            "id": None,
             "ip_address": "",
             "subnet": "",
             "gateway": "",
@@ -1017,7 +1115,7 @@ def ui_add_ip_form(
 async def ui_add_ip_submit(
     request: Request,
     connection=Depends(get_connection),
-    _user=Depends(require_editor),
+    _user=Depends(require_ui_editor),
 ):
     form_data = await _parse_form_data(request)
     ip_address = form_data.get("ip_address")
@@ -1049,6 +1147,7 @@ async def ui_add_ip_submit(
         owners = list(repository.list_owners(connection))
         return _render_form_page(
             asset={
+                "id": None,
                 "ip_address": ip_address or "",
                 "subnet": subnet or "",
                 "gateway": gateway or "",
@@ -1066,7 +1165,7 @@ async def ui_add_ip_submit(
         )
 
     try:
-        repository.create_ip_asset(
+        asset = repository.create_ip_asset(
             connection,
             ip_address=ip_address,
             subnet=subnet,
@@ -1082,6 +1181,7 @@ async def ui_add_ip_submit(
         owners = list(repository.list_owners(connection))
         return _render_form_page(
             asset={
+                "id": None,
                 "ip_address": ip_address or "",
                 "subnet": subnet or "",
                 "gateway": gateway or "",
@@ -1098,23 +1198,43 @@ async def ui_add_ip_submit(
             status_code=409,
         )
 
-    return RedirectResponse(url=f"/ui/ip-assets/{ip_address}", status_code=303)
+    return RedirectResponse(url=f"/ui/ip-assets/{asset.id}", status_code=303)
 
 
-@app.get("/ui/ip-assets/{ip_address}/edit", response_class=HTMLResponse)
+@app.get("/ui/ip-assets/{asset_id}", response_class=HTMLResponse)
+def ui_ip_asset_detail(
+    request: Request,
+    asset_id: int,
+    connection=Depends(get_connection),
+):
+    asset = repository.get_ip_asset_by_id(connection, asset_id)
+    if asset is None or asset.archived:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
+    project_lookup = {
+        project.id: project.name for project in repository.list_projects(connection)
+    }
+    owner_lookup = {
+        owner.id: owner.name for owner in repository.list_owners(connection)
+    }
+    view_model = _build_asset_view_models([asset], project_lookup, owner_lookup)[0]
+    return _render_detail_page(view_model)
+
+
+@app.get("/ui/ip-assets/{asset_id}/edit", response_class=HTMLResponse)
 def ui_edit_ip_form(
     request: Request,
-    ip_address: str,
+    asset_id: int,
     connection=Depends(get_connection),
-    _user=Depends(require_editor),
+    _user=Depends(require_ui_editor),
 ):
-    asset = repository.get_ip_asset_by_ip(connection, ip_address)
+    asset = repository.get_ip_asset_by_id(connection, asset_id)
     if asset is None or asset.archived:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
     projects = list(repository.list_projects(connection))
     owners = list(repository.list_owners(connection))
     return _render_form_page(
         asset={
+            "id": asset.id,
             "ip_address": asset.ip_address,
             "subnet": asset.subnet,
             "gateway": asset.gateway,
@@ -1131,14 +1251,14 @@ def ui_edit_ip_form(
     )
 
 
-@app.post("/ui/ip-assets/{ip_address}/edit", response_class=HTMLResponse)
+@app.post("/ui/ip-assets/{asset_id}/edit", response_class=HTMLResponse)
 async def ui_edit_ip_submit(
     request: Request,
-    ip_address: str,
+    asset_id: int,
     connection=Depends(get_connection),
-    _user=Depends(require_editor),
+    _user=Depends(require_ui_editor),
 ):
-    asset = repository.get_ip_asset_by_ip(connection, ip_address)
+    asset = repository.get_ip_asset_by_id(connection, asset_id)
     if asset is None or asset.archived:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
 
@@ -1163,6 +1283,7 @@ async def ui_edit_ip_submit(
         owners = list(repository.list_owners(connection))
         return _render_form_page(
             asset={
+                "id": asset.id,
                 "ip_address": asset.ip_address,
                 "subnet": subnet or "",
                 "gateway": gateway or "",
@@ -1181,7 +1302,7 @@ async def ui_edit_ip_submit(
 
     repository.update_ip_asset(
         connection,
-        ip_address=ip_address,
+        ip_address=asset.ip_address,
         subnet=subnet,
         gateway=gateway,
         asset_type=IPAssetType(asset_type),
@@ -1189,17 +1310,17 @@ async def ui_edit_ip_submit(
         owner_id=owner_id,
         notes=notes,
     )
-    return RedirectResponse(url=f"/ui/ip-assets/{ip_address}", status_code=303)
+    return RedirectResponse(url=f"/ui/ip-assets/{asset.id}", status_code=303)
 
 
-@app.post("/ui/ip-assets/{ip_address}/archive")
+@app.post("/ui/ip-assets/{asset_id}/archive")
 def ui_archive_ip_asset(
-    ip_address: str,
+    asset_id: int,
     connection=Depends(get_connection),
-    _user=Depends(require_editor),
+    _user=Depends(require_ui_editor),
 ):
-    asset = repository.get_ip_asset_by_ip(connection, ip_address)
+    asset = repository.get_ip_asset_by_id(connection, asset_id)
     if asset is None or asset.archived:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
-    repository.archive_ip_asset(connection, ip_address)
+    repository.archive_ip_asset(connection, asset.ip_address)
     return RedirectResponse(url="/ui/ip-assets", status_code=303)
