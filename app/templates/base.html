@@ -38,15 +38,15 @@
       </form>
     </header>
     <main class="content">
+{% endif %}
       {% block content %}{% endblock %}
+{% if show_nav %}
     </main>
     <footer class="footer">
       <span>© 2024 ipocket Network Systems</span>
     </footer>
   </div>
 </div>
-{% else %}
-{% block content %}{% endblock %}
 {% endif %}
 </body>
 </html>
