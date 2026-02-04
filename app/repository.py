@@ -275,6 +275,43 @@ def list_ip_assets_needing_assignment(
     return [_row_to_ip_asset(row) for row in rows]
 
 
+def get_ip_asset_metrics(connection: sqlite3.Connection) -> dict[str, int]:
+    row = connection.execute(
+        """
+        SELECT
+            COUNT(*) AS total,
+            SUM(CASE WHEN archived = 1 THEN 1 ELSE 0 END) AS archived_total,
+            SUM(CASE WHEN archived = 0 AND owner_id IS NULL THEN 1 ELSE 0 END)
+                AS unassigned_owner_total,
+            SUM(CASE WHEN archived = 0 AND project_id IS NULL THEN 1 ELSE 0 END)
+                AS unassigned_project_total,
+            SUM(
+                CASE
+                    WHEN archived = 0 AND owner_id IS NULL AND project_id IS NULL
+                    THEN 1
+                    ELSE 0
+                END
+            ) AS unassigned_both_total
+        FROM ip_assets
+        """
+    ).fetchone()
+    if row is None:
+        return {
+            "total": 0,
+            "archived_total": 0,
+            "unassigned_owner_total": 0,
+            "unassigned_project_total": 0,
+            "unassigned_both_total": 0,
+        }
+    return {
+        "total": int(row["total"] or 0),
+        "archived_total": int(row["archived_total"] or 0),
+        "unassigned_owner_total": int(row["unassigned_owner_total"] or 0),
+        "unassigned_project_total": int(row["unassigned_project_total"] or 0),
+        "unassigned_both_total": int(row["unassigned_both_total"] or 0),
+    }
+
+
 def archive_ip_asset(connection: sqlite3.Connection, ip_address: str) -> None:
     connection.execute(
         """

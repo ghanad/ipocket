@@ -152,14 +152,14 @@ def validate_ip_address(value: str) -> None:
         ) from exc
 
 
-def _metrics_payload() -> str:
+def _metrics_payload(metrics: dict[str, int]) -> str:
     return "\n".join(
         [
-            "ipam_ip_total 0",
-            "ipam_ip_archived_total 0",
-            "ipam_ip_unassigned_owner_total 0",
-            "ipam_ip_unassigned_project_total 0",
-            "ipam_ip_unassigned_both_total 0",
+            f"ipam_ip_total {metrics['total']}",
+            f"ipam_ip_archived_total {metrics['archived_total']}",
+            f"ipam_ip_unassigned_owner_total {metrics['unassigned_owner_total']}",
+            f"ipam_ip_unassigned_project_total {metrics['unassigned_project_total']}",
+            f"ipam_ip_unassigned_both_total {metrics['unassigned_both_total']}",
             "",
         ]
     )
@@ -638,8 +638,11 @@ def health_check() -> Response:
 
 
 @app.get("/metrics")
-def metrics() -> Response:
-    return Response(content=_metrics_payload(), media_type="text/plain")
+def metrics(connection=Depends(get_connection)) -> Response:
+    metrics_payload = repository.get_ip_asset_metrics(connection)
+    return Response(
+        content=_metrics_payload(metrics_payload), media_type="text/plain"
+    )
 
 
 @app.post("/login", response_model=TokenResponse)
