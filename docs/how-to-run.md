@@ -49,6 +49,8 @@ Start the app and sign in:
 - Login with the bootstrap credentials.
 - Editors/Admins can add or edit IPs from the UI.
 
+UI design reference templates live in `/ui_template` for layout and styling guidance.
+
 ## First-time setup checklist
 1) Bootstrap an admin user (env vars above).
 2) Login at `/ui/login`.
