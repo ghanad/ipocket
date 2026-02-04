@@ -1,0 +1,74 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="page-header">
+  <div>
+    <p class="eyebrow">{% if mode == 'create' %}Create{% else %}Edit{% endif %} IP</p>
+    <h1>{% if mode == 'create' %}Add IP asset{% else %}Edit IP asset{% endif %}</h1>
+    <p class="subtitle">Provide addressing, ownership, and metadata.</p>
+  </div>
+  <div class="header-actions">
+    <a class="btn btn-secondary" href="/ui/ip-assets">Back to list</a>
+  </div>
+</section>
+
+<section class="card">
+  {% if errors %}
+  <div class="alert alert-error">
+    <p class="alert-title">Fix the following:</p>
+    <ul>
+      {% for error in errors %}
+      <li>{{ error }}</li>
+      {% endfor %}
+    </ul>
+  </div>
+  {% endif %}
+  <form class="form-grid form-grid-two" method="post" action="{{ action_url }}">
+    <label class="field">
+      <span>IP address</span>
+      <input class="input" type="text" name="ip_address" value="{{ asset.ip_address }}"{% if mode == 'edit' %} readonly{% endif %} />
+    </label>
+    <label class="field">
+      <span>Subnet</span>
+      <input class="input" type="text" name="subnet" value="{{ asset.subnet }}" />
+    </label>
+    <label class="field">
+      <span>Gateway</span>
+      <input class="input" type="text" name="gateway" value="{{ asset.gateway }}" />
+    </label>
+    <label class="field">
+      <span>Type</span>
+      <select class="select" name="type">
+        {% for asset_type in types %}
+        <option value="{{ asset_type }}"{% if asset.type == asset_type %} selected{% endif %}>{{ asset_type }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <label class="field">
+      <span>Project</span>
+      <select class="select" name="project_id">
+        <option value="">UNASSIGNED</option>
+        {% for project in projects %}
+        <option value="{{ project.id }}"{% if asset.project_id == project.id %} selected{% endif %}>{{ project.name }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <label class="field">
+      <span>Owner</span>
+      <select class="select" name="owner_id">
+        <option value="">UNASSIGNED</option>
+        {% for owner in owners %}
+        <option value="{{ owner.id }}"{% if asset.owner_id == owner.id %} selected{% endif %}>{{ owner.name }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <label class="field field-span">
+      <span>Notes</span>
+      <textarea class="textarea" name="notes" rows="4">{{ asset.notes }}</textarea>
+    </label>
+    <div class="form-actions">
+      <button class="btn btn-primary" type="submit">{{ submit_label }}</button>
+    </div>
+  </form>
+</section>
+{% endblock %}

@@ -1,0 +1,116 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="page-header">
+  <div>
+    <p class="eyebrow">Inventory</p>
+    <h1>IP Assets</h1>
+    <p class="subtitle">Manage and monitor network address assignments across all zones.</p>
+  </div>
+  <div class="header-actions">
+    <a class="btn btn-primary" href="/ui/ip-assets/new">Add IP</a>
+    <a class="btn btn-secondary" href="/ui/ip-assets/needs-assignment">Needs Assignment</a>
+  </div>
+</section>
+<section class="card filter-card">
+  <form class="filters-grid" method="get" action="/ui/ip-assets">
+    <label class="field">
+      <span>Search</span>
+      <input class="input" type="text" name="q" value="{{ filters.q }}" placeholder="IP or notes" />
+    </label>
+    <label class="field">
+      <span>Project</span>
+      <select class="select" name="project_id">
+        <option value="">All</option>
+        {% for project in projects %}
+        <option value="{{ project.id }}"{% if filters.project_id == project.id %} selected{% endif %}>{{ project.name }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <label class="field">
+      <span>Owner</span>
+      <select class="select" name="owner_id">
+        <option value="">All</option>
+        {% for owner in owners %}
+        <option value="{{ owner.id }}"{% if filters.owner_id == owner.id %} selected{% endif %}>{{ owner.name }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <label class="field">
+      <span>Type</span>
+      <select class="select" name="type">
+        <option value="">All</option>
+        {% for asset_type in types %}
+        <option value="{{ asset_type }}"{% if filters.type == asset_type %} selected{% endif %}>{{ asset_type }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <label class="checkbox-field">
+      <input type="checkbox" name="unassigned-only" value="true"{% if filters.unassigned_only %} checked{% endif %} />
+      <span>Unassigned only</span>
+    </label>
+    <button class="btn btn-outline" type="submit">Apply filters</button>
+  </form>
+</section>
+
+<section class="card table-card">
+  <div class="table-wrapper">
+    <table class="table">
+      <thead>
+        <tr>
+          <th>IP address</th>
+          <th>Project</th>
+          <th>Owner</th>
+          <th>Type</th>
+          <th>Subnet</th>
+          <th>Status</th>
+          <th>Notes</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% if assets %}
+        {% for asset in assets %}
+        <tr>
+          <td class="mono"><a href="/ui/ip-assets/{{ asset.id }}">{{ asset.ip_address }}</a></td>
+          <td>
+            {% if asset.project_unassigned %}
+            <span class="tag tag-warning">Unassigned</span>
+            {% else %}
+            <span class="tag">{{ asset.project_name }}</span>
+            {% endif %}
+          </td>
+          <td>
+            {% if asset.owner_unassigned %}
+            <span class="tag tag-danger">Unassigned</span>
+            {% else %}
+            <span class="tag">{{ asset.owner_name }}</span>
+            {% endif %}
+          </td>
+          <td class="muted">{{ asset.type }}</td>
+          <td class="muted">{{ asset.subnet }}</td>
+          <td>
+            {% if asset.both_unassigned %}
+            <span class="pill pill-danger">Missing owner + project</span>
+            {% elif asset.project_unassigned %}
+            <span class="pill pill-warning">Missing project</span>
+            {% elif asset.owner_unassigned %}
+            <span class="pill pill-danger">Missing owner</span>
+            {% else %}
+            <span class="pill pill-success">Assigned</span>
+            {% endif %}
+          </td>
+          <td class="muted">{{ asset.notes }}</td>
+          <td><a class="link" href="/ui/ip-assets/{{ asset.id }}/edit">Edit</a></td>
+        </tr>
+        {% endfor %}
+        {% else %}
+        <tr>
+          <td colspan="8" class="empty-state">No IP assets found.</td>
+        </tr>
+        {% endif %}
+      </tbody>
+    </table>
+  </div>
+</section>
+{% endblock %}
