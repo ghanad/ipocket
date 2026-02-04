@@ -36,6 +36,30 @@ Endpoints:
 - Health check: http://127.0.0.1:8000/health
 - Metrics: http://127.0.0.1:8000/metrics
 
+## Example API calls
+Login and capture a token:
+
+```bash
+curl -s -X POST http://127.0.0.1:8000/login \
+  -H "Content-Type: application/json" \
+  -d '{"username":"editor","password":"editor-pass"}'
+```
+
+Create an IP asset (Editor/Admin):
+
+```bash
+curl -s -X POST http://127.0.0.1:8000/ip-assets \
+  -H "Authorization: Bearer <token>" \
+  -H "Content-Type: application/json" \
+  -d '{"ip_address":"10.0.0.50","subnet":"10.0.0.0/24","gateway":"10.0.0.1","type":"VM"}'
+```
+
+List unassigned IPs:
+
+```bash
+curl -s "http://127.0.0.1:8000/ip-assets?unassigned-only=true"
+```
+
 ## Run tests
 ```bash
 pytest
