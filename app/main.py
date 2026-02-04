@@ -12,11 +12,13 @@ from urllib.parse import parse_qs
 
 from fastapi import Depends, FastAPI, Header, HTTPException, Query, Request, Response, status
 from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 from app import auth, db, repository
 from app.models import IPAsset, IPAssetType, UserRole
 
 app = FastAPI()
+app.mount("/static", StaticFiles(directory="app/static"), name="static")
 
 SESSION_COOKIE = "ipocket_session"
 SESSION_SECRET = os.getenv("SESSION_SECRET", "dev-session-secret").encode("utf-8")
@@ -252,6 +254,10 @@ def _build_asset_view_models(
     for asset in assets:
         project_name = project_lookup.get(asset.project_id, "")
         owner_name = owner_lookup.get(asset.owner_id, "")
+        project_display = _display_name(project_name)
+        owner_display = _display_name(owner_name)
+        project_unassigned = project_display == "UNASSIGNED"
+        owner_unassigned = owner_display == "UNASSIGNED"
         view_models.append(
             {
                 "id": asset.id,
@@ -259,35 +265,67 @@ def _build_asset_view_models(
                 "subnet": asset.subnet,
                 "gateway": asset.gateway,
                 "type": asset.asset_type.value,
-                "project_name": _display_name(project_name),
-                "owner_name": _display_name(owner_name),
+                "project_name": project_display,
+                "owner_name": owner_display,
                 "notes": asset.notes or "",
                 "unassigned": _is_unassigned(asset.project_id, asset.owner_id),
+                "project_unassigned": project_unassigned,
+                "owner_unassigned": owner_unassigned,
+                "both_unassigned": project_unassigned and owner_unassigned,
             }
         )
     return view_models
 
 
-def _html_page(title: str, body: str, status_code: int = 200) -> HTMLResponse:
+def _assignment_badge(
+    project_unassigned: bool, owner_unassigned: bool
+) -> str:
+    if project_unassigned and owner_unassigned:
+        return '<span class="badge badge-danger">UNASSIGNED BOTH</span>'
+    if project_unassigned:
+        return '<span class="badge badge-warning">UNASSIGNED PROJECT</span>'
+    if owner_unassigned:
+        return '<span class="badge badge-info">UNASSIGNED OWNER</span>'
+    return ""
+
+
+def _html_page(
+    title: str, body: str, status_code: int = 200, show_nav: bool = True
+) -> HTMLResponse:
+    nav_html = ""
+    if show_nav:
+        nav_html = """
+<header class="app-header">
+  <nav class="container">
+    <ul class="nav-brand">
+      <li><strong>ipocket</strong></li>
+    </ul>
+    <ul class="nav-links">
+      <li><a href="/ui/ip-assets">IP Assets</a></li>
+      <li><a href="/ui/ip-assets/needs-assignment">Needs Assignment</a></li>
+      <li><a href="/ui/projects">Projects</a></li>
+      <li><a href="/ui/owners">Owners</a></li>
+    </ul>
+    <ul class="nav-actions">
+      <li>
+        <form method="post" action="/ui/logout">
+          <button type="submit" class="secondary">Logout</button>
+        </form>
+      </li>
+    </ul>
+  </nav>
+</header>
+"""
     content = f"""<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css" />
+  <link rel="stylesheet" href="/static/app.css" />
   <title>{html.escape(title)}</title>
-  <style>
-    .unassigned {{ color: #b00020; font-weight: bold; }}
-    .badge {{ background: #ffe0e0; color: #b00020; padding: 2px 6px; border-radius: 4px; }}
-    .filters {{ display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); }}
-    .actions {{ display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 12px; }}
-    .tabs {{ display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap; }}
-    .tab.active {{ font-weight: bold; }}
-    .errors {{ background: #ffe0e0; color: #b00020; padding: 12px; border-radius: 4px; }}
-    dt {{ font-weight: bold; margin-top: 12px; }}
-    main.container {{ padding-top: 24px; }}
-  </style>
 </head>
 <body>
+{nav_html}
 <main class="container">
 {body}
 </main>
@@ -327,8 +365,9 @@ def _render_list_page(
     )
     rows = []
     for asset in assets:
-        project_unassigned = asset["project_name"] == "UNASSIGNED"
-        owner_unassigned = asset["owner_name"] == "UNASSIGNED"
+        project_unassigned = asset["project_unassigned"]
+        owner_unassigned = asset["owner_unassigned"]
+        assignment_badge = _assignment_badge(project_unassigned, owner_unassigned)
         rows.append(
             f"""
             <tr>
@@ -338,18 +377,17 @@ def _render_list_page(
               <td>{html.escape(asset['type'])}</td>
               <td class="{'unassigned' if project_unassigned else ''}">
                 {html.escape(asset['project_name'])}
-                {'<span class="badge">UNASSIGNED</span>' if project_unassigned else ''}
               </td>
               <td class="{'unassigned' if owner_unassigned else ''}">
                 {html.escape(asset['owner_name'])}
-                {'<span class="badge">UNASSIGNED</span>' if owner_unassigned else ''}
               </td>
+              <td>{assignment_badge or 'Assigned'}</td>
               <td>{html.escape(asset['notes'])}</td>
               <td><a href="/ui/ip-assets/{asset['id']}/edit">Edit</a></td>
             </tr>
             """
         )
-    rows_html = "\n".join(rows) if rows else "<tr><td colspan=\"8\">No IP assets found.</td></tr>"
+    rows_html = "\n".join(rows) if rows else "<tr><td colspan=\"9\">No IP assets found.</td></tr>"
     body = f"""
   <h1>IP Assets</h1>
   <div class="actions">
@@ -398,6 +436,7 @@ def _render_list_page(
         <th>Type</th>
         <th>Project</th>
         <th>Owner</th>
+        <th>Assignment</th>
         <th>Notes</th>
         <th>Actions</th>
       </tr>
@@ -452,8 +491,9 @@ def _render_needs_assignment_page(
 """
     rows = []
     for asset in assets:
-        project_unassigned = asset["project_name"] == "UNASSIGNED"
-        owner_unassigned = asset["owner_name"] == "UNASSIGNED"
+        project_unassigned = asset["project_unassigned"]
+        owner_unassigned = asset["owner_unassigned"]
+        assignment_badge = _assignment_badge(project_unassigned, owner_unassigned)
         rows.append(
             f"""
             <tr>
@@ -463,17 +503,16 @@ def _render_needs_assignment_page(
               <td>{html.escape(asset['type'])}</td>
               <td class="{'unassigned' if project_unassigned else ''}">
                 {html.escape(asset['project_name'])}
-                {'<span class="badge">UNASSIGNED</span>' if project_unassigned else ''}
               </td>
               <td class="{'unassigned' if owner_unassigned else ''}">
                 {html.escape(asset['owner_name'])}
-                {'<span class="badge">UNASSIGNED</span>' if owner_unassigned else ''}
               </td>
+              <td>{assignment_badge or 'Assigned'}</td>
               <td>{html.escape(asset['notes'])}</td>
             </tr>
             """
         )
-    rows_html = "\n".join(rows) if rows else "<tr><td colspan=\"7\">No IP assets found.</td></tr>"
+    rows_html = "\n".join(rows) if rows else "<tr><td colspan=\"8\">No IP assets found.</td></tr>"
     body = f"""
   <h1>Needs Assignment</h1>
   <p><a href="/ui/ip-assets">Back to list</a></p>
@@ -521,6 +560,7 @@ def _render_needs_assignment_page(
         <th>Type</th>
         <th>Project</th>
         <th>Owner</th>
+        <th>Assignment</th>
         <th>Notes</th>
       </tr>
     </thead>
@@ -533,8 +573,9 @@ def _render_needs_assignment_page(
 
 
 def _render_detail_page(asset: dict) -> HTMLResponse:
-    project_unassigned = asset["project_name"] == "UNASSIGNED"
-    owner_unassigned = asset["owner_name"] == "UNASSIGNED"
+    project_unassigned = asset["project_unassigned"]
+    owner_unassigned = asset["owner_unassigned"]
+    assignment_badge = _assignment_badge(project_unassigned, owner_unassigned)
     body = f"""
   <h1>IP {html.escape(asset['ip_address'])}</h1>
   <p><a href="/ui/ip-assets">Back to list</a></p>
@@ -551,14 +592,15 @@ def _render_detail_page(asset: dict) -> HTMLResponse:
     <dt>Project</dt>
     <dd class="{'unassigned' if project_unassigned else ''}">
       {html.escape(asset['project_name'])}
-      {'<span class="badge">UNASSIGNED</span>' if project_unassigned else ''}
     </dd>
 
     <dt>Owner</dt>
     <dd class="{'unassigned' if owner_unassigned else ''}">
       {html.escape(asset['owner_name'])}
-      {'<span class="badge">UNASSIGNED</span>' if owner_unassigned else ''}
     </dd>
+
+    <dt>Assignment Status</dt>
+    <dd>{assignment_badge or 'Assigned'}</dd>
 
     <dt>Notes</dt>
     <dd>{html.escape(asset['notes'])}</dd>
@@ -671,6 +713,126 @@ def _render_form_page(
         body,
         status_code=status_code,
     )
+
+
+def _render_projects_page(
+    projects: list,
+    errors: list[str],
+    form_state: dict,
+    status_code: int = 200,
+) -> HTMLResponse:
+    error_html = ""
+    if errors:
+        error_items = "\n".join([f"<li>{html.escape(error)}</li>" for error in errors])
+        error_html = f"""
+    <div class="errors">
+      <strong>Fix the following:</strong>
+      <ul>
+        {error_items}
+      </ul>
+    </div>
+"""
+    rows = []
+    for project in projects:
+        rows.append(
+            f"""
+            <tr>
+              <td>{html.escape(project.name)}</td>
+              <td>{html.escape(project.description or '')}</td>
+            </tr>
+            """
+        )
+    rows_html = "\n".join(rows) if rows else "<tr><td colspan=\"2\">No projects yet.</td></tr>"
+    body = f"""
+  <h1>Projects</h1>
+  <p>Manage project names used in IP assignments.</p>
+  {error_html}
+  <form method="post" action="/ui/projects" class="stacked">
+    <label>
+      Name
+      <input type="text" name="name" value="{html.escape(form_state['name'])}" required />
+    </label>
+    <label>
+      Description
+      <input type="text" name="description" value="{html.escape(form_state['description'])}" />
+    </label>
+    <button type="submit">Create Project</button>
+  </form>
+
+  <h2>Existing Projects</h2>
+  <table>
+    <thead>
+      <tr>
+        <th>Name</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      {rows_html}
+    </tbody>
+  </table>
+"""
+    return _html_page("ipocket - Projects", body, status_code=status_code)
+
+
+def _render_owners_page(
+    owners: list,
+    errors: list[str],
+    form_state: dict,
+    status_code: int = 200,
+) -> HTMLResponse:
+    error_html = ""
+    if errors:
+        error_items = "\n".join([f"<li>{html.escape(error)}</li>" for error in errors])
+        error_html = f"""
+    <div class="errors">
+      <strong>Fix the following:</strong>
+      <ul>
+        {error_items}
+      </ul>
+    </div>
+"""
+    rows = []
+    for owner in owners:
+        rows.append(
+            f"""
+            <tr>
+              <td>{html.escape(owner.name)}</td>
+              <td>{html.escape(owner.contact or '')}</td>
+            </tr>
+            """
+        )
+    rows_html = "\n".join(rows) if rows else "<tr><td colspan=\"2\">No owners yet.</td></tr>"
+    body = f"""
+  <h1>Owners</h1>
+  <p>Track teams or individuals responsible for IPs.</p>
+  {error_html}
+  <form method="post" action="/ui/owners" class="stacked">
+    <label>
+      Name
+      <input type="text" name="name" value="{html.escape(form_state['name'])}" required />
+    </label>
+    <label>
+      Contact
+      <input type="text" name="contact" value="{html.escape(form_state['contact'])}" />
+    </label>
+    <button type="submit">Create Owner</button>
+  </form>
+
+  <h2>Existing Owners</h2>
+  <table>
+    <thead>
+      <tr>
+        <th>Name</th>
+        <th>Contact</th>
+      </tr>
+    </thead>
+    <tbody>
+      {rows_html}
+    </tbody>
+  </table>
+"""
+    return _html_page("ipocket - Owners", body, status_code=status_code)
 
 
 async def _parse_form_data(request: Request) -> dict:
@@ -892,7 +1054,7 @@ def ui_login_form(request: Request) -> HTMLResponse:
     <button type="submit">Login</button>
   </form>
 """
-    return _html_page("ipocket - Login", body)
+    return _html_page("ipocket - Login", body, show_nav=False)
 
 
 @app.post("/ui/login", response_class=HTMLResponse)
@@ -926,7 +1088,7 @@ async def ui_login_submit(
     <button type="submit">Login</button>
   </form>
 """
-        return _html_page("ipocket - Login", body, status_code=401)
+        return _html_page("ipocket - Login", body, status_code=401, show_nav=False)
 
     response = RedirectResponse(url="/ui/ip-assets", status_code=303)
     response.set_cookie(
@@ -943,6 +1105,108 @@ def ui_logout(request: Request) -> Response:
     response = RedirectResponse(url="/ui/login", status_code=303)
     response.delete_cookie(SESSION_COOKIE)
     return response
+
+
+@app.get("/ui/projects", response_class=HTMLResponse)
+def ui_list_projects(
+    request: Request,
+    connection=Depends(get_connection),
+) -> HTMLResponse:
+    projects = list(repository.list_projects(connection))
+    return _render_projects_page(
+        projects=projects,
+        errors=[],
+        form_state={"name": "", "description": ""},
+    )
+
+
+@app.post("/ui/projects", response_class=HTMLResponse)
+async def ui_create_project(
+    request: Request,
+    connection=Depends(get_connection),
+    _user=Depends(require_ui_editor),
+) -> HTMLResponse:
+    form_data = await _parse_form_data(request)
+    name = (form_data.get("name") or "").strip()
+    description = _parse_optional_str(form_data.get("description"))
+
+    errors = []
+    if not name:
+        errors.append("Project name is required.")
+
+    if errors:
+        projects = list(repository.list_projects(connection))
+        return _render_projects_page(
+            projects=projects,
+            errors=errors,
+            form_state={"name": name, "description": description or ""},
+            status_code=400,
+        )
+
+    try:
+        repository.create_project(connection, name=name, description=description)
+    except sqlite3.IntegrityError:
+        errors.append("Project name already exists.")
+        projects = list(repository.list_projects(connection))
+        return _render_projects_page(
+            projects=projects,
+            errors=errors,
+            form_state={"name": name, "description": description or ""},
+            status_code=409,
+        )
+
+    return RedirectResponse(url="/ui/projects", status_code=303)
+
+
+@app.get("/ui/owners", response_class=HTMLResponse)
+def ui_list_owners(
+    request: Request,
+    connection=Depends(get_connection),
+) -> HTMLResponse:
+    owners = list(repository.list_owners(connection))
+    return _render_owners_page(
+        owners=owners,
+        errors=[],
+        form_state={"name": "", "contact": ""},
+    )
+
+
+@app.post("/ui/owners", response_class=HTMLResponse)
+async def ui_create_owner(
+    request: Request,
+    connection=Depends(get_connection),
+    _user=Depends(require_ui_editor),
+) -> HTMLResponse:
+    form_data = await _parse_form_data(request)
+    name = (form_data.get("name") or "").strip()
+    contact = _parse_optional_str(form_data.get("contact"))
+
+    errors = []
+    if not name:
+        errors.append("Owner name is required.")
+
+    if errors:
+        owners = list(repository.list_owners(connection))
+        return _render_owners_page(
+            owners=owners,
+            errors=errors,
+            form_state={"name": name, "contact": contact or ""},
+            status_code=400,
+        )
+
+    try:
+        repository.create_owner(connection, name=name, contact=contact)
+    except sqlite3.IntegrityError:
+        errors.append("Owner name already exists.")
+        owners = list(repository.list_owners(connection))
+        return _render_owners_page(
+            owners=owners,
+            errors=errors,
+            form_state={"name": name, "contact": contact or ""},
+            status_code=409,
+        )
+
+    return RedirectResponse(url="/ui/owners", status_code=303)
 
 
 @app.get("/ui/ip-assets", response_class=HTMLResponse)
