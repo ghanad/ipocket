@@ -281,54 +281,84 @@ def _assignment_badge(
     project_unassigned: bool, owner_unassigned: bool
 ) -> str:
     if project_unassigned and owner_unassigned:
-        return '<span class="badge badge-danger">UNASSIGNED BOTH</span>'
+        return '<span class="pill pill-danger">Missing owner + project</span>'
     if project_unassigned:
-        return '<span class="badge badge-warning">UNASSIGNED PROJECT</span>'
+        return '<span class="pill pill-warning">Missing project</span>'
     if owner_unassigned:
-        return '<span class="badge badge-info">UNASSIGNED OWNER</span>'
-    return ""
+        return '<span class="pill pill-danger">Missing owner</span>'
+    return '<span class="pill pill-success">Assigned</span>'
+
+
+def _project_tag(project_name: str, project_unassigned: bool) -> str:
+    if project_unassigned:
+        return '<span class="tag tag-warning">Unassigned</span>'
+    return f'<span class="tag">{html.escape(project_name)}</span>'
+
+
+def _owner_tag(owner_name: str, owner_unassigned: bool) -> str:
+    if owner_unassigned:
+        return '<span class="tag tag-danger">Unassigned</span>'
+    return f'<span class="tag">{html.escape(owner_name)}</span>'
 
 
 def _html_page(
-    title: str, body: str, status_code: int = 200, show_nav: bool = True
+    title: str,
+    body: str,
+    status_code: int = 200,
+    show_nav: bool = True,
+    active_nav: str = "",
 ) -> HTMLResponse:
     nav_html = ""
     if show_nav:
-        nav_html = """
-<header class="app-header">
-  <nav class="container">
-    <ul class="nav-brand">
-      <li><strong>ipocket</strong></li>
-    </ul>
-    <ul class="nav-links">
-      <li><a href="/ui/ip-assets">IP Assets</a></li>
-      <li><a href="/ui/ip-assets/needs-assignment">Needs Assignment</a></li>
-      <li><a href="/ui/projects">Projects</a></li>
-      <li><a href="/ui/owners">Owners</a></li>
-    </ul>
-    <ul class="nav-actions">
-      <li>
-        <form method="post" action="/ui/logout">
-          <button type="submit" class="secondary">Logout</button>
-        </form>
-      </li>
-    </ul>
-  </nav>
-</header>
+        nav_html = f"""
+<div class="app-shell">
+  <aside class="sidebar">
+    <div class="sidebar-brand">
+      <div class="brand-mark">ip</div>
+      <div>
+        <p class="brand-title">ipocket</p>
+        <p class="brand-subtitle">IP inventory</p>
+      </div>
+    </div>
+    <nav class="sidebar-nav">
+      <a class="nav-link{' nav-link-active' if active_nav == 'ip-assets' else ''}" href="/ui/ip-assets">IP Assets</a>
+      <a class="nav-link{' nav-link-active' if active_nav == 'needs-assignment' else ''}" href="/ui/ip-assets/needs-assignment">Needs Assignment</a>
+      <a class="nav-link{' nav-link-active' if active_nav == 'projects' else ''}" href="/ui/projects">Projects</a>
+      <a class="nav-link{' nav-link-active' if active_nav == 'owners' else ''}" href="/ui/owners">Owners</a>
+    </nav>
+    <div class="sidebar-footer">
+      <p class="sidebar-note">Internal use only</p>
+    </div>
+  </aside>
+  <div class="app-main">
+    <header class="topbar">
+      <div class="topbar-title">
+        <span class="brand-pill">ipocket</span>
+        <span class="topbar-subtitle">IP Asset Management</span>
+      </div>
+      <form method="post" action="/ui/logout">
+        <button type="submit" class="btn btn-outline">Logout</button>
+      </form>
+    </header>
+    <main class="content">
+      {body}
+    </main>
+    <footer class="footer">
+      <span>© 2024 ipocket Network Systems</span>
+    </footer>
+  </div>
+</div>
 """
     content = f"""<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <link rel="stylesheet" href="/static/app.css" />
   <title>{html.escape(title)}</title>
 </head>
 <body>
-{nav_html}
-<main class="container">
-{body}
-</main>
+{nav_html if show_nav else body}
 </body>
 </html>
 """
@@ -368,85 +398,97 @@ def _render_list_page(
         project_unassigned = asset["project_unassigned"]
         owner_unassigned = asset["owner_unassigned"]
         assignment_badge = _assignment_badge(project_unassigned, owner_unassigned)
+        project_tag = _project_tag(asset["project_name"], project_unassigned)
+        owner_tag = _owner_tag(asset["owner_name"], owner_unassigned)
         rows.append(
             f"""
             <tr>
-              <td><a href="/ui/ip-assets/{asset['id']}">{html.escape(asset['ip_address'])}</a></td>
-              <td>{html.escape(asset['subnet'])}</td>
-              <td>{html.escape(asset['gateway'])}</td>
-              <td>{html.escape(asset['type'])}</td>
-              <td class="{'unassigned' if project_unassigned else ''}">
-                {html.escape(asset['project_name'])}
-              </td>
-              <td class="{'unassigned' if owner_unassigned else ''}">
-                {html.escape(asset['owner_name'])}
-              </td>
-              <td>{assignment_badge or 'Assigned'}</td>
-              <td>{html.escape(asset['notes'])}</td>
-              <td><a href="/ui/ip-assets/{asset['id']}/edit">Edit</a></td>
+              <td class="mono"><a href="/ui/ip-assets/{asset['id']}">{html.escape(asset['ip_address'])}</a></td>
+              <td>{project_tag}</td>
+              <td>{owner_tag}</td>
+              <td class="muted">{html.escape(asset['type'])}</td>
+              <td class="muted">{html.escape(asset['subnet'])}</td>
+              <td>{assignment_badge}</td>
+              <td class="muted">{html.escape(asset['notes'])}</td>
+              <td><a class="link" href="/ui/ip-assets/{asset['id']}/edit">Edit</a></td>
             </tr>
             """
         )
-    rows_html = "\n".join(rows) if rows else "<tr><td colspan=\"9\">No IP assets found.</td></tr>"
+    rows_html = (
+        "\n".join(rows)
+        if rows
+        else '<tr><td colspan="8" class="empty-state">No IP assets found.</td></tr>'
+    )
     body = f"""
-  <h1>IP Assets</h1>
-  <div class="actions">
-    <a href="/ui/ip-assets/new">Add IP (Editor/Admin)</a>
-    <a href="/ui/ip-assets/needs-assignment">Needs Assignment</a>
-  </div>
-  <form class="filters" method="get" action="/ui/ip-assets">
-    <label>
-      Search
-      <input type="text" name="q" value="{html.escape(filters['q'])}" placeholder="IP or notes" />
-    </label>
-    <label>
-      Project
-      <select name="project_id">
-        <option value="">All</option>
-        {project_options}
-      </select>
-    </label>
-    <label>
-      Owner
-      <select name="owner_id">
-        <option value="">All</option>
-        {owner_options}
-      </select>
-    </label>
-    <label>
-      Type
-      <select name="type">
-        <option value="">All</option>
-        {type_options}
-      </select>
-    </label>
-    <label>
-      <input type="checkbox" name="unassigned-only" value="true" {"checked" if filters["unassigned_only"] else ""} />
-      Unassigned only
-    </label>
-    <button type="submit">Apply</button>
-  </form>
+  <section class="page-header">
+    <div>
+      <p class="eyebrow">Inventory</p>
+      <h1>IP Assets</h1>
+      <p class="subtitle">Manage and monitor network address assignments across all zones.</p>
+    </div>
+    <div class="header-actions">
+      <a class="btn btn-primary" href="/ui/ip-assets/new">Add IP</a>
+      <a class="btn btn-secondary" href="/ui/ip-assets/needs-assignment">Needs Assignment</a>
+    </div>
+  </section>
+  <section class="card filter-card">
+    <form class="filters-grid" method="get" action="/ui/ip-assets">
+      <label class="field">
+        <span>Search</span>
+        <input class="input" type="text" name="q" value="{html.escape(filters['q'])}" placeholder="IP or notes" />
+      </label>
+      <label class="field">
+        <span>Project</span>
+        <select class="select" name="project_id">
+          <option value="">All</option>
+          {project_options}
+        </select>
+      </label>
+      <label class="field">
+        <span>Owner</span>
+        <select class="select" name="owner_id">
+          <option value="">All</option>
+          {owner_options}
+        </select>
+      </label>
+      <label class="field">
+        <span>Type</span>
+        <select class="select" name="type">
+          <option value="">All</option>
+          {type_options}
+        </select>
+      </label>
+      <label class="checkbox-field">
+        <input type="checkbox" name="unassigned-only" value="true" {"checked" if filters["unassigned_only"] else ""} />
+        <span>Unassigned only</span>
+      </label>
+      <button class="btn btn-outline" type="submit">Apply filters</button>
+    </form>
+  </section>
 
-  <table>
-    <thead>
-      <tr>
-        <th>IP</th>
-        <th>Subnet</th>
-        <th>Gateway</th>
-        <th>Type</th>
-        <th>Project</th>
-        <th>Owner</th>
-        <th>Assignment</th>
-        <th>Notes</th>
-        <th>Actions</th>
-      </tr>
-    </thead>
-    <tbody>
-      {rows_html}
-    </tbody>
-  </table>
+  <section class="card table-card">
+    <div class="table-wrapper">
+      <table class="table">
+        <thead>
+          <tr>
+            <th>IP address</th>
+            <th>Project</th>
+            <th>Owner</th>
+            <th>Type</th>
+            <th>Subnet</th>
+            <th>Status</th>
+            <th>Notes</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows_html}
+        </tbody>
+      </table>
+    </div>
+  </section>
 """
-    return _html_page("ipocket - IP Assets", body)
+    return _html_page("ipocket - IP Assets", body, active_nav="ip-assets")
 
 
 def _render_needs_assignment_page(
@@ -482,8 +524,8 @@ def _render_needs_assignment_page(
     if errors:
         error_items = "\n".join([f"<li>{html.escape(error)}</li>" for error in errors])
         error_html = f"""
-    <div class="errors">
-      <strong>Fix the following:</strong>
+    <div class="alert alert-error">
+      <p class="alert-title">Fix the following:</p>
       <ul>
         {error_items}
       </ul>
@@ -494,127 +536,171 @@ def _render_needs_assignment_page(
         project_unassigned = asset["project_unassigned"]
         owner_unassigned = asset["owner_unassigned"]
         assignment_badge = _assignment_badge(project_unassigned, owner_unassigned)
+        project_tag = _project_tag(asset["project_name"], project_unassigned)
+        owner_tag = _owner_tag(asset["owner_name"], owner_unassigned)
         rows.append(
             f"""
             <tr>
-              <td><a href="/ui/ip-assets/{asset['id']}">{html.escape(asset['ip_address'])}</a></td>
-              <td>{html.escape(asset['subnet'])}</td>
-              <td>{html.escape(asset['gateway'])}</td>
-              <td>{html.escape(asset['type'])}</td>
-              <td class="{'unassigned' if project_unassigned else ''}">
-                {html.escape(asset['project_name'])}
-              </td>
-              <td class="{'unassigned' if owner_unassigned else ''}">
-                {html.escape(asset['owner_name'])}
-              </td>
-              <td>{assignment_badge or 'Assigned'}</td>
-              <td>{html.escape(asset['notes'])}</td>
+              <td class="mono"><a href="/ui/ip-assets/{asset['id']}">{html.escape(asset['ip_address'])}</a></td>
+              <td class="muted">{html.escape(asset['subnet'])}</td>
+              <td>{assignment_badge}</td>
+              <td>{owner_tag}</td>
+              <td>{project_tag}</td>
+              <td class="muted">{html.escape(asset['notes'])}</td>
             </tr>
             """
         )
-    rows_html = "\n".join(rows) if rows else "<tr><td colspan=\"8\">No IP assets found.</td></tr>"
+    rows_html = (
+        "\n".join(rows)
+        if rows
+        else '<tr><td colspan="6" class="empty-state">No IP assets found.</td></tr>'
+    )
     body = f"""
-  <h1>Needs Assignment</h1>
-  <p><a href="/ui/ip-assets">Back to list</a></p>
-  <div class="tabs">
-    <a class="tab {'active' if selected_filter == 'owner' else ''}" href="/ui/ip-assets/needs-assignment?filter=owner">Needs Owner</a>
-    <a class="tab {'active' if selected_filter == 'project' else ''}" href="/ui/ip-assets/needs-assignment?filter=project">Needs Project</a>
-    <a class="tab {'active' if selected_filter == 'both' else ''}" href="/ui/ip-assets/needs-assignment?filter=both">Needs Both</a>
-  </div>
+  <section class="page-header">
+    <div>
+      <p class="eyebrow">Needs assignment</p>
+      <h1>Assignment Inbox</h1>
+      <p class="subtitle">Review unassigned IPs and quickly set owners or projects.</p>
+    </div>
+    <div class="header-actions">
+      <a class="btn btn-secondary" href="/ui/ip-assets">Back to list</a>
+    </div>
+  </section>
 
-  <h2>Quick Assign (Editor/Admin)</h2>
-  <p>Choose an IP plus the Owner and/or Project to assign.</p>
-  {error_html}
-  <form method="post" action="/ui/ip-assets/needs-assignment/assign?filter={html.escape(selected_filter)}">
-    <label>
-      IP Address
-      <select name="ip_address">
-        <option value="">Select an IP</option>
-        {ip_options}
-      </select>
-    </label>
-    <label>
-      Project
-      <select name="project_id">
-        <option value="">Leave unassigned</option>
-        {project_options}
-      </select>
-    </label>
-    <label>
-      Owner
-      <select name="owner_id">
-        <option value="">Leave unassigned</option>
-        {owner_options}
-      </select>
-    </label>
-    <button type="submit">Assign</button>
-  </form>
+  <section class="tabs">
+    <a class="tab{' tab-active' if selected_filter == 'owner' else ''}" href="/ui/ip-assets/needs-assignment?filter=owner">Needs Owner</a>
+    <a class="tab{' tab-active' if selected_filter == 'project' else ''}" href="/ui/ip-assets/needs-assignment?filter=project">Needs Project</a>
+    <a class="tab{' tab-active' if selected_filter == 'both' else ''}" href="/ui/ip-assets/needs-assignment?filter=both">Needs Both</a>
+  </section>
 
-  <h2>Matching IPs</h2>
-  <table>
-    <thead>
-      <tr>
-        <th>IP</th>
-        <th>Subnet</th>
-        <th>Gateway</th>
-        <th>Type</th>
-        <th>Project</th>
-        <th>Owner</th>
-        <th>Assignment</th>
-        <th>Notes</th>
-      </tr>
-    </thead>
-    <tbody>
-      {rows_html}
-    </tbody>
-  </table>
+  <section class="card">
+    <div class="card-header">
+      <div>
+        <h2>Quick assign</h2>
+        <p class="subtitle">Choose an IP plus the Owner and/or Project to assign.</p>
+      </div>
+    </div>
+    {error_html}
+    <form class="form-grid" method="post" action="/ui/ip-assets/needs-assignment/assign?filter={html.escape(selected_filter)}">
+      <label class="field">
+        <span>IP address</span>
+        <select class="select" name="ip_address">
+          <option value="">Select an IP</option>
+          {ip_options}
+        </select>
+      </label>
+      <label class="field">
+        <span>Project</span>
+        <select class="select" name="project_id">
+          <option value="">Leave unassigned</option>
+          {project_options}
+        </select>
+      </label>
+      <label class="field">
+        <span>Owner</span>
+        <select class="select" name="owner_id">
+          <option value="">Leave unassigned</option>
+          {owner_options}
+        </select>
+      </label>
+      <div class="form-actions">
+        <button class="btn btn-primary" type="submit">Assign</button>
+      </div>
+    </form>
+  </section>
+
+  <section class="card table-card">
+    <div class="card-header">
+      <div>
+        <h2>Matching IPs</h2>
+        <p class="subtitle">Filtered list of IPs that need attention.</p>
+      </div>
+    </div>
+    <div class="table-wrapper">
+      <table class="table">
+        <thead>
+          <tr>
+            <th>IP</th>
+            <th>Subnet</th>
+            <th>Status</th>
+            <th>Owner</th>
+            <th>Project</th>
+            <th>Notes</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows_html}
+        </tbody>
+      </table>
+    </div>
+  </section>
 """
-    return _html_page("ipocket - Needs Assignment", body)
+    return _html_page(
+        "ipocket - Needs Assignment", body, active_nav="needs-assignment"
+    )
 
 
 def _render_detail_page(asset: dict) -> HTMLResponse:
     project_unassigned = asset["project_unassigned"]
     owner_unassigned = asset["owner_unassigned"]
     assignment_badge = _assignment_badge(project_unassigned, owner_unassigned)
+    project_tag = _project_tag(asset["project_name"], project_unassigned)
+    owner_tag = _owner_tag(asset["owner_name"], owner_unassigned)
     body = f"""
-  <h1>IP {html.escape(asset['ip_address'])}</h1>
-  <p><a href="/ui/ip-assets">Back to list</a></p>
-  <dl>
-    <dt>Subnet</dt>
-    <dd>{html.escape(asset['subnet'])}</dd>
+  <section class="page-header">
+    <div>
+      <p class="eyebrow">IP asset</p>
+      <h1>{html.escape(asset['ip_address'])}</h1>
+      <p class="subtitle">Detailed assignment and configuration view.</p>
+    </div>
+    <div class="header-actions">
+      <a class="btn btn-secondary" href="/ui/ip-assets">Back to list</a>
+      <a class="btn btn-primary" href="/ui/ip-assets/{asset['id']}/edit">Edit</a>
+    </div>
+  </section>
 
-    <dt>Gateway</dt>
-    <dd>{html.escape(asset['gateway'])}</dd>
+  <section class="card detail-grid">
+    <div class="detail-item">
+      <p class="detail-label">Subnet</p>
+      <p class="detail-value">{html.escape(asset['subnet'])}</p>
+    </div>
+    <div class="detail-item">
+      <p class="detail-label">Gateway</p>
+      <p class="detail-value">{html.escape(asset['gateway'])}</p>
+    </div>
+    <div class="detail-item">
+      <p class="detail-label">Type</p>
+      <p class="detail-value">{html.escape(asset['type'])}</p>
+    </div>
+    <div class="detail-item">
+      <p class="detail-label">Project</p>
+      <p class="detail-value">{project_tag}</p>
+    </div>
+    <div class="detail-item">
+      <p class="detail-label">Owner</p>
+      <p class="detail-value">{owner_tag}</p>
+    </div>
+    <div class="detail-item">
+      <p class="detail-label">Assignment</p>
+      <p class="detail-value">{assignment_badge}</p>
+    </div>
+    <div class="detail-item detail-item-wide">
+      <p class="detail-label">Notes</p>
+      <p class="detail-value">{html.escape(asset['notes'])}</p>
+    </div>
+  </section>
 
-    <dt>Type</dt>
-    <dd>{html.escape(asset['type'])}</dd>
-
-    <dt>Project</dt>
-    <dd class="{'unassigned' if project_unassigned else ''}">
-      {html.escape(asset['project_name'])}
-    </dd>
-
-    <dt>Owner</dt>
-    <dd class="{'unassigned' if owner_unassigned else ''}">
-      {html.escape(asset['owner_name'])}
-    </dd>
-
-    <dt>Assignment Status</dt>
-    <dd>{assignment_badge or 'Assigned'}</dd>
-
-    <dt>Notes</dt>
-    <dd>{html.escape(asset['notes'])}</dd>
-  </dl>
-
-  <h2>Actions (Editor/Admin)</h2>
-  <p>
-    <a href="/ui/ip-assets/{asset['id']}/edit">Edit</a>
-  </p>
-  <form method="post" action="/ui/ip-assets/{asset['id']}/archive">
-    <button type="submit">Archive</button>
-  </form>
+  <section class="card action-card">
+    <h2>Actions (Editor/Admin)</h2>
+    <div class="action-row">
+      <a class="btn btn-outline" href="/ui/ip-assets/{asset['id']}/edit">Edit IP details</a>
+      <form method="post" action="/ui/ip-assets/{asset['id']}/archive">
+        <button class="btn btn-danger" type="submit">Archive IP</button>
+      </form>
+    </div>
+  </section>
 """
-    return _html_page("ipocket - IP Detail", body)
+    return _html_page("ipocket - IP Detail", body, active_nav="ip-assets")
 
 
 def _render_form_page(
@@ -651,8 +737,8 @@ def _render_form_page(
     if errors:
         error_items = "\n".join([f"<li>{html.escape(error)}</li>" for error in errors])
         error_html = f"""
-    <div class="errors">
-      <strong>Fix the following:</strong>
+    <div class="alert alert-error">
+      <p class="alert-title">Fix the following:</p>
       <ul>
         {error_items}
       </ul>
@@ -665,53 +751,67 @@ def _render_form_page(
     )
     read_only = "readonly" if mode == "edit" else ""
     body = f"""
-  <h1>{'Add IP' if mode == 'create' else 'Edit IP'}</h1>
-  <p><a href="/ui/ip-assets">Back to list</a></p>
-  {error_html}
-  <form method="post" action="{action_url}">
-    <label>
-      IP Address
-      <input type="text" name="ip_address" value="{html.escape(asset['ip_address'])}" {read_only} />
-    </label>
-    <label>
-      Subnet
-      <input type="text" name="subnet" value="{html.escape(asset['subnet'])}" />
-    </label>
-    <label>
-      Gateway
-      <input type="text" name="gateway" value="{html.escape(asset['gateway'])}" />
-    </label>
-    <label>
-      Type
-      <select name="type">
-        {type_options}
-      </select>
-    </label>
-    <label>
-      Project
-      <select name="project_id">
-        <option value="">UNASSIGNED</option>
-        {project_options}
-      </select>
-    </label>
-    <label>
-      Owner
-      <select name="owner_id">
-        <option value="">UNASSIGNED</option>
-        {owner_options}
-      </select>
-    </label>
-    <label>
-      Notes
-      <textarea name="notes">{html.escape(asset['notes'])}</textarea>
-    </label>
-    <button type="submit">{'Create' if mode == 'create' else 'Save'}</button>
-  </form>
+  <section class="page-header">
+    <div>
+      <p class="eyebrow">{'Create' if mode == 'create' else 'Edit'} IP</p>
+      <h1>{'Add IP asset' if mode == 'create' else 'Edit IP asset'}</h1>
+      <p class="subtitle">Provide addressing, ownership, and metadata.</p>
+    </div>
+    <div class="header-actions">
+      <a class="btn btn-secondary" href="/ui/ip-assets">Back to list</a>
+    </div>
+  </section>
+
+  <section class="card">
+    {error_html}
+    <form class="form-grid form-grid-two" method="post" action="{action_url}">
+      <label class="field">
+        <span>IP address</span>
+        <input class="input" type="text" name="ip_address" value="{html.escape(asset['ip_address'])}" {read_only} />
+      </label>
+      <label class="field">
+        <span>Subnet</span>
+        <input class="input" type="text" name="subnet" value="{html.escape(asset['subnet'])}" />
+      </label>
+      <label class="field">
+        <span>Gateway</span>
+        <input class="input" type="text" name="gateway" value="{html.escape(asset['gateway'])}" />
+      </label>
+      <label class="field">
+        <span>Type</span>
+        <select class="select" name="type">
+          {type_options}
+        </select>
+      </label>
+      <label class="field">
+        <span>Project</span>
+        <select class="select" name="project_id">
+          <option value="">UNASSIGNED</option>
+          {project_options}
+        </select>
+      </label>
+      <label class="field">
+        <span>Owner</span>
+        <select class="select" name="owner_id">
+          <option value="">UNASSIGNED</option>
+          {owner_options}
+        </select>
+      </label>
+      <label class="field field-span">
+        <span>Notes</span>
+        <textarea class="textarea" name="notes" rows="4">{html.escape(asset['notes'])}</textarea>
+      </label>
+      <div class="form-actions">
+        <button class="btn btn-primary" type="submit">{'Create' if mode == 'create' else 'Save changes'}</button>
+      </div>
+    </form>
+  </section>
 """
     return _html_page(
         f"ipocket - {'Add IP' if mode == 'create' else 'Edit IP'}",
         body,
         status_code=status_code,
+        active_nav="ip-assets",
     )
 
 
@@ -725,8 +825,8 @@ def _render_projects_page(
     if errors:
         error_items = "\n".join([f"<li>{html.escape(error)}</li>" for error in errors])
         error_html = f"""
-    <div class="errors">
-      <strong>Fix the following:</strong>
+    <div class="alert alert-error">
+      <p class="alert-title">Fix the following:</p>
       <ul>
         {error_items}
       </ul>
@@ -742,37 +842,71 @@ def _render_projects_page(
             </tr>
             """
         )
-    rows_html = "\n".join(rows) if rows else "<tr><td colspan=\"2\">No projects yet.</td></tr>"
+    rows_html = (
+        "\n".join(rows)
+        if rows
+        else '<tr><td colspan="2" class="empty-state">No projects yet.</td></tr>'
+    )
     body = f"""
-  <h1>Projects</h1>
-  <p>Manage project names used in IP assignments.</p>
-  {error_html}
-  <form method="post" action="/ui/projects" class="stacked">
-    <label>
-      Name
-      <input type="text" name="name" value="{html.escape(form_state['name'])}" required />
-    </label>
-    <label>
-      Description
-      <input type="text" name="description" value="{html.escape(form_state['description'])}" />
-    </label>
-    <button type="submit">Create Project</button>
-  </form>
+  <section class="page-header">
+    <div>
+      <p class="eyebrow">Library</p>
+      <h1>Projects</h1>
+      <p class="subtitle">Manage project names used in IP assignments.</p>
+    </div>
+  </section>
 
-  <h2>Existing Projects</h2>
-  <table>
-    <thead>
-      <tr>
-        <th>Name</th>
-        <th>Description</th>
-      </tr>
-    </thead>
-    <tbody>
-      {rows_html}
-    </tbody>
-  </table>
+  <section class="card">
+    <div class="card-header">
+      <div>
+        <h2>Create project</h2>
+        <p class="subtitle">Add new project labels for IP assignments.</p>
+      </div>
+    </div>
+    {error_html}
+    <form method="post" action="/ui/projects" class="form-grid form-grid-two">
+      <label class="field">
+        <span>Name</span>
+        <input class="input" type="text" name="name" value="{html.escape(form_state['name'])}" required />
+      </label>
+      <label class="field">
+        <span>Description</span>
+        <input class="input" type="text" name="description" value="{html.escape(form_state['description'])}" />
+      </label>
+      <div class="form-actions">
+        <button class="btn btn-primary" type="submit">Create project</button>
+      </div>
+    </form>
+  </section>
+
+  <section class="card table-card">
+    <div class="card-header">
+      <div>
+        <h2>Existing projects</h2>
+        <p class="subtitle">Keep the catalog of project ownership current.</p>
+      </div>
+    </div>
+    <div class="table-wrapper">
+      <table class="table">
+        <thead>
+          <tr>
+            <th>Name</th>
+            <th>Description</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows_html}
+        </tbody>
+      </table>
+    </div>
+  </section>
 """
-    return _html_page("ipocket - Projects", body, status_code=status_code)
+    return _html_page(
+        "ipocket - Projects",
+        body,
+        status_code=status_code,
+        active_nav="projects",
+    )
 
 
 def _render_owners_page(
@@ -785,8 +919,8 @@ def _render_owners_page(
     if errors:
         error_items = "\n".join([f"<li>{html.escape(error)}</li>" for error in errors])
         error_html = f"""
-    <div class="errors">
-      <strong>Fix the following:</strong>
+    <div class="alert alert-error">
+      <p class="alert-title">Fix the following:</p>
       <ul>
         {error_items}
       </ul>
@@ -802,37 +936,68 @@ def _render_owners_page(
             </tr>
             """
         )
-    rows_html = "\n".join(rows) if rows else "<tr><td colspan=\"2\">No owners yet.</td></tr>"
+    rows_html = (
+        "\n".join(rows)
+        if rows
+        else '<tr><td colspan="2" class="empty-state">No owners yet.</td></tr>'
+    )
     body = f"""
-  <h1>Owners</h1>
-  <p>Track teams or individuals responsible for IPs.</p>
-  {error_html}
-  <form method="post" action="/ui/owners" class="stacked">
-    <label>
-      Name
-      <input type="text" name="name" value="{html.escape(form_state['name'])}" required />
-    </label>
-    <label>
-      Contact
-      <input type="text" name="contact" value="{html.escape(form_state['contact'])}" />
-    </label>
-    <button type="submit">Create Owner</button>
-  </form>
+  <section class="page-header">
+    <div>
+      <p class="eyebrow">Directory</p>
+      <h1>Owners</h1>
+      <p class="subtitle">Track teams or individuals responsible for IPs.</p>
+    </div>
+  </section>
 
-  <h2>Existing Owners</h2>
-  <table>
-    <thead>
-      <tr>
-        <th>Name</th>
-        <th>Contact</th>
-      </tr>
-    </thead>
-    <tbody>
-      {rows_html}
-    </tbody>
-  </table>
+  <section class="card">
+    <div class="card-header">
+      <div>
+        <h2>Create owner</h2>
+        <p class="subtitle">Add responsible teams or contacts.</p>
+      </div>
+    </div>
+    {error_html}
+    <form method="post" action="/ui/owners" class="form-grid form-grid-two">
+      <label class="field">
+        <span>Name</span>
+        <input class="input" type="text" name="name" value="{html.escape(form_state['name'])}" required />
+      </label>
+      <label class="field">
+        <span>Contact</span>
+        <input class="input" type="text" name="contact" value="{html.escape(form_state['contact'])}" />
+      </label>
+      <div class="form-actions">
+        <button class="btn btn-primary" type="submit">Create owner</button>
+      </div>
+    </form>
+  </section>
+
+  <section class="card table-card">
+    <div class="card-header">
+      <div>
+        <h2>Existing owners</h2>
+        <p class="subtitle">Maintain the owner directory for assignments.</p>
+      </div>
+    </div>
+    <div class="table-wrapper">
+      <table class="table">
+        <thead>
+          <tr>
+            <th>Name</th>
+            <th>Contact</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows_html}
+        </tbody>
+      </table>
+    </div>
+  </section>
 """
-    return _html_page("ipocket - Owners", body, status_code=status_code)
+    return _html_page(
+        "ipocket - Owners", body, status_code=status_code, active_nav="owners"
+    )
 
 
 async def _parse_form_data(request: Request) -> dict:
@@ -1041,18 +1206,27 @@ def ui_home(request: Request):
 @app.get("/ui/login", response_class=HTMLResponse)
 def ui_login_form(request: Request) -> HTMLResponse:
     body = """
-  <h1>Sign in</h1>
-  <form method="post" action="/ui/login">
-    <label>
-      Username
-      <input type="text" name="username" required />
-    </label>
-    <label>
-      Password
-      <input type="password" name="password" required />
-    </label>
-    <button type="submit">Login</button>
-  </form>
+<main class="login-page">
+  <div class="login-card">
+    <div class="login-header">
+      <div class="login-icon">ip</div>
+      <h1>ipocket</h1>
+      <p>Internal IP asset management</p>
+    </div>
+    <form method="post" action="/ui/login" class="login-form">
+      <label class="field">
+        <span>Username</span>
+        <input class="input" type="text" name="username" placeholder="Enter your username" required />
+      </label>
+      <label class="field">
+        <span>Password</span>
+        <input class="input" type="password" name="password" placeholder="Enter your password" required />
+      </label>
+      <button class="btn btn-primary btn-block" type="submit">Login</button>
+    </form>
+    <p class="login-footnote">Authorized personnel only</p>
+  </div>
+</main>
 """
     return _html_page("ipocket - Login", body, show_nav=False)
 
@@ -1074,19 +1248,30 @@ async def ui_login_submit(
         or not auth.verify_password(password, user.hashed_password)
     ):
         body = """
-  <h1>Sign in</h1>
-  <div class="errors">Invalid username or password.</div>
-  <form method="post" action="/ui/login">
-    <label>
-      Username
-      <input type="text" name="username" required />
-    </label>
-    <label>
-      Password
-      <input type="password" name="password" required />
-    </label>
-    <button type="submit">Login</button>
-  </form>
+<main class="login-page">
+  <div class="login-card">
+    <div class="login-header">
+      <div class="login-icon">ip</div>
+      <h1>ipocket</h1>
+      <p>Internal IP asset management</p>
+    </div>
+    <div class="alert alert-error">
+      <p class="alert-title">Invalid username or password.</p>
+    </div>
+    <form method="post" action="/ui/login" class="login-form">
+      <label class="field">
+        <span>Username</span>
+        <input class="input" type="text" name="username" placeholder="Enter your username" required />
+      </label>
+      <label class="field">
+        <span>Password</span>
+        <input class="input" type="password" name="password" placeholder="Enter your password" required />
+      </label>
+      <button class="btn btn-primary btn-block" type="submit">Login</button>
+    </form>
+    <p class="login-footnote">Authorized personnel only</p>
+  </div>
+</main>
 """
         return _html_page("ipocket - Login", body, status_code=401, show_nav=False)
 

@@ -1,6 +1,6 @@
 # Overview
 
-ipocket is a lightweight, modular IP inventory web app with a simple UI and Prometheus metrics.
+ipocket is a lightweight, modular IP inventory web app with a UI aligned to the design reference in `/ui_template` and Prometheus metrics.
 
 ## MVP Goals
 - Store IP records with metadata (subnet, gateway, type).

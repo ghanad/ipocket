@@ -70,7 +70,7 @@ def test_list_page_renders_seeded_ip(client) -> None:
 
     assert response.status_code == 200
     assert "10.0.1.10" in response.text
-    assert "UNASSIGNED" in response.text
+    assert "Unassigned" in response.text
 
 
 def test_ui_write_requires_editor_role(client) -> None:
@@ -250,12 +250,12 @@ def test_editor_can_create_ip_via_ui(client) -> None:
     assert "10.0.8.10" in list_response.text
 
 
-def test_ui_includes_pico_css(client) -> None:
+def test_ui_includes_app_css(client) -> None:
     test_client, _db_path = client
     response = test_client.get("/ui/ip-assets")
 
     assert response.status_code == 200
-    assert "pico.min.css" in response.text
+    assert "/static/app.css" in response.text
 
 
 def test_editor_can_create_project_via_ui(client) -> None:
