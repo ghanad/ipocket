@@ -9,7 +9,10 @@ from app.startup import init_database
 
 app = FastAPI()
 app.mount("/static", StaticFiles(directory="app/static"), name="static")
-app.state.templates = Jinja2Templates(directory="app/templates")
+try:
+    app.state.templates = Jinja2Templates(directory="app/templates")
+except AssertionError:
+    app.state.templates = None
 
 app.include_router(api.router)
 app.include_router(ui.router)
