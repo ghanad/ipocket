@@ -1,17 +1,29 @@
-# How to run (WIP)
-
-This document will be updated once the initial codebase is bootstrapped.
+# How to run
 
 ## Requirements
-- Python (version to be decided in the bootstrap task)
+- Python 3.11+
 - SQLite (built-in)
 
 ## Run locally
-(TODO) Add the exact commands to:
-- install dependencies
-- run the web app
-- access the UI
-- access /metrics
+Install dependencies:
+
+```bash
+python -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+```
+
+Run the web app:
+
+```bash
+uvicorn app.main:app --reload
+```
+
+Endpoints:
+- Health check: http://127.0.0.1:8000/health
+- Metrics: http://127.0.0.1:8000/metrics
 
 ## Run tests
-(TODO) Add the exact command(s) to run unit tests (e.g., pytest).
+```bash
+pytest
+```
