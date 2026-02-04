@@ -16,6 +16,7 @@ ipocket is a lightweight, modular IP inventory web app with a simple UI and Prom
 ## Authentication (MVP)
 - Login via `POST /login` with username/password to receive a bearer token.
 - Include `Authorization: Bearer <token>` on write requests (create/update/archive).
+- Browser UI uses session login at `GET /ui/login` and stores a signed cookie for Editor/Admin actions.
 
 ## API / Routes overview
 - `GET /ip-assets`: list active IPs (filters: `project_id`, `owner_id`, `type`, `unassigned-only`).
@@ -31,12 +32,14 @@ ipocket is a lightweight, modular IP inventory web app with a simple UI and Prom
 - `PATCH /owners/{owner_id}`: update owner (Editor/Admin).
 
 ## UI Pages (MVP)
+- `GET /ui/login`: browser login form.
 - `GET /ui/ip-assets`: IP list with search and filters (project, owner, type, unassigned-only).
 - `GET /ui/ip-assets/needs-assignment`: dedicated view to focus on IPs missing Owner and/or Project, with tabs for Needs Owner, Needs Project, and Needs Both.
-- `GET /ui/ip-assets/{ip_address}`: IP detail page with assignment status.
+- `GET /ui/ip-assets/{asset_id}`: IP detail page with assignment status.
 - `GET /ui/ip-assets/new`: add IP form (Editor/Admin).
-- `GET /ui/ip-assets/{ip_address}/edit`: edit IP form (Editor/Admin).
-- `POST /ui/ip-assets/{ip_address}/archive`: archive action (Editor/Admin).
+- `GET /ui/ip-assets/{asset_id}/edit`: edit IP form (Editor/Admin).
+- `POST /ui/ip-assets/{asset_id}/archive`: archive action (Editor/Admin).
+- `POST /ui/logout`: clear the UI session.
 
 ## Assignment workflow (MVP)
 - Use the **Needs Assignment** page to filter IPs missing Owner and/or Project.

@@ -2,9 +2,10 @@ from __future__ import annotations
 
 import pytest
 from fastapi.testclient import TestClient
+from http.cookies import SimpleCookie
 
 from app import auth, db, repository
-from app.main import app
+from app.main import SESSION_COOKIE, app
 from app.models import IPAssetType, UserRole
 
 
@@ -34,16 +35,20 @@ def _create_user(db_path, username: str, password: str, role: UserRole) -> None:
         connection.close()
 
 
-def _login(client: TestClient, username: str, password: str) -> str:
+def _ui_login(client: TestClient, username: str, password: str) -> None:
     response = client.post(
-        "/login", json={"username": username, "password": password}
+        "/ui/login",
+        data={"username": username, "password": password},
+        allow_redirects=False,
     )
-    assert response.status_code == 200
-    return response.json()["access_token"]
-
-
-def _auth_header(token: str) -> dict:
-    return {"Authorization": f"Bearer {token}"}
+    assert response.status_code == 303
+    cookie = SimpleCookie()
+    cookie.load(response.headers.get("set-cookie", ""))
+    if SESSION_COOKIE in cookie:
+        cookie_value = cookie[SESSION_COOKIE].value
+        client.headers.update(
+            {"Cookie": f"{SESSION_COOKIE}={cookie_value}"}
+        )
 
 
 def test_list_page_renders_seeded_ip(client) -> None:
@@ -71,20 +76,28 @@ def test_list_page_renders_seeded_ip(client) -> None:
 def test_ui_write_requires_editor_role(client) -> None:
     test_client, db_path = client
     _create_user(db_path, "viewer", "viewer-pass", UserRole.VIEWER)
-    token = _login(test_client, "viewer", "viewer-pass")
+    _ui_login(test_client, "viewer", "viewer-pass")
 
     response = test_client.post(
         "/ui/ip-assets/new",
-        headers=_auth_header(token),
         data={
             "ip_address": "10.0.2.20",
             "subnet": "10.0.2.0/24",
             "gateway": "10.0.2.1",
             "type": IPAssetType.VM.value,
         },
+        allow_redirects=False,
     )
 
     assert response.status_code == 403
+
+
+def test_ui_new_route_redirects_when_unauthenticated(client) -> None:
+    test_client, _db_path = client
+    response = test_client.get("/ui/ip-assets/new", allow_redirects=False)
+
+    assert response.status_code == 303
+    assert response.headers["location"] == "/ui/login"
 
 
 def test_needs_assignment_filters(client) -> None:
@@ -160,7 +173,7 @@ def test_needs_assignment_filters(client) -> None:
 def test_needs_assignment_assigns_owner_project(client) -> None:
     test_client, db_path = client
     _create_user(db_path, "editor", "editor-pass", UserRole.EDITOR)
-    token = _login(test_client, "editor", "editor-pass")
+    _ui_login(test_client, "editor", "editor-pass")
 
     connection = db.connect(str(db_path))
     try:
@@ -179,12 +192,12 @@ def test_needs_assignment_assigns_owner_project(client) -> None:
 
     response = test_client.post(
         "/ui/ip-assets/needs-assignment/assign?filter=both",
-        headers=_auth_header(token),
         data={
             "ip_address": "10.0.4.10",
             "project_id": str(project.id),
             "owner_id": str(owner.id),
         },
+        allow_redirects=False,
     )
     assert response.status_code == 303
 
@@ -197,15 +210,49 @@ def test_needs_assignment_assigns_owner_project(client) -> None:
 def test_needs_assignment_rejects_viewer(client) -> None:
     test_client, db_path = client
     _create_user(db_path, "viewer", "viewer-pass", UserRole.VIEWER)
-    token = _login(test_client, "viewer", "viewer-pass")
+    _ui_login(test_client, "viewer", "viewer-pass")
 
     response = test_client.post(
         "/ui/ip-assets/needs-assignment/assign?filter=owner",
-        headers=_auth_header(token),
         data={
             "ip_address": "10.0.5.10",
             "project_id": "",
             "owner_id": "",
         },
+        allow_redirects=False,
     )
     assert response.status_code == 403
+
+
+def test_editor_can_create_ip_via_ui(client) -> None:
+    test_client, db_path = client
+    _create_user(db_path, "editor", "editor-pass", UserRole.EDITOR)
+    _ui_login(test_client, "editor", "editor-pass")
+
+    form_response = test_client.get("/ui/ip-assets/new")
+    assert form_response.status_code == 200
+
+    submit_response = test_client.post(
+        "/ui/ip-assets/new",
+        data={
+            "ip_address": "10.0.8.10",
+            "subnet": "10.0.8.0/24",
+            "gateway": "10.0.8.1",
+            "type": IPAssetType.VM.value,
+        },
+        allow_redirects=False,
+    )
+    assert submit_response.status_code == 303
+    assert submit_response.headers["location"].startswith("/ui/ip-assets/")
+
+    list_response = test_client.get("/ui/ip-assets")
+    assert list_response.status_code == 200
+    assert "10.0.8.10" in list_response.text
+
+
+def test_ui_includes_pico_css(client) -> None:
+    test_client, _db_path = client
+    response = test_client.get("/ui/ip-assets")
+
+    assert response.status_code == 200
+    assert "pico.min.css" in response.text
