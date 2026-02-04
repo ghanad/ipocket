@@ -10,6 +10,7 @@ from app.repository import (
     create_owner,
     create_project,
     get_ip_asset_by_ip,
+    get_ip_asset_metrics,
     list_active_ip_assets,
 )
 
@@ -84,3 +85,55 @@ def test_archive_excludes_from_active_list(tmp_path) -> None:
 
     active_assets = list_active_ip_assets(connection)
     assert active_assets == []
+
+
+def test_get_ip_asset_metrics_counts(tmp_path) -> None:
+    connection = _setup_connection(tmp_path)
+
+    project = create_project(connection, name="Apps")
+    owner = create_owner(connection, name="Infra")
+
+    create_ip_asset(
+        connection,
+        ip_address="10.0.1.1",
+        subnet="10.0.1.0/24",
+        gateway="10.0.1.1",
+        asset_type=IPAssetType.VM,
+        project_id=project.id,
+        owner_id=owner.id,
+    )
+    create_ip_asset(
+        connection,
+        ip_address="10.0.1.2",
+        subnet="10.0.1.0/24",
+        gateway="10.0.1.1",
+        asset_type=IPAssetType.PHYSICAL,
+        project_id=project.id,
+        owner_id=None,
+    )
+    create_ip_asset(
+        connection,
+        ip_address="10.0.1.3",
+        subnet="10.0.1.0/24",
+        gateway="10.0.1.1",
+        asset_type=IPAssetType.VIP,
+        project_id=None,
+        owner_id=None,
+    )
+    create_ip_asset(
+        connection,
+        ip_address="10.0.1.4",
+        subnet="10.0.1.0/24",
+        gateway="10.0.1.1",
+        asset_type=IPAssetType.OTHER,
+        project_id=project.id,
+        owner_id=owner.id,
+    )
+    archive_ip_asset(connection, "10.0.1.4")
+
+    metrics = get_ip_asset_metrics(connection)
+    assert metrics["total"] == 4
+    assert metrics["archived_total"] == 1
+    assert metrics["unassigned_owner_total"] == 2
+    assert metrics["unassigned_project_total"] == 1
+    assert metrics["unassigned_both_total"] == 1
