@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Needs Assignment Inbox - IPAM Pro</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#135bec",
+                        "background-light": "#f6f6f8",
+                        "background-dark": "#101622",
+                    },
+                    fontFamily: {
+                        "display": ["Inter"]
+                    },
+                    borderRadius: {"DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px"},
+                },
+            },
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+    </style>
+</head>
+<body class="bg-background-light dark:bg-background-dark font-display text-slate-900 dark:text-slate-100 min-h-screen">
+<div class="layout-container flex h-full grow flex-col">
+<!-- TopNavBar -->
+<header class="flex items-center justify-between whitespace-nowrap border-b border-solid border-slate-200 dark:border-slate-800 px-10 py-3 bg-white dark:bg-background-dark sticky top-0 z-50">
+<div class="flex items-center gap-8">
+<div class="flex items-center gap-4 text-primary">
+<div class="size-6 flex items-center justify-center">
+<span class="material-symbols-outlined text-3xl">hub</span>
+</div>
+<h2 class="text-slate-900 dark:text-white text-lg font-bold leading-tight tracking-[-0.015em]">IPAM Pro</h2>
+</div>
+<label class="flex flex-col min-w-40 !h-10 max-w-64">
+<div class="flex w-full flex-1 items-stretch rounded-lg h-full">
+<div class="text-slate-500 flex border-none bg-slate-100 dark:bg-slate-800 items-center justify-center pl-4 rounded-l-lg">
+<span class="material-symbols-outlined text-[20px]">search</span>
+</div>
+<input class="form-input flex w-full min-w-0 flex-1 resize-none overflow-hidden rounded-lg text-slate-900 dark:text-white focus:outline-0 focus:ring-0 border-none bg-slate-100 dark:bg-slate-800 focus:border-none h-full placeholder:text-slate-500 px-4 rounded-l-none border-l-0 pl-2 text-base font-normal leading-normal" placeholder="Search IP, Subnet..." value=""/>
+</div>
+</label>
+</div>
+<div class="flex flex-1 justify-end gap-8">
+<nav class="flex items-center gap-9">
+<a class="text-slate-600 dark:text-slate-300 hover:text-primary dark:hover:text-primary text-sm font-medium leading-normal transition-colors" href="#">Dashboard</a>
+<a class="text-slate-600 dark:text-slate-300 hover:text-primary dark:hover:text-primary text-sm font-medium leading-normal transition-colors" href="#">Inventory</a>
+<a class="text-slate-600 dark:text-slate-300 hover:text-primary dark:hover:text-primary text-sm font-medium leading-normal transition-colors" href="#">Reports</a>
+<a class="text-slate-600 dark:text-slate-300 hover:text-primary dark:hover:text-primary text-sm font-medium leading-normal transition-colors" href="#">Settings</a>
+</nav>
+<div class="flex gap-2">
+<button class="flex items-center justify-center rounded-lg h-10 w-10 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-white hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors">
+<span class="material-symbols-outlined text-[20px]">notifications</span>
+</button>
+<button class="flex items-center justify-center rounded-lg h-10 w-10 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-white hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors">
+<span class="material-symbols-outlined text-[20px]">help</span>
+</button>
+</div>
+<div class="bg-center bg-no-repeat aspect-square bg-cover rounded-full size-10 border border-slate-200 dark:border-slate-700" data-alt="User avatar profile picture" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuBed8K6tzMf1zr_7QKY7KFAGcN1btmQu3GvwJmG2fASVHMtyH9GeqpF_U63j9Hn0cK0oq31UeRe4nfJnmWyhTuwaopdGSQYjEhH3Td7iUI-P585U5-eXLeENmygr7Pv3meY6ReV_eFYS8YJwZNK24qnPoJnRRK69aiIEbbrG_bwFMtKfTQQRj6kADPLhvtTylXUr1gHcfCD6kydLpckX1igbDTh_yGchYpRlmy77FNuhVwaDGq_5cts3sfljRC0Q-ZjkyBCxwOwPSaz");'></div>
+</div>
+</header>
+<div class="flex flex-1">
+<!-- SideNavBar -->
+<aside class="w-64 border-r border-slate-200 dark:border-slate-800 bg-white dark:bg-background-dark hidden lg:flex flex-col p-4">
+<div class="flex flex-col gap-6">
+<div class="flex flex-col px-3">
+<h1 class="text-slate-900 dark:text-white text-base font-bold leading-normal">Network Ops</h1>
+<p class="text-slate-500 text-xs font-medium uppercase tracking-wider mt-1">Global Infrastructure</p>
+</div>
+<nav class="flex flex-col gap-1">
+<a class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors" href="#">
+<span class="material-symbols-outlined text-[22px]">dashboard</span>
+<span class="text-sm font-medium">Overview</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2.5 rounded-lg bg-primary text-white shadow-lg shadow-primary/20" href="#">
+<span class="material-symbols-outlined text-[22px]">inbox</span>
+<span class="text-sm font-medium">Needs Assignment</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors" href="#">
+<span class="material-symbols-outlined text-[22px]">lan</span>
+<span class="text-sm font-medium">Subnets</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors" href="#">
+<span class="material-symbols-outlined text-[22px]">layers</span>
+<span class="text-sm font-medium">VLANs</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors" href="#">
+<span class="material-symbols-outlined text-[22px]">devices</span>
+<span class="text-sm font-medium">Devices</span>
+</a>
+</nav>
+<div class="pt-4 mt-4 border-t border-slate-100 dark:border-slate-800">
+<p class="text-slate-400 text-xs font-bold uppercase tracking-widest px-3 mb-2">Systems</p>
+<a class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors" href="#">
+<span class="material-symbols-outlined text-[22px]">dns</span>
+<span class="text-sm font-medium">DNS Records</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors" href="#">
+<span class="material-symbols-outlined text-[22px]">history</span>
+<span class="text-sm font-medium">Audit Log</span>
+</a>
+</div>
+</div>
+</aside>
+<!-- Main Content Area -->
+<main class="flex-1 overflow-y-auto">
+<div class="px-8 py-8 flex flex-col gap-6 max-w-[1280px] mx-auto">
+<!-- PageHeading -->
+<div class="flex flex-wrap items-end justify-between gap-4">
+<div class="flex flex-col gap-1">
+<h2 class="text-slate-900 dark:text-white text-3xl font-black leading-tight tracking-[-0.033em]">Needs Assignment Inbox</h2>
+<p class="text-slate-500 dark:text-slate-400 text-base font-normal leading-normal">Manage and assign unallocated IP addresses to owners and projects.</p>
+</div>
+<div class="flex items-center gap-3">
+<button class="flex items-center gap-2 px-4 py-2 bg-slate-100 dark:bg-slate-800 rounded-lg text-slate-700 dark:text-white text-sm font-bold border border-slate-200 dark:border-slate-700">
+<span class="material-symbols-outlined text-[18px]">download</span> Export
+                            </button>
+<button class="flex items-center gap-2 px-6 py-2 bg-primary text-white rounded-lg text-sm font-bold shadow-lg shadow-primary/20">
+<span class="material-symbols-outlined text-[18px]">check_circle</span> Save All Changes
+                            </button>
+</div>
+</div>
+<!-- SegmentedButtons -->
+<div class="flex bg-white dark:bg-slate-900 p-1.5 rounded-xl border border-slate-200 dark:border-slate-800 w-fit">
+<div class="flex h-10 items-center justify-center">
+<label class="flex cursor-pointer h-full items-center justify-center rounded-lg px-6 has-[:checked]:bg-primary has-[:checked]:text-white text-slate-500 dark:text-slate-400 text-sm font-bold leading-normal transition-all hover:text-slate-900 dark:hover:text-white">
+<span class="truncate">Needs Owner</span>
+<input class="invisible w-0" name="view-filter" type="radio" value="Needs Owner"/>
+</label>
+<label class="flex cursor-pointer h-full items-center justify-center rounded-lg px-6 has-[:checked]:bg-primary has-[:checked]:text-white text-slate-500 dark:text-slate-400 text-sm font-bold leading-normal transition-all hover:text-slate-900 dark:hover:text-white">
+<span class="truncate">Needs Project</span>
+<input class="invisible w-0" name="view-filter" type="radio" value="Needs Project"/>
+</label>
+<label class="flex cursor-pointer h-full items-center justify-center rounded-lg px-6 has-[:checked]:bg-primary has-[:checked]:text-white text-slate-500 dark:text-slate-400 text-sm font-bold leading-normal transition-all hover:text-slate-900 dark:hover:text-white">
+<span class="truncate">Needs Both</span>
+<input checked="" class="invisible w-0" name="view-filter" type="radio" value="Needs Both"/>
+</label>
+</div>
+</div>
+<!-- Table -->
+<div class="bg-white dark:bg-background-dark border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden shadow-sm">
+<table class="w-full text-left border-collapse">
+<thead>
+<tr class="bg-slate-50 dark:bg-slate-900/50 border-b border-slate-200 dark:border-slate-800">
+<th class="px-6 py-4 text-slate-500 dark:text-slate-400 text-xs font-bold uppercase tracking-wider">IP Address</th>
+<th class="px-6 py-4 text-slate-500 dark:text-slate-400 text-xs font-bold uppercase tracking-wider">Subnet</th>
+<th class="px-6 py-4 text-slate-500 dark:text-slate-400 text-xs font-bold uppercase tracking-wider">Status</th>
+<th class="px-6 py-4 text-slate-500 dark:text-slate-400 text-xs font-bold uppercase tracking-wider">Owner</th>
+<th class="px-6 py-4 text-slate-500 dark:text-slate-400 text-xs font-bold uppercase tracking-wider">Project</th>
+<th class="px-6 py-4 text-slate-500 dark:text-slate-400 text-xs font-bold uppercase tracking-wider text-right">Actions</th>
+</tr>
+</thead>
+<tbody class="divide-y divide-slate-100 dark:divide-slate-800">
+<!-- Row 1 -->
+<tr class="hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors group">
+<td class="px-6 py-4 text-slate-900 dark:text-white font-mono text-sm font-medium">10.0.0.45</td>
+<td class="px-6 py-4 text-slate-500 dark:text-slate-400 text-sm">10.0.0.0/24</td>
+<td class="px-6 py-4">
+<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400">
+                                            Unassigned
+                                        </span>
+</td>
+<td class="px-6 py-4">
+<select class="form-select block w-full bg-slate-100 dark:bg-slate-800 border-none rounded-lg text-sm text-slate-400 focus:ring-primary focus:border-primary py-1.5">
+<option disabled="" selected="">Select Owner</option>
+<option>James Wilson</option>
+<option>Maria Garcia</option>
+<option>Tech Operations</option>
+</select>
+</td>
+<td class="px-6 py-4">
+<select class="form-select block w-full bg-slate-100 dark:bg-slate-800 border-none rounded-lg text-sm text-slate-400 focus:ring-primary focus:border-primary py-1.5">
+<option disabled="" selected="">Select Project</option>
+<option>Alpha-9 Build</option>
+<option>Legacy Migration</option>
+<option>Edge Node Exp</option>
+</select>
+</td>
+<td class="px-6 py-4 text-right">
+<button class="text-primary hover:text-primary/80 font-bold text-sm transition-colors opacity-0 group-hover:opacity-100">Save</button>
+</td>
+</tr>
+<!-- Row 2 -->
+<tr class="hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors group">
+<td class="px-6 py-4 text-slate-900 dark:text-white font-mono text-sm font-medium">192.168.1.12</td>
+<td class="px-6 py-4 text-slate-500 dark:text-slate-400 text-sm">192.168.1.0/24</td>
+<td class="px-6 py-4">
+<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400">
+                                            Pending
+                                        </span>
+</td>
+<td class="px-6 py-4">
+<select class="form-select block w-full bg-slate-100 dark:bg-slate-800 border-none rounded-lg text-sm text-slate-400 focus:ring-primary focus:border-primary py-1.5">
+<option disabled="" selected="">Select Owner</option>
+<option>Sarah Connor</option>
+<option>David Smith</option>
+</select>
+</td>
+<td class="px-6 py-4">
+<select class="form-select block w-full bg-slate-100 dark:bg-slate-800 border-none rounded-lg text-sm text-slate-400 focus:ring-primary focus:border-primary py-1.5">
+<option disabled="" selected="">Select Project</option>
+<option>Dev-Cluster-B</option>
+<option>Security Patching</option>
+</select>
+</td>
+<td class="px-6 py-4 text-right">
+<button class="text-primary hover:text-primary/80 font-bold text-sm transition-colors opacity-0 group-hover:opacity-100">Save</button>
+</td>
+</tr>
+<!-- Row 3 -->
+<tr class="hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors group">
+<td class="px-6 py-4 text-slate-900 dark:text-white font-mono text-sm font-medium">172.16.5.90</td>
+<td class="px-6 py-4 text-slate-500 dark:text-slate-400 text-sm">172.16.5.0/24</td>
+<td class="px-6 py-4">
+<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400">
+                                            Unassigned
+                                        </span>
+</td>
+<td class="px-6 py-4">
+<select class="form-select block w-full bg-slate-100 dark:bg-slate-800 border-none rounded-lg text-sm text-slate-400 focus:ring-primary focus:border-primary py-1.5">
+<option disabled="" selected="">Select Owner</option>
+<option>Maria Garcia</option>
+<option>Infrastructure Team</option>
+</select>
+</td>
+<td class="px-6 py-4">
+<select class="form-select block w-full bg-slate-100 dark:bg-slate-800 border-none rounded-lg text-sm text-slate-400 focus:ring-primary focus:border-primary py-1.5">
+<option disabled="" selected="">Select Project</option>
+<option>VPC-Global-1</option>
+</select>
+</td>
+<td class="px-6 py-4 text-right">
+<button class="text-primary hover:text-primary/80 font-bold text-sm transition-colors opacity-0 group-hover:opacity-100">Save</button>
+</td>
+</tr>
+<!-- Row 4 -->
+<tr class="hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors group">
+<td class="px-6 py-4 text-slate-900 dark:text-white font-mono text-sm font-medium">10.50.2.14</td>
+<td class="px-6 py-4 text-slate-500 dark:text-slate-400 text-sm">10.50.2.0/24</td>
+<td class="px-6 py-4">
+<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400">
+                                            Pending
+                                        </span>
+</td>
+<td class="px-6 py-4">
+<select class="form-select block w-full bg-slate-100 dark:bg-slate-800 border-none rounded-lg text-sm text-slate-400 focus:ring-primary focus:border-primary py-1.5">
+<option disabled="" selected="">Select Owner</option>
+<option>James Wilson</option>
+</select>
+</td>
+<td class="px-6 py-4">
+<select class="form-select block w-full bg-slate-100 dark:bg-slate-800 border-none rounded-lg text-sm text-slate-400 focus:ring-primary focus:border-primary py-1.5">
+<option disabled="" selected="">Select Project</option>
+<option>Legacy Migration</option>
+</select>
+</td>
+<td class="px-6 py-4 text-right">
+<button class="text-primary hover:text-primary/80 font-bold text-sm transition-colors opacity-0 group-hover:opacity-100">Save</button>
+</td>
+</tr>
+</tbody>
+</table>
+<div class="px-6 py-4 bg-slate-50 dark:bg-slate-900/30 border-t border-slate-200 dark:border-slate-800 flex items-center justify-between">
+<p class="text-slate-500 dark:text-slate-400 text-sm">Showing 4 of 12 unassigned IPs</p>
+<div class="flex items-center gap-2">
+<button class="px-3 py-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded text-xs font-bold disabled:opacity-50" disabled="">Previous</button>
+<button class="px-3 py-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded text-xs font-bold">Next</button>
+</div>
+</div>
+</div>
+<!-- Pagination / Summary Footer -->
+<div class="flex flex-col sm:flex-row items-center justify-between gap-4 p-6 rounded-xl bg-primary/5 border border-primary/20">
+<div class="flex items-center gap-4">
+<div class="size-10 rounded-full bg-primary/20 flex items-center justify-center text-primary">
+<span class="material-symbols-outlined">info</span>
+</div>
+<div>
+<h4 class="text-sm font-bold dark:text-white">Reviewing Unassigned Inventory</h4>
+<p class="text-xs text-slate-500 dark:text-slate-400">Total unallocated capacity is at 14%. Consider provisioning more subnets soon.</p>
+</div>
+</div>
+<button class="w-full sm:w-auto px-8 py-3 bg-primary text-white rounded-lg font-bold shadow-xl shadow-primary/30 hover:bg-primary/90 transition-all">
+                            Finalize All Assignments
+                        </button>
+</div>
+</div>
+</main>
+</div>
+</div>
+</body></html>
