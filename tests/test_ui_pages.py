@@ -119,6 +119,15 @@ def test_ui_new_route_renders_for_editor(client) -> None:
     assert response.status_code == 200
 
 
+def test_login_page_renders_without_nav(client) -> None:
+    test_client, _db_path = client
+
+    response = test_client.get("/ui/login")
+
+    assert response.status_code == 200
+    assert "Login" in response.text
+
+
 def test_needs_assignment_filters(client) -> None:
     test_client, db_path = client
     connection = db.connect(str(db_path))
