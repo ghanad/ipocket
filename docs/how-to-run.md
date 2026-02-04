@@ -32,6 +32,32 @@ Run the web app:
 uvicorn app.main:app --reload
 ```
 
+### Version metadata (recommended for deployments)
+ipocket reads version info from environment variables and includes them in the
+`/health` response:
+
+- `IPOCKET_VERSION` (semantic version, e.g. `0.1.0`)
+- `IPOCKET_COMMIT` (git commit SHA, short ok)
+- `IPOCKET_BUILD_TIME` (ISO timestamp)
+
+Example Docker snippet:
+
+```bash
+docker run -e IPOCKET_VERSION=0.1.0 \
+  -e IPOCKET_COMMIT=abc1234 \
+  -e IPOCKET_BUILD_TIME=2024-01-01T00:00:00Z \
+  -p 8000:8000 ipocket:latest
+```
+
+Example systemd override:
+
+```ini
+[Service]
+Environment="IPOCKET_VERSION=0.1.0"
+Environment="IPOCKET_COMMIT=abc1234"
+Environment="IPOCKET_BUILD_TIME=2024-01-01T00:00:00Z"
+```
+
 Endpoints:
 - Health check: http://127.0.0.1:8000/health
 - Metrics: http://127.0.0.1:8000/metrics

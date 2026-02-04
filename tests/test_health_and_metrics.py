@@ -5,11 +5,34 @@ from app.main import app
 from app.models import IPAssetType
 
 
-def test_health_check_returns_ok() -> None:
+def test_health_check_returns_defaults(monkeypatch) -> None:
+    monkeypatch.delenv("IPOCKET_VERSION", raising=False)
+    monkeypatch.delenv("IPOCKET_COMMIT", raising=False)
+    monkeypatch.delenv("IPOCKET_BUILD_TIME", raising=False)
     client = TestClient(app)
     response = client.get("/health")
     assert response.status_code == 200
-    assert response.text == "ok"
+    assert response.json() == {
+        "status": "ok",
+        "version": "dev",
+        "commit": "unknown",
+        "build_time": "unknown",
+    }
+
+
+def test_health_check_returns_env_override(monkeypatch) -> None:
+    monkeypatch.setenv("IPOCKET_VERSION", "0.1.0")
+    monkeypatch.setenv("IPOCKET_COMMIT", "abc123")
+    monkeypatch.setenv("IPOCKET_BUILD_TIME", "2024-01-01T00:00:00Z")
+    client = TestClient(app)
+    response = client.get("/health")
+    assert response.status_code == 200
+    assert response.json() == {
+        "status": "ok",
+        "version": "0.1.0",
+        "commit": "abc123",
+        "build_time": "2024-01-01T00:00:00Z",
+    }
 
 
 def test_metrics_reflect_database_state(tmp_path, monkeypatch) -> None:

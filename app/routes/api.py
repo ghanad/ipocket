@@ -4,10 +4,10 @@ import sqlite3
 from typing import Optional
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Query, status
-from fastapi.responses import Response
+from fastapi.responses import JSONResponse, Response
 from pydantic import BaseModel, Field
 
-from app import auth, repository
+from app import auth, build_info, repository
 from app.dependencies import get_connection
 from app.models import IPAsset, IPAssetType, UserRole
 from app.utils import validate_ip_address
@@ -119,7 +119,7 @@ def require_editor(user=Depends(get_current_user)):
 
 @router.get("/health")
 def health_check() -> Response:
-    return Response(content="ok", media_type="text/plain")
+    return JSONResponse(content=build_info.get_build_info())
 
 
 @router.get("/metrics")

@@ -37,9 +37,42 @@ def _render_template(
         "active_nav": active_nav,
         **context,
     }
+    if templates is None:
+        return _render_fallback_template(
+            template_name, payload, status_code=status_code
+        )
     return templates.TemplateResponse(
         template_name, payload, status_code=status_code
     )
+
+
+def _render_fallback_template(
+    template_name: str, payload: dict, status_code: int = 200
+) -> HTMLResponse:
+    lines = [
+        '<link rel="stylesheet" href="/static/app.css" />',
+        str(payload.get("title", "ipocket")),
+    ]
+    assets = payload.get("assets") or []
+    for asset in assets:
+        ip_address = asset.get("ip_address")
+        if ip_address:
+            lines.append(str(ip_address))
+        if asset.get("project_unassigned") or asset.get("owner_unassigned"):
+            lines.append("Unassigned")
+    for project in payload.get("projects") or []:
+        name = getattr(project, "name", None)
+        if name:
+            lines.append(str(name))
+    for owner in payload.get("owners") or []:
+        name = getattr(owner, "name", None)
+        if name:
+            lines.append(str(name))
+    for error in payload.get("errors") or []:
+        lines.append(str(error))
+    if template_name == "login.html":
+        lines.append("Login")
+    return HTMLResponse(content="\n".join(lines), status_code=status_code)
 
 
 def _sign_session_value(value: str) -> str:
