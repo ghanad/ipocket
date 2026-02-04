@@ -35,7 +35,7 @@ UI templates live in `app/templates`, UI routes live in `app/routes/ui.py`, and 
 
 ## UI Pages (MVP)
 - `GET /ui/login`: browser login form.
-- `GET /ui/ip-assets`: IP list with search and filters (project, owner, type, unassigned-only).
+- `GET /ui/ip-assets`: IP list with search and filters (project, owner, type, unassigned-only). Empty filter selections are ignored.
 - `GET /ui/ip-assets/needs-assignment`: dedicated view to focus on IPs missing Owner and/or Project, with tabs for Needs Owner, Needs Project, and Needs Both.
 - `GET /ui/ip-assets/{asset_id}`: IP detail page with assignment status.
 - `GET /ui/ip-assets/new`: add IP form (Editor/Admin).

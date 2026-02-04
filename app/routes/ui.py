@@ -131,6 +131,15 @@ def _parse_optional_int(value: Optional[str]) -> Optional[int]:
     return int(value)
 
 
+def _parse_optional_int_query(value: Optional[str]) -> Optional[int]:
+    if value is None or value == "":
+        return None
+    try:
+        return int(value)
+    except ValueError:
+        return None
+
+
 def _parse_optional_str(value: Optional[str]) -> Optional[str]:
     if value is None:
         return None
@@ -381,18 +390,26 @@ async def ui_create_owner(
 def ui_list_ip_assets(
     request: Request,
     q: Optional[str] = None,
-    project_id: Optional[int] = None,
-    owner_id: Optional[int] = None,
-    asset_type: Optional[IPAssetType] = Query(default=None, alias="type"),
+    project_id: Optional[str] = None,
+    owner_id: Optional[str] = None,
+    asset_type: Optional[str] = Query(default=None, alias="type"),
     unassigned_only: bool = Query(default=False, alias="unassigned-only"),
     connection=Depends(get_connection),
 ):
+    parsed_project_id = _parse_optional_int_query(project_id)
+    parsed_owner_id = _parse_optional_int_query(owner_id)
+    asset_type_value = _parse_optional_str(asset_type)
+    asset_type_enum = (
+        IPAssetType(asset_type_value)
+        if asset_type_value in {asset.value for asset in IPAssetType}
+        else None
+    )
     assets = list(
         repository.list_active_ip_assets(
             connection,
-            project_id=project_id,
-            owner_id=owner_id,
-            asset_type=asset_type,
+            project_id=parsed_project_id,
+            owner_id=parsed_owner_id,
+            asset_type=asset_type_enum,
             unassigned_only=unassigned_only,
         )
     )
@@ -422,9 +439,9 @@ def ui_list_ip_assets(
             "types": [asset.value for asset in IPAssetType],
             "filters": {
                 "q": q or "",
-                "project_id": project_id,
-                "owner_id": owner_id,
-                "type": asset_type.value if asset_type else "",
+                "project_id": parsed_project_id,
+                "owner_id": parsed_owner_id,
+                "type": asset_type_enum.value if asset_type_enum else "",
                 "unassigned_only": unassigned_only,
             },
         },
