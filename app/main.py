@@ -1,11 +1,14 @@
 from __future__ import annotations
 
+import html
 import ipaddress
 import os
 import sqlite3
 from typing import Optional
+from urllib.parse import parse_qs
 
-from fastapi import Depends, FastAPI, Header, HTTPException, Query, Response, status
+from fastapi import Depends, FastAPI, Header, HTTPException, Query, Request, Response, status
+from fastapi.responses import HTMLResponse, RedirectResponse
 from pydantic import BaseModel, Field
 
 from app import auth, db, repository
@@ -160,6 +163,341 @@ def _metrics_payload() -> str:
             "",
         ]
     )
+
+
+def _is_unassigned(project_id: Optional[int], owner_id: Optional[int]) -> bool:
+    return project_id is None or owner_id is None
+
+
+def _display_name(value: Optional[str]) -> str:
+    return value if value else "UNASSIGNED"
+
+
+def _parse_optional_int(value: Optional[str]) -> Optional[int]:
+    if value is None or value == "":
+        return None
+    return int(value)
+
+
+def _parse_optional_str(value: Optional[str]) -> Optional[str]:
+    if value is None:
+        return None
+    stripped = value.strip()
+    return stripped if stripped else None
+
+
+def _build_asset_view_models(
+    assets: list[IPAsset],
+    project_lookup: dict[int, str],
+    owner_lookup: dict[int, str],
+) -> list[dict]:
+    view_models = []
+    for asset in assets:
+        project_name = project_lookup.get(asset.project_id, "")
+        owner_name = owner_lookup.get(asset.owner_id, "")
+        view_models.append(
+            {
+                "ip_address": asset.ip_address,
+                "subnet": asset.subnet,
+                "gateway": asset.gateway,
+                "type": asset.asset_type.value,
+                "project_name": _display_name(project_name),
+                "owner_name": _display_name(owner_name),
+                "notes": asset.notes or "",
+                "unassigned": _is_unassigned(asset.project_id, asset.owner_id),
+            }
+        )
+    return view_models
+
+
+def _html_page(title: str, body: str, status_code: int = 200) -> HTMLResponse:
+    content = f"""<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>{html.escape(title)}</title>
+  <style>
+    body {{ font-family: Arial, sans-serif; margin: 24px; }}
+    table {{ border-collapse: collapse; width: 100%; }}
+    th, td {{ border: 1px solid #ddd; padding: 8px; text-align: left; }}
+    th {{ background-color: #f5f5f5; }}
+    .unassigned {{ color: #b00020; font-weight: bold; }}
+    .badge {{ background: #ffe0e0; color: #b00020; padding: 2px 6px; border-radius: 4px; }}
+    .filters {{ margin-bottom: 16px; }}
+    .filters label {{ margin-right: 12px; }}
+    .actions {{ margin-bottom: 16px; }}
+    label {{ display: block; margin-top: 12px; }}
+    input, select, textarea {{ width: 320px; padding: 6px; }}
+    textarea {{ height: 90px; }}
+    .errors {{ background: #ffe0e0; color: #b00020; padding: 12px; border-radius: 4px; }}
+    dt {{ font-weight: bold; margin-top: 12px; }}
+  </style>
+</head>
+<body>
+{body}
+</body>
+</html>
+"""
+    return HTMLResponse(content=content, status_code=status_code)
+
+
+def _render_list_page(
+    assets: list[dict],
+    projects: list,
+    owners: list,
+    types: list[str],
+    filters: dict,
+) -> HTMLResponse:
+    project_options = "\n".join(
+        [
+            f'<option value="{project.id}"'
+            f'{" selected" if filters["project_id"] == project.id else ""}>{html.escape(project.name)}</option>'
+            for project in projects
+        ]
+    )
+    owner_options = "\n".join(
+        [
+            f'<option value="{owner.id}"'
+            f'{" selected" if filters["owner_id"] == owner.id else ""}>{html.escape(owner.name)}</option>'
+            for owner in owners
+        ]
+    )
+    type_options = "\n".join(
+        [
+            f'<option value="{html.escape(asset_type)}"'
+            f'{" selected" if filters["type"] == asset_type else ""}>{html.escape(asset_type)}</option>'
+            for asset_type in types
+        ]
+    )
+    rows = []
+    for asset in assets:
+        project_unassigned = asset["project_name"] == "UNASSIGNED"
+        owner_unassigned = asset["owner_name"] == "UNASSIGNED"
+        rows.append(
+            f"""
+            <tr>
+              <td><a href="/ui/ip-assets/{html.escape(asset['ip_address'])}">{html.escape(asset['ip_address'])}</a></td>
+              <td>{html.escape(asset['subnet'])}</td>
+              <td>{html.escape(asset['gateway'])}</td>
+              <td>{html.escape(asset['type'])}</td>
+              <td class="{'unassigned' if project_unassigned else ''}">
+                {html.escape(asset['project_name'])}
+                {'<span class="badge">UNASSIGNED</span>' if project_unassigned else ''}
+              </td>
+              <td class="{'unassigned' if owner_unassigned else ''}">
+                {html.escape(asset['owner_name'])}
+                {'<span class="badge">UNASSIGNED</span>' if owner_unassigned else ''}
+              </td>
+              <td>{html.escape(asset['notes'])}</td>
+              <td><a href="/ui/ip-assets/{html.escape(asset['ip_address'])}/edit">Edit</a></td>
+            </tr>
+            """
+        )
+    rows_html = "\n".join(rows) if rows else "<tr><td colspan=\"8\">No IP assets found.</td></tr>"
+    body = f"""
+  <h1>IP Assets</h1>
+  <div class="actions">
+    <a href="/ui/ip-assets/new">Add IP (Editor/Admin)</a>
+  </div>
+  <form class="filters" method="get" action="/ui/ip-assets">
+    <label>
+      Search
+      <input type="text" name="q" value="{html.escape(filters['q'])}" placeholder="IP or notes" />
+    </label>
+    <label>
+      Project
+      <select name="project_id">
+        <option value="">All</option>
+        {project_options}
+      </select>
+    </label>
+    <label>
+      Owner
+      <select name="owner_id">
+        <option value="">All</option>
+        {owner_options}
+      </select>
+    </label>
+    <label>
+      Type
+      <select name="type">
+        <option value="">All</option>
+        {type_options}
+      </select>
+    </label>
+    <label>
+      <input type="checkbox" name="unassigned-only" value="true" {"checked" if filters["unassigned_only"] else ""} />
+      Unassigned only
+    </label>
+    <button type="submit">Apply</button>
+  </form>
+
+  <table>
+    <thead>
+      <tr>
+        <th>IP</th>
+        <th>Subnet</th>
+        <th>Gateway</th>
+        <th>Type</th>
+        <th>Project</th>
+        <th>Owner</th>
+        <th>Notes</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      {rows_html}
+    </tbody>
+  </table>
+"""
+    return _html_page("ipocket - IP Assets", body)
+
+
+def _render_detail_page(asset: dict) -> HTMLResponse:
+    project_unassigned = asset["project_name"] == "UNASSIGNED"
+    owner_unassigned = asset["owner_name"] == "UNASSIGNED"
+    body = f"""
+  <h1>IP {html.escape(asset['ip_address'])}</h1>
+  <p><a href="/ui/ip-assets">Back to list</a></p>
+  <dl>
+    <dt>Subnet</dt>
+    <dd>{html.escape(asset['subnet'])}</dd>
+
+    <dt>Gateway</dt>
+    <dd>{html.escape(asset['gateway'])}</dd>
+
+    <dt>Type</dt>
+    <dd>{html.escape(asset['type'])}</dd>
+
+    <dt>Project</dt>
+    <dd class="{'unassigned' if project_unassigned else ''}">
+      {html.escape(asset['project_name'])}
+      {'<span class="badge">UNASSIGNED</span>' if project_unassigned else ''}
+    </dd>
+
+    <dt>Owner</dt>
+    <dd class="{'unassigned' if owner_unassigned else ''}">
+      {html.escape(asset['owner_name'])}
+      {'<span class="badge">UNASSIGNED</span>' if owner_unassigned else ''}
+    </dd>
+
+    <dt>Notes</dt>
+    <dd>{html.escape(asset['notes'])}</dd>
+  </dl>
+
+  <h2>Actions (Editor/Admin)</h2>
+  <p>
+    <a href="/ui/ip-assets/{html.escape(asset['ip_address'])}/edit">Edit</a>
+  </p>
+  <form method="post" action="/ui/ip-assets/{html.escape(asset['ip_address'])}/archive">
+    <button type="submit">Archive</button>
+  </form>
+"""
+    return _html_page("ipocket - IP Detail", body)
+
+
+def _render_form_page(
+    asset: dict,
+    projects: list,
+    owners: list,
+    types: list[str],
+    errors: list[str],
+    mode: str,
+    status_code: int = 200,
+) -> HTMLResponse:
+    project_options = "\n".join(
+        [
+            f'<option value="{project.id}"'
+            f'{" selected" if asset["project_id"] == project.id else ""}>{html.escape(project.name)}</option>'
+            for project in projects
+        ]
+    )
+    owner_options = "\n".join(
+        [
+            f'<option value="{owner.id}"'
+            f'{" selected" if asset["owner_id"] == owner.id else ""}>{html.escape(owner.name)}</option>'
+            for owner in owners
+        ]
+    )
+    type_options = "\n".join(
+        [
+            f'<option value="{html.escape(asset_type)}"'
+            f'{" selected" if asset["type"] == asset_type else ""}>{html.escape(asset_type)}</option>'
+            for asset_type in types
+        ]
+    )
+    error_html = ""
+    if errors:
+        error_items = "\n".join([f"<li>{html.escape(error)}</li>" for error in errors])
+        error_html = f"""
+    <div class="errors">
+      <strong>Fix the following:</strong>
+      <ul>
+        {error_items}
+      </ul>
+    </div>
+"""
+    action_url = (
+        "/ui/ip-assets/new"
+        if mode == "create"
+        else f"/ui/ip-assets/{html.escape(asset['ip_address'])}/edit"
+    )
+    read_only = "readonly" if mode == "edit" else ""
+    body = f"""
+  <h1>{'Add IP' if mode == 'create' else 'Edit IP'}</h1>
+  <p><a href="/ui/ip-assets">Back to list</a></p>
+  {error_html}
+  <form method="post" action="{action_url}">
+    <label>
+      IP Address
+      <input type="text" name="ip_address" value="{html.escape(asset['ip_address'])}" {read_only} />
+    </label>
+    <label>
+      Subnet
+      <input type="text" name="subnet" value="{html.escape(asset['subnet'])}" />
+    </label>
+    <label>
+      Gateway
+      <input type="text" name="gateway" value="{html.escape(asset['gateway'])}" />
+    </label>
+    <label>
+      Type
+      <select name="type">
+        {type_options}
+      </select>
+    </label>
+    <label>
+      Project
+      <select name="project_id">
+        <option value="">UNASSIGNED</option>
+        {project_options}
+      </select>
+    </label>
+    <label>
+      Owner
+      <select name="owner_id">
+        <option value="">UNASSIGNED</option>
+        {owner_options}
+      </select>
+    </label>
+    <label>
+      Notes
+      <textarea name="notes">{html.escape(asset['notes'])}</textarea>
+    </label>
+    <button type="submit">{'Create' if mode == 'create' else 'Save'}</button>
+  </form>
+"""
+    return _html_page(
+        f"ipocket - {'Add IP' if mode == 'create' else 'Edit IP'}",
+        body,
+        status_code=status_code,
+    )
+
+
+async def _parse_form_data(request: Request) -> dict:
+    body = await request.body()
+    parsed = parse_qs(body.decode())
+    return {key: values[0] for key, values in parsed.items()}
 
 
 @app.get("/health")
@@ -349,3 +687,295 @@ def update_owner(
     if owner is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
     return {"id": owner.id, "name": owner.name, "contact": owner.contact}
+
+
+@app.get("/", response_class=HTMLResponse)
+def ui_home(request: Request):
+    return RedirectResponse(url="/ui/ip-assets")
+
+
+@app.get("/ui/ip-assets", response_class=HTMLResponse)
+def ui_list_ip_assets(
+    request: Request,
+    q: Optional[str] = None,
+    project_id: Optional[int] = None,
+    owner_id: Optional[int] = None,
+    asset_type: Optional[IPAssetType] = Query(default=None, alias="type"),
+    unassigned_only: bool = Query(default=False, alias="unassigned-only"),
+    connection=Depends(get_connection),
+):
+    assets = list(
+        repository.list_active_ip_assets(
+            connection,
+            project_id=project_id,
+            owner_id=owner_id,
+            asset_type=asset_type,
+            unassigned_only=unassigned_only,
+        )
+    )
+    if q:
+        q_lower = q.lower()
+        assets = [
+            asset
+            for asset in assets
+            if q_lower in asset.ip_address.lower()
+            or (asset.notes or "").lower().find(q_lower) >= 0
+        ]
+
+    projects = list(repository.list_projects(connection))
+    owners = list(repository.list_owners(connection))
+    project_lookup = {project.id: project.name for project in projects}
+    owner_lookup = {owner.id: owner.name for owner in owners}
+    view_models = _build_asset_view_models(assets, project_lookup, owner_lookup)
+
+    context = {
+        "assets": view_models,
+        "projects": projects,
+        "owners": owners,
+        "types": [asset.value for asset in IPAssetType],
+        "filters": {
+            "q": q or "",
+            "project_id": project_id,
+            "owner_id": owner_id,
+            "type": asset_type.value if asset_type else "",
+            "unassigned_only": unassigned_only,
+        },
+    }
+    return _render_list_page(**context)
+
+
+@app.get("/ui/ip-assets/{ip_address}", response_class=HTMLResponse)
+def ui_ip_asset_detail(
+    request: Request,
+    ip_address: str,
+    connection=Depends(get_connection),
+):
+    asset = repository.get_ip_asset_by_ip(connection, ip_address)
+    if asset is None or asset.archived:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
+    project_lookup = {
+        project.id: project.name for project in repository.list_projects(connection)
+    }
+    owner_lookup = {
+        owner.id: owner.name for owner in repository.list_owners(connection)
+    }
+    view_model = _build_asset_view_models([asset], project_lookup, owner_lookup)[0]
+    return _render_detail_page(view_model)
+
+
+@app.get("/ui/ip-assets/new", response_class=HTMLResponse)
+def ui_add_ip_form(
+    request: Request,
+    connection=Depends(get_connection),
+    _user=Depends(require_editor),
+):
+    projects = list(repository.list_projects(connection))
+    owners = list(repository.list_owners(connection))
+    return _render_form_page(
+        asset={
+            "ip_address": "",
+            "subnet": "",
+            "gateway": "",
+            "type": IPAssetType.VM.value,
+            "project_id": "",
+            "owner_id": "",
+            "notes": "",
+        },
+        projects=projects,
+        owners=owners,
+        types=[asset.value for asset in IPAssetType],
+        errors=[],
+        mode="create",
+    )
+
+
+@app.post("/ui/ip-assets/new", response_class=HTMLResponse)
+async def ui_add_ip_submit(
+    request: Request,
+    connection=Depends(get_connection),
+    _user=Depends(require_editor),
+):
+    form_data = await _parse_form_data(request)
+    ip_address = form_data.get("ip_address")
+    subnet = form_data.get("subnet")
+    gateway = form_data.get("gateway")
+    asset_type = form_data.get("type")
+    project_id = _parse_optional_int(form_data.get("project_id"))
+    owner_id = _parse_optional_int(form_data.get("owner_id"))
+    notes = _parse_optional_str(form_data.get("notes"))
+
+    errors = []
+    if not ip_address:
+        errors.append("IP address is required.")
+    if not subnet:
+        errors.append("Subnet is required.")
+    if not gateway:
+        errors.append("Gateway is required.")
+    if asset_type not in [asset.value for asset in IPAssetType]:
+        errors.append("Asset type is required.")
+
+    if ip_address:
+        try:
+            validate_ip_address(ip_address)
+        except HTTPException as exc:
+            errors.append(exc.detail)
+
+    if errors:
+        projects = list(repository.list_projects(connection))
+        owners = list(repository.list_owners(connection))
+        return _render_form_page(
+            asset={
+                "ip_address": ip_address or "",
+                "subnet": subnet or "",
+                "gateway": gateway or "",
+                "type": asset_type or "",
+                "project_id": project_id or "",
+                "owner_id": owner_id or "",
+                "notes": notes or "",
+            },
+            projects=projects,
+            owners=owners,
+            types=[asset.value for asset in IPAssetType],
+            errors=errors,
+            mode="create",
+            status_code=400,
+        )
+
+    try:
+        repository.create_ip_asset(
+            connection,
+            ip_address=ip_address,
+            subnet=subnet,
+            gateway=gateway,
+            asset_type=IPAssetType(asset_type),
+            project_id=project_id,
+            owner_id=owner_id,
+            notes=notes,
+        )
+    except sqlite3.IntegrityError:
+        errors.append("IP address already exists.")
+        projects = list(repository.list_projects(connection))
+        owners = list(repository.list_owners(connection))
+        return _render_form_page(
+            asset={
+                "ip_address": ip_address or "",
+                "subnet": subnet or "",
+                "gateway": gateway or "",
+                "type": asset_type or "",
+                "project_id": project_id or "",
+                "owner_id": owner_id or "",
+                "notes": notes or "",
+            },
+            projects=projects,
+            owners=owners,
+            types=[asset.value for asset in IPAssetType],
+            errors=errors,
+            mode="create",
+            status_code=409,
+        )
+
+    return RedirectResponse(url=f"/ui/ip-assets/{ip_address}", status_code=303)
+
+
+@app.get("/ui/ip-assets/{ip_address}/edit", response_class=HTMLResponse)
+def ui_edit_ip_form(
+    request: Request,
+    ip_address: str,
+    connection=Depends(get_connection),
+    _user=Depends(require_editor),
+):
+    asset = repository.get_ip_asset_by_ip(connection, ip_address)
+    if asset is None or asset.archived:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
+    projects = list(repository.list_projects(connection))
+    owners = list(repository.list_owners(connection))
+    return _render_form_page(
+        asset={
+            "ip_address": asset.ip_address,
+            "subnet": asset.subnet,
+            "gateway": asset.gateway,
+            "type": asset.asset_type.value,
+            "project_id": asset.project_id or "",
+            "owner_id": asset.owner_id or "",
+            "notes": asset.notes or "",
+        },
+        projects=projects,
+        owners=owners,
+        types=[asset.value for asset in IPAssetType],
+        errors=[],
+        mode="edit",
+    )
+
+
+@app.post("/ui/ip-assets/{ip_address}/edit", response_class=HTMLResponse)
+async def ui_edit_ip_submit(
+    request: Request,
+    ip_address: str,
+    connection=Depends(get_connection),
+    _user=Depends(require_editor),
+):
+    asset = repository.get_ip_asset_by_ip(connection, ip_address)
+    if asset is None or asset.archived:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
+
+    form_data = await _parse_form_data(request)
+    subnet = form_data.get("subnet")
+    gateway = form_data.get("gateway")
+    asset_type = form_data.get("type")
+    project_id = _parse_optional_int(form_data.get("project_id"))
+    owner_id = _parse_optional_int(form_data.get("owner_id"))
+    notes = _parse_optional_str(form_data.get("notes"))
+
+    errors = []
+    if not subnet:
+        errors.append("Subnet is required.")
+    if not gateway:
+        errors.append("Gateway is required.")
+    if asset_type not in [asset.value for asset in IPAssetType]:
+        errors.append("Asset type is required.")
+
+    if errors:
+        projects = list(repository.list_projects(connection))
+        owners = list(repository.list_owners(connection))
+        return _render_form_page(
+            asset={
+                "ip_address": asset.ip_address,
+                "subnet": subnet or "",
+                "gateway": gateway or "",
+                "type": asset_type or "",
+                "project_id": project_id or "",
+                "owner_id": owner_id or "",
+                "notes": notes or "",
+            },
+            projects=projects,
+            owners=owners,
+            types=[asset.value for asset in IPAssetType],
+            errors=errors,
+            mode="edit",
+            status_code=400,
+        )
+
+    repository.update_ip_asset(
+        connection,
+        ip_address=ip_address,
+        subnet=subnet,
+        gateway=gateway,
+        asset_type=IPAssetType(asset_type),
+        project_id=project_id,
+        owner_id=owner_id,
+        notes=notes,
+    )
+    return RedirectResponse(url=f"/ui/ip-assets/{ip_address}", status_code=303)
+
+
+@app.post("/ui/ip-assets/{ip_address}/archive")
+def ui_archive_ip_asset(
+    ip_address: str,
+    connection=Depends(get_connection),
+    _user=Depends(require_editor),
+):
+    asset = repository.get_ip_asset_by_ip(connection, ip_address)
+    if asset is None or asset.archived:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
+    repository.archive_ip_asset(connection, ip_address)
+    return RedirectResponse(url="/ui/ip-assets", status_code=303)
