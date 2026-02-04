@@ -3,12 +3,16 @@
 ## IPAsset
 Required:
 - ip_address (unique)
+- subnet
+- gateway
+- type
 
 Fields:
+- ip_address: unique string
 - subnet: string (CIDR or label)
 - gateway: string
-- project: optional reference to Project
-- owner: optional reference to Owner
+- project_id: optional reference to Project
+- owner_id: optional reference to Owner
 - type: VM | PHYSICAL | IPMI_ILO | VIP | OTHER
 - notes: optional text
 - archived: boolean (soft delete)
@@ -22,10 +26,11 @@ Notes:
 - description (optional)
 
 ## Owner
-- name
+- name (unique)
 - contact (optional)
 
 ## User
-- username
+- username (unique)
+- hashed_password
 - role: Viewer | Editor | Admin
 - is_active
