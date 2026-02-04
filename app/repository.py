@@ -3,7 +3,7 @@ from __future__ import annotations
 import sqlite3
 from typing import Iterable, Optional
 
-from app.models import IPAsset, IPAssetType, Owner, Project
+from app.models import IPAsset, IPAssetType, Owner, Project, User, UserRole
 
 
 def _row_to_project(row: sqlite3.Row) -> Project:
@@ -12,6 +12,16 @@ def _row_to_project(row: sqlite3.Row) -> Project:
 
 def _row_to_owner(row: sqlite3.Row) -> Owner:
     return Owner(id=row["id"], name=row["name"], contact=row["contact"])
+
+
+def _row_to_user(row: sqlite3.Row) -> User:
+    return User(
+        id=row["id"],
+        username=row["username"],
+        hashed_password=row["hashed_password"],
+        role=UserRole(row["role"]),
+        is_active=bool(row["is_active"]),
+    )
 
 
 def _row_to_ip_asset(row: sqlite3.Row) -> IPAsset:
@@ -72,6 +82,102 @@ def get_owner_by_name(connection: sqlite3.Connection, name: str) -> Optional[Own
     return _row_to_owner(row)
 
 
+def update_project(
+    connection: sqlite3.Connection,
+    project_id: int,
+    name: Optional[str] = None,
+    description: Optional[str] = None,
+) -> Optional[Project]:
+    connection.execute(
+        """
+        UPDATE projects
+        SET name = COALESCE(?, name),
+            description = COALESCE(?, description)
+        WHERE id = ?
+        """,
+        (name, description, project_id),
+    )
+    connection.commit()
+    row = connection.execute(
+        "SELECT id, name, description FROM projects WHERE id = ?", (project_id,)
+    ).fetchone()
+    if row is None:
+        return None
+    return _row_to_project(row)
+
+
+def update_owner(
+    connection: sqlite3.Connection,
+    owner_id: int,
+    name: Optional[str] = None,
+    contact: Optional[str] = None,
+) -> Optional[Owner]:
+    connection.execute(
+        """
+        UPDATE owners
+        SET name = COALESCE(?, name),
+            contact = COALESCE(?, contact)
+        WHERE id = ?
+        """,
+        (name, contact, owner_id),
+    )
+    connection.commit()
+    row = connection.execute(
+        "SELECT id, name, contact FROM owners WHERE id = ?", (owner_id,)
+    ).fetchone()
+    if row is None:
+        return None
+    return _row_to_owner(row)
+
+
+def create_user(
+    connection: sqlite3.Connection,
+    username: str,
+    hashed_password: str,
+    role: UserRole,
+    is_active: bool = True,
+) -> User:
+    cursor = connection.execute(
+        """
+        INSERT INTO users (username, hashed_password, role, is_active)
+        VALUES (?, ?, ?, ?)
+        """,
+        (username, hashed_password, role.value, int(is_active)),
+    )
+    connection.commit()
+    row = connection.execute(
+        "SELECT * FROM users WHERE id = ?", (cursor.lastrowid,)
+    ).fetchone()
+    if row is None:
+        raise RuntimeError("Failed to fetch newly created user.")
+    return _row_to_user(row)
+
+
+def count_users(connection: sqlite3.Connection) -> int:
+    row = connection.execute("SELECT COUNT(*) AS total FROM users").fetchone()
+    if row is None:
+        return 0
+    return int(row["total"])
+
+
+def get_user_by_username(
+    connection: sqlite3.Connection, username: str
+) -> Optional[User]:
+    row = connection.execute(
+        "SELECT * FROM users WHERE username = ?", (username,)
+    ).fetchone()
+    if row is None:
+        return None
+    return _row_to_user(row)
+
+
+def get_user_by_id(connection: sqlite3.Connection, user_id: int) -> Optional[User]:
+    row = connection.execute("SELECT * FROM users WHERE id = ?", (user_id,)).fetchone()
+    if row is None:
+        return None
+    return _row_to_user(row)
+
+
 def create_ip_asset(
     connection: sqlite3.Connection,
     ip_address: str,
@@ -127,3 +233,44 @@ def archive_ip_asset(connection: sqlite3.Connection, ip_address: str) -> None:
         (ip_address,),
     )
     connection.commit()
+
+
+def update_ip_asset(
+    connection: sqlite3.Connection,
+    ip_address: str,
+    subnet: Optional[str] = None,
+    gateway: Optional[str] = None,
+    asset_type: Optional[IPAssetType] = None,
+    project_id: Optional[int] = None,
+    owner_id: Optional[int] = None,
+    notes: Optional[str] = None,
+) -> Optional[IPAsset]:
+    connection.execute(
+        """
+        UPDATE ip_assets
+        SET subnet = COALESCE(?, subnet),
+            gateway = COALESCE(?, gateway),
+            type = COALESCE(?, type),
+            project_id = COALESCE(?, project_id),
+            owner_id = COALESCE(?, owner_id),
+            notes = COALESCE(?, notes),
+            updated_at = CURRENT_TIMESTAMP
+        WHERE ip_address = ?
+        """,
+        (
+            subnet,
+            gateway,
+            asset_type.value if asset_type else None,
+            project_id,
+            owner_id,
+            notes,
+            ip_address,
+        ),
+    )
+    connection.commit()
+    row = connection.execute(
+        "SELECT * FROM ip_assets WHERE ip_address = ?", (ip_address,)
+    ).fetchone()
+    if row is None:
+        return None
+    return _row_to_ip_asset(row)
