@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+
+{% block content %}
+<main class="login-page">
+  <div class="login-card">
+    <div class="login-header">
+      <div class="login-icon">ip</div>
+      <h1>ipocket</h1>
+      <p>Internal IP asset management</p>
+    </div>
+    {% if error_message %}
+    <div class="alert alert-error">
+      <p class="alert-title">{{ error_message }}</p>
+    </div>
+    {% endif %}
+    <form method="post" action="/ui/login" class="login-form">
+      <label class="field">
+        <span>Username</span>
+        <input class="input" type="text" name="username" placeholder="Enter your username" required />
+      </label>
+      <label class="field">
+        <span>Password</span>
+        <input class="input" type="password" name="password" placeholder="Enter your password" required />
+      </label>
+      <button class="btn btn-primary btn-block" type="submit">Login</button>
+    </form>
+    <p class="login-footnote">Authorized personnel only</p>
+  </div>
+</main>
+{% endblock %}

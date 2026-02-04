@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="page-header">
+  <div>
+    <p class="eyebrow">Library</p>
+    <h1>Projects</h1>
+    <p class="subtitle">Manage project names used in IP assignments.</p>
+  </div>
+</section>
+
+<section class="card">
+  <div class="card-header">
+    <div>
+      <h2>Create project</h2>
+      <p class="subtitle">Add new project labels for IP assignments.</p>
+    </div>
+  </div>
+  {% if errors %}
+  <div class="alert alert-error">
+    <p class="alert-title">Fix the following:</p>
+    <ul>
+      {% for error in errors %}
+      <li>{{ error }}</li>
+      {% endfor %}
+    </ul>
+  </div>
+  {% endif %}
+  <form method="post" action="/ui/projects" class="form-grid form-grid-two">
+    <label class="field">
+      <span>Name</span>
+      <input class="input" type="text" name="name" value="{{ form_state.name }}" required />
+    </label>
+    <label class="field">
+      <span>Description</span>
+      <input class="input" type="text" name="description" value="{{ form_state.description }}" />
+    </label>
+    <div class="form-actions">
+      <button class="btn btn-primary" type="submit">Create project</button>
+    </div>
+  </form>
+</section>
+
+<section class="card table-card">
+  <div class="card-header">
+    <div>
+      <h2>Existing projects</h2>
+      <p class="subtitle">Keep the catalog of project ownership current.</p>
+    </div>
+  </div>
+  <div class="table-wrapper">
+    <table class="table">
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% if projects %}
+        {% for project in projects %}
+        <tr>
+          <td>{{ project.name }}</td>
+          <td>{{ project.description or '' }}</td>
+        </tr>
+        {% endfor %}
+        {% else %}
+        <tr>
+          <td colspan="2" class="empty-state">No projects yet.</td>
+        </tr>
+        {% endif %}
+      </tbody>
+    </table>
+  </div>
+</section>
+{% endblock %}

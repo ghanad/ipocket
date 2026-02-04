@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="page-header">
+  <div>
+    <p class="eyebrow">Directory</p>
+    <h1>Owners</h1>
+    <p class="subtitle">Track teams or individuals responsible for IPs.</p>
+  </div>
+</section>
+
+<section class="card">
+  <div class="card-header">
+    <div>
+      <h2>Create owner</h2>
+      <p class="subtitle">Add responsible teams or contacts.</p>
+    </div>
+  </div>
+  {% if errors %}
+  <div class="alert alert-error">
+    <p class="alert-title">Fix the following:</p>
+    <ul>
+      {% for error in errors %}
+      <li>{{ error }}</li>
+      {% endfor %}
+    </ul>
+  </div>
+  {% endif %}
+  <form method="post" action="/ui/owners" class="form-grid form-grid-two">
+    <label class="field">
+      <span>Name</span>
+      <input class="input" type="text" name="name" value="{{ form_state.name }}" required />
+    </label>
+    <label class="field">
+      <span>Contact</span>
+      <input class="input" type="text" name="contact" value="{{ form_state.contact }}" />
+    </label>
+    <div class="form-actions">
+      <button class="btn btn-primary" type="submit">Create owner</button>
+    </div>
+  </form>
+</section>
+
+<section class="card table-card">
+  <div class="card-header">
+    <div>
+      <h2>Existing owners</h2>
+      <p class="subtitle">Maintain the owner directory for assignments.</p>
+    </div>
+  </div>
+  <div class="table-wrapper">
+    <table class="table">
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Contact</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% if owners %}
+        {% for owner in owners %}
+        <tr>
+          <td>{{ owner.name }}</td>
+          <td>{{ owner.contact or '' }}</td>
+        </tr>
+        {% endfor %}
+        {% else %}
+        <tr>
+          <td colspan="2" class="empty-state">No owners yet.</td>
+        </tr>
+        {% endif %}
+      </tbody>
+    </table>
+  </div>
+</section>
+{% endblock %}

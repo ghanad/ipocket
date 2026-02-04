@@ -2,6 +2,8 @@
 
 ipocket is a lightweight, modular IP inventory web app with a UI aligned to the design reference in `/ui_template` and Prometheus metrics.
 
+UI templates live in `app/templates`, UI routes live in `app/routes/ui.py`, and static assets are served from `app/static`.
+
 ## MVP Goals
 - Store IP records with metadata (subnet, gateway, type).
 - Track ownership and project assignment.

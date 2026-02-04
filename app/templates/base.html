@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link rel="stylesheet" href="/static/app.css" />
+  <title>{{ title }}</title>
+</head>
+<body>
+{% if show_nav %}
+<div class="app-shell">
+  <aside class="sidebar">
+    <div class="sidebar-brand">
+      <div class="brand-mark">ip</div>
+      <div>
+        <p class="brand-title">ipocket</p>
+        <p class="brand-subtitle">IP inventory</p>
+      </div>
+    </div>
+    <nav class="sidebar-nav">
+      <a class="nav-link{% if active_nav == 'ip-assets' %} nav-link-active{% endif %}" href="/ui/ip-assets">IP Assets</a>
+      <a class="nav-link{% if active_nav == 'needs-assignment' %} nav-link-active{% endif %}" href="/ui/ip-assets/needs-assignment">Needs Assignment</a>
+      <a class="nav-link{% if active_nav == 'projects' %} nav-link-active{% endif %}" href="/ui/projects">Projects</a>
+      <a class="nav-link{% if active_nav == 'owners' %} nav-link-active{% endif %}" href="/ui/owners">Owners</a>
+    </nav>
+    <div class="sidebar-footer">
+      <p class="sidebar-note">Internal use only</p>
+    </div>
+  </aside>
+  <div class="app-main">
+    <header class="topbar">
+      <div class="topbar-title">
+        <span class="brand-pill">ipocket</span>
+        <span class="topbar-subtitle">IP Asset Management</span>
+      </div>
+      <form method="post" action="/ui/logout">
+        <button type="submit" class="btn btn-outline">Logout</button>
+      </form>
+    </header>
+    <main class="content">
+      {% block content %}{% endblock %}
+    </main>
+    <footer class="footer">
+      <span>© 2024 ipocket Network Systems</span>
+    </footer>
+  </div>
+</div>
+{% else %}
+{% block content %}{% endblock %}
+{% endif %}
+</body>
+</html>

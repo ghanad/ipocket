@@ -5,7 +5,8 @@ from fastapi.testclient import TestClient
 from http.cookies import SimpleCookie
 
 from app import auth, db, repository
-from app.main import SESSION_COOKIE, app
+from app.main import app
+from app.routes.ui import SESSION_COOKIE
 from app.models import IPAssetType, UserRole
 
 
@@ -98,6 +99,24 @@ def test_ui_new_route_redirects_when_unauthenticated(client) -> None:
 
     assert response.status_code == 303
     assert response.headers["location"] == "/ui/login"
+
+
+def test_ui_ip_assets_route_available(client) -> None:
+    test_client, _db_path = client
+
+    response = test_client.get("/ui/ip-assets")
+
+    assert response.status_code == 200
+
+
+def test_ui_new_route_renders_for_editor(client) -> None:
+    test_client, db_path = client
+    _create_user(db_path, "editor", "editor-pass", UserRole.EDITOR)
+    _ui_login(test_client, "editor", "editor-pass")
+
+    response = test_client.get("/ui/ip-assets/new")
+
+    assert response.status_code == 200
 
 
 def test_needs_assignment_filters(client) -> None:
