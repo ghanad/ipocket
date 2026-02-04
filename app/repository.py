@@ -216,10 +216,45 @@ def get_ip_asset_by_ip(
     return _row_to_ip_asset(row)
 
 
-def list_active_ip_assets(connection: sqlite3.Connection) -> Iterable[IPAsset]:
+def list_projects(connection: sqlite3.Connection) -> Iterable[Project]:
     rows = connection.execute(
-        "SELECT * FROM ip_assets WHERE archived = 0 ORDER BY ip_address"
+        "SELECT id, name, description FROM projects ORDER BY name"
     ).fetchall()
+    return [_row_to_project(row) for row in rows]
+
+
+def list_owners(connection: sqlite3.Connection) -> Iterable[Owner]:
+    rows = connection.execute(
+        "SELECT id, name, contact FROM owners ORDER BY name"
+    ).fetchall()
+    return [_row_to_owner(row) for row in rows]
+
+
+def list_active_ip_assets(
+    connection: sqlite3.Connection,
+    project_id: Optional[int] = None,
+    owner_id: Optional[int] = None,
+    asset_type: Optional[IPAssetType] = None,
+    unassigned_only: bool = False,
+) -> Iterable[IPAsset]:
+    query = "SELECT * FROM ip_assets WHERE archived = 0"
+    params: list[object] = []
+
+    if project_id is not None:
+        query += " AND project_id = ?"
+        params.append(project_id)
+    if owner_id is not None:
+        query += " AND owner_id = ?"
+        params.append(owner_id)
+    if asset_type is not None:
+        query += " AND type = ?"
+        params.append(asset_type.value)
+    if unassigned_only:
+        query += " AND (project_id IS NULL OR owner_id IS NULL)"
+
+    query += " ORDER BY ip_address"
+
+    rows = connection.execute(query, params).fetchall()
     return [_row_to_ip_asset(row) for row in rows]
 
 

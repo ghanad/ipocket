@@ -1,9 +1,11 @@
 from __future__ import annotations
 
+import ipaddress
 import os
+import sqlite3
 from typing import Optional
 
-from fastapi import Depends, FastAPI, Header, HTTPException, Response, status
+from fastapi import Depends, FastAPI, Header, HTTPException, Query, Response, status
 from pydantic import BaseModel, Field
 
 from app import auth, db, repository
@@ -137,6 +139,16 @@ def require_editor(user=Depends(get_current_user)):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN)
     return user
 
+
+def validate_ip_address(value: str) -> None:
+    try:
+        ipaddress.ip_address(value)
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid IP address."
+        ) from exc
+
+
 def _metrics_payload() -> str:
     return "\n".join(
         [
@@ -151,8 +163,8 @@ def _metrics_payload() -> str:
 
 
 @app.get("/health")
-def health_check() -> str:
-    return "ok"
+def health_check() -> Response:
+    return Response(content="ok", media_type="text/plain")
 
 
 @app.get("/metrics")
@@ -177,16 +189,52 @@ def create_ip_asset(
     connection=Depends(get_connection),
     _user=Depends(require_editor),
 ):
-    asset = repository.create_ip_asset(
+    validate_ip_address(payload.ip_address)
+    try:
+        asset = repository.create_ip_asset(
+            connection,
+            ip_address=payload.ip_address,
+            subnet=payload.subnet,
+            gateway=payload.gateway,
+            asset_type=payload.asset_type,
+            project_id=payload.project_id,
+            owner_id=payload.owner_id,
+            notes=payload.notes,
+        )
+    except sqlite3.IntegrityError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="IP address already exists.",
+        ) from exc
+    return _asset_payload(asset)
+
+
+@app.get("/ip-assets")
+def list_ip_assets(
+    project_id: Optional[int] = None,
+    owner_id: Optional[int] = None,
+    asset_type: Optional[IPAssetType] = Query(default=None, alias="type"),
+    unassigned_only: bool = Query(default=False, alias="unassigned-only"),
+    connection=Depends(get_connection),
+):
+    assets = repository.list_active_ip_assets(
         connection,
-        ip_address=payload.ip_address,
-        subnet=payload.subnet,
-        gateway=payload.gateway,
-        asset_type=payload.asset_type,
-        project_id=payload.project_id,
-        owner_id=payload.owner_id,
-        notes=payload.notes,
+        project_id=project_id,
+        owner_id=owner_id,
+        asset_type=asset_type,
+        unassigned_only=unassigned_only,
     )
+    return [_asset_payload(asset) for asset in assets]
+
+
+@app.get("/ip-assets/{ip_address}")
+def get_ip_asset(
+    ip_address: str,
+    connection=Depends(get_connection),
+):
+    asset = repository.get_ip_asset_by_ip(connection, ip_address)
+    if asset is None or asset.archived:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
     return _asset_payload(asset)
 
 
@@ -237,6 +285,15 @@ def create_project(
     return {"id": project.id, "name": project.name, "description": project.description}
 
 
+@app.get("/projects")
+def list_projects(connection=Depends(get_connection)):
+    projects = repository.list_projects(connection)
+    return [
+        {"id": project.id, "name": project.name, "description": project.description}
+        for project in projects
+    ]
+
+
 @app.patch("/projects/{project_id}")
 def update_project(
     project_id: int,
@@ -265,6 +322,15 @@ def create_owner(
         connection, name=payload.name, contact=payload.contact
     )
     return {"id": owner.id, "name": owner.name, "contact": owner.contact}
+
+
+@app.get("/owners")
+def list_owners(connection=Depends(get_connection)):
+    owners = repository.list_owners(connection)
+    return [
+        {"id": owner.id, "name": owner.name, "contact": owner.contact}
+        for owner in owners
+    ]
 
 
 @app.patch("/owners/{owner_id}")
