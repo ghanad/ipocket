@@ -41,8 +41,8 @@ UI templates live in `app/templates`, UI routes live in `app/routes/ui.py`, and 
 - `GET /ui/ip-assets/{asset_id}`: IP detail page with assignment status.
 - `GET /ui/ip-assets/new`: add IP form (Editor/Admin).
 - `GET /ui/ip-assets/{asset_id}/edit`: edit IP form (Editor/Admin).
-- `GET /ui/projects`: list/create projects (Editor/Admin create). The Existing projects table header has internal padding to keep content off card edges for better readability.
-- `GET /ui/owners`: list/create owners (Editor/Admin create). The Existing owners table header uses the same internal padding treatment for consistent spacing.
+- `GET /ui/projects`: list/create projects and inline-edit existing rows (Editor/Admin write access). The Existing projects table header has internal padding to keep content off card edges for better readability.
+- `GET /ui/owners`: list/create owners and inline-edit existing rows (Editor/Admin write access). The Existing owners table header uses the same internal padding treatment for consistent spacing.
 - `GET /ui/ip-assets/needs-assignment`: matching IPs table header uses the same padded card-header layout for consistent spacing.
 - `POST /ui/ip-assets/{asset_id}/archive`: archive action (Editor/Admin).
 - `POST /ui/logout`: clear the UI session. The sidebar logout action uses the same navigation button styling for consistent visual alignment.
@@ -56,8 +56,8 @@ UI templates live in `app/templates`, UI routes live in `app/routes/ui.py`, and 
 
 ## How to use the UI
 1. Log in at `/ui/login` using an Editor or Admin account.
-2. Visit **Projects** to add project names (e.g., Core, Payments).
-3. Visit **Owners** to add responsible teams or contacts.
+2. Visit **Projects** to add project names (e.g., Core, Payments) or update existing project names/descriptions inline from the table.
+3. Visit **Owners** to add responsible teams or contacts, or update existing owner names/contacts inline from the table.
 4. Go to **IP Assets** and add new IPs, selecting a Project and Owner from the dropdowns (or leave unassigned).
 5. Use **Needs Assignment** to find and fix missing Owner/Project assignments quickly.
 

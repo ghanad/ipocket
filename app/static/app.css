@@ -376,6 +376,10 @@ p {
   grid-column: 1 / -1;
 }
 
+.inline-edit-form {
+  margin: 0;
+}
+
 .btn {
   border: none;
   border-radius: 10px;

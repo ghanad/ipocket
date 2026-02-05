@@ -54,19 +54,29 @@
         <tr>
           <th>Name</th>
           <th>Contact</th>
+          <th>Actions</th>
         </tr>
       </thead>
       <tbody>
         {% if owners %}
         {% for owner in owners %}
         <tr>
-          <td>{{ owner.name }}</td>
-          <td>{{ owner.contact or '' }}</td>
+          <td>
+            <input class="input" type="text" name="name" value="{{ owner.name }}" form="edit-owner-{{ owner.id }}" required />
+          </td>
+          <td>
+            <input class="input" type="text" name="contact" value="{{ owner.contact or '' }}" form="edit-owner-{{ owner.id }}" />
+          </td>
+          <td>
+            <form id="edit-owner-{{ owner.id }}" method="post" action="/ui/owners/{{ owner.id }}/edit" class="inline-edit-form">
+              <button class="btn btn-secondary" type="submit">Save</button>
+            </form>
+          </td>
         </tr>
         {% endfor %}
         {% else %}
         <tr>
-          <td colspan="2" class="empty-state">No owners yet.</td>
+          <td colspan="3" class="empty-state">No owners yet.</td>
         </tr>
         {% endif %}
       </tbody>

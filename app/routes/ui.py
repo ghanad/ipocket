@@ -292,6 +292,64 @@ def ui_list_projects(
     )
 
 
+@router.post("/ui/projects/{project_id}/edit", response_class=HTMLResponse)
+async def ui_update_project(
+    project_id: int,
+    request: Request,
+    connection=Depends(get_connection),
+    _user=Depends(require_ui_editor),
+) -> HTMLResponse:
+    form_data = await _parse_form_data(request)
+    name = (form_data.get("name") or "").strip()
+    description = _parse_optional_str(form_data.get("description"))
+
+    errors = []
+    if not name:
+        errors.append("Project name is required.")
+
+    if errors:
+        projects = list(repository.list_projects(connection))
+        return _render_template(
+            request,
+            "projects.html",
+            {
+                "title": "ipocket - Projects",
+                "projects": projects,
+                "errors": errors,
+                "form_state": {"name": "", "description": ""},
+            },
+            status_code=400,
+            active_nav="projects",
+        )
+
+    try:
+        updated = repository.update_project(
+            connection,
+            project_id=project_id,
+            name=name,
+            description=description,
+        )
+    except sqlite3.IntegrityError:
+        projects = list(repository.list_projects(connection))
+        return _render_template(
+            request,
+            "projects.html",
+            {
+                "title": "ipocket - Projects",
+                "projects": projects,
+                "errors": ["Project name already exists."],
+                "form_state": {"name": "", "description": ""},
+            },
+            status_code=409,
+            active_nav="projects",
+        )
+
+    if updated is None:
+        return Response(status_code=404)
+
+    return RedirectResponse(url="/ui/projects", status_code=303)
+
+
 @router.post("/ui/projects", response_class=HTMLResponse)
 async def ui_create_project(
     request: Request,
@@ -359,6 +417,64 @@ def ui_list_owners(
         },
         active_nav="owners",
     )
+
+
+@router.post("/ui/owners/{owner_id}/edit", response_class=HTMLResponse)
+async def ui_update_owner(
+    owner_id: int,
+    request: Request,
+    connection=Depends(get_connection),
+    _user=Depends(require_ui_editor),
+) -> HTMLResponse:
+    form_data = await _parse_form_data(request)
+    name = (form_data.get("name") or "").strip()
+    contact = _parse_optional_str(form_data.get("contact"))
+
+    errors = []
+    if not name:
+        errors.append("Owner name is required.")
+
+    if errors:
+        owners = list(repository.list_owners(connection))
+        return _render_template(
+            request,
+            "owners.html",
+            {
+                "title": "ipocket - Owners",
+                "owners": owners,
+                "errors": errors,
+                "form_state": {"name": "", "contact": ""},
+            },
+            status_code=400,
+            active_nav="owners",
+        )
+
+    try:
+        updated = repository.update_owner(
+            connection,
+            owner_id=owner_id,
+            name=name,
+            contact=contact,
+        )
+    except sqlite3.IntegrityError:
+        owners = list(repository.list_owners(connection))
+        return _render_template(
+            request,
+            "owners.html",
+            {
+                "title": "ipocket - Owners",
+                "owners": owners,
+                "errors": ["Owner name already exists."],
+                "form_state": {"name": "", "contact": ""},
+            },
+            status_code=409,
+            active_nav="owners",
+        )
+
+    if updated is None:
+        return Response(status_code=404)
+
+    return RedirectResponse(url="/ui/owners", status_code=303)
 
 
 @router.post("/ui/owners", response_class=HTMLResponse)

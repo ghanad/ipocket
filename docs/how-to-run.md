@@ -90,7 +90,8 @@ UI design reference templates live in `/ui_template` for layout and styling guid
 2) Login at `/ui/login`.
 3) Create Projects from the **Projects** page.
 4) Create Owners from the **Owners** page.
-5) Add IPs from the **IP Assets** page.
+5) Edit existing Projects/Owners inline from their tables if labels or contacts change.
+6) Add IPs from the **IP Assets** page.
 
 ## Example API calls
 Login and capture a token:
