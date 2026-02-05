@@ -62,7 +62,6 @@
           <th>Project</th>
           <th>Owner</th>
           <th>Type</th>
-          <th>Subnet</th>
           <th>Status</th>
           <th>Notes</th>
           <th>Actions</th>
@@ -88,7 +87,6 @@
             {% endif %}
           </td>
           <td class="muted">{{ asset.type }}</td>
-          <td class="muted">{{ asset.subnet }}</td>
           <td>
             {% if asset.both_unassigned %}
             <span class="pill pill-danger">Missing owner + project</span>
@@ -106,7 +104,7 @@
         {% endfor %}
         {% else %}
         <tr>
-          <td colspan="8" class="empty-state">No IP assets found.</td>
+          <td colspan="7" class="empty-state">No IP assets found.</td>
         </tr>
         {% endif %}
       </tbody>
