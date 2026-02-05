@@ -129,6 +129,19 @@ p {
   margin-bottom: 14px;
 }
 
+.sidebar-account form {
+  margin: 0;
+}
+
+.sidebar-logout-button {
+  width: 100%;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  font: inherit;
+  text-align: left;
+}
+
 .sidebar-section-title {
   font-size: 11px;
   letter-spacing: 0.08em;

@@ -44,7 +44,7 @@ UI templates live in `app/templates`, UI routes live in `app/routes/ui.py`, and 
 - `GET /ui/projects`: list/create projects (Editor/Admin create).
 - `GET /ui/owners`: list/create owners (Editor/Admin create).
 - `POST /ui/ip-assets/{asset_id}/archive`: archive action (Editor/Admin).
-- `POST /ui/logout`: clear the UI session.
+- `POST /ui/logout`: clear the UI session (triggered from a sidebar action styled consistently with navigation links).
 
 ## Assignment workflow (MVP)
 - Use the **Needs Assignment** page to filter IPs missing Owner and/or Project.
