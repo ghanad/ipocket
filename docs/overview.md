@@ -5,7 +5,7 @@ ipocket is a lightweight, modular IP inventory web app with a UI aligned to the 
 UI templates live in `app/templates`, UI routes live in `app/routes/ui.py`, and static assets are served from `app/static`.
 
 ## MVP Goals
-- Store IP records with metadata (subnet, gateway, type).
+- Store IP records with metadata (type required; subnet/gateway optional).
 - Track ownership and project assignment.
 - Make unassigned records highly visible.
 - Provide Prometheus metrics for monitoring and alerting.
@@ -39,7 +39,7 @@ UI templates live in `app/templates`, UI routes live in `app/routes/ui.py`, and 
 - `GET /ui/ip-assets`: IP list with search and filters (project, owner, type, unassigned-only). Empty filter selections are ignored.
 - `GET /ui/ip-assets/needs-assignment`: dedicated view to focus on IPs missing Owner and/or Project, with tabs for Needs Owner, Needs Project, and Needs Both.
 - `GET /ui/ip-assets/{asset_id}`: IP detail page with assignment status.
-- `GET /ui/ip-assets/new`: add IP form (Editor/Admin).
+- `GET /ui/ip-assets/new`: add IP form (Editor/Admin). Subnet and Gateway are optional when creating an IP.
 - `GET /ui/ip-assets/{asset_id}/edit`: edit IP form (Editor/Admin).
 - `GET /ui/projects`: list/create projects and inline-edit existing rows (Editor/Admin write access). The Existing projects table header has internal padding to keep content off card edges for better readability.
 - `GET /ui/owners`: list/create owners and inline-edit existing rows (Editor/Admin write access). The Existing owners table header uses the same internal padding treatment for consistent spacing.

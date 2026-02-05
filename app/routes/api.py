@@ -28,8 +28,8 @@ class TokenResponse(BaseModel):
 
 class IPAssetCreate(BaseModel):
     ip_address: str
-    subnet: str
-    gateway: str
+    subnet: Optional[str] = None
+    gateway: Optional[str] = None
     asset_type: IPAssetType = Field(alias="type")
     project_id: Optional[int] = None
     owner_id: Optional[int] = None

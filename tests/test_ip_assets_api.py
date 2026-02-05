@@ -179,6 +179,24 @@ def test_invalid_ip_rejected(client) -> None:
     assert response.json()["detail"] == "Invalid IP address."
 
 
+def test_create_ip_without_subnet_and_gateway(client) -> None:
+    test_client, db_path = client
+    _create_user(db_path, "editor", "editor-pass", UserRole.EDITOR)
+    token = _login(test_client, "editor", "editor-pass")
+
+    response = test_client.post(
+        "/ip-assets",
+        headers=_auth_header(token),
+        json={
+            "ip_address": "10.0.0.60",
+            "type": IPAssetType.OTHER.value,
+        },
+    )
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["subnet"] == ""
+    assert payload["gateway"] == ""
+
 def test_unique_ip_constraint_returns_conflict(client) -> None:
     test_client, db_path = client
     _create_user(db_path, "editor", "editor-pass", UserRole.EDITOR)

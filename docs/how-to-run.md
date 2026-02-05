@@ -104,11 +104,13 @@ curl -s -X POST http://127.0.0.1:8000/login \
 
 Create an IP asset (Editor/Admin):
 
+Subnet and Gateway are optional when creating new IP assets via API and UI.
+
 ```bash
 curl -s -X POST http://127.0.0.1:8000/ip-assets \
   -H "Authorization: Bearer <token>" \
   -H "Content-Type: application/json" \
-  -d '{"ip_address":"10.0.0.50","subnet":"10.0.0.0/24","gateway":"10.0.0.1","type":"VM"}'
+  -d '{"ip_address":"10.0.0.50","type":"VM"}'
 ```
 
 List unassigned IPs:

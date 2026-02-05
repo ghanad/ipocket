@@ -181,20 +181,30 @@ def get_user_by_id(connection: sqlite3.Connection, user_id: int) -> Optional[Use
 def create_ip_asset(
     connection: sqlite3.Connection,
     ip_address: str,
-    subnet: str,
-    gateway: str,
     asset_type: IPAssetType,
+    subnet: Optional[str] = None,
+    gateway: Optional[str] = None,
     project_id: Optional[int] = None,
     owner_id: Optional[int] = None,
     notes: Optional[str] = None,
 ) -> IPAsset:
+    normalized_subnet = subnet or ""
+    normalized_gateway = gateway or ""
     cursor = connection.execute(
         """
         INSERT INTO ip_assets (
             ip_address, subnet, gateway, type, project_id, owner_id, notes
         ) VALUES (?, ?, ?, ?, ?, ?, ?)
         """,
-        (ip_address, subnet, gateway, asset_type.value, project_id, owner_id, notes),
+        (
+            ip_address,
+            normalized_subnet,
+            normalized_gateway,
+            asset_type.value,
+            project_id,
+            owner_id,
+            notes,
+        ),
     )
     connection.commit()
     row = connection.execute(
