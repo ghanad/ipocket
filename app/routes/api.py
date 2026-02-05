@@ -6,7 +6,7 @@ from typing import Literal, Optional
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Query, status
 from fastapi.responses import JSONResponse, Response
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 from app import auth, build_info, repository
 from app.dependencies import get_connection
@@ -35,6 +35,11 @@ class IPAssetCreate(BaseModel):
     owner_id: Optional[int] = None
     notes: Optional[str] = None
 
+    @field_validator("asset_type", mode="before")
+    @classmethod
+    def normalize_asset_type(cls, value):
+        return IPAssetType.normalize(value)
+
 
 class IPAssetUpdate(BaseModel):
     subnet: Optional[str] = None
@@ -43,6 +48,13 @@ class IPAssetUpdate(BaseModel):
     project_id: Optional[int] = None
     owner_id: Optional[int] = None
     notes: Optional[str] = None
+
+    @field_validator("asset_type", mode="before")
+    @classmethod
+    def normalize_asset_type(cls, value):
+        if value is None:
+            return None
+        return IPAssetType.normalize(value)
 
 
 class ProjectCreate(BaseModel):
@@ -94,6 +106,15 @@ def _metrics_payload(metrics: dict[str, int]) -> str:
     )
 
 
+
+def _normalize_asset_type_value(value: str) -> IPAssetType:
+    try:
+        return IPAssetType.normalize(value)
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Invalid asset type. Use VM, PHYSICAL, BMC (formerly IPMI/iLO), VIP, OTHER.",
+        ) from exc
 
 
 def _expand_csv_query_values(values: Optional[list[str]]) -> list[str]:
@@ -155,19 +176,23 @@ def service_discovery_targets(
     only_assigned: bool = Query(default=False),
     project: Optional[list[str]] = Query(default=None),
     owner: Optional[list[str]] = Query(default=None),
-    asset_type: Optional[list[IPAssetType]] = Query(default=None, alias="type"),
+    asset_type: Optional[list[str]] = Query(default=None, alias="type"),
     group_by: Literal["none", "project", "owner", "project_owner"] = Query(default="none"),
     sd_token: Optional[str] = Header(default=None, alias="X-SD-Token"),
     connection=Depends(get_connection),
 ):
     _require_sd_token_if_configured(sd_token, os.getenv("IPOCKET_SD_TOKEN"))
+    normalized_types = [
+        _normalize_asset_type_value(value)
+        for value in _expand_csv_query_values(asset_type)
+    ]
     return repository.list_sd_targets(
         connection,
         port=port,
         only_assigned=only_assigned,
         project_names=_expand_csv_query_values(project),
         owner_names=_expand_csv_query_values(owner),
-        asset_types=asset_type or [],
+        asset_types=normalized_types,
         group_by=group_by,
     )
 
@@ -213,15 +238,18 @@ def create_ip_asset(
 def list_ip_assets(
     project_id: Optional[int] = None,
     owner_id: Optional[int] = None,
-    asset_type: Optional[IPAssetType] = Query(default=None, alias="type"),
+    asset_type: Optional[str] = Query(default=None, alias="type"),
     unassigned_only: bool = Query(default=False, alias="unassigned-only"),
     connection=Depends(get_connection),
 ):
+    normalized_asset_type = (
+        _normalize_asset_type_value(asset_type) if asset_type is not None else None
+    )
     assets = repository.list_active_ip_assets(
         connection,
         project_id=project_id,
         owner_id=owner_id,
-        asset_type=asset_type,
+        asset_type=normalized_asset_type,
         unassigned_only=unassigned_only,
     )
     return [_asset_payload(asset) for asset in assets]

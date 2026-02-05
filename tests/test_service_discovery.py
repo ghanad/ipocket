@@ -60,7 +60,7 @@ def _seed_assets(db_path) -> None:
             ip_address="10.20.0.4",
             subnet="10.20.0.0/24",
             gateway="10.20.0.254",
-            asset_type=IPAssetType.IPMI_ILO,
+            asset_type=IPAssetType.BMC,
             project_id=project_shared.id,
             owner_id=None,
         )
@@ -147,6 +147,10 @@ def test_sd_node_supports_filters(client) -> None:
     type_filtered = test_client.get("/sd/node?type=VIP")
     assert type_filtered.status_code == 200
     assert _targets(type_filtered.json()) == {"10.20.0.3:9100"}
+
+    legacy_type_filtered = test_client.get("/sd/node?type=IPMI_ILO")
+    assert legacy_type_filtered.status_code == 200
+    assert _targets(legacy_type_filtered.json()) == {"10.20.0.4:9100"}
 
 
 def test_sd_node_group_by_modes(client) -> None:

@@ -6,6 +6,7 @@ UI templates live in `app/templates`, UI routes live in `app/routes/ui.py`, and 
 
 ## MVP Goals
 - Store IP records with metadata (type required; subnet/gateway optional).
+- Use `BMC` as the vendor-neutral management interface type (covers iLO/iDRAC/IPMI).
 - Track ownership and project assignment.
 - Make unassigned records highly visible.
 - Provide Prometheus metrics for monitoring and alerting.

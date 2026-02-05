@@ -11,6 +11,7 @@ def connect(db_path: str) -> sqlite3.Connection:
     return connection
 
 
+
 def init_db(connection: sqlite3.Connection) -> None:
     schema_statements: Iterable[str] = (
         """
@@ -42,7 +43,7 @@ def init_db(connection: sqlite3.Connection) -> None:
             ip_address TEXT NOT NULL UNIQUE,
             subnet TEXT NOT NULL,
             gateway TEXT NOT NULL,
-            type TEXT NOT NULL CHECK (type IN ('VM', 'PHYSICAL', 'IPMI_ILO', 'VIP', 'OTHER')),
+            type TEXT NOT NULL CHECK (type IN ('VM', 'PHYSICAL', 'BMC', 'VIP', 'OTHER')),
             project_id INTEGER,
             owner_id INTEGER,
             notes TEXT,

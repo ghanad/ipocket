@@ -15,13 +15,14 @@ Fields:
 - gateway: optional string
 - project_id: optional reference to Project
 - owner_id: optional reference to Owner
-- type: VM | PHYSICAL | IPMI_ILO | VIP | OTHER
+- type: VM | PHYSICAL | BMC | VIP | OTHER
 - notes: optional text
 - archived: boolean (soft delete)
 - created_at, updated_at timestamps
 
 Notes:
 - We use **soft delete** (archived) instead of hard delete.
+- Legacy input aliases `IPMI_ILO` and `IPMI_iLO` are accepted and normalized to `BMC`.
 
 ## Project
 - name (unique)

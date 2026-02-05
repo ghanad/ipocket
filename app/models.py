@@ -8,9 +8,17 @@ from typing import Optional
 class IPAssetType(str, Enum):
     VM = "VM"
     PHYSICAL = "PHYSICAL"
-    IPMI_ILO = "IPMI_ILO"
+    BMC = "BMC"
     VIP = "VIP"
     OTHER = "OTHER"
+
+    @classmethod
+    def normalize(cls, value: "IPAssetType | str") -> "IPAssetType":
+        if isinstance(value, cls):
+            return value
+        if value in {"IPMI_ILO", "IPMI_iLO"}:
+            return cls.BMC
+        return cls(value)
 
 
 class UserRole(str, Enum):
