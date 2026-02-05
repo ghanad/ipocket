@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="page-header">
+  <div>
+    <p class="eyebrow">Library</p>
+    <h1>Vendors</h1>
+    <p class="subtitle">Manage host vendor choices.</p>
+  </div>
+</section>
+
+<section class="card">
+  <div class="card-header">
+    <div>
+      <h2>Create vendor</h2>
+      <p class="subtitle">Add a vendor for host selection.</p>
+    </div>
+  </div>
+  {% if errors %}
+  <div class="alert alert-error">
+    <ul>{% for error in errors %}<li>{{ error }}</li>{% endfor %}</ul>
+  </div>
+  {% endif %}
+  <form method="post" action="/ui/vendors" class="form-grid form-grid-two">
+    <label class="field">
+      <span>Name</span>
+      <input class="input" type="text" name="name" value="{{ form_state.name }}" required />
+    </label>
+    <div class="form-actions">
+      <button class="btn btn-primary" type="submit">Create vendor</button>
+    </div>
+  </form>
+</section>
+
+<section class="card table-card">
+  <div class="table-wrapper">
+    <table class="table">
+      <thead><tr><th>Name</th><th>Actions</th></tr></thead>
+      <tbody>
+        {% if vendors %}
+        {% for vendor in vendors %}
+        <tr>
+          <td><input class="input" type="text" name="name" value="{{ vendor.name }}" form="edit-vendor-{{ vendor.id }}" required /></td>
+          <td>
+            <form id="edit-vendor-{{ vendor.id }}" method="post" action="/ui/vendors/{{ vendor.id }}/edit">
+              <button class="btn btn-secondary" type="submit">Save</button>
+            </form>
+          </td>
+        </tr>
+        {% endfor %}
+        {% else %}<tr><td colspan="2" class="empty-state">No vendors yet.</td></tr>{% endif %}
+      </tbody>
+    </table>
+  </div>
+</section>
+{% endblock %}

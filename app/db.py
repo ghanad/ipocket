@@ -11,7 +11,6 @@ def connect(db_path: str) -> sqlite3.Connection:
     return connection
 
 
-
 def init_db(connection: sqlite3.Connection) -> None:
     schema_statements: Iterable[str] = (
         """
@@ -31,13 +30,22 @@ def init_db(connection: sqlite3.Connection) -> None:
         )
         """,
         """
+        CREATE TABLE IF NOT EXISTS vendors (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT NOT NULL UNIQUE,
+            created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+        )
+        """,
+        """
         CREATE TABLE IF NOT EXISTS hosts (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             name TEXT NOT NULL UNIQUE,
             notes TEXT,
-            vendor TEXT,
+            vendor_id INTEGER,
             created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
-            updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+            updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (vendor_id) REFERENCES vendors(id)
         )
         """,
         """
@@ -66,14 +74,26 @@ def init_db(connection: sqlite3.Connection) -> None:
         row["name"] for row in connection.execute("PRAGMA table_info(ip_assets)").fetchall()
     }
     if "host_id" not in ip_asset_columns:
-        connection.execute(
-            "ALTER TABLE ip_assets ADD COLUMN host_id INTEGER REFERENCES hosts(id)"
-        )
+        connection.execute("ALTER TABLE ip_assets ADD COLUMN host_id INTEGER REFERENCES hosts(id)")
 
     host_columns = {
         row["name"] for row in connection.execute("PRAGMA table_info(hosts)").fetchall()
     }
-    if "vendor" not in host_columns:
-        connection.execute("ALTER TABLE hosts ADD COLUMN vendor TEXT")
+    if "vendor_id" not in host_columns:
+        connection.execute("ALTER TABLE hosts ADD COLUMN vendor_id INTEGER REFERENCES vendors(id)")
+
+    if "vendor" in host_columns:
+        rows = connection.execute(
+            "SELECT id, vendor FROM hosts WHERE vendor IS NOT NULL AND TRIM(vendor) <> ''"
+        ).fetchall()
+        for row in rows:
+            vendor_name = row["vendor"].strip()
+            existing = connection.execute("SELECT id FROM vendors WHERE name = ?", (vendor_name,)).fetchone()
+            if existing is None:
+                cursor = connection.execute("INSERT INTO vendors (name) VALUES (?)", (vendor_name,))
+                vendor_id = cursor.lastrowid
+            else:
+                vendor_id = existing["id"]
+            connection.execute("UPDATE hosts SET vendor_id = ? WHERE id = ?", (vendor_id, row["id"]))
 
     connection.commit()

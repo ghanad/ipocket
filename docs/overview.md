@@ -15,4 +15,8 @@ Owner support has been removed in development phase, so assignment is now projec
 
 ## Hosts
 
-Hosts can optionally store a free-text `vendor` value (for example: HPE, Dell, Lenovo, Supermicro, Cisco).
+Hosts can be linked to a vendor from the shared **Vendors** catalog.
+
+## Vendors
+
+Vendors are managed as a dedicated list (create/edit) and are selectable when creating or editing Hosts (API and UI).

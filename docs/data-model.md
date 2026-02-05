@@ -25,4 +25,8 @@
 ## Host
 - `name` (TEXT, unique)
 - `notes` (TEXT, nullable)
-- `vendor` (TEXT, nullable; free-text server vendor like HPE/Dell/Lenovo)
+- `vendor_id` (INTEGER, nullable; FK to `vendors.id`)
+
+
+## Vendor
+- `name` (TEXT, unique)

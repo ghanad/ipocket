@@ -51,7 +51,12 @@
     </label>
     <label class="field">
       <span>Vendor</span>
-      <input class="input" type="text" name="vendor" value="{{ form_state.vendor }}" />
+      <select class="select" name="vendor_id">
+        <option value="">UNASSIGNED</option>
+        {% for vendor in vendors %}
+        <option value="{{ vendor.id }}"{% if form_state.vendor_id == (vendor.id|string) %} selected{% endif %}>{{ vendor.name }}</option>
+        {% endfor %}
+      </select>
     </label>
     <label class="field">
       <span>Notes</span>
