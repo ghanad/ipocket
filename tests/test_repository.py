@@ -57,7 +57,7 @@ def test_ip_address_unique_constraint(tmp_path) -> None:
         ip_address="10.0.0.11",
         subnet="10.0.0.0/24",
         gateway="10.0.0.1",
-        asset_type=IPAssetType.PHYSICAL,
+        asset_type=IPAssetType.OS,
     )
 
     with pytest.raises(sqlite3.IntegrityError):
@@ -66,7 +66,7 @@ def test_ip_address_unique_constraint(tmp_path) -> None:
             ip_address="10.0.0.11",
             subnet="10.0.0.0/24",
             gateway="10.0.0.1",
-            asset_type=IPAssetType.PHYSICAL,
+            asset_type=IPAssetType.OS,
         )
 
 
@@ -107,7 +107,7 @@ def test_get_ip_asset_metrics_counts(tmp_path) -> None:
         ip_address="10.0.1.2",
         subnet="10.0.1.0/24",
         gateway="10.0.1.1",
-        asset_type=IPAssetType.PHYSICAL,
+        asset_type=IPAssetType.OS,
         project_id=project.id,
         owner_id=None,
     )

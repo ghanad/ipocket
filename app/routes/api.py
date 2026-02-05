@@ -113,7 +113,7 @@ def _normalize_asset_type_value(value: str) -> IPAssetType:
     except ValueError as exc:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail="Invalid asset type. Use VM, PHYSICAL, BMC (formerly IPMI/iLO), VIP, OTHER.",
+            detail="Invalid asset type. Use VM, OS, BMC (formerly IPMI/iLO), VIP, OTHER.",
         ) from exc
 
 

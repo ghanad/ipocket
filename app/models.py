@@ -6,9 +6,9 @@ from typing import Optional
 
 
 class IPAssetType(str, Enum):
-    VM = "VM"
-    PHYSICAL = "PHYSICAL"
+    OS = "OS"
     BMC = "BMC"
+    VM = "VM"
     VIP = "VIP"
     OTHER = "OTHER"
 

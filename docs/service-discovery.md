@@ -14,7 +14,7 @@ The response is a JSON array of target groups (`targets` + `labels`) and is comp
   - Multi-value is supported by comma-separated values (`?project=omid,payments`) or repeated params (`?project=omid&project=payments`).
 - `owner` (optional, multi-value): include only IPs with matching owner names.
   - Multi-value is supported by comma-separated values (`?owner=ali,reza`) or repeated params (`?owner=ali&owner=reza`).
-- `type` (optional, multi-value): include only matching asset types (`VM`, `PHYSICAL`, `BMC`, `VIP`, `OTHER`).
+- `type` (optional, multi-value): include only matching asset types (`VM`, `OS`, `BMC`, `VIP`, `OTHER`).
   - Legacy aliases `IPMI_ILO` and `IPMI_iLO` are accepted and normalized to `BMC`.
   - Use repeated params (`?type=VM&type=VIP`).
 - `group_by` (optional, default `none`): controls how targets are split into target groups.
@@ -99,7 +99,7 @@ The response is a JSON array of target groups (`targets` + `labels`) and is comp
     "labels": {
       "project": "omid",
       "owner": "reza",
-      "type": "PHYSICAL"
+      "type": "OS"
     }
   }
 ]
