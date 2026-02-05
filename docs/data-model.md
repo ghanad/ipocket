@@ -37,5 +37,5 @@ Notes:
 
 
 ## Service discovery labels
-- `/sd/node` exposes `project`, `owner`, and `type` labels for each non-archived IPAsset target.
+- `/sd/node` exposes `project`, `owner`, and `type` labels for each non-archived IPAsset target and can group targets with `group_by`.
 - Missing `project` or `owner` values are emitted as `unassigned`.
