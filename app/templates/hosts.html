@@ -15,6 +15,7 @@
       <thead>
         <tr>
           <th>Host name</th>
+          <th>Vendor</th>
           <th>Linked IPs</th>
         </tr>
       </thead>
@@ -23,11 +24,12 @@
         {% for host in hosts %}
         <tr>
           <td><a href="/ui/hosts/{{ host.id }}">{{ host.name }}</a></td>
+          <td>{{ host.vendor or "" }}</td>
           <td>{{ host.ip_count }}</td>
         </tr>
         {% endfor %}
         {% else %}
-        <tr><td colspan="2" class="empty-state">No hosts found.</td></tr>
+        <tr><td colspan="3" class="empty-state">No hosts found.</td></tr>
         {% endif %}
       </tbody>
     </table>
@@ -46,6 +48,10 @@
     <label class="field">
       <span>Name</span>
       <input class="input" type="text" name="name" value="{{ form_state.name }}" />
+    </label>
+    <label class="field">
+      <span>Vendor</span>
+      <input class="input" type="text" name="vendor" value="{{ form_state.vendor }}" />
     </label>
     <label class="field">
       <span>Notes</span>

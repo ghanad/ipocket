@@ -35,6 +35,7 @@ def init_db(connection: sqlite3.Connection) -> None:
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             name TEXT NOT NULL UNIQUE,
             notes TEXT,
+            vendor TEXT,
             created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
             updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
         )
@@ -68,5 +69,11 @@ def init_db(connection: sqlite3.Connection) -> None:
         connection.execute(
             "ALTER TABLE ip_assets ADD COLUMN host_id INTEGER REFERENCES hosts(id)"
         )
+
+    host_columns = {
+        row["name"] for row in connection.execute("PRAGMA table_info(hosts)").fetchall()
+    }
+    if "vendor" not in host_columns:
+        connection.execute("ALTER TABLE hosts ADD COLUMN vendor TEXT")
 
     connection.commit()
