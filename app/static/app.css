@@ -264,7 +264,9 @@ p {
   padding: 0;
 }
 
-.projects-existing-card .card-header {
+.projects-existing-card .card-header,
+.owners-existing-card .card-header,
+.needs-assignment-matching-card .card-header {
   padding: 24px 24px 0;
   margin-bottom: 12px;
 }

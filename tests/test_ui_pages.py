@@ -420,6 +420,45 @@ def test_projects_page_existing_projects_card_has_header_padding_class(client) -
     assert '<section class="card table-card projects-existing-card">' in response.text
 
 
+
+
+def test_owners_page_existing_owners_card_has_header_padding_class(client) -> None:
+    test_client, db_path = client
+    _create_user(db_path, "editor", "editor-pass", UserRole.EDITOR)
+    _ui_login(test_client, "editor", "editor-pass")
+
+    response = test_client.get("/ui/owners")
+
+    assert response.status_code == 200
+    assert '<section class="card table-card owners-existing-card">' in response.text
+
+
+def test_needs_assignment_matching_ips_card_has_header_padding_class(client) -> None:
+    test_client, db_path = client
+    _create_user(db_path, "editor", "editor-pass", UserRole.EDITOR)
+    _ui_login(test_client, "editor", "editor-pass")
+
+    connection = db.connect(str(db_path))
+    try:
+        db.init_db(connection)
+        repository.create_ip_asset(
+            connection,
+            ip_address="10.40.0.10",
+            subnet="10.40.0.0/24",
+            gateway="10.40.0.1",
+            asset_type=IPAssetType.VM,
+            project_id=None,
+            owner_id=None,
+            notes="",
+        )
+    finally:
+        connection.close()
+
+    response = test_client.get("/ui/ip-assets/needs-assignment?filter=both")
+
+    assert response.status_code == 200
+    assert '<section class="card table-card needs-assignment-matching-card">' in response.text
+
 def test_editor_can_create_owner_via_ui(client) -> None:
     test_client, db_path = client
     _create_user(db_path, "editor", "editor-pass", UserRole.EDITOR)
