@@ -264,6 +264,11 @@ p {
   padding: 0;
 }
 
+.projects-existing-card .card-header {
+  padding: 24px 24px 0;
+  margin-bottom: 12px;
+}
+
 .table-wrapper {
   overflow-x: auto;
 }

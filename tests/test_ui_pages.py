@@ -409,6 +409,17 @@ def test_editor_can_create_project_via_ui(client) -> None:
     assert project is not None
 
 
+def test_projects_page_existing_projects_card_has_header_padding_class(client) -> None:
+    test_client, db_path = client
+    _create_user(db_path, "editor", "editor-pass", UserRole.EDITOR)
+    _ui_login(test_client, "editor", "editor-pass")
+
+    response = test_client.get("/ui/projects")
+
+    assert response.status_code == 200
+    assert '<section class="card table-card projects-existing-card">' in response.text
+
+
 def test_editor_can_create_owner_via_ui(client) -> None:
     test_client, db_path = client
     _create_user(db_path, "editor", "editor-pass", UserRole.EDITOR)
