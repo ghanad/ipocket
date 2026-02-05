@@ -34,3 +34,8 @@ Notes:
 - hashed_password
 - role: Viewer | Editor | Admin
 - is_active
+
+
+## Service discovery labels
+- `/sd/node` exposes `project`, `owner`, and `type` labels for each non-archived IPAsset target.
+- Missing `project` or `owner` values are emitted as `unassigned`.
