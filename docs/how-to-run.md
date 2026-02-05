@@ -91,8 +91,8 @@ UI design reference templates live in `/ui_template` for layout and styling guid
 1) Bootstrap an admin user (env vars above).
 2) Login at `/ui/login`.
 3) Create Projects from the **Projects** page.
-4) Create Owners from the **Owners** page.
-5) Edit existing Projects/Owners inline from their tables if labels or contacts change.
+4) Create Vendors from the **Vendors** page.
+5) Create Hosts from the **Hosts** page and pick a Vendor when needed.
 6) Add IPs from the **IP Assets** page.
 
 ## Example API calls

@@ -74,13 +74,21 @@ class ProjectUpdate(BaseModel):
 class HostCreate(BaseModel):
     name: str
     notes: Optional[str] = None
-    vendor: Optional[str] = None
+    vendor_id: Optional[int] = None
 
 
 class HostUpdate(BaseModel):
     name: Optional[str] = None
     notes: Optional[str] = None
-    vendor: Optional[str] = None
+    vendor_id: Optional[int] = None
+
+
+class VendorCreate(BaseModel):
+    name: str
+
+
+class VendorUpdate(BaseModel):
+    name: str
 
 
 def _host_payload(host: Host) -> dict:
@@ -349,6 +357,26 @@ def update_project(
     return {"id": project.id, "name": project.name, "description": project.description}
 
 
+@router.get("/vendors")
+def list_vendors(connection=Depends(get_connection)):
+    vendors = repository.list_vendors(connection)
+    return [{"id": vendor.id, "name": vendor.name} for vendor in vendors]
+
+
+@router.post("/vendors")
+def create_vendor(payload: VendorCreate, connection=Depends(get_connection), _user=Depends(require_editor)):
+    vendor = repository.create_vendor(connection, payload.name.strip())
+    return {"id": vendor.id, "name": vendor.name}
+
+
+@router.patch("/vendors/{vendor_id}")
+def update_vendor(vendor_id: int, payload: VendorUpdate, connection=Depends(get_connection), _user=Depends(require_editor)):
+    vendor = repository.update_vendor(connection, vendor_id, payload.name.strip())
+    if vendor is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
+    return {"id": vendor.id, "name": vendor.name}
+
+
 @router.get("/hosts")
 def list_hosts(connection=Depends(get_connection)):
     hosts = repository.list_hosts(connection)
@@ -361,7 +389,10 @@ def create_host(
     connection=Depends(get_connection),
     _user=Depends(require_editor),
 ):
-    host = repository.create_host(connection, name=payload.name, notes=payload.notes, vendor=payload.vendor)
+    vendor = repository.get_vendor_by_id(connection, payload.vendor_id) if payload.vendor_id is not None else None
+    if payload.vendor_id is not None and vendor is None:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Selected vendor does not exist.")
+    host = repository.create_host(connection, name=payload.name, notes=payload.notes, vendor=vendor.name if vendor else None)
     return _host_payload(host)
 
 
@@ -388,7 +419,10 @@ def update_host(
     connection=Depends(get_connection),
     _user=Depends(require_editor),
 ):
-    host = repository.update_host(connection, host_id=host_id, name=payload.name, notes=payload.notes, vendor=payload.vendor)
+    vendor = repository.get_vendor_by_id(connection, payload.vendor_id) if payload.vendor_id is not None else None
+    if payload.vendor_id is not None and vendor is None:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Selected vendor does not exist.")
+    host = repository.update_host(connection, host_id=host_id, name=payload.name, notes=payload.notes, vendor=vendor.name if vendor else None)
     if host is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
     return _host_payload(host)

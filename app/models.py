@@ -43,6 +43,12 @@ class Host:
 
 
 @dataclass
+class Vendor:
+    id: int
+    name: str
+
+
+@dataclass
 class User:
     id: int
     username: str

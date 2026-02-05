@@ -73,6 +73,10 @@ def _render_fallback_template(
         name = getattr(host, "name", None) if not isinstance(host, dict) else host.get("name")
         if name:
             lines.append(str(name))
+    for vendor in payload.get("vendors") or []:
+        name = getattr(vendor, "name", None) if not isinstance(vendor, dict) else vendor.get("name")
+        if name:
+            lines.append(str(name))
     for error in payload.get("errors") or []:
         lines.append(str(error))
     if template_name == "login.html":
@@ -408,6 +412,96 @@ async def ui_create_project(
     return RedirectResponse(url="/ui/projects", status_code=303)
 
 
+@router.get("/ui/vendors", response_class=HTMLResponse)
+def ui_list_vendors(request: Request, connection=Depends(get_connection)) -> HTMLResponse:
+    vendors = list(repository.list_vendors(connection))
+    return _render_template(
+        request,
+        "vendors.html",
+        {
+            "title": "ipocket - Vendors",
+            "vendors": vendors,
+            "errors": [],
+            "form_state": {"name": ""},
+        },
+        active_nav="vendors",
+    )
+
+
+@router.post("/ui/vendors", response_class=HTMLResponse)
+async def ui_create_vendor(request: Request, connection=Depends(get_connection), _user=Depends(require_ui_editor)) -> HTMLResponse:
+    form_data = await _parse_form_data(request)
+    name = (form_data.get("name") or "").strip()
+    if not name:
+        return _render_template(
+            request,
+            "vendors.html",
+            {
+                "title": "ipocket - Vendors",
+                "vendors": list(repository.list_vendors(connection)),
+                "errors": ["Vendor name is required."],
+                "form_state": {"name": name},
+            },
+            status_code=400,
+            active_nav="vendors",
+        )
+    try:
+        repository.create_vendor(connection, name=name)
+    except sqlite3.IntegrityError:
+        return _render_template(
+            request,
+            "vendors.html",
+            {
+                "title": "ipocket - Vendors",
+                "vendors": list(repository.list_vendors(connection)),
+                "errors": ["Vendor name already exists."],
+                "form_state": {"name": name},
+            },
+            status_code=409,
+            active_nav="vendors",
+        )
+    return RedirectResponse(url="/ui/vendors", status_code=303)
+
+
+@router.post("/ui/vendors/{vendor_id}/edit", response_class=HTMLResponse)
+async def ui_edit_vendor(vendor_id: int, request: Request, connection=Depends(get_connection), _user=Depends(require_ui_editor)) -> HTMLResponse:
+    form_data = await _parse_form_data(request)
+    name = (form_data.get("name") or "").strip()
+    if not name:
+        return _render_template(
+            request,
+            "vendors.html",
+            {
+                "title": "ipocket - Vendors",
+                "vendors": list(repository.list_vendors(connection)),
+                "errors": ["Vendor name is required."],
+                "form_state": {"name": ""},
+            },
+            status_code=400,
+            active_nav="vendors",
+        )
+    try:
+        updated = repository.update_vendor(connection, vendor_id, name)
+    except sqlite3.IntegrityError:
+        return _render_template(
+            request,
+            "vendors.html",
+            {
+                "title": "ipocket - Vendors",
+                "vendors": list(repository.list_vendors(connection)),
+                "errors": ["Vendor name already exists."],
+                "form_state": {"name": ""},
+            },
+            status_code=409,
+            active_nav="vendors",
+        )
+    if updated is None:
+        return Response(status_code=404)
+    return RedirectResponse(url="/ui/vendors", status_code=303)
+
+
+
+
 
 
 
@@ -424,7 +518,8 @@ def ui_list_hosts(
             "title": "ipocket - Hosts",
             "hosts": hosts,
             "errors": [],
-            "form_state": {"name": "", "notes": "", "vendor": ""},
+            "vendors": list(repository.list_vendors(connection)),
+            "form_state": {"name": "", "notes": "", "vendor_id": ""},
         },
         active_nav="hosts",
     )
@@ -439,7 +534,7 @@ async def ui_create_host(
     form_data = await _parse_form_data(request)
     name = (form_data.get("name") or "").strip()
     notes = _parse_optional_str(form_data.get("notes"))
-    vendor = _parse_optional_str(form_data.get("vendor"))
+    vendor_id = _parse_optional_int(form_data.get("vendor_id"))
 
     errors = []
     if not name:
@@ -454,14 +549,18 @@ async def ui_create_host(
                 "title": "ipocket - Hosts",
                     "errors": errors,
                 "hosts": hosts,
-                "form_state": {"name": name, "notes": notes or "", "vendor": vendor or ""},
+                "vendors": list(repository.list_vendors(connection)),
+                "form_state": {"name": name, "notes": notes or "", "vendor_id": str(vendor_id or "")},
             },
             status_code=400,
             active_nav="hosts",
         )
 
     try:
-        repository.create_host(connection, name=name, notes=notes, vendor=vendor)
+        vendor = repository.get_vendor_by_id(connection, vendor_id) if vendor_id is not None else None
+        if vendor_id is not None and vendor is None:
+            raise sqlite3.IntegrityError("Selected vendor does not exist.")
+        repository.create_host(connection, name=name, notes=notes, vendor=vendor.name if vendor else None)
     except sqlite3.IntegrityError:
         hosts = repository.list_hosts_with_ip_counts(connection)
         return _render_template(
@@ -471,7 +570,8 @@ async def ui_create_host(
                 "title": "ipocket - Hosts",
                     "errors": ["Host name already exists."],
                 "hosts": hosts,
-                "form_state": {"name": name, "notes": notes or "", "vendor": vendor or ""},
+                "vendors": list(repository.list_vendors(connection)),
+                "form_state": {"name": name, "notes": notes or "", "vendor_id": str(vendor_id or "")},
             },
             status_code=409,
             active_nav="hosts",
@@ -703,7 +803,6 @@ async def ui_add_ip_submit(
     project_id = _parse_optional_int(form_data.get("project_id"))
     host_id = _parse_optional_int(form_data.get("host_id"))
     notes = _parse_optional_str(form_data.get("notes"))
-    vendor = _parse_optional_str(form_data.get("vendor"))
 
     errors = []
     if not ip_address:
@@ -879,7 +978,6 @@ async def ui_edit_ip_submit(
     project_id = _parse_optional_int(form_data.get("project_id"))
     host_id = _parse_optional_int(form_data.get("host_id"))
     notes = _parse_optional_str(form_data.get("notes"))
-    vendor = _parse_optional_str(form_data.get("vendor"))
 
     errors = []
     normalized_asset_type = None
