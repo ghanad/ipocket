@@ -96,3 +96,65 @@ def test_ui_create_bmc_passes_auto_host_flag_disabled(client, monkeypatch) -> No
     assert response.status_code == 303
     assert captured["asset_type"] == IPAssetType.BMC
     assert captured["auto_host_for_bmc"] is False
+
+
+
+def test_ui_edit_host_updates_name_vendor_and_notes(client) -> None:
+    import os
+    from app import db, repository
+
+    connection = db.connect(os.environ["IPAM_DB_PATH"])
+    try:
+        db.init_db(connection)
+        vendor_old = repository.create_vendor(connection, "Dell")
+        vendor_new = repository.create_vendor(connection, "HP")
+        host = repository.create_host(connection, name="node-01", notes="old", vendor=vendor_old.name)
+    finally:
+        connection.close()
+
+    app.dependency_overrides[ui.require_ui_editor] = lambda: User(1, "editor", "x", UserRole.EDITOR, True)
+    try:
+        response = client.post(
+            f"/ui/hosts/{host.id}/edit",
+            data={"name": "node-01-renamed", "notes": "updated notes", "vendor_id": str(vendor_new.id)},
+            follow_redirects=False,
+        )
+    finally:
+        app.dependency_overrides.pop(ui.require_ui_editor, None)
+
+    assert response.status_code == 303
+
+    connection = db.connect(os.environ["IPAM_DB_PATH"])
+    try:
+        updated_host = repository.get_host_by_id(connection, host.id)
+    finally:
+        connection.close()
+
+    assert updated_host is not None
+    assert updated_host.name == "node-01-renamed"
+    assert updated_host.notes == "updated notes"
+    assert updated_host.vendor == "HP"
+
+
+def test_ui_edit_host_requires_name(client) -> None:
+    import os
+    from app import db, repository
+
+    connection = db.connect(os.environ["IPAM_DB_PATH"])
+    try:
+        db.init_db(connection)
+        host = repository.create_host(connection, name="node-02", notes="note")
+    finally:
+        connection.close()
+
+    app.dependency_overrides[ui.require_ui_editor] = lambda: User(1, "editor", "x", UserRole.EDITOR, True)
+    try:
+        response = client.post(
+            f"/ui/hosts/{host.id}/edit",
+            data={"name": "", "notes": "updated"},
+        )
+    finally:
+        app.dependency_overrides.pop(ui.require_ui_editor, None)
+
+    assert response.status_code == 400
+    assert "Host name is required." in response.text
