@@ -101,6 +101,16 @@ def test_ui_new_route_redirects_when_unauthenticated(client) -> None:
     assert response.headers["location"] == "/ui/login"
 
 
+
+
+def test_sidebar_logout_uses_sidebar_nav_styling(client) -> None:
+    test_client, _db_path = client
+
+    response = test_client.get("/ui/ip-assets")
+
+    assert response.status_code == 200
+    assert 'class="nav-link sidebar-logout-button"' in response.text
+
 def test_ui_ip_assets_route_available(client) -> None:
     test_client, _db_path = client
 
