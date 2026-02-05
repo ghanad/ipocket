@@ -122,6 +122,21 @@ p {
   border-top: 1px solid var(--color-border);
 }
 
+.sidebar-account {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.sidebar-section-title {
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-muted-light);
+  font-weight: 700;
+}
+
 .sidebar-note {
   font-size: 12px;
   color: var(--color-muted-light);

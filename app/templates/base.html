@@ -24,6 +24,12 @@
       <a class="nav-link{% if active_nav == 'owners' %} nav-link-active{% endif %}" href="/ui/owners">Owners</a>
     </nav>
     <div class="sidebar-footer">
+      <div class="sidebar-account">
+        <p class="sidebar-section-title">Account</p>
+        <form method="post" action="/ui/logout">
+          <button type="submit" class="btn btn-outline btn-block">Logout</button>
+        </form>
+      </div>
       <p class="sidebar-note">Internal use only</p>
     </div>
   </aside>
@@ -33,9 +39,6 @@
         <span class="brand-pill">ipocket</span>
         <span class="topbar-subtitle">IP Asset Management</span>
       </div>
-      <form method="post" action="/ui/logout">
-        <button type="submit" class="btn btn-outline">Logout</button>
-      </form>
     </header>
     <main class="content">
 {% endif %}
