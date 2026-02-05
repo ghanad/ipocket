@@ -269,6 +269,49 @@ def list_active_ip_assets(
     return [_row_to_ip_asset(row) for row in rows]
 
 
+def list_sd_targets(
+    connection: sqlite3.Connection,
+    port: int,
+    only_assigned: bool = False,
+    project_name: Optional[str] = None,
+) -> list[dict[str, object]]:
+    query = """
+        SELECT
+            ip_assets.ip_address AS ip_address,
+            ip_assets.type AS asset_type,
+            projects.name AS project_name,
+            owners.name AS owner_name
+        FROM ip_assets
+        LEFT JOIN projects ON projects.id = ip_assets.project_id
+        LEFT JOIN owners ON owners.id = ip_assets.owner_id
+        WHERE ip_assets.archived = 0
+    """
+    params: list[object] = []
+
+    if only_assigned:
+        query += " AND ip_assets.project_id IS NOT NULL AND ip_assets.owner_id IS NOT NULL"
+    if project_name:
+        query += " AND projects.name = ?"
+        params.append(project_name)
+
+    query += " ORDER BY ip_assets.ip_address"
+
+    rows = connection.execute(query, params).fetchall()
+    groups: list[dict[str, object]] = []
+    for row in rows:
+        groups.append(
+            {
+                "targets": [f"{row['ip_address']}:{port}"],
+                "labels": {
+                    "project": row["project_name"] or "unassigned",
+                    "owner": row["owner_name"] or "unassigned",
+                    "type": row["asset_type"],
+                },
+            }
+        )
+    return groups
+
+
 def list_ip_assets_needing_assignment(
     connection: sqlite3.Connection, filter_mode: str
 ) -> Iterable[IPAsset]:

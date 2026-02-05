@@ -53,6 +53,9 @@ services:
       IPOCKET_BUILD_TIME: "2024-01-01T00:00:00Z"
 ```
 
+Service discovery token (optional):
+- `IPOCKET_SD_TOKEN` (when set, `/sd/node` requires header `X-SD-Token`)
+
 Example systemd unit override (`Environment=`):
 
 ```ini
@@ -65,6 +68,7 @@ Environment="IPOCKET_BUILD_TIME=2024-01-01T00:00:00Z"
 Endpoints:
 - Health check: http://127.0.0.1:8000/health
 - Metrics: http://127.0.0.1:8000/metrics
+- Service discovery: http://127.0.0.1:8000/sd/node
 
 ## UI login (browser)
 Bootstrap a local Admin user before startup:
