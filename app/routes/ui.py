@@ -580,6 +580,78 @@ async def ui_create_host(
     return RedirectResponse(url="/ui/hosts", status_code=303)
 
 
+@router.post("/ui/hosts/{host_id}/edit", response_class=HTMLResponse)
+async def ui_edit_host(
+    host_id: int,
+    request: Request,
+    connection=Depends(get_connection),
+    _user=Depends(require_ui_editor),
+) -> HTMLResponse:
+    form_data = await _parse_form_data(request)
+    name = (form_data.get("name") or "").strip()
+    notes = _parse_optional_str(form_data.get("notes"))
+    vendor_id = _parse_optional_int(form_data.get("vendor_id"))
+
+    if not name:
+        return _render_template(
+            request,
+            "hosts.html",
+            {
+                "title": "ipocket - Hosts",
+                "errors": ["Host name is required."],
+                "hosts": repository.list_hosts_with_ip_counts(connection),
+                "vendors": list(repository.list_vendors(connection)),
+                "form_state": {"name": "", "notes": "", "vendor_id": ""},
+            },
+            status_code=400,
+            active_nav="hosts",
+        )
+
+    vendor = repository.get_vendor_by_id(connection, vendor_id) if vendor_id is not None else None
+    if vendor_id is not None and vendor is None:
+        return _render_template(
+            request,
+            "hosts.html",
+            {
+                "title": "ipocket - Hosts",
+                "errors": ["Selected vendor does not exist."],
+                "hosts": repository.list_hosts_with_ip_counts(connection),
+                "vendors": list(repository.list_vendors(connection)),
+                "form_state": {"name": "", "notes": "", "vendor_id": ""},
+            },
+            status_code=422,
+            active_nav="hosts",
+        )
+
+    try:
+        updated = repository.update_host(
+            connection,
+            host_id=host_id,
+            name=name,
+            notes=notes,
+            vendor=vendor.name if vendor else None,
+        )
+    except sqlite3.IntegrityError:
+        return _render_template(
+            request,
+            "hosts.html",
+            {
+                "title": "ipocket - Hosts",
+                "errors": ["Host name already exists."],
+                "hosts": repository.list_hosts_with_ip_counts(connection),
+                "vendors": list(repository.list_vendors(connection)),
+                "form_state": {"name": "", "notes": "", "vendor_id": ""},
+            },
+            status_code=409,
+            active_nav="hosts",
+        )
+
+    if updated is None:
+        return Response(status_code=404)
+
+    return RedirectResponse(url="/ui/hosts", status_code=303)
+
+
 @router.get("/ui/hosts/{host_id}", response_class=HTMLResponse)
 def ui_host_detail(
     request: Request,
