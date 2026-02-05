@@ -40,7 +40,7 @@ UI templates live in `app/templates`, UI routes live in `app/routes/ui.py`, and 
 - `GET /ui/ip-assets/needs-assignment`: dedicated view to focus on IPs missing Owner and/or Project, with tabs for Needs Owner, Needs Project, and Needs Both.
 - `GET /ui/ip-assets/{asset_id}`: IP detail page with assignment status.
 - `GET /ui/ip-assets/new`: add IP form (Editor/Admin). Subnet and Gateway are optional when creating an IP.
-- `GET /ui/ip-assets/{asset_id}/edit`: edit IP form (Editor/Admin).
+- `GET /ui/ip-assets/{asset_id}/edit`: edit IP form (Editor/Admin). Subnet and Gateway are optional when editing an IP as well.
 - `GET /ui/projects`: list/create projects and inline-edit existing rows (Editor/Admin write access). The Existing projects table header has internal padding to keep content off card edges for better readability.
 - `GET /ui/owners`: list/create owners and inline-edit existing rows (Editor/Admin write access). The Existing owners table header uses the same internal padding treatment for consistent spacing.
 - `GET /ui/ip-assets/needs-assignment`: matching IPs table header uses the same padded card-header layout for consistent spacing.
