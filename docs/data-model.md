@@ -3,14 +3,16 @@
 ## IPAsset
 Required:
 - ip_address (unique)
+- type
+
+Optional:
 - subnet
 - gateway
-- type
 
 Fields:
 - ip_address: unique string
-- subnet: string (CIDR or label)
-- gateway: string
+- subnet: optional string (CIDR or label)
+- gateway: optional string
 - project_id: optional reference to Project
 - owner_id: optional reference to Owner
 - type: VM | PHYSICAL | IPMI_ILO | VIP | OTHER

@@ -736,8 +736,8 @@ async def ui_add_ip_submit(
 ):
     form_data = await _parse_form_data(request)
     ip_address = form_data.get("ip_address")
-    subnet = form_data.get("subnet")
-    gateway = form_data.get("gateway")
+    subnet = _parse_optional_str(form_data.get("subnet"))
+    gateway = _parse_optional_str(form_data.get("gateway"))
     asset_type = form_data.get("type")
     project_id = _parse_optional_int(form_data.get("project_id"))
     owner_id = _parse_optional_int(form_data.get("owner_id"))
@@ -746,10 +746,6 @@ async def ui_add_ip_submit(
     errors = []
     if not ip_address:
         errors.append("IP address is required.")
-    if not subnet:
-        errors.append("Subnet is required.")
-    if not gateway:
-        errors.append("Gateway is required.")
     if asset_type not in [asset.value for asset in IPAssetType]:
         errors.append("Asset type is required.")
 

@@ -273,6 +273,29 @@ def test_needs_assignment_rejects_viewer(client) -> None:
     assert response.status_code == 403
 
 
+def test_editor_can_create_ip_via_ui_without_subnet_and_gateway(client) -> None:
+    test_client, db_path = client
+    _create_user(db_path, "editor", "editor-pass", UserRole.EDITOR)
+    _ui_login(test_client, "editor", "editor-pass")
+
+    submit_response = test_client.post(
+        "/ui/ip-assets/new",
+        data={
+            "ip_address": "10.0.8.11",
+            "subnet": "",
+            "gateway": "",
+            "type": IPAssetType.VM.value,
+        },
+        allow_redirects=False,
+    )
+    assert submit_response.status_code == 303
+
+    detail_response = test_client.get("/ip-assets/10.0.8.11")
+    assert detail_response.status_code == 200
+    assert detail_response.json()["subnet"] == ""
+    assert detail_response.json()["gateway"] == ""
+
+
 def test_editor_can_create_ip_via_ui(client) -> None:
     test_client, db_path = client
     _create_user(db_path, "editor", "editor-pass", UserRole.EDITOR)
