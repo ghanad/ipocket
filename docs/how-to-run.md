@@ -53,8 +53,10 @@ services:
       IPOCKET_BUILD_TIME: "2024-01-01T00:00:00Z"
 ```
 
+
 Service discovery token (optional):
 - `IPOCKET_SD_TOKEN` (when set, `/sd/node` requires header `X-SD-Token`)
+- `IPOCKET_AUTO_HOST_FOR_BMC` (default: enabled). Set to `0`, `false`, `no`, or `off` to disable auto-creating `server_{ip}` Host records when creating BMC IP assets without `host_id`.
 
 Example systemd unit override (`Environment=`):
 

@@ -109,6 +109,11 @@ def get_host_by_id(connection: sqlite3.Connection, host_id: int) -> Optional[Hos
     return _row_to_host(row) if row else None
 
 
+def get_host_by_name(connection: sqlite3.Connection, name: str) -> Optional[Host]:
+    row = connection.execute("SELECT id, name, notes FROM hosts WHERE name = ?", (name,)).fetchone()
+    return _row_to_host(row) if row else None
+
+
 def list_hosts_with_ip_counts(connection: sqlite3.Connection) -> list[dict[str, object]]:
     rows = connection.execute(
         """
@@ -141,12 +146,32 @@ def update_host(connection: sqlite3.Connection, host_id: int, name: Optional[str
     return get_host_by_id(connection, host_id)
 
 
-def create_ip_asset(connection: sqlite3.Connection, ip_address: str, asset_type: IPAssetType, subnet: Optional[str] = None, gateway: Optional[str] = None, project_id: Optional[int] = None, host_id: Optional[int] = None, notes: Optional[str] = None) -> IPAsset:
-    cursor = connection.execute(
-        "INSERT INTO ip_assets (ip_address, subnet, gateway, type, project_id, host_id, notes) VALUES (?, ?, ?, ?, ?, ?, ?)",
-        (ip_address, subnet or "", gateway or "", asset_type.value, project_id, host_id, notes),
-    )
-    connection.commit()
+def create_ip_asset(
+    connection: sqlite3.Connection,
+    ip_address: str,
+    asset_type: IPAssetType,
+    subnet: Optional[str] = None,
+    gateway: Optional[str] = None,
+    project_id: Optional[int] = None,
+    host_id: Optional[int] = None,
+    notes: Optional[str] = None,
+    auto_host_for_bmc: bool = False,
+) -> IPAsset:
+    resolved_host_id = host_id
+    with connection:
+        if auto_host_for_bmc and asset_type == IPAssetType.BMC and resolved_host_id is None:
+            host_name = f"server_{ip_address}"
+            existing_host = connection.execute("SELECT id FROM hosts WHERE name = ?", (host_name,)).fetchone()
+            if existing_host is None:
+                host_cursor = connection.execute("INSERT INTO hosts (name, notes) VALUES (?, ?)", (host_name, None))
+                resolved_host_id = host_cursor.lastrowid
+            else:
+                resolved_host_id = existing_host["id"]
+
+        cursor = connection.execute(
+            "INSERT INTO ip_assets (ip_address, subnet, gateway, type, project_id, host_id, notes) VALUES (?, ?, ?, ?, ?, ?, ?)",
+            (ip_address, subnet or "", gateway or "", asset_type.value, project_id, resolved_host_id, notes),
+        )
     row = connection.execute("SELECT * FROM ip_assets WHERE id = ?", (cursor.lastrowid,)).fetchone()
     if row is None:
         raise RuntimeError("Failed to fetch newly created IP asset.")
