@@ -730,3 +730,56 @@ def test_ui_ip_asset_form_includes_os_and_bmc_options(client) -> None:
     assert 'value="BMC"' in response.text
     assert "BMC (iLO/iDRAC/IPMI)" in response.text
     assert 'value="PHYSICAL"' not in response.text
+
+def test_ui_hosts_pages_and_ip_form_host_select(client) -> None:
+    test_client, db_path = client
+    _create_user(db_path, "editor", "editor-pass", UserRole.EDITOR)
+    _ui_login(test_client, "editor", "editor-pass")
+
+    create_host = test_client.post(
+        "/ui/hosts",
+        data={"name": "srv-app-01", "notes": "app host"},
+        allow_redirects=False,
+    )
+    assert create_host.status_code == 303
+    assert create_host.headers["location"] == "/ui/hosts"
+
+    connection = db.connect(str(db_path))
+    try:
+        db.init_db(connection)
+        host = repository.get_host_by_name(connection, "srv-app-01")
+        assert host is not None
+
+        hosts_page = test_client.get("/ui/hosts")
+        assert hosts_page.status_code == 200
+        assert "srv-app-01" in hosts_page.text
+        assert host is not None
+        repository.create_ip_asset(
+            connection,
+            ip_address="10.50.0.10",
+            subnet="10.50.0.0/24",
+            gateway="10.50.0.1",
+            asset_type=IPAssetType.OS,
+            host_id=host.id,
+        )
+        repository.create_ip_asset(
+            connection,
+            ip_address="10.50.0.11",
+            subnet="10.50.0.0/24",
+            gateway="10.50.0.1",
+            asset_type=IPAssetType.BMC,
+            host_id=host.id,
+        )
+    finally:
+        connection.close()
+
+    detail_page = test_client.get("/ui/hosts/1")
+    assert detail_page.status_code == 200
+    assert "srv-app-01" in detail_page.text
+    assert "10.50.0.10" in detail_page.text
+    assert "10.50.0.11" in detail_page.text
+
+    form_page = test_client.get("/ui/ip-assets/new")
+    assert form_page.status_code == 200
+    assert 'name="host_id"' in form_page.text
+    assert "srv-app-01" in form_page.text

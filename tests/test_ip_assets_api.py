@@ -303,3 +303,88 @@ def test_legacy_ipmi_type_is_normalized_to_bmc_on_create_and_update(client) -> N
     )
     assert update_response.status_code == 200
     assert update_response.json()["type"] == "BMC"
+
+def test_host_crud_and_linked_assets_grouping(client) -> None:
+    test_client, db_path = client
+    _create_user(db_path, "editor", "editor-pass", UserRole.EDITOR)
+    token = _login(test_client, "editor", "editor-pass")
+
+    create_host = test_client.post(
+        "/hosts",
+        headers=_auth_header(token),
+        json={"name": "srv-db-01", "notes": "db host"},
+    )
+    assert create_host.status_code == 200
+    host_id = create_host.json()["id"]
+
+    os_resp = test_client.post(
+        "/ip-assets",
+        headers=_auth_header(token),
+        json={"ip_address": "10.10.0.10", "type": "OS", "host_id": host_id},
+    )
+    assert os_resp.status_code == 200
+
+    bmc_resp = test_client.post(
+        "/ip-assets",
+        headers=_auth_header(token),
+        json={"ip_address": "10.10.0.11", "type": "BMC", "host_id": host_id},
+    )
+    assert bmc_resp.status_code == 200
+
+    detail = test_client.get(f"/hosts/{host_id}")
+    assert detail.status_code == 200
+    payload = detail.json()
+    assert payload["name"] == "srv-db-01"
+    assert [item["ip_address"] for item in payload["linked_assets"]["os"]] == ["10.10.0.10"]
+    assert [item["ip_address"] for item in payload["linked_assets"]["bmc"]] == ["10.10.0.11"]
+
+
+def test_ip_asset_update_with_host_id(client) -> None:
+    test_client, db_path = client
+    _create_user(db_path, "editor", "editor-pass", UserRole.EDITOR)
+    token = _login(test_client, "editor", "editor-pass")
+
+    host_resp = test_client.post(
+        "/hosts",
+        headers=_auth_header(token),
+        json={"name": "web-02"},
+    )
+    host_id = host_resp.json()["id"]
+
+    create_response = test_client.post(
+        "/ip-assets",
+        headers=_auth_header(token),
+        json={"ip_address": "10.20.0.5", "type": "VM"},
+    )
+    assert create_response.status_code == 200
+
+    update_response = test_client.patch(
+        "/ip-assets/10.20.0.5",
+        headers=_auth_header(token),
+        json={"host_id": host_id},
+    )
+    assert update_response.status_code == 200
+    assert update_response.json()["host_id"] == host_id
+
+
+def test_viewer_cannot_create_hosts_but_editor_can(client) -> None:
+    test_client, db_path = client
+    _create_user(db_path, "viewer", "viewer-pass", UserRole.VIEWER)
+    _create_user(db_path, "editor", "editor-pass", UserRole.EDITOR)
+
+    viewer_token = _login(test_client, "viewer", "viewer-pass")
+    editor_token = _login(test_client, "editor", "editor-pass")
+
+    viewer_resp = test_client.post(
+        "/hosts",
+        headers=_auth_header(viewer_token),
+        json={"name": "blocked-host"},
+    )
+    assert viewer_resp.status_code == 403
+
+    editor_resp = test_client.post(
+        "/hosts",
+        headers=_auth_header(editor_token),
+        json={"name": "allowed-host"},
+    )
+    assert editor_resp.status_code == 200

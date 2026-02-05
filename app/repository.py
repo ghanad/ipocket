@@ -3,7 +3,7 @@ from __future__ import annotations
 import sqlite3
 from typing import Iterable, Optional
 
-from app.models import IPAsset, IPAssetType, Owner, Project, User, UserRole
+from app.models import Host, IPAsset, IPAssetType, Owner, Project, User, UserRole
 
 
 def _row_to_project(row: sqlite3.Row) -> Project:
@@ -12,6 +12,10 @@ def _row_to_project(row: sqlite3.Row) -> Project:
 
 def _row_to_owner(row: sqlite3.Row) -> Owner:
     return Owner(id=row["id"], name=row["name"], contact=row["contact"])
+
+
+def _row_to_host(row: sqlite3.Row) -> Host:
+    return Host(id=row["id"], name=row["name"], notes=row["notes"])
 
 
 def _row_to_user(row: sqlite3.Row) -> User:
@@ -33,6 +37,7 @@ def _row_to_ip_asset(row: sqlite3.Row) -> IPAsset:
         asset_type=IPAssetType(row["type"]),
         project_id=row["project_id"],
         owner_id=row["owner_id"],
+        host_id=row["host_id"],
         notes=row["notes"],
         archived=bool(row["archived"]),
         created_at=row["created_at"],
@@ -186,6 +191,7 @@ def create_ip_asset(
     gateway: Optional[str] = None,
     project_id: Optional[int] = None,
     owner_id: Optional[int] = None,
+    host_id: Optional[int] = None,
     notes: Optional[str] = None,
 ) -> IPAsset:
     normalized_subnet = subnet or ""
@@ -193,8 +199,8 @@ def create_ip_asset(
     cursor = connection.execute(
         """
         INSERT INTO ip_assets (
-            ip_address, subnet, gateway, type, project_id, owner_id, notes
-        ) VALUES (?, ?, ?, ?, ?, ?, ?)
+            ip_address, subnet, gateway, type, project_id, owner_id, host_id, notes
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
         """,
         (
             ip_address,
@@ -203,6 +209,7 @@ def create_ip_asset(
             asset_type.value,
             project_id,
             owner_id,
+            host_id,
             notes,
         ),
     )
@@ -250,6 +257,117 @@ def list_owners(connection: sqlite3.Connection) -> Iterable[Owner]:
     ).fetchall()
     return [_row_to_owner(row) for row in rows]
 
+
+
+
+def create_host(
+    connection: sqlite3.Connection, name: str, notes: Optional[str] = None
+) -> Host:
+    cursor = connection.execute(
+        "INSERT INTO hosts (name, notes) VALUES (?, ?)", (name, notes)
+    )
+    connection.commit()
+    row = connection.execute(
+        "SELECT id, name, notes FROM hosts WHERE id = ?", (cursor.lastrowid,)
+    ).fetchone()
+    if row is None:
+        raise RuntimeError("Failed to fetch newly created host.")
+    return _row_to_host(row)
+
+
+def list_hosts(connection: sqlite3.Connection) -> Iterable[Host]:
+    rows = connection.execute(
+        "SELECT id, name, notes FROM hosts ORDER BY name"
+    ).fetchall()
+    return [_row_to_host(row) for row in rows]
+
+
+def get_host_by_name(connection: sqlite3.Connection, name: str) -> Optional[Host]:
+    row = connection.execute(
+        "SELECT id, name, notes FROM hosts WHERE name = ?", (name,)
+    ).fetchone()
+    if row is None:
+        return None
+    return _row_to_host(row)
+
+
+def get_host_by_id(connection: sqlite3.Connection, host_id: int) -> Optional[Host]:
+    row = connection.execute(
+        "SELECT id, name, notes FROM hosts WHERE id = ?", (host_id,)
+    ).fetchone()
+    if row is None:
+        return None
+    return _row_to_host(row)
+
+
+def update_host(
+    connection: sqlite3.Connection,
+    host_id: int,
+    name: Optional[str] = None,
+    notes: Optional[str] = None,
+) -> Optional[Host]:
+    connection.execute(
+        """
+        UPDATE hosts
+        SET name = COALESCE(?, name),
+            notes = COALESCE(?, notes),
+            updated_at = CURRENT_TIMESTAMP
+        WHERE id = ?
+        """,
+        (name, notes, host_id),
+    )
+    connection.commit()
+    return get_host_by_id(connection, host_id)
+
+
+def list_hosts_with_ip_counts(connection: sqlite3.Connection) -> list[dict[str, object]]:
+    rows = connection.execute(
+        """
+        SELECT
+            hosts.id AS id,
+            hosts.name AS name,
+            hosts.notes AS notes,
+            COUNT(ip_assets.id) AS ip_count
+        FROM hosts
+        LEFT JOIN ip_assets
+            ON ip_assets.host_id = hosts.id
+            AND ip_assets.archived = 0
+        GROUP BY hosts.id, hosts.name, hosts.notes
+        ORDER BY hosts.name
+        """
+    ).fetchall()
+    return [
+        {
+            "id": row["id"],
+            "name": row["name"],
+            "notes": row["notes"],
+            "ip_count": int(row["ip_count"] or 0),
+        }
+        for row in rows
+    ]
+
+
+def get_host_linked_assets_grouped(
+    connection: sqlite3.Connection, host_id: int
+) -> dict[str, list[IPAsset]]:
+    rows = connection.execute(
+        """
+        SELECT * FROM ip_assets
+        WHERE host_id = ? AND archived = 0
+        ORDER BY ip_address
+        """,
+        (host_id,),
+    ).fetchall()
+    assets = [_row_to_ip_asset(row) for row in rows]
+    return {
+        "os": [asset for asset in assets if asset.asset_type == IPAssetType.OS],
+        "bmc": [asset for asset in assets if asset.asset_type == IPAssetType.BMC],
+        "other": [
+            asset
+            for asset in assets
+            if asset.asset_type not in (IPAssetType.OS, IPAssetType.BMC)
+        ],
+    }
 
 def list_active_ip_assets(
     connection: sqlite3.Connection,
@@ -440,6 +558,7 @@ def update_ip_asset(
     asset_type: Optional[IPAssetType] = None,
     project_id: Optional[int] = None,
     owner_id: Optional[int] = None,
+    host_id: Optional[int] = None,
     notes: Optional[str] = None,
 ) -> Optional[IPAsset]:
     connection.execute(
@@ -450,6 +569,7 @@ def update_ip_asset(
             type = COALESCE(?, type),
             project_id = COALESCE(?, project_id),
             owner_id = COALESCE(?, owner_id),
+            host_id = COALESCE(?, host_id),
             notes = COALESCE(?, notes),
             updated_at = CURRENT_TIMESTAMP
         WHERE ip_address = ?
@@ -460,6 +580,7 @@ def update_ip_asset(
             asset_type.value if asset_type else None,
             project_id,
             owner_id,
+            host_id,
             notes,
             ip_address,
         ),

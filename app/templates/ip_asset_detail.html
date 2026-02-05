@@ -27,6 +27,16 @@
     <p class="detail-value">{{ asset.type }}</p>
   </div>
   <div class="detail-item">
+    <p class="detail-label">Host</p>
+    <p class="detail-value">
+      {% if asset.host_unassigned %}
+      <span class="tag">Unassigned</span>
+      {% else %}
+      <a class="link" href="/ui/hosts/{{ asset.host_id }}">{{ asset.host_name }}</a>
+      {% endif %}
+    </p>
+  </div>
+  <div class="detail-item">
     <p class="detail-label">Project</p>
     <p class="detail-value">
       {% if asset.project_unassigned %}

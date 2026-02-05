@@ -38,6 +38,15 @@ def init_db(connection: sqlite3.Connection) -> None:
         )
         """,
         """
+        CREATE TABLE IF NOT EXISTS hosts (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT NOT NULL UNIQUE,
+            notes TEXT,
+            created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+        )
+        """,
+        """
         CREATE TABLE IF NOT EXISTS ip_assets (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             ip_address TEXT NOT NULL UNIQUE,
@@ -46,17 +55,27 @@ def init_db(connection: sqlite3.Connection) -> None:
             type TEXT NOT NULL CHECK (type IN ('VM', 'OS', 'BMC', 'VIP', 'OTHER')),
             project_id INTEGER,
             owner_id INTEGER,
+            host_id INTEGER,
             notes TEXT,
             archived INTEGER NOT NULL DEFAULT 0,
             created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
             updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
             FOREIGN KEY (project_id) REFERENCES projects(id),
-            FOREIGN KEY (owner_id) REFERENCES owners(id)
+            FOREIGN KEY (owner_id) REFERENCES owners(id),
+            FOREIGN KEY (host_id) REFERENCES hosts(id)
         )
         """,
     )
 
     for statement in schema_statements:
         connection.execute(statement)
+
+    ip_asset_columns = {
+        row["name"] for row in connection.execute("PRAGMA table_info(ip_assets)").fetchall()
+    }
+    if "host_id" not in ip_asset_columns:
+        connection.execute(
+            "ALTER TABLE ip_assets ADD COLUMN host_id INTEGER REFERENCES hosts(id)"
+        )
 
     connection.commit()
