@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from pathlib import Path
+
 import pytest
 from fastapi.testclient import TestClient
 from http.cookies import SimpleCookie
@@ -110,6 +112,15 @@ def test_sidebar_logout_uses_sidebar_nav_styling(client) -> None:
 
     assert response.status_code == 200
     assert 'class="nav-link sidebar-logout-button"' in response.text
+
+
+def test_app_css_normalizes_logout_button_to_match_nav_links() -> None:
+    css = Path("app/static/app.css").read_text()
+
+    assert ".sidebar-logout-button" in css
+    assert "appearance: none;" in css
+    assert "-webkit-appearance: none;" in css
+    assert "color: inherit;" in css
 
 def test_ui_ip_assets_route_available(client) -> None:
     test_client, _db_path = client
