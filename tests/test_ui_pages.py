@@ -296,6 +296,44 @@ def test_editor_can_create_ip_via_ui_without_subnet_and_gateway(client) -> None:
     assert detail_response.json()["gateway"] == ""
 
 
+def test_editor_can_edit_ip_via_ui_without_subnet_and_gateway(client) -> None:
+    test_client, db_path = client
+    _create_user(db_path, "editor", "editor-pass", UserRole.EDITOR)
+    _ui_login(test_client, "editor", "editor-pass")
+
+    connection = db.connect(str(db_path))
+    try:
+        db.init_db(connection)
+        created = repository.create_ip_asset(
+            connection,
+            ip_address="10.0.8.12",
+            subnet="10.0.8.0/24",
+            gateway="10.0.8.1",
+            asset_type=IPAssetType.VM,
+        )
+    finally:
+        connection.close()
+
+    submit_response = test_client.post(
+        f"/ui/ip-assets/{created.id}/edit",
+        data={
+            "subnet": "",
+            "gateway": "",
+            "type": IPAssetType.VM.value,
+            "project_id": "",
+            "owner_id": "",
+            "notes": "",
+        },
+        allow_redirects=False,
+    )
+    assert submit_response.status_code == 303
+
+    detail_response = test_client.get("/ip-assets/10.0.8.12")
+    assert detail_response.status_code == 200
+    assert detail_response.json()["subnet"] == ""
+    assert detail_response.json()["gateway"] == ""
+
+
 def test_editor_can_create_ip_via_ui(client) -> None:
     test_client, db_path = client
     _create_user(db_path, "editor", "editor-pass", UserRole.EDITOR)
