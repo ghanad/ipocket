@@ -41,7 +41,7 @@ UI templates live in `app/templates`, UI routes live in `app/routes/ui.py`, and 
 - `GET /ui/ip-assets/{asset_id}`: IP detail page with assignment status.
 - `GET /ui/ip-assets/new`: add IP form (Editor/Admin).
 - `GET /ui/ip-assets/{asset_id}/edit`: edit IP form (Editor/Admin).
-- `GET /ui/projects`: list/create projects (Editor/Admin create).
+- `GET /ui/projects`: list/create projects (Editor/Admin create). The Existing projects table header now has internal padding to keep content off card edges for better readability.
 - `GET /ui/owners`: list/create owners (Editor/Admin create).
 - `POST /ui/ip-assets/{asset_id}/archive`: archive action (Editor/Admin).
 - `POST /ui/logout`: clear the UI session. The sidebar logout action uses the same navigation button styling for consistent visual alignment.
