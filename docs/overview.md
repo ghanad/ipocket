@@ -11,3 +11,8 @@ ipocket is a lightweight IP inventory app to track addresses and their project a
 
 ## Note
 Owner support has been removed in development phase, so assignment is now project-only.
+
+
+## Hosts
+
+Hosts can optionally store a free-text `vendor` value (for example: HPE, Dell, Lenovo, Supermicro, Cisco).

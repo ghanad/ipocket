@@ -11,7 +11,7 @@ def _row_to_project(row: sqlite3.Row) -> Project:
 
 
 def _row_to_host(row: sqlite3.Row) -> Host:
-    return Host(id=row["id"], name=row["name"], notes=row["notes"])
+    return Host(id=row["id"], name=row["name"], notes=row["notes"], vendor=row["vendor"])
 
 
 def _row_to_user(row: sqlite3.Row) -> User:
@@ -93,38 +93,38 @@ def get_user_by_id(connection: sqlite3.Connection, user_id: int) -> Optional[Use
     return _row_to_user(row) if row else None
 
 
-def create_host(connection: sqlite3.Connection, name: str, notes: Optional[str] = None) -> Host:
-    cursor = connection.execute("INSERT INTO hosts (name, notes) VALUES (?, ?)", (name, notes))
+def create_host(connection: sqlite3.Connection, name: str, notes: Optional[str] = None, vendor: Optional[str] = None) -> Host:
+    cursor = connection.execute("INSERT INTO hosts (name, notes, vendor) VALUES (?, ?, ?)", (name, notes, vendor))
     connection.commit()
-    return Host(id=cursor.lastrowid, name=name, notes=notes)
+    return Host(id=cursor.lastrowid, name=name, notes=notes, vendor=vendor)
 
 
 def list_hosts(connection: sqlite3.Connection) -> Iterable[Host]:
-    rows = connection.execute("SELECT id, name, notes FROM hosts ORDER BY name").fetchall()
+    rows = connection.execute("SELECT id, name, notes, vendor FROM hosts ORDER BY name").fetchall()
     return [_row_to_host(row) for row in rows]
 
 
 def get_host_by_id(connection: sqlite3.Connection, host_id: int) -> Optional[Host]:
-    row = connection.execute("SELECT id, name, notes FROM hosts WHERE id = ?", (host_id,)).fetchone()
+    row = connection.execute("SELECT id, name, notes, vendor FROM hosts WHERE id = ?", (host_id,)).fetchone()
     return _row_to_host(row) if row else None
 
 
 def get_host_by_name(connection: sqlite3.Connection, name: str) -> Optional[Host]:
-    row = connection.execute("SELECT id, name, notes FROM hosts WHERE name = ?", (name,)).fetchone()
+    row = connection.execute("SELECT id, name, notes, vendor FROM hosts WHERE name = ?", (name,)).fetchone()
     return _row_to_host(row) if row else None
 
 
 def list_hosts_with_ip_counts(connection: sqlite3.Connection) -> list[dict[str, object]]:
     rows = connection.execute(
         """
-        SELECT hosts.id AS id, hosts.name AS name, hosts.notes AS notes, COUNT(ip_assets.id) AS ip_count
+        SELECT hosts.id AS id, hosts.name AS name, hosts.notes AS notes, hosts.vendor AS vendor, COUNT(ip_assets.id) AS ip_count
         FROM hosts
         LEFT JOIN ip_assets ON ip_assets.host_id = hosts.id AND ip_assets.archived = 0
-        GROUP BY hosts.id, hosts.name, hosts.notes
+        GROUP BY hosts.id, hosts.name, hosts.notes, hosts.vendor
         ORDER BY hosts.name
         """
     ).fetchall()
-    return [{"id": row["id"], "name": row["name"], "notes": row["notes"], "ip_count": int(row["ip_count"] or 0)} for row in rows]
+    return [{"id": row["id"], "name": row["name"], "notes": row["notes"], "vendor": row["vendor"], "ip_count": int(row["ip_count"] or 0)} for row in rows]
 
 
 def get_host_linked_assets_grouped(connection: sqlite3.Connection, host_id: int) -> dict[str, list[IPAsset]]:
@@ -137,10 +137,10 @@ def get_host_linked_assets_grouped(connection: sqlite3.Connection, host_id: int)
     }
 
 
-def update_host(connection: sqlite3.Connection, host_id: int, name: Optional[str] = None, notes: Optional[str] = None) -> Optional[Host]:
+def update_host(connection: sqlite3.Connection, host_id: int, name: Optional[str] = None, notes: Optional[str] = None, vendor: Optional[str] = None) -> Optional[Host]:
     connection.execute(
-        "UPDATE hosts SET name = COALESCE(?, name), notes = COALESCE(?, notes), updated_at = CURRENT_TIMESTAMP WHERE id = ?",
-        (name, notes, host_id),
+        "UPDATE hosts SET name = COALESCE(?, name), notes = COALESCE(?, notes), vendor = COALESCE(?, vendor), updated_at = CURRENT_TIMESTAMP WHERE id = ?",
+        (name, notes, vendor, host_id),
     )
     connection.commit()
     return get_host_by_id(connection, host_id)

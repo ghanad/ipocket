@@ -6,6 +6,7 @@
     <p class="eyebrow">Host</p>
     <h1>{{ host.name }}</h1>
     <p class="subtitle">{{ host.notes or "No notes" }}</p>
+    <p><strong>Vendor:</strong> {{ host.vendor or "-" }}</p>
   </div>
   <div class="header-actions">
     <a class="btn btn-secondary" href="/ui/hosts">Back to hosts</a>

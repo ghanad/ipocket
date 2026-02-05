@@ -424,7 +424,7 @@ def ui_list_hosts(
             "title": "ipocket - Hosts",
             "hosts": hosts,
             "errors": [],
-            "form_state": {"name": "", "notes": ""},
+            "form_state": {"name": "", "notes": "", "vendor": ""},
         },
         active_nav="hosts",
     )
@@ -439,6 +439,7 @@ async def ui_create_host(
     form_data = await _parse_form_data(request)
     name = (form_data.get("name") or "").strip()
     notes = _parse_optional_str(form_data.get("notes"))
+    vendor = _parse_optional_str(form_data.get("vendor"))
 
     errors = []
     if not name:
@@ -452,14 +453,15 @@ async def ui_create_host(
             {
                 "title": "ipocket - Hosts",
                     "errors": errors,
-                "form_state": {"name": name, "notes": notes or ""},
+                "hosts": hosts,
+                "form_state": {"name": name, "notes": notes or "", "vendor": vendor or ""},
             },
             status_code=400,
             active_nav="hosts",
         )
 
     try:
-        repository.create_host(connection, name=name, notes=notes)
+        repository.create_host(connection, name=name, notes=notes, vendor=vendor)
     except sqlite3.IntegrityError:
         hosts = repository.list_hosts_with_ip_counts(connection)
         return _render_template(
@@ -468,7 +470,8 @@ async def ui_create_host(
             {
                 "title": "ipocket - Hosts",
                     "errors": ["Host name already exists."],
-                "form_state": {"name": name, "notes": notes or ""},
+                "hosts": hosts,
+                "form_state": {"name": name, "notes": notes or "", "vendor": vendor or ""},
             },
             status_code=409,
             active_nav="hosts",
@@ -700,6 +703,7 @@ async def ui_add_ip_submit(
     project_id = _parse_optional_int(form_data.get("project_id"))
     host_id = _parse_optional_int(form_data.get("host_id"))
     notes = _parse_optional_str(form_data.get("notes"))
+    vendor = _parse_optional_str(form_data.get("vendor"))
 
     errors = []
     if not ip_address:
@@ -875,6 +879,7 @@ async def ui_edit_ip_submit(
     project_id = _parse_optional_int(form_data.get("project_id"))
     host_id = _parse_optional_int(form_data.get("host_id"))
     notes = _parse_optional_str(form_data.get("notes"))
+    vendor = _parse_optional_str(form_data.get("vendor"))
 
     errors = []
     normalized_asset_type = None

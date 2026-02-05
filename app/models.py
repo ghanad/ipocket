@@ -39,6 +39,7 @@ class Host:
     id: int
     name: str
     notes: Optional[str]
+    vendor: Optional[str]
 
 
 @dataclass

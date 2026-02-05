@@ -74,15 +74,17 @@ class ProjectUpdate(BaseModel):
 class HostCreate(BaseModel):
     name: str
     notes: Optional[str] = None
+    vendor: Optional[str] = None
 
 
 class HostUpdate(BaseModel):
     name: Optional[str] = None
     notes: Optional[str] = None
+    vendor: Optional[str] = None
 
 
 def _host_payload(host: Host) -> dict:
-    return {"id": host.id, "name": host.name, "notes": host.notes}
+    return {"id": host.id, "name": host.name, "notes": host.notes, "vendor": host.vendor}
 
 
 def _asset_payload(asset: IPAsset) -> dict:
@@ -359,7 +361,7 @@ def create_host(
     connection=Depends(get_connection),
     _user=Depends(require_editor),
 ):
-    host = repository.create_host(connection, name=payload.name, notes=payload.notes)
+    host = repository.create_host(connection, name=payload.name, notes=payload.notes, vendor=payload.vendor)
     return _host_payload(host)
 
 
@@ -386,7 +388,7 @@ def update_host(
     connection=Depends(get_connection),
     _user=Depends(require_editor),
 ):
-    host = repository.update_host(connection, host_id=host_id, name=payload.name, notes=payload.notes)
+    host = repository.update_host(connection, host_id=host_id, name=payload.name, notes=payload.notes, vendor=payload.vendor)
     if host is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
     return _host_payload(host)
