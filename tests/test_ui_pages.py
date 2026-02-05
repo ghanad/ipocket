@@ -74,6 +74,7 @@ def test_list_page_renders_seeded_ip(client) -> None:
     assert response.status_code == 200
     assert "10.0.1.10" in response.text
     assert "Unassigned" in response.text
+    assert "<th>Subnet</th>" not in response.text
 
 
 def test_ui_write_requires_editor_role(client) -> None:
