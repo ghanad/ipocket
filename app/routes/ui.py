@@ -11,7 +11,7 @@ from urllib.parse import parse_qs
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from fastapi.responses import HTMLResponse, RedirectResponse, Response
 
-from app import auth, repository
+from app import auth, build_info, repository
 from app.dependencies import get_connection
 from app.models import IPAsset, IPAssetType, UserRole
 from app.utils import validate_ip_address
@@ -35,6 +35,7 @@ def _render_template(
         "request": request,
         "show_nav": show_nav,
         "active_nav": active_nav,
+        "build_info": build_info.get_build_info(),
         **context,
     }
     if templates is None:
@@ -72,6 +73,12 @@ def _render_fallback_template(
         lines.append(str(error))
     if template_name == "login.html":
         lines.append("Login")
+    build = payload.get("build_info") or {}
+    version = build.get("version", "dev")
+    commit = build.get("commit", "unknown")
+    build_time = build.get("build_time", "unknown")
+    if payload.get("show_nav"):
+        lines.append(f"ipocket v{version} ({commit}) • built {build_time}")
     return HTMLResponse(content="\n".join(lines), status_code=status_code)
 
 

@@ -34,7 +34,8 @@ uvicorn app.main:app --reload
 
 ### Version metadata (recommended for deployments)
 ipocket reads version info from environment variables and includes them in the
-`/health` response:
+`/health` response and the authenticated UI footer (`ipocket v{version} ({commit}) • built {build_time}`).
+When unset, defaults are shown as `dev/unknown`.
 
 - `IPOCKET_VERSION` (semantic version, e.g. `0.1.0`)
 - `IPOCKET_COMMIT` (git commit SHA, short ok)

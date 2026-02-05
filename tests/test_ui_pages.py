@@ -278,6 +278,18 @@ def test_editor_can_create_ip_via_ui(client) -> None:
     assert "10.0.8.10" in list_response.text
 
 
+def test_ui_footer_shows_build_info(client, monkeypatch) -> None:
+    test_client, _db_path = client
+    monkeypatch.setenv("IPOCKET_VERSION", "1.2.3")
+    monkeypatch.setenv("IPOCKET_COMMIT", "deadbee")
+    monkeypatch.setenv("IPOCKET_BUILD_TIME", "2025-01-01T00:00:00Z")
+
+    response = test_client.get("/ui/ip-assets")
+
+    assert response.status_code == 200
+    assert "ipocket v1.2.3 (deadbee) • built 2025-01-01T00:00:00Z" in response.text
+
+
 def test_ui_includes_app_css(client) -> None:
     test_client, _db_path = client
     response = test_client.get("/ui/ip-assets")
