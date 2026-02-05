@@ -32,6 +32,7 @@ UI templates live in `app/templates`, UI routes live in `app/routes/ui.py`, and 
 - `GET /owners`: list owners.
 - `POST /owners`: create owner (Editor/Admin).
 - `PATCH /owners/{owner_id}`: update owner (Editor/Admin).
+- `GET /sd/node`: Prometheus HTTP service discovery target groups for non-archived IPs (supports `port`, `only_assigned`, and `project` filters).
 
 ## UI Pages (MVP)
 - `GET /ui/login`: browser login form.
@@ -45,6 +46,7 @@ UI templates live in `app/templates`, UI routes live in `app/routes/ui.py`, and 
 - `POST /ui/ip-assets/{asset_id}/archive`: archive action (Editor/Admin).
 - `POST /ui/logout`: clear the UI session.
 - Authenticated pages no longer render the legacy bottom copyright footer.
+
 
 ## Assignment workflow (MVP)
 - Use the **Needs Assignment** page to filter IPs missing Owner and/or Project.
@@ -67,3 +69,7 @@ UI templates live in `app/templates`, UI routes live in `app/routes/ui.py`, and 
 - Discovery/scanner (range scanning + NEW/GONE detection)
 - Importers (CSV/API/DHCP/cloud)
 - Notifications (Slack/Email)
+
+
+## Additional docs
+- Service discovery endpoint docs: `/docs/service-discovery.md`.

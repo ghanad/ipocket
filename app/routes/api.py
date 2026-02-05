@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 import sqlite3
 from typing import Optional
 
@@ -93,6 +94,13 @@ def _metrics_payload(metrics: dict[str, int]) -> str:
     )
 
 
+def _require_sd_token_if_configured(sd_token: Optional[str], expected_token: Optional[str]) -> None:
+    if not expected_token:
+        return
+    if sd_token != expected_token:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED)
+
+
 def get_current_user(
     authorization: Optional[str] = Header(default=None),
     connection=Depends(get_connection),
@@ -126,6 +134,23 @@ def health_check() -> Response:
 def metrics(connection=Depends(get_connection)) -> Response:
     metrics_payload = repository.get_ip_asset_metrics(connection)
     return Response(content=_metrics_payload(metrics_payload), media_type="text/plain")
+
+
+@router.get("/sd/node")
+def service_discovery_targets(
+    port: int = Query(default=9100, ge=1, le=65535),
+    only_assigned: bool = Query(default=False),
+    project: Optional[str] = Query(default=None),
+    sd_token: Optional[str] = Header(default=None, alias="X-SD-Token"),
+    connection=Depends(get_connection),
+):
+    _require_sd_token_if_configured(sd_token, os.getenv("IPOCKET_SD_TOKEN"))
+    return repository.list_sd_targets(
+        connection,
+        port=port,
+        only_assigned=only_assigned,
+        project_name=project,
+    )
 
 
 @router.post("/login", response_model=TokenResponse)

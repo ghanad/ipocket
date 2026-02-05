@@ -34,3 +34,7 @@ scrape_configs:
 - Metrics are computed from database state at request time.
 - Archived IPs are excluded from all unassigned metrics.
 - Metrics should not require external services.
+
+
+## Related discovery endpoint
+- `GET /sd/node` provides Prometheus HTTP SD target groups for node-level scrapes. See `/docs/service-discovery.md`.
