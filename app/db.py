@@ -22,13 +22,6 @@ def init_db(connection: sqlite3.Connection) -> None:
         )
         """,
         """
-        CREATE TABLE IF NOT EXISTS owners (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            name TEXT NOT NULL UNIQUE,
-            contact TEXT
-        )
-        """,
-        """
         CREATE TABLE IF NOT EXISTS users (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             username TEXT NOT NULL UNIQUE,
@@ -54,14 +47,12 @@ def init_db(connection: sqlite3.Connection) -> None:
             gateway TEXT NOT NULL,
             type TEXT NOT NULL CHECK (type IN ('VM', 'OS', 'BMC', 'VIP', 'OTHER')),
             project_id INTEGER,
-            owner_id INTEGER,
             host_id INTEGER,
             notes TEXT,
             archived INTEGER NOT NULL DEFAULT 0,
             created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
             updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
             FOREIGN KEY (project_id) REFERENCES projects(id),
-            FOREIGN KEY (owner_id) REFERENCES owners(id),
             FOREIGN KEY (host_id) REFERENCES hosts(id)
         )
         """,

@@ -5,7 +5,7 @@
   <div>
     <p class="eyebrow">{% if mode == 'create' %}Create{% else %}Edit{% endif %} IP</p>
     <h1>{% if mode == 'create' %}Add IP asset{% else %}Edit IP asset{% endif %}</h1>
-    <p class="subtitle">Provide addressing, ownership, and metadata.</p>
+    <p class="subtitle">Provide addressing, project assignment, and metadata.</p>
   </div>
   <div class="header-actions">
     <a class="btn btn-secondary" href="/ui/ip-assets">Back to list</a>
@@ -59,15 +59,6 @@
         <option value="">UNASSIGNED</option>
         {% for host in hosts %}
         <option value="{{ host.id }}"{% if asset.host_id == host.id %} selected{% endif %}>{{ host.name }}</option>
-        {% endfor %}
-      </select>
-    </label>
-    <label class="field">
-      <span>Owner</span>
-      <select class="select" name="owner_id">
-        <option value="">UNASSIGNED</option>
-        {% for owner in owners %}
-        <option value="{{ owner.id }}"{% if asset.owner_id == owner.id %} selected{% endif %}>{{ owner.name }}</option>
         {% endfor %}
       </select>
     </label>
