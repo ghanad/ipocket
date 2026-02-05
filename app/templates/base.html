@@ -25,7 +25,9 @@
     </nav>
     <div class="sidebar-footer">
       <p class="sidebar-note">Internal use only</p>
-      <p class="sidebar-note">ipocket v{{ build_info.version }} ({{ build_info.commit }}) • built {{ build_info.build_time }}</p>
+      {% if build_info %}
+      <p class="sidebar-note">ipocket v{{ build_info.version }} ({{ build_info.commit }}) • built {{ build_info.build_time }} · <a href="/ui/about">About</a></p>
+      {% endif %}
     </div>
   </aside>
   <div class="app-main">

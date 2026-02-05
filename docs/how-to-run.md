@@ -41,16 +41,19 @@ When unset, defaults are shown as `dev/unknown`.
 - `IPOCKET_COMMIT` (git commit SHA, short ok)
 - `IPOCKET_BUILD_TIME` (ISO timestamp)
 
-Example Docker snippet:
+Example `docker-compose.yml` snippet:
 
-```bash
-docker run -e IPOCKET_VERSION=0.1.0 \
-  -e IPOCKET_COMMIT=abc1234 \
-  -e IPOCKET_BUILD_TIME=2024-01-01T00:00:00Z \
-  -p 8000:8000 ipocket:latest
+```yaml
+services:
+  ipocket:
+    image: ipocket:latest
+    environment:
+      IPOCKET_VERSION: "0.1.0"
+      IPOCKET_COMMIT: "abc1234"
+      IPOCKET_BUILD_TIME: "2024-01-01T00:00:00Z"
 ```
 
-Example systemd override:
+Example systemd unit override (`Environment=`):
 
 ```ini
 [Service]

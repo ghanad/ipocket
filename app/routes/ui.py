@@ -35,7 +35,7 @@ def _render_template(
         "request": request,
         "show_nav": show_nav,
         "active_nav": active_nav,
-        "build_info": build_info.get_build_info(),
+        "build_info": build_info.get_display_build_info() if _is_authenticated_request(request) else None,
         **context,
     }
     if templates is None:
@@ -73,11 +73,11 @@ def _render_fallback_template(
         lines.append(str(error))
     if template_name == "login.html":
         lines.append("Login")
-    build = payload.get("build_info") or {}
-    version = build.get("version", "dev")
-    commit = build.get("commit", "unknown")
-    build_time = build.get("build_time", "unknown")
-    if payload.get("show_nav"):
+    build = payload.get("build_info")
+    if payload.get("show_nav") and build:
+        version = build.get("version", "dev")
+        commit = build.get("commit", "unknown")
+        build_time = build.get("build_time", "unknown")
         lines.append(f"ipocket v{version} ({commit}) • built {build_time}")
     return HTMLResponse(content="\n".join(lines), status_code=status_code)
 
@@ -101,6 +101,11 @@ def _verify_session_value(value: Optional[str]) -> Optional[str]:
     if not secrets.compare_digest(signature, expected):
         return None
     return payload
+
+
+def _is_authenticated_request(request: Request) -> bool:
+    signed_session = request.cookies.get(SESSION_COOKIE)
+    return _verify_session_value(signed_session) is not None
 
 
 def get_current_ui_user(
@@ -199,6 +204,19 @@ async def _parse_form_data(request: Request) -> dict:
 @router.get("/", response_class=HTMLResponse)
 def ui_home(request: Request):
     return RedirectResponse(url="/ui/ip-assets")
+
+
+@router.get("/ui/about", response_class=HTMLResponse)
+def ui_about(
+    request: Request,
+    _user=Depends(get_current_ui_user),
+) -> HTMLResponse:
+    return _render_template(
+        request,
+        "about.html",
+        {"title": "ipocket - About"},
+        active_nav="",
+    )
 
 
 @router.get("/ui/login", response_class=HTMLResponse)
