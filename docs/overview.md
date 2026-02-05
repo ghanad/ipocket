@@ -32,7 +32,7 @@ UI templates live in `app/templates`, UI routes live in `app/routes/ui.py`, and 
 - `GET /owners`: list owners.
 - `POST /owners`: create owner (Editor/Admin).
 - `PATCH /owners/{owner_id}`: update owner (Editor/Admin).
-- `GET /sd/node`: Prometheus HTTP service discovery target groups for non-archived IPs (supports `port`, `only_assigned`, and `project` filters).
+- `GET /sd/node`: Prometheus HTTP service discovery target groups for non-archived IPs (supports `port`, `only_assigned`, `project`, `owner`, and `type` filters, plus `group_by` output grouping).
 
 ## UI Pages (MVP)
 - `GET /ui/login`: browser login form.

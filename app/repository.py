@@ -273,7 +273,10 @@ def list_sd_targets(
     connection: sqlite3.Connection,
     port: int,
     only_assigned: bool = False,
-    project_name: Optional[str] = None,
+    project_names: Optional[list[str]] = None,
+    owner_names: Optional[list[str]] = None,
+    asset_types: Optional[list[IPAssetType]] = None,
+    group_by: str = "none",
 ) -> list[dict[str, object]]:
     query = """
         SELECT
@@ -290,25 +293,66 @@ def list_sd_targets(
 
     if only_assigned:
         query += " AND ip_assets.project_id IS NOT NULL AND ip_assets.owner_id IS NOT NULL"
-    if project_name:
-        query += " AND projects.name = ?"
-        params.append(project_name)
+    if project_names:
+        placeholders = ",".join(["?"] * len(project_names))
+        query += f" AND projects.name IN ({placeholders})"
+        params.extend(project_names)
+    if owner_names:
+        placeholders = ",".join(["?"] * len(owner_names))
+        query += f" AND owners.name IN ({placeholders})"
+        params.extend(owner_names)
+    if asset_types:
+        placeholders = ",".join(["?"] * len(asset_types))
+        query += f" AND ip_assets.type IN ({placeholders})"
+        params.extend([asset_type.value for asset_type in asset_types])
 
     query += " ORDER BY ip_assets.ip_address"
 
     rows = connection.execute(query, params).fetchall()
-    groups: list[dict[str, object]] = []
+
+    def _build_group_labels(group_rows: list[sqlite3.Row]) -> dict[str, str]:
+        projects = {row["project_name"] or "unassigned" for row in group_rows}
+        owners = {row["owner_name"] or "unassigned" for row in group_rows}
+        types = {row["asset_type"] for row in group_rows}
+
+        def _single_or_multiple(values: set[str]) -> str:
+            if len(values) == 1:
+                return next(iter(values))
+            return "multiple"
+
+        return {
+            "project": _single_or_multiple(projects),
+            "owner": _single_or_multiple(owners),
+            "type": _single_or_multiple(types),
+        }
+
+    grouped_rows: dict[tuple[str, ...], list[sqlite3.Row]] = {}
+
     for row in rows:
+        project_label = row["project_name"] or "unassigned"
+        owner_label = row["owner_name"] or "unassigned"
+
+        if group_by == "project":
+            group_key = (project_label,)
+        elif group_by == "owner":
+            group_key = (owner_label,)
+        elif group_by == "project_owner":
+            group_key = (project_label, owner_label)
+        else:
+            group_key = ("all",)
+
+        grouped_rows.setdefault(group_key, []).append(row)
+
+    groups: list[dict[str, object]] = []
+    for group_key in sorted(grouped_rows):
+        group_rows = grouped_rows[group_key]
         groups.append(
             {
-                "targets": [f"{row['ip_address']}:{port}"],
-                "labels": {
-                    "project": row["project_name"] or "unassigned",
-                    "owner": row["owner_name"] or "unassigned",
-                    "type": row["asset_type"],
-                },
+                "targets": [f"{row['ip_address']}:{port}" for row in group_rows],
+                "labels": _build_group_labels(group_rows),
             }
         )
+
     return groups
 
 

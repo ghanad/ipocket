@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import os
 import sqlite3
-from typing import Optional
+from typing import Literal, Optional
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Query, status
 from fastapi.responses import JSONResponse, Response
@@ -94,6 +94,19 @@ def _metrics_payload(metrics: dict[str, int]) -> str:
     )
 
 
+
+
+def _expand_csv_query_values(values: Optional[list[str]]) -> list[str]:
+    if not values:
+        return []
+    expanded: list[str] = []
+    for value in values:
+        for part in value.split(","):
+            clean = part.strip()
+            if clean:
+                expanded.append(clean)
+    return expanded
+
 def _require_sd_token_if_configured(sd_token: Optional[str], expected_token: Optional[str]) -> None:
     if not expected_token:
         return
@@ -140,7 +153,10 @@ def metrics(connection=Depends(get_connection)) -> Response:
 def service_discovery_targets(
     port: int = Query(default=9100, ge=1, le=65535),
     only_assigned: bool = Query(default=False),
-    project: Optional[str] = Query(default=None),
+    project: Optional[list[str]] = Query(default=None),
+    owner: Optional[list[str]] = Query(default=None),
+    asset_type: Optional[list[IPAssetType]] = Query(default=None, alias="type"),
+    group_by: Literal["none", "project", "owner", "project_owner"] = Query(default="none"),
     sd_token: Optional[str] = Header(default=None, alias="X-SD-Token"),
     connection=Depends(get_connection),
 ):
@@ -149,7 +165,10 @@ def service_discovery_targets(
         connection,
         port=port,
         only_assigned=only_assigned,
-        project_name=project,
+        project_names=_expand_csv_query_values(project),
+        owner_names=_expand_csv_query_values(owner),
+        asset_types=asset_type or [],
+        group_by=group_by,
     )
 
 
