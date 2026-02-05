@@ -54,19 +54,29 @@
         <tr>
           <th>Name</th>
           <th>Description</th>
+          <th>Actions</th>
         </tr>
       </thead>
       <tbody>
         {% if projects %}
         {% for project in projects %}
         <tr>
-          <td>{{ project.name }}</td>
-          <td>{{ project.description or '' }}</td>
+          <td>
+            <input class="input" type="text" name="name" value="{{ project.name }}" form="edit-project-{{ project.id }}" required />
+          </td>
+          <td>
+            <input class="input" type="text" name="description" value="{{ project.description or '' }}" form="edit-project-{{ project.id }}" />
+          </td>
+          <td>
+            <form id="edit-project-{{ project.id }}" method="post" action="/ui/projects/{{ project.id }}/edit" class="inline-edit-form">
+              <button class="btn btn-secondary" type="submit">Save</button>
+            </form>
+          </td>
         </tr>
         {% endfor %}
         {% else %}
         <tr>
-          <td colspan="2" class="empty-state">No projects yet.</td>
+          <td colspan="3" class="empty-state">No projects yet.</td>
         </tr>
         {% endif %}
       </tbody>

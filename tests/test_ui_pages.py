@@ -480,6 +480,93 @@ def test_editor_can_create_owner_via_ui(client) -> None:
     assert owner is not None
 
 
+
+
+def test_editor_can_edit_project_via_ui(client) -> None:
+    test_client, db_path = client
+    _create_user(db_path, "editor", "editor-pass", UserRole.EDITOR)
+    _ui_login(test_client, "editor", "editor-pass")
+
+    connection = db.connect(str(db_path))
+    try:
+        db.init_db(connection)
+        project = repository.create_project(connection, name="Core", description="Old")
+    finally:
+        connection.close()
+
+    response = test_client.post(
+        f"/ui/projects/{project.id}/edit",
+        data={"name": "Core Platform", "description": "New description"},
+        allow_redirects=False,
+    )
+
+    assert response.status_code == 303
+
+    connection = db.connect(str(db_path))
+    try:
+        updated = repository.get_project_by_name(connection, "Core Platform")
+    finally:
+        connection.close()
+    assert updated is not None
+    assert updated.description == "New description"
+
+
+def test_editor_can_edit_owner_via_ui(client) -> None:
+    test_client, db_path = client
+    _create_user(db_path, "editor", "editor-pass", UserRole.EDITOR)
+    _ui_login(test_client, "editor", "editor-pass")
+
+    connection = db.connect(str(db_path))
+    try:
+        db.init_db(connection)
+        owner = repository.create_owner(connection, name="NetOps", contact="old@example.com")
+    finally:
+        connection.close()
+
+    response = test_client.post(
+        f"/ui/owners/{owner.id}/edit",
+        data={"name": "SRE", "contact": "sre@example.com"},
+        allow_redirects=False,
+    )
+
+    assert response.status_code == 303
+
+    connection = db.connect(str(db_path))
+    try:
+        updated = repository.get_owner_by_name(connection, "SRE")
+    finally:
+        connection.close()
+    assert updated is not None
+    assert updated.contact == "sre@example.com"
+
+
+def test_viewer_cannot_edit_projects_or_owners(client) -> None:
+    test_client, db_path = client
+    _create_user(db_path, "viewer", "viewer-pass", UserRole.VIEWER)
+    _ui_login(test_client, "viewer", "viewer-pass")
+
+    connection = db.connect(str(db_path))
+    try:
+        db.init_db(connection)
+        project = repository.create_project(connection, name="Core")
+        owner = repository.create_owner(connection, name="NetOps")
+    finally:
+        connection.close()
+
+    project_response = test_client.post(
+        f"/ui/projects/{project.id}/edit",
+        data={"name": "Blocked"},
+        allow_redirects=False,
+    )
+    owner_response = test_client.post(
+        f"/ui/owners/{owner.id}/edit",
+        data={"name": "Blocked"},
+        allow_redirects=False,
+    )
+
+    assert project_response.status_code == 403
+    assert owner_response.status_code == 403
+
 def test_project_owner_options_render_in_new_ip_form(client) -> None:
     test_client, db_path = client
     _create_user(db_path, "editor", "editor-pass", UserRole.EDITOR)
@@ -519,6 +606,35 @@ def test_viewer_cannot_create_projects_or_owners(client) -> None:
     assert project_response.status_code == 403
     assert owner_response.status_code == 403
 
+
+
+
+def test_unauthenticated_cannot_edit_projects_or_owners(client) -> None:
+    test_client, db_path = client
+
+    connection = db.connect(str(db_path))
+    try:
+        db.init_db(connection)
+        project = repository.create_project(connection, name="Core")
+        owner = repository.create_owner(connection, name="NetOps")
+    finally:
+        connection.close()
+
+    project_response = test_client.post(
+        f"/ui/projects/{project.id}/edit",
+        data={"name": "Nope"},
+        allow_redirects=False,
+    )
+    owner_response = test_client.post(
+        f"/ui/owners/{owner.id}/edit",
+        data={"name": "Nope"},
+        allow_redirects=False,
+    )
+
+    assert project_response.status_code == 303
+    assert project_response.headers["location"] == "/ui/login"
+    assert owner_response.status_code == 303
+    assert owner_response.headers["location"] == "/ui/login"
 
 def test_unauthenticated_cannot_create_projects_or_owners(client) -> None:
     test_client, _db_path = client
