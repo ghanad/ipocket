@@ -32,7 +32,6 @@ class IPAssetCreate(BaseModel):
     gateway: Optional[str] = None
     asset_type: IPAssetType = Field(alias="type")
     project_id: Optional[int] = None
-    owner_id: Optional[int] = None
     notes: Optional[str] = None
     host_id: Optional[int] = None
 
@@ -47,7 +46,6 @@ class IPAssetUpdate(BaseModel):
     gateway: Optional[str] = None
     asset_type: Optional[IPAssetType] = Field(default=None, alias="type")
     project_id: Optional[int] = None
-    owner_id: Optional[int] = None
     notes: Optional[str] = None
     host_id: Optional[int] = None
 
@@ -67,16 +65,6 @@ class ProjectCreate(BaseModel):
 class ProjectUpdate(BaseModel):
     name: Optional[str] = None
     description: Optional[str] = None
-
-
-class OwnerCreate(BaseModel):
-    name: str
-    contact: Optional[str] = None
-
-
-class OwnerUpdate(BaseModel):
-    name: Optional[str] = None
-    contact: Optional[str] = None
 
 
 class HostCreate(BaseModel):
@@ -101,7 +89,6 @@ def _asset_payload(asset: IPAsset) -> dict:
         "gateway": asset.gateway,
         "type": asset.asset_type.value,
         "project_id": asset.project_id,
-        "owner_id": asset.owner_id,
         "notes": asset.notes,
         "host_id": asset.host_id,
         "archived": asset.archived,
@@ -115,9 +102,7 @@ def _metrics_payload(metrics: dict[str, int]) -> str:
         [
             f"ipam_ip_total {metrics['total']}",
             f"ipam_ip_archived_total {metrics['archived_total']}",
-            f"ipam_ip_unassigned_owner_total {metrics['unassigned_owner_total']}",
             f"ipam_ip_unassigned_project_total {metrics['unassigned_project_total']}",
-            f"ipam_ip_unassigned_both_total {metrics['unassigned_both_total']}",
             "",
         ]
     )
@@ -192,9 +177,8 @@ def service_discovery_targets(
     port: int = Query(default=9100, ge=1, le=65535),
     only_assigned: bool = Query(default=False),
     project: Optional[list[str]] = Query(default=None),
-    owner: Optional[list[str]] = Query(default=None),
     asset_type: Optional[list[str]] = Query(default=None, alias="type"),
-    group_by: Literal["none", "project", "owner", "project_owner"] = Query(default="none"),
+    group_by: Literal["none", "project"] = Query(default="none"),
     sd_token: Optional[str] = Header(default=None, alias="X-SD-Token"),
     connection=Depends(get_connection),
 ):
@@ -208,7 +192,6 @@ def service_discovery_targets(
         port=port,
         only_assigned=only_assigned,
         project_names=_expand_csv_query_values(project),
-        owner_names=_expand_csv_query_values(owner),
         asset_types=normalized_types,
         group_by=group_by,
     )
@@ -242,7 +225,6 @@ def create_ip_asset(
             gateway=payload.gateway,
             asset_type=payload.asset_type,
             project_id=payload.project_id,
-            owner_id=payload.owner_id,
             notes=payload.notes,
             host_id=payload.host_id,
         )
@@ -257,7 +239,6 @@ def create_ip_asset(
 @router.get("/ip-assets")
 def list_ip_assets(
     project_id: Optional[int] = None,
-    owner_id: Optional[int] = None,
     asset_type: Optional[str] = Query(default=None, alias="type"),
     unassigned_only: bool = Query(default=False, alias="unassigned-only"),
     connection=Depends(get_connection),
@@ -268,7 +249,6 @@ def list_ip_assets(
     assets = repository.list_active_ip_assets(
         connection,
         project_id=project_id,
-        owner_id=owner_id,
         asset_type=normalized_asset_type,
         unassigned_only=unassigned_only,
     )
@@ -302,7 +282,6 @@ def update_ip_asset(
         gateway=payload.gateway,
         asset_type=payload.asset_type,
         project_id=payload.project_id,
-        owner_id=payload.owner_id,
         notes=payload.notes,
         host_id=payload.host_id,
     )
@@ -361,45 +340,6 @@ def update_project(
     if project is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
     return {"id": project.id, "name": project.name, "description": project.description}
-
-
-@router.post("/owners")
-def create_owner(
-    payload: OwnerCreate,
-    connection=Depends(get_connection),
-    _user=Depends(require_editor),
-):
-    owner = repository.create_owner(
-        connection, name=payload.name, contact=payload.contact
-    )
-    return {"id": owner.id, "name": owner.name, "contact": owner.contact}
-
-
-@router.get("/owners")
-def list_owners(connection=Depends(get_connection)):
-    owners = repository.list_owners(connection)
-    return [
-        {"id": owner.id, "name": owner.name, "contact": owner.contact}
-        for owner in owners
-    ]
-
-
-@router.patch("/owners/{owner_id}")
-def update_owner(
-    owner_id: int,
-    payload: OwnerUpdate,
-    connection=Depends(get_connection),
-    _user=Depends(require_editor),
-):
-    owner = repository.update_owner(
-        connection,
-        owner_id=owner_id,
-        name=payload.name,
-        contact=payload.contact,
-    )
-    if owner is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
-    return {"id": owner.id, "name": owner.name, "contact": owner.contact}
 
 
 @router.get("/hosts")

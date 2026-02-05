@@ -28,15 +28,6 @@
       </select>
     </label>
     <label class="field">
-      <span>Owner</span>
-      <select class="select" name="owner_id">
-        <option value="">All</option>
-        {% for owner in owners %}
-        <option value="{{ owner.id }}"{% if filters.owner_id == owner.id %} selected{% endif %}>{{ owner.name }}</option>
-        {% endfor %}
-      </select>
-    </label>
-    <label class="field">
       <span>Type</span>
       <select class="select" name="type">
         <option value="">All</option>
@@ -60,9 +51,7 @@
         <tr>
           <th>IP address</th>
           <th>Project</th>
-          <th>Owner</th>
           <th>Type</th>
-          <th>Status</th>
           <th>Notes</th>
           <th>Actions</th>
         </tr>
@@ -79,25 +68,7 @@
             <span class="tag">{{ asset.project_name }}</span>
             {% endif %}
           </td>
-          <td>
-            {% if asset.owner_unassigned %}
-            <span class="tag tag-danger">Unassigned</span>
-            {% else %}
-            <span class="tag">{{ asset.owner_name }}</span>
-            {% endif %}
-          </td>
           <td class="muted">{{ asset.type }}</td>
-          <td>
-            {% if asset.both_unassigned %}
-            <span class="pill pill-danger">Missing owner + project</span>
-            {% elif asset.project_unassigned %}
-            <span class="pill pill-warning">Missing project</span>
-            {% elif asset.owner_unassigned %}
-            <span class="pill pill-danger">Missing owner</span>
-            {% else %}
-            <span class="pill pill-success">Assigned</span>
-            {% endif %}
-          </td>
           <td class="muted">{{ asset.notes }}</td>
           <td><a class="link" href="/ui/ip-assets/{{ asset.id }}/edit">Edit</a></td>
         </tr>

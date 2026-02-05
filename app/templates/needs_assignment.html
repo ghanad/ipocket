@@ -3,132 +3,31 @@
 {% block content %}
 <section class="page-header">
   <div>
-    <p class="eyebrow">Needs assignment</p>
-    <h1>Assignment Inbox</h1>
-    <p class="subtitle">Review unassigned IPs and quickly set owners or projects.</p>
+    <p class="eyebrow">Assignment</p>
+    <h1>Needs Assignment</h1>
+    <p class="subtitle">Review unassigned IPs and quickly set projects.</p>
   </div>
-  <div class="header-actions">
-    <a class="btn btn-secondary" href="/ui/ip-assets">Back to list</a>
-  </div>
-</section>
-
-<section class="tabs">
-  <a class="tab{% if selected_filter == 'owner' %} tab-active{% endif %}" href="/ui/ip-assets/needs-assignment?filter=owner">Needs Owner</a>
-  <a class="tab{% if selected_filter == 'project' %} tab-active{% endif %}" href="/ui/ip-assets/needs-assignment?filter=project">Needs Project</a>
-  <a class="tab{% if selected_filter == 'both' %} tab-active{% endif %}" href="/ui/ip-assets/needs-assignment?filter=both">Needs Both</a>
 </section>
 
 <section class="card">
-  <div class="card-header">
-    <div>
-      <h2>Quick assign</h2>
-      <p class="subtitle">Choose an IP plus the Owner and/or Project to assign.</p>
-    </div>
-  </div>
   {% if errors %}
   <div class="alert alert-error">
-    <p class="alert-title">Fix the following:</p>
-    <ul>
-      {% for error in errors %}
-      <li>{{ error }}</li>
-      {% endfor %}
-    </ul>
+    <ul>{% for error in errors %}<li>{{ error }}</li>{% endfor %}</ul>
   </div>
   {% endif %}
-  <form class="form-grid" method="post" action="/ui/ip-assets/needs-assignment/assign?filter={{ selected_filter }}">
-    <label class="field">
-      <span>IP address</span>
+  <form class="form-grid" method="post" action="/ui/ip-assets/needs-assignment/assign?filter=project">
+    <label class="field"><span>IP</span>
       <select class="select" name="ip_address">
-        <option value="">Select an IP</option>
-        {% for asset in assets %}
-        <option value="{{ asset.ip_address }}"{% if form_state.ip_address == asset.ip_address %} selected{% endif %}>{{ asset.ip_address }}</option>
-        {% endfor %}
+        {% for asset in assets %}<option value="{{ asset.ip_address }}">{{ asset.ip_address }}</option>{% endfor %}
       </select>
     </label>
-    <label class="field">
-      <span>Project</span>
+    <label class="field"><span>Project</span>
       <select class="select" name="project_id">
-        <option value="">Leave unassigned</option>
-        {% for project in projects %}
-        <option value="{{ project.id }}"{% if form_state.project_id == project.id %} selected{% endif %}>{{ project.name }}</option>
-        {% endfor %}
+        <option value="">UNASSIGNED</option>
+        {% for project in projects %}<option value="{{ project.id }}">{{ project.name }}</option>{% endfor %}
       </select>
     </label>
-    <label class="field">
-      <span>Owner</span>
-      <select class="select" name="owner_id">
-        <option value="">Leave unassigned</option>
-        {% for owner in owners %}
-        <option value="{{ owner.id }}"{% if form_state.owner_id == owner.id %} selected{% endif %}>{{ owner.name }}</option>
-        {% endfor %}
-      </select>
-    </label>
-    <div class="form-actions">
-      <button class="btn btn-primary" type="submit">Assign</button>
-    </div>
+    <button class="btn btn-primary" type="submit">Assign</button>
   </form>
-</section>
-
-<section class="card table-card needs-assignment-matching-card">
-  <div class="card-header">
-    <div>
-      <h2>Matching IPs</h2>
-      <p class="subtitle">Filtered list of IPs that need attention.</p>
-    </div>
-  </div>
-  <div class="table-wrapper">
-    <table class="table">
-      <thead>
-        <tr>
-          <th>IP</th>
-          <th>Subnet</th>
-          <th>Status</th>
-          <th>Owner</th>
-          <th>Project</th>
-          <th>Notes</th>
-        </tr>
-      </thead>
-      <tbody>
-        {% if assets %}
-        {% for asset in assets %}
-        <tr>
-          <td class="mono"><a href="/ui/ip-assets/{{ asset.id }}">{{ asset.ip_address }}</a></td>
-          <td class="muted">{{ asset.subnet }}</td>
-          <td>
-            {% if asset.both_unassigned %}
-            <span class="pill pill-danger">Missing owner + project</span>
-            {% elif asset.project_unassigned %}
-            <span class="pill pill-warning">Missing project</span>
-            {% elif asset.owner_unassigned %}
-            <span class="pill pill-danger">Missing owner</span>
-            {% else %}
-            <span class="pill pill-success">Assigned</span>
-            {% endif %}
-          </td>
-          <td>
-            {% if asset.owner_unassigned %}
-            <span class="tag tag-danger">Unassigned</span>
-            {% else %}
-            <span class="tag">{{ asset.owner_name }}</span>
-            {% endif %}
-          </td>
-          <td>
-            {% if asset.project_unassigned %}
-            <span class="tag tag-warning">Unassigned</span>
-            {% else %}
-            <span class="tag">{{ asset.project_name }}</span>
-            {% endif %}
-          </td>
-          <td class="muted">{{ asset.notes }}</td>
-        </tr>
-        {% endfor %}
-        {% else %}
-        <tr>
-          <td colspan="6" class="empty-state">No IP assets found.</td>
-        </tr>
-        {% endif %}
-      </tbody>
-    </table>
-  </div>
 </section>
 {% endblock %}

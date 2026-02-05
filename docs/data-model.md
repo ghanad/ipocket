@@ -1,59 +1,16 @@
-# Data Model (MVP)
+# Data model
 
 ## IPAsset
-Required:
-- ip_address (unique)
-- type
-
-Optional:
-- subnet
-- gateway
-
-Fields:
-- ip_address: unique string
-- subnet: optional string (CIDR or label)
-- gateway: optional string
-- project_id: optional reference to Project
-- owner_id: optional reference to Owner
-- type: VM | OS | BMC | VIP | OTHER
-- notes: optional text
-- archived: boolean (soft delete)
-- created_at, updated_at timestamps
-
-Notes:
-- We use **soft delete** (archived) instead of hard delete.
-- Legacy input aliases `IPMI_ILO` and `IPMI_iLO` are accepted and normalized to `BMC`.
-- `OS` is for an IP configured on a host operating system (for example, a physical server NIC).
-- `BMC` is for out-of-band management interfaces (iLO/iDRAC/IPMI), separate from OS network IPs.
+- `ip_address` (unique)
+- `subnet`
+- `gateway`
+- `project_id` (optional)
+- `type` (`VM`, `OS`, `BMC`, `VIP`, `OTHER`)
+- `host_id` (optional)
+- `notes` (optional)
+- `archived` (soft delete)
+- timestamps (`created_at`, `updated_at`)
 
 ## Project
-- name (unique)
-- description (optional)
-
-## Owner
-- name (unique)
-- contact (optional)
-
-## User
-- username (unique)
-- hashed_password
-- role: Viewer | Editor | Admin
-- is_active
-
-
-## Service discovery labels
-- `/sd/node` exposes `project`, `owner`, and `type` labels for each non-archived IPAsset target and can group targets with `group_by`.
-- Missing `project` or `owner` values are emitted as `unassigned`.
-
-
-## Host
-- id: integer primary key
-- name: unique, required host identifier (for example `srv-db-01`)
-- notes: optional text
-- created_at, updated_at timestamps
-
-## IPAsset ↔ Host relationship
-- `ip_assets.host_id` is an optional foreign key to `hosts.id`.
-- This is mainly used to link physical server `OS` and `BMC` addresses under the same Host.
-- `host_id` stays optional for `VM`, `VIP`, and `OTHER` assets.
-- No enforcement currently requires OS/BMC records to have a host.
+- `name` (unique)
+- `description` (optional)

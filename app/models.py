@@ -35,13 +35,6 @@ class Project:
 
 
 @dataclass
-class Owner:
-    id: int
-    name: str
-    contact: Optional[str]
-
-
-@dataclass
 class Host:
     id: int
     name: str
@@ -65,7 +58,6 @@ class IPAsset:
     gateway: str
     asset_type: IPAssetType
     project_id: Optional[int]
-    owner_id: Optional[int]
     host_id: Optional[int]
     notes: Optional[str]
     archived: bool

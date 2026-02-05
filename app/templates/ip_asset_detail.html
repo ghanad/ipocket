@@ -1,88 +1,10 @@
 {% extends "base.html" %}
 
 {% block content %}
-<section class="page-header">
-  <div>
-    <p class="eyebrow">IP asset</p>
-    <h1>{{ asset.ip_address }}</h1>
-    <p class="subtitle">Detailed assignment and configuration view.</p>
-  </div>
-  <div class="header-actions">
-    <a class="btn btn-secondary" href="/ui/ip-assets">Back to list</a>
-    <a class="btn btn-primary" href="/ui/ip-assets/{{ asset.id }}/edit">Edit</a>
-  </div>
-</section>
-
-<section class="card detail-grid">
-  <div class="detail-item">
-    <p class="detail-label">Subnet</p>
-    <p class="detail-value">{{ asset.subnet }}</p>
-  </div>
-  <div class="detail-item">
-    <p class="detail-label">Gateway</p>
-    <p class="detail-value">{{ asset.gateway }}</p>
-  </div>
-  <div class="detail-item">
-    <p class="detail-label">Type</p>
-    <p class="detail-value">{{ asset.type }}</p>
-  </div>
-  <div class="detail-item">
-    <p class="detail-label">Host</p>
-    <p class="detail-value">
-      {% if asset.host_unassigned %}
-      <span class="tag">Unassigned</span>
-      {% else %}
-      <a class="link" href="/ui/hosts/{{ asset.host_id }}">{{ asset.host_name }}</a>
-      {% endif %}
-    </p>
-  </div>
-  <div class="detail-item">
-    <p class="detail-label">Project</p>
-    <p class="detail-value">
-      {% if asset.project_unassigned %}
-      <span class="tag tag-warning">Unassigned</span>
-      {% else %}
-      <span class="tag">{{ asset.project_name }}</span>
-      {% endif %}
-    </p>
-  </div>
-  <div class="detail-item">
-    <p class="detail-label">Owner</p>
-    <p class="detail-value">
-      {% if asset.owner_unassigned %}
-      <span class="tag tag-danger">Unassigned</span>
-      {% else %}
-      <span class="tag">{{ asset.owner_name }}</span>
-      {% endif %}
-    </p>
-  </div>
-  <div class="detail-item">
-    <p class="detail-label">Assignment</p>
-    <p class="detail-value">
-      {% if asset.both_unassigned %}
-      <span class="pill pill-danger">Missing owner + project</span>
-      {% elif asset.project_unassigned %}
-      <span class="pill pill-warning">Missing project</span>
-      {% elif asset.owner_unassigned %}
-      <span class="pill pill-danger">Missing owner</span>
-      {% else %}
-      <span class="pill pill-success">Assigned</span>
-      {% endif %}
-    </p>
-  </div>
-  <div class="detail-item detail-item-wide">
-    <p class="detail-label">Notes</p>
-    <p class="detail-value">{{ asset.notes }}</p>
-  </div>
-</section>
-
-<section class="card action-card">
-  <h2>Actions (Editor/Admin)</h2>
-  <div class="action-row">
-    <a class="btn btn-outline" href="/ui/ip-assets/{{ asset.id }}/edit">Edit IP details</a>
-    <form method="post" action="/ui/ip-assets/{{ asset.id }}/archive">
-      <button class="btn btn-danger" type="submit">Archive IP</button>
-    </form>
-  </div>
+<section class="page-header"><h1>{{ asset.ip_address }}</h1></section>
+<section class="card">
+  <p><strong>Project:</strong> {% if asset.project_unassigned %}Unassigned{% else %}{{ asset.project_name }}{% endif %}</p>
+  <p><strong>Type:</strong> {{ asset.type }}</p>
+  <p><strong>Notes:</strong> {{ asset.notes }}</p>
 </section>
 {% endblock %}
