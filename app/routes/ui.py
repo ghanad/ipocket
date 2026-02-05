@@ -165,6 +165,13 @@ def _normalize_assignment_filter(value: Optional[str]) -> str:
     return "owner"
 
 
+def _normalize_asset_type(value: Optional[str]) -> Optional[IPAssetType]:
+    normalized_value = _parse_optional_str(value)
+    if normalized_value is None:
+        return None
+    return IPAssetType.normalize(normalized_value)
+
+
 def _build_asset_view_models(
     assets: list[IPAsset],
     project_lookup: dict[int, str],
@@ -539,12 +546,10 @@ def ui_list_ip_assets(
 ):
     parsed_project_id = _parse_optional_int_query(project_id)
     parsed_owner_id = _parse_optional_int_query(owner_id)
-    asset_type_value = _parse_optional_str(asset_type)
-    asset_type_enum = (
-        IPAssetType(asset_type_value)
-        if asset_type_value in {asset.value for asset in IPAssetType}
-        else None
-    )
+    try:
+        asset_type_enum = _normalize_asset_type(asset_type)
+    except ValueError:
+        asset_type_enum = None
     assets = list(
         repository.list_active_ip_assets(
             connection,
@@ -746,7 +751,12 @@ async def ui_add_ip_submit(
     errors = []
     if not ip_address:
         errors.append("IP address is required.")
-    if asset_type not in [asset.value for asset in IPAssetType]:
+    normalized_asset_type = None
+    try:
+        normalized_asset_type = _normalize_asset_type(asset_type)
+    except ValueError:
+        errors.append("Asset type is required.")
+    if normalized_asset_type is None and not errors:
         errors.append("Asset type is required.")
 
     if ip_address:
@@ -791,7 +801,7 @@ async def ui_add_ip_submit(
             ip_address=ip_address,
             subnet=subnet,
             gateway=gateway,
-            asset_type=IPAssetType(asset_type),
+            asset_type=normalized_asset_type,
             project_id=project_id,
             owner_id=owner_id,
             notes=notes,
@@ -913,7 +923,12 @@ async def ui_edit_ip_submit(
     notes = _parse_optional_str(form_data.get("notes"))
 
     errors = []
-    if asset_type not in [asset.value for asset in IPAssetType]:
+    normalized_asset_type = None
+    try:
+        normalized_asset_type = _normalize_asset_type(asset_type)
+    except ValueError:
+        errors.append("Asset type is required.")
+    if normalized_asset_type is None and not errors:
         errors.append("Asset type is required.")
 
     if errors:
@@ -951,7 +966,7 @@ async def ui_edit_ip_submit(
         ip_address=asset.ip_address,
         subnet=subnet,
         gateway=gateway,
-        asset_type=IPAssetType(asset_type),
+        asset_type=normalized_asset_type,
         project_id=project_id,
         owner_id=owner_id,
         notes=notes,

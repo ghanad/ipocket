@@ -40,7 +40,7 @@
       <span>Type</span>
       <select class="select" name="type">
         {% for asset_type in types %}
-        <option value="{{ asset_type }}"{% if asset.type == asset_type %} selected{% endif %}>{{ asset_type }}</option>
+        <option value="{{ asset_type }}"{% if asset.type == asset_type %} selected{% endif %}>{% if asset_type == "BMC" %}BMC (iLO/iDRAC/IPMI){% else %}{{ asset_type }}{% endif %}</option>
         {% endfor %}
       </select>
     </label>

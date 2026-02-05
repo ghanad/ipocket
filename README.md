@@ -37,7 +37,7 @@ Each IP record will support:
 - `subnet`, `gateway`
 - `project` (may be empty in MVP)
 - `owner` (may be empty in MVP)
-- `type`: `VM | PHYSICAL | IPMI_ILO | VIP | OTHER`
+- `type`: `VM | PHYSICAL | BMC | VIP | OTHER`
 - `notes` (optional)
 - timestamps
 - `archived` flag (soft delete)

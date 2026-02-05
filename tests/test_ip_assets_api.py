@@ -226,3 +226,46 @@ def test_unique_ip_constraint_returns_conflict(client) -> None:
     )
     assert conflict_response.status_code == 409
     assert conflict_response.json()["detail"] == "IP address already exists."
+
+
+def test_create_ipasset_with_bmc_type(client) -> None:
+    test_client, db_path = client
+    _create_user(db_path, "editor", "editor-pass", UserRole.EDITOR)
+    token = _login(test_client, "editor", "editor-pass")
+
+    response = test_client.post(
+        "/ip-assets",
+        headers=_auth_header(token),
+        json={
+            "ip_address": "10.0.0.70",
+            "type": "BMC",
+        },
+    )
+
+    assert response.status_code == 200
+    assert response.json()["type"] == "BMC"
+
+
+def test_legacy_ipmi_type_is_normalized_to_bmc_on_create_and_update(client) -> None:
+    test_client, db_path = client
+    _create_user(db_path, "editor", "editor-pass", UserRole.EDITOR)
+    token = _login(test_client, "editor", "editor-pass")
+
+    create_response = test_client.post(
+        "/ip-assets",
+        headers=_auth_header(token),
+        json={
+            "ip_address": "10.0.0.71",
+            "type": "IPMI_ILO",
+        },
+    )
+    assert create_response.status_code == 200
+    assert create_response.json()["type"] == "BMC"
+
+    update_response = test_client.patch(
+        "/ip-assets/10.0.0.71",
+        headers=_auth_header(token),
+        json={"type": "IPMI_iLO"},
+    )
+    assert update_response.status_code == 200
+    assert update_response.json()["type"] == "BMC"

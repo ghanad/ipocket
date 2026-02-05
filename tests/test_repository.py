@@ -137,3 +137,16 @@ def test_get_ip_asset_metrics_counts(tmp_path) -> None:
     assert metrics["unassigned_owner_total"] == 2
     assert metrics["unassigned_project_total"] == 1
     assert metrics["unassigned_both_total"] == 1
+
+
+
+def test_schema_uses_bmc_asset_type(tmp_path) -> None:
+    connection = _setup_connection(tmp_path)
+
+    row = connection.execute(
+        "SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'ip_assets'"
+    ).fetchone()
+
+    assert row is not None
+    assert "'BMC'" in row["sql"]
+    assert "'IPMI_ILO'" not in row["sql"]
