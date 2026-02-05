@@ -17,3 +17,15 @@ def get_build_info() -> dict[str, str]:
         "commit": _get_env_value("IPOCKET_COMMIT", "unknown"),
         "build_time": _get_env_value("IPOCKET_BUILD_TIME", "unknown"),
     }
+
+
+def get_display_build_info() -> dict[str, str]:
+    info = get_build_info()
+    commit = info["commit"]
+    if commit != "unknown":
+        commit = commit[:7]
+    return {
+        "version": info["version"],
+        "commit": commit,
+        "build_time": info["build_time"],
+    }

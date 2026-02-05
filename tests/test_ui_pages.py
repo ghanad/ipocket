@@ -278,10 +278,12 @@ def test_editor_can_create_ip_via_ui(client) -> None:
     assert "10.0.8.10" in list_response.text
 
 
-def test_ui_footer_shows_build_info(client, monkeypatch) -> None:
-    test_client, _db_path = client
+def test_ui_footer_shows_build_info_for_authenticated_user(client, monkeypatch) -> None:
+    test_client, db_path = client
+    _create_user(db_path, "viewer", "viewer-pass", UserRole.VIEWER)
+    _ui_login(test_client, "viewer", "viewer-pass")
     monkeypatch.setenv("IPOCKET_VERSION", "1.2.3")
-    monkeypatch.setenv("IPOCKET_COMMIT", "deadbee")
+    monkeypatch.setenv("IPOCKET_COMMIT", "deadbeefcafebabe")
     monkeypatch.setenv("IPOCKET_BUILD_TIME", "2025-01-01T00:00:00Z")
 
     response = test_client.get("/ui/ip-assets")
@@ -289,6 +291,43 @@ def test_ui_footer_shows_build_info(client, monkeypatch) -> None:
     assert response.status_code == 200
     assert "ipocket v1.2.3 (deadbee) • built 2025-01-01T00:00:00Z" in response.text
 
+
+def test_ui_footer_hides_build_info_for_anonymous_user(client) -> None:
+    test_client, _db_path = client
+
+    response = test_client.get("/ui/ip-assets")
+
+    assert response.status_code == 200
+    assert "ipocket v" not in response.text
+
+
+
+
+def test_ui_about_page_requires_authentication(client) -> None:
+    test_client, _db_path = client
+
+    response = test_client.get("/ui/about", allow_redirects=False)
+
+    assert response.status_code == 303
+    assert response.headers["location"] == "/ui/login"
+
+
+def test_ui_about_page_shows_build_info(client, monkeypatch) -> None:
+    test_client, db_path = client
+    _create_user(db_path, "viewer", "viewer-pass", UserRole.VIEWER)
+    _ui_login(test_client, "viewer", "viewer-pass")
+    monkeypatch.setenv("IPOCKET_VERSION", "2.0.0")
+    monkeypatch.setenv("IPOCKET_COMMIT", "abc123456789")
+    monkeypatch.setenv("IPOCKET_BUILD_TIME", "2026-01-01T12:00:00Z")
+
+    response = test_client.get("/ui/about")
+
+    assert response.status_code == 200
+    assert "Version: 2.0.0" in response.text
+    assert "Commit: abc1234" in response.text
+    assert "Build time: 2026-01-01T12:00:00Z" in response.text
+    assert 'href="/health"' in response.text
+    assert 'href="/metrics"' in response.text
 
 def test_ui_includes_app_css(client) -> None:
     test_client, _db_path = client
