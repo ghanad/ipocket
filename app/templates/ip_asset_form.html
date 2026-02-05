@@ -54,6 +54,15 @@
       </select>
     </label>
     <label class="field">
+      <span>Host</span>
+      <select class="select" name="host_id">
+        <option value="">UNASSIGNED</option>
+        {% for host in hosts %}
+        <option value="{{ host.id }}"{% if asset.host_id == host.id %} selected{% endif %}>{{ host.name }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <label class="field">
       <span>Owner</span>
       <select class="select" name="owner_id">
         <option value="">UNASSIGNED</option>

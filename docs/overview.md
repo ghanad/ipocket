@@ -9,6 +9,7 @@ UI templates live in `app/templates`, UI routes live in `app/routes/ui.py`, and 
 - Use `OS` for IPs configured on a server operating system.
 - Use `BMC` as the vendor-neutral management interface type (covers iLO/iDRAC/IPMI) for out-of-band access.
 - Track ownership and project assignment.
+- Add lightweight Host records to link OS and BMC IPs that belong to the same physical server without turning ipocket into a full CMDB.
 - Make unassigned records highly visible.
 - Provide Prometheus metrics for monitoring and alerting.
 
@@ -40,7 +41,9 @@ UI templates live in `app/templates`, UI routes live in `app/routes/ui.py`, and 
 - `GET /ui/login`: browser login form.
 - `GET /ui/ip-assets`: IP list with search and filters (project, owner, type, unassigned-only). Empty filter selections are ignored. The table intentionally omits the Subnet column to keep the list focused on assignment status.
 - `GET /ui/ip-assets/needs-assignment`: dedicated view to focus on IPs missing Owner and/or Project, with tabs for Needs Owner, Needs Project, and Needs Both.
-- `GET /ui/ip-assets/{asset_id}`: IP detail page with assignment status.
+- `GET /ui/ip-assets/{asset_id}`: IP detail page with assignment status and optional Host link.
+- `GET /ui/hosts`: list hosts and linked-IP counts.
+- `GET /ui/hosts/{host_id}`: host detail grouped by OS IPs and BMC IPs.
 - `GET /ui/ip-assets/new`: add IP form (Editor/Admin). Subnet and Gateway are optional when creating an IP.
 - `GET /ui/ip-assets/{asset_id}/edit`: edit IP form (Editor/Admin). Subnet and Gateway are optional when editing an IP as well.
 - `GET /ui/projects`: list/create projects and inline-edit existing rows (Editor/Admin write access). The Existing projects table header has internal padding to keep content off card edges for better readability.

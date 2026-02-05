@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="page-header">
+  <div>
+    <p class="eyebrow">Host</p>
+    <h1>{{ host.name }}</h1>
+    <p class="subtitle">{{ host.notes or "No notes" }}</p>
+  </div>
+  <div class="header-actions">
+    <a class="btn btn-secondary" href="/ui/hosts">Back to hosts</a>
+  </div>
+</section>
+
+<section class="card">
+  <h2>OS IPs</h2>
+  <ul>
+    {% for asset in os_assets %}
+    <li><a href="/ui/ip-assets/{{ asset.id }}">{{ asset.ip_address }}</a></li>
+    {% else %}<li>None</li>{% endfor %}
+  </ul>
+</section>
+
+<section class="card">
+  <h2>BMC IPs</h2>
+  <ul>
+    {% for asset in bmc_assets %}
+    <li><a href="/ui/ip-assets/{{ asset.id }}">{{ asset.ip_address }}</a></li>
+    {% else %}<li>None</li>{% endfor %}
+  </ul>
+</section>
+
+{% if other_assets %}
+<section class="card">
+  <h2>Other linked IPs</h2>
+  <ul>
+    {% for asset in other_assets %}
+    <li><a href="/ui/ip-assets/{{ asset.id }}">{{ asset.ip_address }} ({{ asset.asset_type.value }})</a></li>
+    {% endfor %}
+  </ul>
+</section>
+{% endif %}
+{% endblock %}

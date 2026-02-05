@@ -10,7 +10,7 @@ from pydantic import BaseModel, Field, field_validator
 
 from app import auth, build_info, repository
 from app.dependencies import get_connection
-from app.models import IPAsset, IPAssetType, UserRole
+from app.models import Host, IPAsset, IPAssetType, UserRole
 from app.utils import validate_ip_address
 
 router = APIRouter()
@@ -34,6 +34,7 @@ class IPAssetCreate(BaseModel):
     project_id: Optional[int] = None
     owner_id: Optional[int] = None
     notes: Optional[str] = None
+    host_id: Optional[int] = None
 
     @field_validator("asset_type", mode="before")
     @classmethod
@@ -48,6 +49,7 @@ class IPAssetUpdate(BaseModel):
     project_id: Optional[int] = None
     owner_id: Optional[int] = None
     notes: Optional[str] = None
+    host_id: Optional[int] = None
 
     @field_validator("asset_type", mode="before")
     @classmethod
@@ -77,6 +79,20 @@ class OwnerUpdate(BaseModel):
     contact: Optional[str] = None
 
 
+class HostCreate(BaseModel):
+    name: str
+    notes: Optional[str] = None
+
+
+class HostUpdate(BaseModel):
+    name: Optional[str] = None
+    notes: Optional[str] = None
+
+
+def _host_payload(host: Host) -> dict:
+    return {"id": host.id, "name": host.name, "notes": host.notes}
+
+
 def _asset_payload(asset: IPAsset) -> dict:
     return {
         "id": asset.id,
@@ -87,6 +103,7 @@ def _asset_payload(asset: IPAsset) -> dict:
         "project_id": asset.project_id,
         "owner_id": asset.owner_id,
         "notes": asset.notes,
+        "host_id": asset.host_id,
         "archived": asset.archived,
         "created_at": asset.created_at,
         "updated_at": asset.updated_at,
@@ -215,6 +232,8 @@ def create_ip_asset(
     _user=Depends(require_editor),
 ):
     validate_ip_address(payload.ip_address)
+    if payload.host_id is not None and repository.get_host_by_id(connection, payload.host_id) is None:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Host not found.")
     try:
         asset = repository.create_ip_asset(
             connection,
@@ -225,6 +244,7 @@ def create_ip_asset(
             project_id=payload.project_id,
             owner_id=payload.owner_id,
             notes=payload.notes,
+            host_id=payload.host_id,
         )
     except sqlite3.IntegrityError as exc:
         raise HTTPException(
@@ -273,6 +293,8 @@ def update_ip_asset(
     connection=Depends(get_connection),
     _user=Depends(require_editor),
 ):
+    if payload.host_id is not None and repository.get_host_by_id(connection, payload.host_id) is None:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Host not found.")
     updated = repository.update_ip_asset(
         connection,
         ip_address=ip_address,
@@ -282,6 +304,7 @@ def update_ip_asset(
         project_id=payload.project_id,
         owner_id=payload.owner_id,
         notes=payload.notes,
+        host_id=payload.host_id,
     )
     if updated is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
@@ -377,3 +400,48 @@ def update_owner(
     if owner is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
     return {"id": owner.id, "name": owner.name, "contact": owner.contact}
+
+
+@router.get("/hosts")
+def list_hosts(connection=Depends(get_connection)):
+    hosts = repository.list_hosts(connection)
+    return [_host_payload(host) for host in hosts]
+
+
+@router.post("/hosts")
+def create_host(
+    payload: HostCreate,
+    connection=Depends(get_connection),
+    _user=Depends(require_editor),
+):
+    host = repository.create_host(connection, name=payload.name, notes=payload.notes)
+    return _host_payload(host)
+
+
+@router.get("/hosts/{host_id}")
+def get_host(host_id: int, connection=Depends(get_connection)):
+    host = repository.get_host_by_id(connection, host_id)
+    if host is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
+    grouped = repository.get_host_linked_assets_grouped(connection, host_id)
+    return {
+        **_host_payload(host),
+        "linked_assets": {
+            "os": [_asset_payload(asset) for asset in grouped["os"]],
+            "bmc": [_asset_payload(asset) for asset in grouped["bmc"]],
+            "other": [_asset_payload(asset) for asset in grouped["other"]],
+        },
+    }
+
+
+@router.patch("/hosts/{host_id}")
+def update_host(
+    host_id: int,
+    payload: HostUpdate,
+    connection=Depends(get_connection),
+    _user=Depends(require_editor),
+):
+    host = repository.update_host(connection, host_id=host_id, name=payload.name, notes=payload.notes)
+    if host is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
+    return _host_payload(host)

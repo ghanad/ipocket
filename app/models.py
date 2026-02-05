@@ -42,6 +42,13 @@ class Owner:
 
 
 @dataclass
+class Host:
+    id: int
+    name: str
+    notes: Optional[str]
+
+
+@dataclass
 class User:
     id: int
     username: str
@@ -59,6 +66,7 @@ class IPAsset:
     asset_type: IPAssetType
     project_id: Optional[int]
     owner_id: Optional[int]
+    host_id: Optional[int]
     notes: Optional[str]
     archived: bool
     created_at: str

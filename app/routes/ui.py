@@ -69,6 +69,10 @@ def _render_fallback_template(
         name = getattr(owner, "name", None)
         if name:
             lines.append(str(name))
+    for host in payload.get("hosts") or []:
+        name = getattr(host, "name", None) if not isinstance(host, dict) else host.get("name")
+        if name:
+            lines.append(str(name))
     for error in payload.get("errors") or []:
         lines.append(str(error))
     if template_name == "login.html":
@@ -176,6 +180,7 @@ def _build_asset_view_models(
     assets: list[IPAsset],
     project_lookup: dict[int, str],
     owner_lookup: dict[int, str],
+    host_lookup: dict[int, str],
 ) -> list[dict]:
     view_models = []
     for asset in assets:
@@ -183,6 +188,7 @@ def _build_asset_view_models(
         owner_name = owner_lookup.get(asset.owner_id) if asset.owner_id else ""
         project_unassigned = not project_name
         owner_unassigned = not owner_name
+        host_name = host_lookup.get(asset.host_id) if asset.host_id else ""
         view_models.append(
             {
                 "id": asset.id,
@@ -413,6 +419,7 @@ def ui_list_owners(
     connection=Depends(get_connection),
 ) -> HTMLResponse:
     owners = list(repository.list_owners(connection))
+    hosts = list(repository.list_hosts(connection))
     return _render_template(
         request,
         "owners.html",
@@ -443,6 +450,7 @@ async def ui_update_owner(
 
     if errors:
         owners = list(repository.list_owners(connection))
+        hosts = list(repository.list_hosts(connection))
         return _render_template(
             request,
             "owners.html",
@@ -465,6 +473,7 @@ async def ui_update_owner(
         )
     except sqlite3.IntegrityError:
         owners = list(repository.list_owners(connection))
+        hosts = list(repository.list_hosts(connection))
         return _render_template(
             request,
             "owners.html",
@@ -500,6 +509,7 @@ async def ui_create_owner(
 
     if errors:
         owners = list(repository.list_owners(connection))
+        hosts = list(repository.list_hosts(connection))
         return _render_template(
             request,
             "owners.html",
@@ -518,6 +528,7 @@ async def ui_create_owner(
     except sqlite3.IntegrityError:
         errors.append("Owner name already exists.")
         owners = list(repository.list_owners(connection))
+        hosts = list(repository.list_hosts(connection))
         return _render_template(
             request,
             "owners.html",
@@ -533,6 +544,98 @@ async def ui_create_owner(
 
     return RedirectResponse(url="/ui/owners", status_code=303)
 
+
+
+
+@router.get("/ui/hosts", response_class=HTMLResponse)
+def ui_list_hosts(
+    request: Request,
+    connection=Depends(get_connection),
+) -> HTMLResponse:
+    hosts = repository.list_hosts_with_ip_counts(connection)
+    return _render_template(
+        request,
+        "hosts.html",
+        {
+            "title": "ipocket - Hosts",
+            "hosts": hosts,
+            "errors": [],
+            "form_state": {"name": "", "notes": ""},
+        },
+        active_nav="hosts",
+    )
+
+
+@router.post("/ui/hosts", response_class=HTMLResponse)
+async def ui_create_host(
+    request: Request,
+    connection=Depends(get_connection),
+    _user=Depends(require_ui_editor),
+) -> HTMLResponse:
+    form_data = await _parse_form_data(request)
+    name = (form_data.get("name") or "").strip()
+    notes = _parse_optional_str(form_data.get("notes"))
+
+    errors = []
+    if not name:
+        errors.append("Host name is required.")
+
+    if errors:
+        hosts = repository.list_hosts_with_ip_counts(connection)
+        return _render_template(
+            request,
+            "hosts.html",
+            {
+                "title": "ipocket - Hosts",
+                    "errors": errors,
+                "form_state": {"name": name, "notes": notes or ""},
+            },
+            status_code=400,
+            active_nav="hosts",
+        )
+
+    try:
+        repository.create_host(connection, name=name, notes=notes)
+    except sqlite3.IntegrityError:
+        hosts = repository.list_hosts_with_ip_counts(connection)
+        return _render_template(
+            request,
+            "hosts.html",
+            {
+                "title": "ipocket - Hosts",
+                    "errors": ["Host name already exists."],
+                "form_state": {"name": name, "notes": notes or ""},
+            },
+            status_code=409,
+            active_nav="hosts",
+        )
+
+    return RedirectResponse(url="/ui/hosts", status_code=303)
+
+
+@router.get("/ui/hosts/{host_id}", response_class=HTMLResponse)
+def ui_host_detail(
+    request: Request,
+    host_id: int,
+    connection=Depends(get_connection),
+) -> HTMLResponse:
+    host = repository.get_host_by_id(connection, host_id)
+    if host is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
+
+    grouped = repository.get_host_linked_assets_grouped(connection, host_id)
+    return _render_template(
+        request,
+        "host_detail.html",
+        {
+            "title": "ipocket - Host Detail",
+            "host": host,
+            "os_assets": grouped["os"],
+            "bmc_assets": grouped["bmc"],
+            "other_assets": grouped["other"],
+        },
+        active_nav="hosts",
+    )
 
 @router.get("/ui/ip-assets", response_class=HTMLResponse)
 def ui_list_ip_assets(
@@ -572,7 +675,8 @@ def ui_list_ip_assets(
     owners = list(repository.list_owners(connection))
     project_lookup = {project.id: project.name for project in projects}
     owner_lookup = {owner.id: owner.name for owner in owners}
-    view_models = _build_asset_view_models(assets, project_lookup, owner_lookup)
+    host_lookup = {host.id: host.name for host in repository.list_hosts(connection)}
+    view_models = _build_asset_view_models(assets, project_lookup, owner_lookup, host_lookup)
 
     return _render_template(
         request,
@@ -609,7 +713,8 @@ def ui_needs_assignment(
     owners = list(repository.list_owners(connection))
     project_lookup = {project.id: project.name for project in projects}
     owner_lookup = {owner.id: owner.name for owner in owners}
-    view_models = _build_asset_view_models(assets, project_lookup, owner_lookup)
+    host_lookup = {host.id: host.name for host in repository.list_hosts(connection)}
+    view_models = _build_asset_view_models(assets, project_lookup, owner_lookup, host_lookup)
     form_state = {
         "ip_address": view_models[0]["ip_address"] if view_models else "",
         "project_id": None,
@@ -666,7 +771,8 @@ async def ui_needs_assignment_assign(
         owners = list(repository.list_owners(connection))
         project_lookup = {project.id: project.name for project in projects}
         owner_lookup = {owner.id: owner.name for owner in owners}
-        view_models = _build_asset_view_models(assets, project_lookup, owner_lookup)
+        host_lookup = {host.id: host.name for host in repository.list_hosts(connection)}
+        view_models = _build_asset_view_models(assets, project_lookup, owner_lookup, host_lookup)
         return _render_template(
             request,
             "needs_assignment.html",
@@ -706,6 +812,7 @@ def ui_add_ip_form(
 ):
     projects = list(repository.list_projects(connection))
     owners = list(repository.list_owners(connection))
+    hosts = list(repository.list_hosts(connection))
     return _render_template(
         request,
         "ip_asset_form.html",
@@ -719,10 +826,12 @@ def ui_add_ip_form(
                 "type": IPAssetType.VM.value,
                 "project_id": "",
                 "owner_id": "",
+                "host_id": "",
                 "notes": "",
             },
             "projects": projects,
             "owners": owners,
+            "hosts": hosts,
             "types": [asset.value for asset in IPAssetType],
             "errors": [],
             "mode": "create",
@@ -746,6 +855,7 @@ async def ui_add_ip_submit(
     asset_type = form_data.get("type")
     project_id = _parse_optional_int(form_data.get("project_id"))
     owner_id = _parse_optional_int(form_data.get("owner_id"))
+    host_id = _parse_optional_int(form_data.get("host_id"))
     notes = _parse_optional_str(form_data.get("notes"))
 
     errors = []
@@ -758,6 +868,8 @@ async def ui_add_ip_submit(
         errors.append("Asset type is required.")
     if normalized_asset_type is None and not errors:
         errors.append("Asset type is required.")
+    if host_id is not None and repository.get_host_by_id(connection, host_id) is None:
+        errors.append("Selected host does not exist.")
 
     if ip_address:
         try:
@@ -768,6 +880,7 @@ async def ui_add_ip_submit(
     if errors:
         projects = list(repository.list_projects(connection))
         owners = list(repository.list_owners(connection))
+        hosts = list(repository.list_hosts(connection))
         return _render_template(
             request,
             "ip_asset_form.html",
@@ -781,10 +894,12 @@ async def ui_add_ip_submit(
                     "type": asset_type or "",
                     "project_id": project_id or "",
                     "owner_id": owner_id or "",
+                    "host_id": host_id or "",
                     "notes": notes or "",
                 },
                 "projects": projects,
                 "owners": owners,
+                "hosts": hosts,
                 "types": [asset.value for asset in IPAssetType],
                 "errors": errors,
                 "mode": "create",
@@ -804,12 +919,14 @@ async def ui_add_ip_submit(
             asset_type=normalized_asset_type,
             project_id=project_id,
             owner_id=owner_id,
+            host_id=host_id,
             notes=notes,
         )
     except sqlite3.IntegrityError:
         errors.append("IP address already exists.")
         projects = list(repository.list_projects(connection))
         owners = list(repository.list_owners(connection))
+        hosts = list(repository.list_hosts(connection))
         return _render_template(
             request,
             "ip_asset_form.html",
@@ -823,10 +940,12 @@ async def ui_add_ip_submit(
                     "type": asset_type or "",
                     "project_id": project_id or "",
                     "owner_id": owner_id or "",
+                    "host_id": host_id or "",
                     "notes": notes or "",
                 },
                 "projects": projects,
                 "owners": owners,
+                "hosts": hosts,
                 "types": [asset.value for asset in IPAssetType],
                 "errors": errors,
                 "mode": "create",
@@ -855,7 +974,8 @@ def ui_ip_asset_detail(
     owner_lookup = {
         owner.id: owner.name for owner in repository.list_owners(connection)
     }
-    view_model = _build_asset_view_models([asset], project_lookup, owner_lookup)[0]
+    host_lookup = {host.id: host.name for host in repository.list_hosts(connection)}
+    view_model = _build_asset_view_models([asset], project_lookup, owner_lookup, host_lookup)[0]
     return _render_template(
         request,
         "ip_asset_detail.html",
@@ -876,6 +996,7 @@ def ui_edit_ip_form(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
     projects = list(repository.list_projects(connection))
     owners = list(repository.list_owners(connection))
+    hosts = list(repository.list_hosts(connection))
     return _render_template(
         request,
         "ip_asset_form.html",
@@ -889,10 +1010,12 @@ def ui_edit_ip_form(
                 "type": asset.asset_type.value,
                 "project_id": asset.project_id or "",
                 "owner_id": asset.owner_id or "",
+                "host_id": asset.host_id or "",
                 "notes": asset.notes or "",
             },
             "projects": projects,
             "owners": owners,
+            "hosts": hosts,
             "types": [asset.value for asset in IPAssetType],
             "errors": [],
             "mode": "edit",
@@ -920,6 +1043,7 @@ async def ui_edit_ip_submit(
     asset_type = form_data.get("type")
     project_id = _parse_optional_int(form_data.get("project_id"))
     owner_id = _parse_optional_int(form_data.get("owner_id"))
+    host_id = _parse_optional_int(form_data.get("host_id"))
     notes = _parse_optional_str(form_data.get("notes"))
 
     errors = []
@@ -930,10 +1054,13 @@ async def ui_edit_ip_submit(
         errors.append("Asset type is required.")
     if normalized_asset_type is None and not errors:
         errors.append("Asset type is required.")
+    if host_id is not None and repository.get_host_by_id(connection, host_id) is None:
+        errors.append("Selected host does not exist.")
 
     if errors:
         projects = list(repository.list_projects(connection))
         owners = list(repository.list_owners(connection))
+        hosts = list(repository.list_hosts(connection))
         return _render_template(
             request,
             "ip_asset_form.html",
@@ -947,10 +1074,12 @@ async def ui_edit_ip_submit(
                     "type": asset_type or "",
                     "project_id": project_id or "",
                     "owner_id": owner_id or "",
+                    "host_id": host_id or "",
                     "notes": notes or "",
                 },
                 "projects": projects,
                 "owners": owners,
+                "hosts": hosts,
                 "types": [asset.value for asset in IPAssetType],
                 "errors": errors,
                 "mode": "edit",
@@ -969,6 +1098,7 @@ async def ui_edit_ip_submit(
         asset_type=normalized_asset_type,
         project_id=project_id,
         owner_id=owner_id,
+        host_id=host_id,
         notes=notes,
     )
     return RedirectResponse(url=f"/ui/ip-assets/{asset.id}", status_code=303)
