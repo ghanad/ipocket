@@ -22,6 +22,10 @@ SESSION_COOKIE = "ipocket_session"
 SESSION_SECRET = os.getenv("SESSION_SECRET", "dev-session-secret").encode("utf-8")
 
 
+def _is_auto_host_for_bmc_enabled() -> bool:
+    return os.getenv("IPOCKET_AUTO_HOST_FOR_BMC", "1").strip().lower() not in {"0", "false", "no", "off"}
+
+
 def _render_template(
     request: Request,
     template_name: str,
@@ -756,6 +760,7 @@ async def ui_add_ip_submit(
             project_id=project_id,
             host_id=host_id,
             notes=notes,
+            auto_host_for_bmc=_is_auto_host_for_bmc_enabled(),
         )
     except sqlite3.IntegrityError:
         errors.append("IP address already exists.")
