@@ -44,6 +44,7 @@ UI templates live in `app/templates`, UI routes live in `app/routes/ui.py`, and 
 - `GET /ui/owners`: list/create owners (Editor/Admin create).
 - `POST /ui/ip-assets/{asset_id}/archive`: archive action (Editor/Admin).
 - `POST /ui/logout`: clear the UI session.
+- Authenticated pages no longer render the legacy bottom copyright footer.
 
 ## Assignment workflow (MVP)
 - Use the **Needs Assignment** page to filter IPs missing Owner and/or Project.
