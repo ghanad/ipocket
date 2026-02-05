@@ -42,7 +42,7 @@ def _seed_assets(db_path) -> None:
             ip_address="10.20.0.2",
             subnet="10.20.0.0/24",
             gateway="10.20.0.254",
-            asset_type=IPAssetType.PHYSICAL,
+            asset_type=IPAssetType.OS,
             project_id=project_omid.id,
             owner_id=owner_reza.id,
         )

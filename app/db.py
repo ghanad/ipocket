@@ -43,7 +43,7 @@ def init_db(connection: sqlite3.Connection) -> None:
             ip_address TEXT NOT NULL UNIQUE,
             subnet TEXT NOT NULL,
             gateway TEXT NOT NULL,
-            type TEXT NOT NULL CHECK (type IN ('VM', 'PHYSICAL', 'BMC', 'VIP', 'OTHER')),
+            type TEXT NOT NULL CHECK (type IN ('VM', 'OS', 'BMC', 'VIP', 'OTHER')),
             project_id INTEGER,
             owner_id INTEGER,
             notes TEXT,

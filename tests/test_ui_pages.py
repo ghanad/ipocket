@@ -718,7 +718,7 @@ def test_unauthenticated_cannot_create_projects_or_owners(client) -> None:
     assert owner_response.headers["location"] == "/ui/login"
 
 
-def test_ui_ip_asset_form_includes_bmc_option(client) -> None:
+def test_ui_ip_asset_form_includes_os_and_bmc_options(client) -> None:
     test_client, db_path = client
     _create_user(db_path, "editor", "editor-pass", UserRole.EDITOR)
     _ui_login(test_client, "editor", "editor-pass")
@@ -726,5 +726,7 @@ def test_ui_ip_asset_form_includes_bmc_option(client) -> None:
     response = test_client.get("/ui/ip-assets/new")
 
     assert response.status_code == 200
+    assert 'value="OS"' in response.text
     assert 'value="BMC"' in response.text
     assert "BMC (iLO/iDRAC/IPMI)" in response.text
+    assert 'value="PHYSICAL"' not in response.text

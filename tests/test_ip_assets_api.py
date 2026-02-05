@@ -246,6 +246,40 @@ def test_create_ipasset_with_bmc_type(client) -> None:
     assert response.json()["type"] == "BMC"
 
 
+def test_create_ipasset_with_os_type(client) -> None:
+    test_client, db_path = client
+    _create_user(db_path, "editor", "editor-pass", UserRole.EDITOR)
+    token = _login(test_client, "editor", "editor-pass")
+
+    response = test_client.post(
+        "/ip-assets",
+        headers=_auth_header(token),
+        json={
+            "ip_address": "10.0.0.72",
+            "type": "OS",
+        },
+    )
+
+    assert response.status_code == 200
+    assert response.json()["type"] == "OS"
+
+
+def test_create_ipasset_rejects_legacy_physical_type(client) -> None:
+    test_client, db_path = client
+    _create_user(db_path, "editor", "editor-pass", UserRole.EDITOR)
+    token = _login(test_client, "editor", "editor-pass")
+
+    response = test_client.post(
+        "/ip-assets",
+        headers=_auth_header(token),
+        json={
+            "ip_address": "10.0.0.73",
+            "type": "PHYSICAL",
+        },
+    )
+
+    assert response.status_code == 422
+
 def test_legacy_ipmi_type_is_normalized_to_bmc_on_create_and_update(client) -> None:
     test_client, db_path = client
     _create_user(db_path, "editor", "editor-pass", UserRole.EDITOR)

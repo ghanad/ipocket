@@ -57,7 +57,7 @@ def test_metrics_reflect_database_state(tmp_path, monkeypatch) -> None:
             ip_address="10.0.0.2",
             subnet="10.0.0.0/24",
             gateway="10.0.0.254",
-            asset_type=IPAssetType.PHYSICAL,
+            asset_type=IPAssetType.OS,
             project_id=project.id,
             owner_id=None,
         )
