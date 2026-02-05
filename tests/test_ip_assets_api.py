@@ -70,3 +70,47 @@ def test_ipasset_crud_without_owner(client) -> None:
     )
     assert update.status_code == 200
     assert update.json()["project_id"] == edge_id
+
+
+def test_create_bmc_ip_asset_auto_creates_host_by_default(client) -> None:
+    test_client, db_path = client
+    _create_user(db_path, "editor", "editor-pass", UserRole.EDITOR)
+    token = _login(test_client, "editor", "editor-pass")
+    headers = {"Authorization": f"Bearer {token}"}
+
+    response = test_client.post(
+        "/ip-assets",
+        headers=headers,
+        json={"ip_address": "192.168.50.10", "type": "BMC"},
+    )
+    assert response.status_code == 200
+
+    connection = db.connect(str(db_path))
+    try:
+        host = repository.get_host_by_name(connection, "server_192.168.50.10")
+        assert host is not None
+        assert response.json()["host_id"] == host.id
+    finally:
+        connection.close()
+
+
+def test_auto_host_creation_can_be_disabled_via_env(client, monkeypatch) -> None:
+    test_client, db_path = client
+    monkeypatch.setenv("IPOCKET_AUTO_HOST_FOR_BMC", "0")
+    _create_user(db_path, "editor", "editor-pass", UserRole.EDITOR)
+    token = _login(test_client, "editor", "editor-pass")
+    headers = {"Authorization": f"Bearer {token}"}
+
+    response = test_client.post(
+        "/ip-assets",
+        headers=headers,
+        json={"ip_address": "192.168.50.11", "type": "BMC"},
+    )
+    assert response.status_code == 200
+    assert response.json()["host_id"] is None
+
+    connection = db.connect(str(db_path))
+    try:
+        assert repository.get_host_by_name(connection, "server_192.168.50.11") is None
+    finally:
+        connection.close()

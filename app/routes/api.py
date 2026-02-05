@@ -16,6 +16,10 @@ from app.utils import validate_ip_address
 router = APIRouter()
 
 
+def _is_auto_host_for_bmc_enabled() -> bool:
+    return os.getenv("IPOCKET_AUTO_HOST_FOR_BMC", "1").strip().lower() not in {"0", "false", "no", "off"}
+
+
 class LoginRequest(BaseModel):
     username: str
     password: str
@@ -227,6 +231,7 @@ def create_ip_asset(
             project_id=payload.project_id,
             notes=payload.notes,
             host_id=payload.host_id,
+            auto_host_for_bmc=_is_auto_host_for_bmc_enabled(),
         )
     except sqlite3.IntegrityError as exc:
         raise HTTPException(
