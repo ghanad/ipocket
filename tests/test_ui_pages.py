@@ -302,6 +302,16 @@ def test_ui_footer_shows_build_info_for_authenticated_user(client, monkeypatch) 
     assert "ipocket v1.2.3 (deadbee) • built 2025-01-01T00:00:00Z" in response.text
 
 
+def test_ui_does_not_render_legacy_copyright_footer(client) -> None:
+    test_client, db_path = client
+    _create_user(db_path, "viewer", "viewer-pass", UserRole.VIEWER)
+    _ui_login(test_client, "viewer", "viewer-pass")
+
+    response = test_client.get("/ui/ip-assets")
+
+    assert response.status_code == 200
+    assert "© 2024 ipocket Network Systems" not in response.text
+
 def test_ui_footer_hides_build_info_for_anonymous_user(client) -> None:
     test_client, _db_path = client
 
