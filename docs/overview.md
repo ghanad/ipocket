@@ -3,9 +3,10 @@
 ipocket is a lightweight IP inventory app to track addresses and their project assignment.
 
 ## Highlights
-- CRUD API for IP records
+- CRUD API for IP records (including permanent delete endpoint for editors/admins)
 - Project management
 - Needs Assignment UI for project-only assignment
+- IP list/detail UI provides a Delete action for editors/admins with a mandatory confirmation textbox (type exact IP) before permanent deletion
 - Prometheus metrics on `/metrics`
 - Prometheus SD endpoint on `/sd/node` with project grouping
 

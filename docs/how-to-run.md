@@ -121,6 +121,15 @@ List unassigned IPs:
 curl -s "http://127.0.0.1:8000/ip-assets?unassigned-only=true"
 ```
 
+Delete an IP asset (Editor/Admin):
+
+```bash
+curl -s -X DELETE http://127.0.0.1:8000/ip-assets/10.0.0.50 \
+  -H "Authorization: Bearer <token>"
+```
+
+UI safety flow: deleting from UI requires opening the delete confirmation page and typing the exact IP address in a textbox before the permanent delete is accepted.
+
 ## Run tests
 ```bash
 pytest

@@ -1105,6 +1105,62 @@ async def ui_edit_ip_submit(
     return RedirectResponse(url=f"/ui/ip-assets/{asset.id}", status_code=303)
 
 
+
+
+@router.get("/ui/ip-assets/{asset_id}/delete", response_class=HTMLResponse)
+def ui_delete_ip_asset_confirm(
+    request: Request,
+    asset_id: int,
+    connection=Depends(get_connection),
+    _user=Depends(require_ui_editor),
+):
+    asset = repository.get_ip_asset_by_id(connection, asset_id)
+    if asset is None or asset.archived:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
+    return _render_template(
+        request,
+        "ip_asset_delete_confirm.html",
+        {
+            "title": "ipocket - Confirm IP Delete",
+            "asset": asset,
+            "errors": [],
+            "confirm_value": "",
+        },
+        active_nav="ip-assets",
+    )
+
+
+@router.post("/ui/ip-assets/{asset_id}/delete", response_class=HTMLResponse)
+async def ui_delete_ip_asset(
+    request: Request,
+    asset_id: int,
+    connection=Depends(get_connection),
+    _user=Depends(require_ui_editor),
+):
+    asset = repository.get_ip_asset_by_id(connection, asset_id)
+    if asset is None or asset.archived:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
+
+    form_data = await _parse_form_data(request)
+    confirm_ip = (form_data.get("confirm_ip") or "").strip()
+    if confirm_ip != asset.ip_address:
+        return _render_template(
+            request,
+            "ip_asset_delete_confirm.html",
+            {
+                "title": "ipocket - Confirm IP Delete",
+                "asset": asset,
+                "errors": ["برای حذف کامل، آدرس IP را دقیقاً وارد کنید."],
+                "confirm_value": confirm_ip,
+            },
+            status_code=400,
+            active_nav="ip-assets",
+        )
+
+    repository.delete_ip_asset(connection, asset.ip_address)
+    return RedirectResponse(url="/ui/ip-assets", status_code=303)
+
+
 @router.post("/ui/ip-assets/{asset_id}/archive")
 def ui_archive_ip_asset(
     asset_id: int,

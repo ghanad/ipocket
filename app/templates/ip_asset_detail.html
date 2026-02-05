@@ -1,7 +1,12 @@
 {% extends "base.html" %}
 
 {% block content %}
-<section class="page-header"><h1>{{ asset.ip_address }}</h1></section>
+<section class="page-header"><h1>{{ asset.ip_address }}</h1>
+  <p>
+    <a class="btn btn-secondary" href="/ui/ip-assets/{{ asset.id }}/edit">Edit</a>
+    <a class="btn btn-outline" href="/ui/ip-assets/{{ asset.id }}/delete">Delete</a>
+  </p>
+</section>
 <section class="card">
   <p><strong>Project:</strong> {% if asset.project_unassigned %}Unassigned{% else %}{{ asset.project_name }}{% endif %}</p>
   <p><strong>Type:</strong> {{ asset.type }}</p>

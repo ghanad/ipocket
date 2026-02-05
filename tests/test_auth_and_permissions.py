@@ -120,8 +120,13 @@ def test_viewer_cannot_write(client) -> None:
     )
     assert archive_response.status_code == 403
 
+    delete_response = test_client.request("DELETE", 
+        "/ip-assets/10.0.0.33", headers=_auth_header(token)
+    )
+    assert delete_response.status_code == 403
 
-def test_editor_can_create_update_and_archive(client) -> None:
+
+def test_editor_can_create_update_and_delete(client) -> None:
     test_client, db_path = client
     _create_user(db_path, "editor", "editor-pass", UserRole.EDITOR)
     token = _login(test_client, "editor", "editor-pass")
@@ -146,7 +151,7 @@ def test_editor_can_create_update_and_archive(client) -> None:
     assert update_response.status_code == 200
     assert update_response.json()["notes"] == "Updated"
 
-    archive_response = test_client.post(
-        "/ip-assets/10.0.0.32/archive", headers=_auth_header(token)
+    delete_response = test_client.request("DELETE", 
+        "/ip-assets/10.0.0.32", headers=_auth_header(token)
     )
-    assert archive_response.status_code == 204
+    assert delete_response.status_code == 204

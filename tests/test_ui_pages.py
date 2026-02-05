@@ -158,3 +158,62 @@ def test_ui_edit_host_requires_name(client) -> None:
 
     assert response.status_code == 400
     assert "Host name is required." in response.text
+
+
+def test_ui_delete_ip_asset_requires_confirmation_text(client) -> None:
+    import os
+    from app import db, repository
+
+    connection = db.connect(os.environ["IPAM_DB_PATH"])
+    try:
+        db.init_db(connection)
+        asset = repository.create_ip_asset(connection, ip_address="10.20.0.10", asset_type=IPAssetType.VM)
+    finally:
+        connection.close()
+
+    app.dependency_overrides[ui.require_ui_editor] = lambda: User(1, "editor", "x", UserRole.EDITOR, True)
+    try:
+        form_response = client.get(f"/ui/ip-assets/{asset.id}/delete")
+        response = client.post(
+            f"/ui/ip-assets/{asset.id}/delete",
+            data={"confirm_ip": "wrong-value"},
+            follow_redirects=False,
+        )
+    finally:
+        app.dependency_overrides.pop(ui.require_ui_editor, None)
+
+    assert form_response.status_code == 200
+    assert response.status_code == 400
+    assert "برای حذف کامل" in response.text
+
+
+def test_ui_delete_ip_asset_with_confirmation_text(client) -> None:
+    import os
+    from app import db, repository
+
+    connection = db.connect(os.environ["IPAM_DB_PATH"])
+    try:
+        db.init_db(connection)
+        asset = repository.create_ip_asset(connection, ip_address="10.20.0.11", asset_type=IPAssetType.VM)
+    finally:
+        connection.close()
+
+    app.dependency_overrides[ui.require_ui_editor] = lambda: User(1, "editor", "x", UserRole.EDITOR, True)
+    try:
+        response = client.post(
+            f"/ui/ip-assets/{asset.id}/delete",
+            data={"confirm_ip": "10.20.0.11"},
+            follow_redirects=False,
+        )
+    finally:
+        app.dependency_overrides.pop(ui.require_ui_editor, None)
+
+    assert response.status_code == 303
+
+    connection = db.connect(os.environ["IPAM_DB_PATH"])
+    try:
+        deleted = repository.get_ip_asset_by_ip(connection, "10.20.0.11")
+    finally:
+        connection.close()
+
+    assert deleted is None

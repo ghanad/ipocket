@@ -9,6 +9,7 @@ from app.repository import (
     create_project,
     get_host_by_name,
     get_ip_asset_by_ip,
+    delete_ip_asset,
     get_ip_asset_metrics,
     list_hosts,
 )
@@ -114,3 +115,21 @@ def test_create_non_bmc_without_host_does_not_autocreate(tmp_path) -> None:
 
     assert get_host_by_name(connection, "server_192.168.12.13") is None
     assert asset.host_id is None
+
+
+def test_delete_ip_asset_removes_record(tmp_path) -> None:
+    connection = _setup_connection(tmp_path)
+    create_ip_asset(connection, ip_address="10.0.2.10", asset_type=IPAssetType.VM)
+
+    deleted = delete_ip_asset(connection, "10.0.2.10")
+
+    assert deleted is True
+    assert get_ip_asset_by_ip(connection, "10.0.2.10") is None
+
+
+def test_delete_ip_asset_returns_false_for_unknown_ip(tmp_path) -> None:
+    connection = _setup_connection(tmp_path)
+
+    deleted = delete_ip_asset(connection, "10.0.2.99")
+
+    assert deleted is False
