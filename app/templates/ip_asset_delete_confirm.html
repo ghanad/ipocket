@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="page-header">
+  <h1>Confirm Delete</h1>
+  <p class="subtitle">This action permanently removes the IP asset and cannot be undone.</p>
+</section>
+
+<section class="card">
+  <p><strong>IP:</strong> <span class="mono">{{ asset.ip_address }}</span></p>
+  <p><strong>Instruction:</strong> To confirm permanent deletion, type the exact IP address in the box below.</p>
+
+  {% if errors %}
+  <div class="alert alert-error">
+    {% for error in errors %}
+    <p class="alert-title">{{ error }}</p>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  <form method="post" action="/ui/ip-assets/{{ asset.id }}/delete">
+    <label class="field">
+      <span>Type <span class="mono">{{ asset.ip_address }}</span> to confirm</span>
+      <input class="input" type="text" name="confirm_ip" value="{{ confirm_value }}" required autocomplete="off" />
+    </label>
+    <div style="display:flex; gap:0.75rem; margin-top:1rem;">
+      <button class="btn btn-outline" type="submit">Delete permanently</button>
+      <a class="btn btn-secondary" href="/ui/ip-assets/{{ asset.id }}">Cancel</a>
+    </div>
+  </form>
+</section>
+{% endblock %}

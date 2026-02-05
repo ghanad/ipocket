@@ -70,7 +70,10 @@
           </td>
           <td class="muted">{{ asset.type }}</td>
           <td class="muted">{{ asset.notes }}</td>
-          <td><a class="link" href="/ui/ip-assets/{{ asset.id }}/edit">Edit</a></td>
+          <td>
+            <a class="link" href="/ui/ip-assets/{{ asset.id }}/edit">Edit</a>
+            <a class="link" href="/ui/ip-assets/{{ asset.id }}/delete">Delete</a>
+          </td>
         </tr>
         {% endfor %}
         {% else %}

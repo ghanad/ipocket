@@ -114,3 +114,33 @@ def test_auto_host_creation_can_be_disabled_via_env(client, monkeypatch) -> None
         assert repository.get_host_by_name(connection, "server_192.168.50.11") is None
     finally:
         connection.close()
+
+
+def test_delete_ip_asset_endpoint(client) -> None:
+    test_client, db_path = client
+    _create_user(db_path, "editor", "editor-pass", UserRole.EDITOR)
+    token = _login(test_client, "editor", "editor-pass")
+    headers = {"Authorization": f"Bearer {token}"}
+
+    create = test_client.post(
+        "/ip-assets",
+        headers=headers,
+        json={"ip_address": "10.10.0.99", "type": "VM"},
+    )
+    assert create.status_code == 200
+
+    delete_response = test_client.request("DELETE", "/ip-assets/10.10.0.99", headers=headers)
+    assert delete_response.status_code == 204
+
+    get_deleted = test_client.get("/ip-assets/10.10.0.99")
+    assert get_deleted.status_code == 404
+
+
+def test_delete_ip_asset_endpoint_returns_404_for_missing_ip(client) -> None:
+    test_client, db_path = client
+    _create_user(db_path, "editor", "editor-pass", UserRole.EDITOR)
+    token = _login(test_client, "editor", "editor-pass")
+    headers = {"Authorization": f"Bearer {token}"}
+
+    delete_response = test_client.request("DELETE", "/ip-assets/10.10.0.250", headers=headers)
+    assert delete_response.status_code == 404

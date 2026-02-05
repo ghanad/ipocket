@@ -312,6 +312,12 @@ def archive_ip_asset(connection: sqlite3.Connection, ip_address: str) -> None:
     connection.commit()
 
 
+def delete_ip_asset(connection: sqlite3.Connection, ip_address: str) -> bool:
+    cursor = connection.execute("DELETE FROM ip_assets WHERE ip_address = ?", (ip_address,))
+    connection.commit()
+    return cursor.rowcount > 0
+
+
 def update_ip_asset(connection: sqlite3.Connection, ip_address: str, subnet: Optional[str] = None, gateway: Optional[str] = None, asset_type: Optional[IPAssetType] = None, project_id: Optional[int] = None, host_id: Optional[int] = None, notes: Optional[str] = None) -> Optional[IPAsset]:
     connection.execute(
         """

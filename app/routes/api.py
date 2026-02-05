@@ -305,6 +305,18 @@ def update_ip_asset(
     return _asset_payload(updated)
 
 
+
+
+@router.delete("/ip-assets/{ip_address}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_ip_asset(
+    ip_address: str,
+    connection=Depends(get_connection),
+    _user=Depends(require_editor),
+):
+    deleted = repository.delete_ip_asset(connection, ip_address)
+    if not deleted:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 @router.post("/ip-assets/{ip_address}/archive", status_code=status.HTTP_204_NO_CONTENT)
 def archive_ip_asset(
     ip_address: str,
