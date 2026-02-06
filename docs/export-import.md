@@ -18,6 +18,9 @@ Open `/ui/import` and upload:
 - Bundle JSON section: `bundle.json`
 - CSV section: `hosts.csv` + `ip-assets.csv`
 
+Sample CSVs are available for download on the import page (or directly via `/static/samples/hosts.csv` and
+`/static/samples/ip-assets.csv`) to illustrate the required columns and formatting.
+
 Dry-run runs validation and returns a summary without writing to the database. Apply performs upserts.
 
 ## Permissions
