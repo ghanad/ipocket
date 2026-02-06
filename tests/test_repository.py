@@ -25,6 +25,7 @@ from app.repository import (
     list_hosts_with_ip_counts,
     list_active_ip_assets_paginated,
     count_active_ip_assets,
+    get_ip_range_address_breakdown,
     update_ip_asset,
     update_project,
 )
@@ -140,6 +141,33 @@ def test_ip_range_utilization_counts(tmp_path) -> None:
     assert loopback["total_usable"] == 1
     assert loopback["used"] == 1
     assert loopback["free"] == 0
+
+
+def test_ip_range_address_breakdown(tmp_path) -> None:
+    connection = _setup_connection(tmp_path)
+    project = create_project(connection, name="Lab")
+    ip_range = create_ip_range(connection, name="Lab", cidr="192.168.20.0/30")
+
+    create_ip_asset(connection, ip_address="192.168.20.1", asset_type=IPAssetType.VM, project_id=project.id)
+    create_ip_asset(connection, ip_address="192.168.20.3", asset_type=IPAssetType.OS)
+
+    breakdown = get_ip_range_address_breakdown(connection, ip_range.id)
+
+    assert breakdown is not None
+    assert breakdown["total_usable"] == 2
+    assert breakdown["used"] == 2
+    assert breakdown["free"] == 1
+    addresses = breakdown["addresses"]
+    assert [entry["ip_address"] for entry in addresses] == [
+        "192.168.20.1",
+        "192.168.20.2",
+        "192.168.20.3",
+    ]
+    assert addresses[0]["status"] == "used"
+    assert addresses[0]["project_name"] == "Lab"
+    assert addresses[0]["asset_type"] == IPAssetType.VM.value
+    assert addresses[1]["status"] == "free"
+    assert addresses[2]["status"] == "used"
 
 
 def test_create_bmc_without_host_creates_server_host_and_links_asset(tmp_path) -> None:

@@ -240,6 +240,13 @@ def list_ip_ranges(connection: sqlite3.Connection) -> Iterable[IPRange]:
     return [_row_to_ip_range(row) for row in rows]
 
 
+def get_ip_range_by_id(connection: sqlite3.Connection, range_id: int) -> IPRange | None:
+    row = connection.execute("SELECT * FROM ip_ranges WHERE id = ?", (range_id,)).fetchone()
+    if row is None:
+        return None
+    return _row_to_ip_range(row)
+
+
 def _total_usable_addresses(network: ipaddress.IPv4Network) -> int:
     if network.prefixlen == 32:
         return 1
@@ -284,6 +291,78 @@ def get_ip_range_utilization(connection: sqlite3.Connection) -> list[dict[str, o
             }
         )
     return utilization
+
+
+def get_ip_range_address_breakdown(
+    connection: sqlite3.Connection,
+    range_id: int,
+) -> dict[str, object] | None:
+    ip_range = get_ip_range_by_id(connection, range_id)
+    if ip_range is None:
+        return None
+
+    network = parse_ipv4_network(ip_range.cidr)
+    rows = connection.execute(
+        """
+        SELECT ip_assets.id AS asset_id,
+               ip_assets.ip_address AS ip_address,
+               ip_assets.type AS asset_type,
+               projects.name AS project_name,
+               projects.color AS project_color
+        FROM ip_assets
+        LEFT JOIN projects ON projects.id = ip_assets.project_id
+        WHERE ip_assets.archived = 0
+        """
+    ).fetchall()
+    used_entries: list[dict[str, object]] = []
+    used_addresses: set[ipaddress.IPv4Address] = set()
+    for row in rows:
+        try:
+            ip_value = ipaddress.ip_address(row["ip_address"])
+        except ValueError:
+            continue
+        if ip_value.version != 4 or ip_value not in network:
+            continue
+        used_addresses.add(ip_value)
+        used_entries.append(
+            {
+                "ip_address": str(ip_value),
+                "status": "used",
+                "asset_id": row["asset_id"],
+                "project_name": row["project_name"],
+                "project_color": row["project_color"] or DEFAULT_PROJECT_COLOR,
+                "project_unassigned": not row["project_name"],
+                "asset_type": row["asset_type"],
+            }
+        )
+
+    used_sorted = sorted(used_entries, key=lambda entry: int(ipaddress.ip_address(entry["ip_address"])))
+    usable_addresses = list(network.hosts())
+    free_entries = [
+        {
+            "ip_address": str(ip_value),
+            "status": "free",
+            "asset_id": None,
+            "project_name": None,
+            "project_color": DEFAULT_PROJECT_COLOR,
+            "project_unassigned": True,
+            "asset_type": None,
+        }
+        for ip_value in usable_addresses
+        if ip_value not in used_addresses
+    ]
+    address_entries = sorted(
+        [*used_sorted, *free_entries],
+        key=lambda entry: int(ipaddress.ip_address(entry["ip_address"])),
+    )
+
+    return {
+        "ip_range": ip_range,
+        "addresses": address_entries,
+        "used": len(used_sorted),
+        "free": len(free_entries),
+        "total_usable": len(usable_addresses),
+    }
 
 
 def create_user(connection: sqlite3.Connection, username: str, hashed_password: str, role: UserRole, is_active: bool = True) -> User:

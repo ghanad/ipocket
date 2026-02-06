@@ -1,0 +1,89 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="page-header">
+  <div>
+    <h1>{{ ip_range.name }}</h1>
+    <p class="subtitle">CIDR {{ ip_range.cidr }} • {{ used_total }} used • {{ free_total }} free</p>
+  </div>
+  <div class="page-actions">
+    <a class="btn btn-secondary" href="/ui/ranges">Back to ranges</a>
+  </div>
+</section>
+
+<section class="card">
+  <div class="card-header">
+    <div>
+      <h2>Range details</h2>
+      <p class="subtitle">Usable total: {{ total_usable }} (excludes network/broadcast for /30 and larger ranges).</p>
+    </div>
+  </div>
+  <div class="card-body">
+    <p class="muted">Click the Used or Free counts on the utilization tables to return here.</p>
+  </div>
+</section>
+
+<section class="card table-card" id="addresses">
+  <div class="card-header card-header-padded">
+    <div>
+      <h2>Addresses in this range</h2>
+      <p class="subtitle">Used: {{ used_total }} • Free: {{ free_total }}</p>
+    </div>
+  </div>
+  <div class="table-wrapper">
+    <table class="table">
+      <thead>
+        <tr>
+          <th>IP address</th>
+          <th>Status</th>
+          <th>Project</th>
+          <th>Type</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for entry in address_display %}
+        <tr>
+          <td class="mono">
+            {% if entry.asset_id %}
+            <a class="link" href="/ui/ip-assets/{{ entry.asset_id }}">{{ entry.ip_address }}</a>
+            {% else %}
+            {{ entry.ip_address }}
+            {% endif %}
+          </td>
+          <td>
+            {% if entry.status == "used" %}
+            <span class="pill pill-danger">Used</span>
+            {% else %}
+            <span class="pill pill-success">Free</span>
+            {% endif %}
+          </td>
+          <td>
+            {% if entry.status == "used" and entry.project_unassigned %}
+            <span class="tag tag-warning">Unassigned</span>
+            {% elif entry.status == "used" %}
+            <span class="tag tag-project" style="--project-color: {{ entry.project_color }}">{{ entry.project_name }}</span>
+            {% else %}
+            <span class="muted">—</span>
+            {% endif %}
+          </td>
+          <td class="muted">
+            {% if entry.status == "used" %}
+            {{ entry.asset_type }}
+            {% else %}
+            —
+            {% endif %}
+          </td>
+        </tr>
+        {% else %}
+        <tr>
+          <td colspan="4" class="empty-state">No addresses in this range.</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% if address_overflow %}
+  <p class="table-footer muted">Showing first {{ display_limit }} of {{ used_total + free_total }} addresses.</p>
+  {% endif %}
+</section>
+{% endblock %}
