@@ -340,6 +340,8 @@ def get_ip_range_address_breakdown(
         SELECT ip_assets.id AS asset_id,
                ip_assets.ip_address AS ip_address,
                ip_assets.type AS asset_type,
+               ip_assets.host_id AS host_id,
+               ip_assets.notes AS notes,
                projects.name AS project_name,
                projects.color AS project_color
         FROM ip_assets
@@ -350,6 +352,7 @@ def get_ip_range_address_breakdown(
     used_entries: list[dict[str, object]] = []
     used_addresses: set[ipaddress.IPv4Address] = set()
     used_asset_ids: list[int] = []
+    used_host_ids: list[int] = []
     for row in rows:
         try:
             ip_value = ipaddress.ip_address(row["ip_address"])
@@ -359,15 +362,20 @@ def get_ip_range_address_breakdown(
             continue
         used_addresses.add(ip_value)
         used_asset_ids.append(row["asset_id"])
+        if row["host_id"]:
+            used_host_ids.append(row["host_id"])
         used_entries.append(
             {
                 "ip_address": str(ip_value),
                 "status": "used",
                 "asset_id": row["asset_id"],
+                "host_id": row["host_id"],
                 "project_name": row["project_name"],
                 "project_color": row["project_color"] or DEFAULT_PROJECT_COLOR,
                 "project_unassigned": not row["project_name"],
                 "asset_type": row["asset_type"],
+                "notes": row["notes"] or "",
+                "host_pair": "",
                 "tags": [],
             }
         )
@@ -375,6 +383,13 @@ def get_ip_range_address_breakdown(
     tag_map = list_tag_details_for_ip_assets(connection, used_asset_ids)
     for entry in used_entries:
         entry["tags"] = tag_map.get(entry["asset_id"], [])
+    host_pair_lookup = list_host_pair_ips_for_hosts(connection, used_host_ids)
+    for entry in used_entries:
+        host_id = entry.get("host_id")
+        asset_type = entry.get("asset_type")
+        if host_id and asset_type in (IPAssetType.OS.value, IPAssetType.BMC.value):
+            pair_type = IPAssetType.BMC.value if asset_type == IPAssetType.OS.value else IPAssetType.OS.value
+            entry["host_pair"] = ", ".join(host_pair_lookup.get(host_id, {}).get(pair_type, []))
 
     used_sorted = sorted(used_entries, key=lambda entry: int(ipaddress.ip_address(entry["ip_address"])))
     usable_addresses = list(network.hosts())
@@ -387,6 +402,8 @@ def get_ip_range_address_breakdown(
             "project_color": DEFAULT_PROJECT_COLOR,
             "project_unassigned": True,
             "asset_type": None,
+            "notes": "",
+            "host_pair": "",
             "tags": [],
         }
         for ip_value in usable_addresses

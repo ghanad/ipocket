@@ -103,12 +103,21 @@ def test_range_addresses_page_shows_tags(client) -> None:
     try:
         db.init_db(connection)
         ip_range = repository.create_ip_range(connection, name="Lab Range", cidr="10.40.0.0/24")
+        host = repository.create_host(connection, name="lab-01")
         repository.create_tag(connection, name="core", color="#1d4ed8")
         repository.create_ip_asset(
             connection,
             ip_address="10.40.0.10",
-            asset_type=IPAssetType.VM,
+            asset_type=IPAssetType.OS,
             tags=["core"],
+            host_id=host.id,
+            notes="primary",
+        )
+        repository.create_ip_asset(
+            connection,
+            ip_address="10.40.0.11",
+            asset_type=IPAssetType.BMC,
+            host_id=host.id,
         )
     finally:
         connection.close()
@@ -117,8 +126,10 @@ def test_range_addresses_page_shows_tags(client) -> None:
 
     assert response.status_code == 200
     assert "Addresses in this range" in response.text
+    assert "Host Pair" in response.text
     assert "core" in response.text
     assert "tag-color" in response.text
+    assert "10.40.0.11" in response.text
 
 
 def test_ranges_edit_and_delete_flow(client) -> None:

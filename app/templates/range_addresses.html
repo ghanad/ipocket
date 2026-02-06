@@ -37,8 +37,10 @@
           <th>IP address</th>
           <th>Status</th>
           <th>Project</th>
-          <th>Tags</th>
           <th>Type</th>
+          <th>Host Pair</th>
+          <th>Tags</th>
+          <th>Notes</th>
         </tr>
       </thead>
       <tbody>
@@ -67,6 +69,20 @@
             <span class="muted">—</span>
             {% endif %}
           </td>
+          <td class="muted">
+            {% if entry.status == "used" %}
+            {{ entry.asset_type }}
+            {% else %}
+            —
+            {% endif %}
+          </td>
+          <td>
+            {% if entry.status == "used" and entry.host_pair %}
+            <span class="mono">{{ entry.host_pair }}</span>
+            {% else %}
+            <span class="muted">—</span>
+            {% endif %}
+          </td>
           <td>
             {% if entry.status == "used" and entry.tags %}
             {% for tag in entry.tags %}
@@ -77,8 +93,8 @@
             {% endif %}
           </td>
           <td class="muted">
-            {% if entry.status == "used" %}
-            {{ entry.asset_type }}
+            {% if entry.status == "used" and entry.notes %}
+            {{ entry.notes }}
             {% else %}
             —
             {% endif %}
@@ -86,7 +102,7 @@
         </tr>
         {% else %}
         <tr>
-          <td colspan="5" class="empty-state">No addresses in this range.</td>
+          <td colspan="7" class="empty-state">No addresses in this range.</td>
         </tr>
         {% endfor %}
       </tbody>
