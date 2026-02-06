@@ -1411,6 +1411,7 @@ def ui_list_ip_assets(
     project_id: Optional[str] = None,
     asset_type: Optional[str] = Query(default=None, alias="type"),
     unassigned_only: bool = Query(default=False, alias="unassigned-only"),
+    archived_only: bool = Query(default=False, alias="archived-only"),
     page: Optional[str] = None,
     per_page: Optional[str] = Query(default=None, alias="per-page"),
     connection=Depends(get_connection),
@@ -1433,6 +1434,7 @@ def ui_list_ip_assets(
         asset_type=asset_type_enum,
         unassigned_only=unassigned_only,
         query_text=query_text,
+        archived_only=archived_only,
     )
     total_pages = max(1, math.ceil(total_count / per_page_value)) if total_count else 1
     page_value = max(1, min(page_value, total_pages))
@@ -1445,6 +1447,7 @@ def ui_list_ip_assets(
         query_text=query_text,
         limit=per_page_value,
         offset=offset,
+        archived_only=archived_only,
     )
 
     projects = list(repository.list_projects(connection))
@@ -1465,6 +1468,8 @@ def ui_list_ip_assets(
         pagination_params["type"] = asset_type_enum.value
     if unassigned_only:
         pagination_params["unassigned-only"] = "true"
+    if archived_only:
+        pagination_params["archived-only"] = "true"
     base_query = urlencode(pagination_params)
     context = {
         "title": "ipocket - IP Assets",
@@ -1491,6 +1496,7 @@ def ui_list_ip_assets(
                     "project_id": parsed_project_id,
                     "type": asset_type_enum.value if asset_type_enum else "",
                     "unassigned_only": unassigned_only,
+                    "archived_only": archived_only,
                     "page": page_value,
                     "per_page": per_page_value,
                 },

@@ -8,31 +8,31 @@
 </section>
 
 <section class="stats-grid">
-  <article class="card stat-card">
+  <a class="card stat-card stat-card-link" href="/ui/ip-assets" aria-label="View active IP assets">
     <p class="stat-label">Active IPs</p>
     <p class="stat-value" data-testid="stat-active-ips">{{ summary.active_ip_total }}</p>
     <p class="stat-helper">IPs currently in service</p>
-  </article>
-  <article class="card stat-card">
+  </a>
+  <a class="card stat-card stat-card-link" href="/ui/ip-assets?archived-only=true" aria-label="View archived IP assets">
     <p class="stat-label">Archived IPs</p>
     <p class="stat-value" data-testid="stat-archived-ips">{{ summary.archived_ip_total }}</p>
     <p class="stat-helper">Soft-deleted records</p>
-  </article>
-  <article class="card stat-card">
+  </a>
+  <a class="card stat-card stat-card-link" href="/ui/hosts" aria-label="View hosts">
     <p class="stat-label">Hosts</p>
     <p class="stat-value" data-testid="stat-hosts">{{ summary.host_total }}</p>
     <p class="stat-helper">Distinct hardware or VM entries</p>
-  </article>
-  <article class="card stat-card">
+  </a>
+  <a class="card stat-card stat-card-link" href="/ui/vendors" aria-label="View vendors">
     <p class="stat-label">Vendors</p>
     <p class="stat-value" data-testid="stat-vendors">{{ summary.vendor_total }}</p>
     <p class="stat-helper">Partner or manufacturer list</p>
-  </article>
-  <article class="card stat-card">
+  </a>
+  <a class="card stat-card stat-card-link" href="/ui/projects" aria-label="View projects">
     <p class="stat-label">Projects</p>
     <p class="stat-value" data-testid="stat-projects">{{ summary.project_total }}</p>
     <p class="stat-helper">Active assignments</p>
-  </article>
+  </a>
 </section>
 
 <section class="card table-card">

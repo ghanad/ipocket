@@ -261,6 +261,20 @@ def test_list_active_ip_assets_paginated_with_search(tmp_path) -> None:
     assert assets[0].ip_address == "10.60.0.10"
 
 
+def test_count_ip_assets_with_archived_only_filter(tmp_path) -> None:
+    connection = _setup_connection(tmp_path)
+    create_ip_asset(connection, ip_address="10.70.0.10", asset_type=IPAssetType.VM)
+    archived_asset = create_ip_asset(connection, ip_address="10.70.0.11", asset_type=IPAssetType.OS)
+    archive_ip_asset(connection, archived_asset.ip_address)
+
+    total_archived = count_active_ip_assets(connection, archived_only=True)
+    archived_assets = list_active_ip_assets_paginated(connection, archived_only=True, limit=10, offset=0)
+
+    assert total_archived == 1
+    assert len(archived_assets) == 1
+    assert archived_assets[0].ip_address == "10.70.0.11"
+
+
 def test_list_hosts_with_ip_counts_includes_os_and_bmc_ips(tmp_path) -> None:
     connection = _setup_connection(tmp_path)
     host = create_host(connection, name="host-ips")

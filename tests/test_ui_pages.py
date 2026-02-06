@@ -62,6 +62,11 @@ def test_management_page_shows_summary_counts(client) -> None:
     assert 'data-testid="stat-hosts">1<' in response.text
     assert 'data-testid="stat-vendors">1<' in response.text
     assert 'data-testid="stat-projects">1<' in response.text
+    assert 'href="/ui/ip-assets"' in response.text
+    assert 'href="/ui/ip-assets?archived-only=true"' in response.text
+    assert 'href="/ui/hosts"' in response.text
+    assert 'href="/ui/vendors"' in response.text
+    assert 'href="/ui/projects"' in response.text
     assert "Subnet Utilization" in response.text
     assert "192.168.10.0/24" in response.text
     assert "254</td>" in response.text
@@ -202,6 +207,14 @@ def test_ip_assets_list_search_trims_whitespace(client) -> None:
     assert response.status_code == 200
     assert "10.30.0.21" in response.text
     assert "10.30.0.22" not in response.text
+
+
+def test_ip_assets_list_includes_archived_filter(client) -> None:
+    response = client.get("/ui/ip-assets")
+
+    assert response.status_code == 200
+    assert 'name="archived-only"' in response.text
+    assert "Archived only" in response.text
 
 
 def test_ip_assets_list_paginates_with_default_page_size(client) -> None:
