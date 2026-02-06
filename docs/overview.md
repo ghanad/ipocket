@@ -13,6 +13,7 @@ ipocket is a lightweight IP inventory app to track addresses and their project a
 - Import data from bundle.json or CSV with dry-run support and upserts.
 - Prometheus metrics on `/metrics`
 - Prometheus SD endpoint on `/sd/node` with project grouping
+- Audit logging for IP asset create/update/delete actions, surfaced on the IP detail page.
 - Database schema managed through Alembic migrations
 
 ## Note

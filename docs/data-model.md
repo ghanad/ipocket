@@ -31,6 +31,17 @@
 - `name` (TEXT, unique)
 
 
+## AuditLog
+- `user_id` (INTEGER, nullable; FK to `users.id`)
+- `username` (TEXT, nullable snapshot of username at action time)
+- `target_type` (TEXT, ex: `IP_ASSET`)
+- `target_id` (INTEGER)
+- `target_label` (TEXT, ex: IP address)
+- `action` (TEXT, `CREATE`, `UPDATE`, `DELETE`)
+- `changes` (TEXT summary of changes)
+- `created_at` (TEXT timestamp)
+
+
 ## Host deletion rule
 - Host permanent delete is allowed only when no IP assets are linked to it.
 - UI delete requires typing the exact host name as confirmation (two-step flow).

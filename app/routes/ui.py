@@ -1242,7 +1242,7 @@ async def ui_needs_assignment_assign(
     request: Request,
     filter: Optional[str] = None,
     connection=Depends(get_connection),
-    _user=Depends(require_ui_editor),
+    user=Depends(require_ui_editor),
 ):
     assignment_filter = _normalize_assignment_filter(filter)
     form_data = await _parse_form_data(request)
@@ -1292,6 +1292,7 @@ async def ui_needs_assignment_assign(
         connection,
         ip_address=ip_address,
         project_id=project_id,
+        current_user=user,
     )
     return RedirectResponse(
         url=f"/ui/ip-assets/needs-assignment?filter={assignment_filter}",
@@ -1336,7 +1337,7 @@ def ui_add_ip_form(
 async def ui_add_ip_submit(
     request: Request,
     connection=Depends(get_connection),
-    _user=Depends(require_ui_editor),
+    user=Depends(require_ui_editor),
 ):
     form_data = await _parse_form_data(request)
     ip_address = form_data.get("ip_address")
@@ -1401,6 +1402,7 @@ async def ui_add_ip_submit(
             host_id=host_id,
             notes=notes,
             auto_host_for_bmc=_is_auto_host_for_bmc_enabled(),
+            current_user=user,
         )
     except sqlite3.IntegrityError:
         errors.append("IP address already exists.")
@@ -1449,10 +1451,20 @@ def ui_ip_asset_detail(
     }
     host_lookup = {host.id: host.name for host in repository.list_hosts(connection)}
     view_model = _build_asset_view_models([asset], project_lookup, host_lookup)[0]
+    audit_logs = repository.get_audit_logs_for_ip(connection, asset.id)
+    audit_log_rows = [
+        {
+            "created_at": log.created_at,
+            "user": log.username or "System",
+            "action": log.action,
+            "changes": log.changes or "",
+        }
+        for log in audit_logs
+    ]
     return _render_template(
         request,
         "ip_asset_detail.html",
-        {"title": "ipocket - IP Detail", "asset": view_model},
+        {"title": "ipocket - IP Detail", "asset": view_model, "audit_logs": audit_log_rows},
         active_nav="ip-assets",
     )
 
@@ -1499,7 +1511,7 @@ async def ui_edit_ip_submit(
     request: Request,
     asset_id: int,
     connection=Depends(get_connection),
-    _user=Depends(require_ui_editor),
+    user=Depends(require_ui_editor),
 ):
     asset = repository.get_ip_asset_by_id(connection, asset_id)
     if asset is None or asset.archived:
@@ -1557,6 +1569,7 @@ async def ui_edit_ip_submit(
         project_id=project_id,
         host_id=host_id,
         notes=notes,
+        current_user=user,
     )
     return RedirectResponse(url=f"/ui/ip-assets/{asset.id}", status_code=303)
 
@@ -1591,7 +1604,7 @@ async def ui_delete_ip_asset(
     request: Request,
     asset_id: int,
     connection=Depends(get_connection),
-    _user=Depends(require_ui_editor),
+    user=Depends(require_ui_editor),
 ):
     asset = repository.get_ip_asset_by_id(connection, asset_id)
     if asset is None or asset.archived:
@@ -1613,7 +1626,7 @@ async def ui_delete_ip_asset(
             active_nav="ip-assets",
         )
 
-    repository.delete_ip_asset(connection, asset.ip_address)
+    repository.delete_ip_asset(connection, asset.ip_address, current_user=user)
     return RedirectResponse(url="/ui/ip-assets", status_code=303)
 
 
