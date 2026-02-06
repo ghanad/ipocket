@@ -303,27 +303,64 @@ def get_ip_range_address_breakdown(
 
     network = parse_ipv4_network(ip_range.cidr)
     rows = connection.execute(
-        "SELECT DISTINCT ip_address FROM ip_assets WHERE archived = 0"
+        """
+        SELECT ip_assets.id AS asset_id,
+               ip_assets.ip_address AS ip_address,
+               ip_assets.type AS asset_type,
+               projects.name AS project_name,
+               projects.color AS project_color
+        FROM ip_assets
+        LEFT JOIN projects ON projects.id = ip_assets.project_id
+        WHERE ip_assets.archived = 0
+        """
     ).fetchall()
+    used_entries: list[dict[str, object]] = []
     used_addresses: set[ipaddress.IPv4Address] = set()
     for row in rows:
         try:
             ip_value = ipaddress.ip_address(row["ip_address"])
         except ValueError:
             continue
-        if ip_value.version == 4 and ip_value in network:
-            used_addresses.add(ip_value)
+        if ip_value.version != 4 or ip_value not in network:
+            continue
+        used_addresses.add(ip_value)
+        used_entries.append(
+            {
+                "ip_address": str(ip_value),
+                "status": "used",
+                "asset_id": row["asset_id"],
+                "project_name": row["project_name"],
+                "project_color": row["project_color"] or DEFAULT_PROJECT_COLOR,
+                "project_unassigned": not row["project_name"],
+                "asset_type": row["asset_type"],
+            }
+        )
 
-    used_sorted = sorted(used_addresses, key=int)
+    used_sorted = sorted(used_entries, key=lambda entry: int(ipaddress.ip_address(entry["ip_address"])))
     usable_addresses = list(network.hosts())
-    free_addresses = [ip_value for ip_value in usable_addresses if ip_value not in used_addresses]
+    free_entries = [
+        {
+            "ip_address": str(ip_value),
+            "status": "free",
+            "asset_id": None,
+            "project_name": None,
+            "project_color": DEFAULT_PROJECT_COLOR,
+            "project_unassigned": True,
+            "asset_type": None,
+        }
+        for ip_value in usable_addresses
+        if ip_value not in used_addresses
+    ]
+    address_entries = sorted(
+        [*used_sorted, *free_entries],
+        key=lambda entry: int(ipaddress.ip_address(entry["ip_address"])),
+    )
 
     return {
         "ip_range": ip_range,
-        "used_addresses": [str(ip_value) for ip_value in used_sorted],
-        "free_addresses": [str(ip_value) for ip_value in free_addresses],
+        "addresses": address_entries,
         "used": len(used_sorted),
-        "free": len(free_addresses),
+        "free": len(free_entries),
         "total_usable": len(usable_addresses),
     }
 

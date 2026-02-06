@@ -1043,8 +1043,7 @@ def ui_range_addresses(
     if breakdown is None:
         raise HTTPException(status_code=404, detail="IP range not found.")
 
-    used_addresses = breakdown["used_addresses"]
-    free_addresses = breakdown["free_addresses"]
+    addresses = breakdown["addresses"]
     display_limit = 512
 
     return _render_template(
@@ -1053,16 +1052,13 @@ def ui_range_addresses(
         {
             "title": "ipocket - Range Addresses",
             "ip_range": breakdown["ip_range"],
-            "used": used_addresses,
-            "free": free_addresses,
+            "addresses": addresses,
             "used_total": breakdown["used"],
             "free_total": breakdown["free"],
             "total_usable": breakdown["total_usable"],
             "display_limit": display_limit,
-            "used_display": used_addresses[:display_limit],
-            "free_display": free_addresses[:display_limit],
-            "used_overflow": len(used_addresses) > display_limit,
-            "free_overflow": len(free_addresses) > display_limit,
+            "address_display": addresses[:display_limit],
+            "address_overflow": len(addresses) > display_limit,
         },
         active_nav="ranges",
     )
