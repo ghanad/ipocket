@@ -180,6 +180,7 @@
         if (toggle && panel) {
           toggle.setAttribute('aria-expanded', 'false');
           panel.hidden = true;
+          panel.style.visibility = '';
           menu.classList.remove('is-open');
         }
       });
@@ -225,6 +226,13 @@
       },
       true,
     );
+
+    const tableWrapper = document.querySelector('.table-wrapper');
+    if (tableWrapper) {
+      tableWrapper.addEventListener('scroll', () => {
+        closeAllMenus();
+      });
+    }
 
     window.addEventListener('resize', () => {
       closeAllMenus();

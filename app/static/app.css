@@ -606,6 +606,10 @@ p {
   z-index: 20;
 }
 
+.row-actions-panel[hidden] {
+  display: none;
+}
+
 .row-action-item {
   width: 100%;
   border: none;
