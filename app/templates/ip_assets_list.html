@@ -24,7 +24,7 @@
         placeholder="IP or notes"
         hx-get="/ui/ip-assets"
         hx-trigger="keyup changed delay:500ms, search"
-        hx-target="#ip-table-body"
+        hx-target="#ip-table-container"
         hx-push-url="true"
         hx-include="closest form"
       />
@@ -36,7 +36,7 @@
         name="project_id"
         hx-get="/ui/ip-assets"
         hx-trigger="change"
-        hx-target="#ip-table-body"
+        hx-target="#ip-table-container"
         hx-push-url="true"
         hx-include="closest form"
       >
@@ -53,7 +53,7 @@
         name="type"
         hx-get="/ui/ip-assets"
         hx-trigger="change"
-        hx-target="#ip-table-body"
+        hx-target="#ip-table-container"
         hx-push-url="true"
         hx-include="closest form"
       >
@@ -70,7 +70,7 @@
         name="unassigned-only"
         hx-get="/ui/ip-assets"
         hx-trigger="change"
-        hx-target="#ip-table-body"
+        hx-target="#ip-table-container"
         hx-push-url="true"
         hx-include="closest form"
       >
@@ -78,27 +78,28 @@
         <option value="true"{% if filters.unassigned_only %} selected{% endif %}>Unassigned only</option>
       </select>
     </label>
+    <label class="field">
+      <span>Per page</span>
+      <select
+        class="select"
+        name="per-page"
+        hx-get="/ui/ip-assets"
+        hx-trigger="change"
+        hx-target="#ip-table-container"
+        hx-push-url="true"
+        hx-include="closest form"
+      >
+        {% for option in [10, 20, 50, 100] %}
+        <option value="{{ option }}"{% if filters.per_page == option %} selected{% endif %}>{{ option }}</option>
+        {% endfor %}
+      </select>
+    </label>
   </form>
 </section>
 
-<section class="card table-card">
-  <div class="table-wrapper">
-    <table class="table">
-      <thead>
-        <tr>
-          <th>IP address</th>
-          <th>Project</th>
-          <th>Type</th>
-          <th>Notes</th>
-          <th>Actions</th>
-        </tr>
-      </thead>
-      <tbody id="ip-table-body">
-        {% include "partials/ip_table_rows.html" %}
-      </tbody>
-    </table>
-  </div>
-</section>
+<div id="ip-table-container">
+  {% include "partials/ip_assets_table.html" %}
+</div>
 
 <script>
   (() => {
@@ -244,7 +245,7 @@
       });
 
       document.body.addEventListener('htmx:afterSwap', (event) => {
-        if (event.target && event.target.id === 'ip-table-body') {
+        if (event.target && event.target.id === 'ip-table-container') {
           bindRowActions(event.target);
           closeAllMenus();
         }

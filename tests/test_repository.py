@@ -21,6 +21,8 @@ from app.repository import (
     list_audit_logs,
     list_hosts,
     list_hosts_with_ip_counts,
+    list_active_ip_assets_paginated,
+    count_active_ip_assets,
     update_ip_asset,
     update_project,
 )
@@ -198,6 +200,19 @@ def test_delete_host_returns_false_for_unknown_host(tmp_path) -> None:
     deleted = delete_host(connection, 9999)
 
     assert deleted is False
+
+
+def test_list_active_ip_assets_paginated_with_search(tmp_path) -> None:
+    connection = _setup_connection(tmp_path)
+    create_ip_asset(connection, ip_address="10.60.0.10", asset_type=IPAssetType.VM, notes="db-primary")
+    create_ip_asset(connection, ip_address="10.60.0.11", asset_type=IPAssetType.VM, notes="web-tier")
+
+    total = count_active_ip_assets(connection, query_text="db")
+    assets = list_active_ip_assets_paginated(connection, query_text="db", limit=10, offset=0)
+
+    assert total == 1
+    assert len(assets) == 1
+    assert assets[0].ip_address == "10.60.0.10"
 
 
 def test_list_hosts_with_ip_counts_includes_os_and_bmc_ips(tmp_path) -> None:
