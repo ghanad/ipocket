@@ -83,6 +83,11 @@ def _render_fallback_template(
         name = getattr(vendor, "name", None) if not isinstance(vendor, dict) else vendor.get("name")
         if name:
             lines.append(str(name))
+    if template_name == "management.html":
+        summary = payload.get("summary") or {}
+        for key in ("active_ip_total", "archived_ip_total", "host_total", "vendor_total", "project_total"):
+            if key in summary:
+                lines.append(str(summary[key]))
     for error in payload.get("errors") or []:
         lines.append(str(error))
     if template_name == "login.html":
@@ -290,6 +295,20 @@ def ui_about(
         "about.html",
         {"title": "ipocket - About"},
         active_nav="",
+    )
+
+
+@router.get("/ui/management", response_class=HTMLResponse)
+def ui_management(
+    request: Request,
+    connection=Depends(get_connection),
+) -> HTMLResponse:
+    summary = repository.get_management_summary(connection)
+    return _render_template(
+        request,
+        "management.html",
+        {"title": "ipocket - Management Overview", "summary": summary},
+        active_nav="management",
     )
 
 
