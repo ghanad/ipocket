@@ -220,10 +220,24 @@ def test_ip_range_utilization_counts(tmp_path) -> None:
 def test_ip_range_address_breakdown(tmp_path) -> None:
     connection = _setup_connection(tmp_path)
     project = create_project(connection, name="Lab")
+    host = create_host(connection, name="lab-01")
     ip_range = create_ip_range(connection, name="Lab", cidr="192.168.20.0/30")
 
-    create_ip_asset(connection, ip_address="192.168.20.1", asset_type=IPAssetType.VM, project_id=project.id)
-    create_ip_asset(connection, ip_address="192.168.20.3", asset_type=IPAssetType.OS)
+    create_ip_asset(
+        connection,
+        ip_address="192.168.20.1",
+        asset_type=IPAssetType.OS,
+        project_id=project.id,
+        host_id=host.id,
+        notes="primary",
+    )
+    create_ip_asset(
+        connection,
+        ip_address="192.168.20.3",
+        asset_type=IPAssetType.BMC,
+        host_id=host.id,
+        notes="out-of-band",
+    )
 
     breakdown = get_ip_range_address_breakdown(connection, ip_range.id)
 
@@ -239,9 +253,12 @@ def test_ip_range_address_breakdown(tmp_path) -> None:
     ]
     assert addresses[0]["status"] == "used"
     assert addresses[0]["project_name"] == "Lab"
-    assert addresses[0]["asset_type"] == IPAssetType.VM.value
+    assert addresses[0]["asset_type"] == IPAssetType.OS.value
+    assert addresses[0]["host_pair"] == "192.168.20.3"
+    assert addresses[0]["notes"] == "primary"
     assert addresses[1]["status"] == "free"
     assert addresses[2]["status"] == "used"
+    assert addresses[2]["host_pair"] == "192.168.20.1"
 
 
 def test_create_bmc_without_host_creates_server_host_and_links_asset(tmp_path) -> None:
