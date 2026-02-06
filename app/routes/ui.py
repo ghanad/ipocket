@@ -1204,6 +1204,30 @@ def ui_list_ip_assets(
     )
 
 
+@router.get("/ui/audit-log", response_class=HTMLResponse)
+def ui_audit_log(
+    request: Request,
+    connection=Depends(get_connection),
+):
+    audit_logs = repository.list_audit_logs(connection)
+    audit_log_rows = [
+        {
+            "created_at": log.created_at,
+            "user": log.username or "System",
+            "action": log.action,
+            "changes": log.changes or "",
+            "target_label": log.target_label,
+        }
+        for log in audit_logs
+    ]
+    return _render_template(
+        request,
+        "audit_log_list.html",
+        {"title": "ipocket - Audit Log", "audit_logs": audit_log_rows},
+        active_nav="audit-log",
+    )
+
+
 @router.get("/ui/ip-assets/needs-assignment", response_class=HTMLResponse)
 def ui_needs_assignment(
     request: Request,

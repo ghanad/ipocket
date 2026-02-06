@@ -16,6 +16,7 @@ from app.repository import (
     delete_ip_asset,
     delete_host,
     get_ip_asset_metrics,
+    list_audit_logs,
     list_hosts,
     list_hosts_with_ip_counts,
     update_ip_asset,
@@ -223,3 +224,18 @@ def test_audit_logs_record_ip_asset_changes(tmp_path) -> None:
     assert any("project: Unassigned -> Core" in (log.changes or "") for log in logs)
     assert any("host: Unassigned -> node-01" in (log.changes or "") for log in logs)
     assert any("notes:" in (log.changes or "") for log in logs)
+
+
+def test_list_audit_logs_returns_recent_ip_entries(tmp_path) -> None:
+    connection = _setup_connection(tmp_path)
+    user = create_user(connection, username="auditor", hashed_password="x", role=UserRole.ADMIN)
+
+    create_ip_asset(connection, ip_address="10.10.20.1", asset_type=IPAssetType.VM, current_user=user)
+    create_ip_asset(connection, ip_address="10.10.20.2", asset_type=IPAssetType.OS, current_user=user)
+
+    logs = list_audit_logs(connection, limit=10)
+
+    assert len(logs) >= 2
+    assert logs[0].target_label == "10.10.20.2"
+    assert logs[0].action == "CREATE"
+    assert logs[1].target_label == "10.10.20.1"
