@@ -252,6 +252,14 @@ p {
   box-shadow: var(--shadow-sm);
 }
 
+.compact-card {
+  padding: 16px;
+}
+
+.compact-card .card-header {
+  margin-bottom: 12px;
+}
+
 .card-header {
   display: flex;
   justify-content: space-between;
@@ -319,6 +327,14 @@ p {
 
 .form-grid-two {
   grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+}
+
+.host-add-card .form-grid {
+  gap: 12px;
+}
+
+.host-add-card .field {
+  gap: 6px;
 }
 
 .field {

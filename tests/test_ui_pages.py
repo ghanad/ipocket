@@ -101,6 +101,19 @@ def test_hosts_list_uses_overflow_actions_menu(client) -> None:
     assert "positionMenuPanel" in response.text
 
 
+def test_hosts_add_form_above_table_and_compact(client) -> None:
+    response = client.get("/ui/hosts")
+
+    assert response.status_code == 200
+    assert 'id="add-host-card"' in response.text
+    assert 'class="card compact-card host-add-card"' in response.text
+    add_card_index = response.text.find('id="add-host-card"')
+    table_index = response.text.find('class="card table-card"')
+    assert add_card_index != -1
+    assert table_index != -1
+    assert add_card_index < table_index
+
+
 def test_row_actions_panel_hidden_style_present() -> None:
     css = Path("app/static/app.css").read_text(encoding="utf-8")
     assert ".row-actions-panel[hidden]" in css
