@@ -132,6 +132,40 @@ def test_range_addresses_page_shows_tags(client) -> None:
     assert "10.40.0.11" in response.text
 
 
+def test_range_addresses_quick_add_creates_asset(client) -> None:
+    import os
+    from app import db, repository
+
+    connection = db.connect(os.environ["IPAM_DB_PATH"])
+    try:
+        db.init_db(connection)
+        user = repository.create_user(connection, username="editor", hashed_password="x", role=UserRole.EDITOR)
+        ip_range = repository.create_ip_range(connection, name="Edge Range", cidr="10.60.0.0/29")
+        project = repository.create_project(connection, name="Edge")
+    finally:
+        connection.close()
+
+    app.dependency_overrides[ui.require_ui_editor] = lambda: user
+    try:
+        response = client.post(
+            f"/ui/ranges/{ip_range.id}/addresses/add",
+            data={"ip_address": "10.60.0.2", "type": "VM", "project_id": str(project.id)},
+            follow_redirects=False,
+        )
+    finally:
+        app.dependency_overrides.pop(ui.require_ui_editor, None)
+
+    assert response.status_code == 303
+
+    connection = db.connect(os.environ["IPAM_DB_PATH"])
+    try:
+        asset = repository.get_ip_asset_by_ip(connection, "10.60.0.2")
+        assert asset is not None
+        assert asset.project_id == project.id
+    finally:
+        connection.close()
+
+
 def test_ranges_edit_and_delete_flow(client) -> None:
     import os
     from app import db, repository
