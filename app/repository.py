@@ -578,6 +578,33 @@ def get_host_linked_assets_grouped(connection: sqlite3.Connection, host_id: int)
     }
 
 
+def list_host_pair_ips_for_hosts(
+    connection: sqlite3.Connection,
+    host_ids: Iterable[int],
+) -> dict[int, dict[str, list[str]]]:
+    host_ids_list = sorted({host_id for host_id in host_ids if host_id is not None})
+    if not host_ids_list:
+        return {}
+    placeholders = ",".join(["?"] * len(host_ids_list))
+    rows = connection.execute(
+        f"""
+        SELECT host_id, type, ip_address
+        FROM ip_assets
+        WHERE archived = 0
+          AND host_id IN ({placeholders})
+          AND type IN ('OS', 'BMC')
+        ORDER BY host_id, type, ip_address
+        """,
+        host_ids_list,
+    ).fetchall()
+    mapping: dict[int, dict[str, list[str]]] = {
+        host_id: {"OS": [], "BMC": []} for host_id in host_ids_list
+    }
+    for row in rows:
+        mapping.setdefault(row["host_id"], {"OS": [], "BMC": []})[row["type"]].append(row["ip_address"])
+    return mapping
+
+
 def update_host(connection: sqlite3.Connection, host_id: int, name: Optional[str] = None, notes: Optional[str] = None, vendor: Optional[str] = None) -> Optional[Host]:
     connection.execute(
         "UPDATE hosts SET name = COALESCE(?, name), notes = COALESCE(?, notes), vendor_id = COALESCE(?, vendor_id), updated_at = CURRENT_TIMESTAMP WHERE id = ?",
