@@ -15,6 +15,7 @@ from app.repository import (
     delete_host,
     get_ip_asset_metrics,
     list_hosts,
+    list_hosts_with_ip_counts,
     update_project,
 )
 
@@ -175,3 +176,18 @@ def test_delete_host_returns_false_for_unknown_host(tmp_path) -> None:
     deleted = delete_host(connection, 9999)
 
     assert deleted is False
+
+
+def test_list_hosts_with_ip_counts_includes_os_and_bmc_ips(tmp_path) -> None:
+    connection = _setup_connection(tmp_path)
+    host = create_host(connection, name="host-ips")
+    create_ip_asset(connection, ip_address="10.20.0.10", asset_type=IPAssetType.OS, host_id=host.id)
+    create_ip_asset(connection, ip_address="10.20.0.11", asset_type=IPAssetType.OS, host_id=host.id)
+    create_ip_asset(connection, ip_address="10.20.0.20", asset_type=IPAssetType.BMC, host_id=host.id)
+    create_ip_asset(connection, ip_address="10.20.0.30", asset_type=IPAssetType.VM, host_id=host.id)
+
+    hosts = list_hosts_with_ip_counts(connection)
+
+    assert len(hosts) == 1
+    assert hosts[0]["os_ips"] == "10.20.0.10, 10.20.0.11"
+    assert hosts[0]["bmc_ips"] == "10.20.0.20"

@@ -153,15 +153,56 @@ def get_host_by_name(connection: sqlite3.Connection, name: str) -> Optional[Host
 def list_hosts_with_ip_counts(connection: sqlite3.Connection) -> list[dict[str, object]]:
     rows = connection.execute(
         """
-        SELECT hosts.id AS id, hosts.name AS name, hosts.notes AS notes, vendors.name AS vendor, COUNT(ip_assets.id) AS ip_count
+        SELECT
+            hosts.id AS id,
+            hosts.name AS name,
+            hosts.notes AS notes,
+            vendors.name AS vendor,
+            (
+                SELECT COUNT(*)
+                FROM ip_assets
+                WHERE ip_assets.host_id = hosts.id
+                  AND ip_assets.archived = 0
+            ) AS ip_count,
+            (
+                SELECT group_concat(ip_address, ', ')
+                FROM (
+                    SELECT ip_address
+                    FROM ip_assets
+                    WHERE host_id = hosts.id
+                      AND archived = 0
+                      AND type = 'OS'
+                    ORDER BY ip_address
+                )
+            ) AS os_ips,
+            (
+                SELECT group_concat(ip_address, ', ')
+                FROM (
+                    SELECT ip_address
+                    FROM ip_assets
+                    WHERE host_id = hosts.id
+                      AND archived = 0
+                      AND type = 'BMC'
+                    ORDER BY ip_address
+                )
+            ) AS bmc_ips
         FROM hosts
         LEFT JOIN vendors ON vendors.id = hosts.vendor_id
-        LEFT JOIN ip_assets ON ip_assets.host_id = hosts.id AND ip_assets.archived = 0
-        GROUP BY hosts.id, hosts.name, hosts.notes, vendors.name
         ORDER BY hosts.name
         """
     ).fetchall()
-    return [{"id": row["id"], "name": row["name"], "notes": row["notes"], "vendor": row["vendor"], "ip_count": int(row["ip_count"] or 0)} for row in rows]
+    return [
+        {
+            "id": row["id"],
+            "name": row["name"],
+            "notes": row["notes"],
+            "vendor": row["vendor"],
+            "ip_count": int(row["ip_count"] or 0),
+            "os_ips": row["os_ips"] or "",
+            "bmc_ips": row["bmc_ips"] or "",
+        }
+        for row in rows
+    ]
 
 
 def get_host_linked_assets_grouped(connection: sqlite3.Connection, host_id: int) -> dict[str, list[IPAsset]]:
