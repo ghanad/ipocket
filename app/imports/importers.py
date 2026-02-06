@@ -127,11 +127,11 @@ def _parse_ip_assets(section: object, base_path: str) -> list[ImportIPAsset]:
 
 class CsvImporter:
     def parse(self, inputs: dict[str, bytes], options: Optional[dict[str, object]] = None) -> ImportBundle:
-        if "hosts" not in inputs or "ip_assets" not in inputs:
-            raise ImportParseError("CSV import requires hosts.csv and ip-assets.csv inputs.")
+        if "hosts" not in inputs and "ip_assets" not in inputs:
+            raise ImportParseError("CSV import requires hosts.csv and/or ip-assets.csv input.")
 
-        hosts = _parse_hosts_csv(inputs["hosts"], "hosts.csv")
-        ip_assets = _parse_ip_assets_csv(inputs["ip_assets"], "ip-assets.csv")
+        hosts = _parse_hosts_csv(inputs["hosts"], "hosts.csv") if "hosts" in inputs else []
+        ip_assets = _parse_ip_assets_csv(inputs["ip_assets"], "ip-assets.csv") if "ip_assets" in inputs else []
         vendors = _derive_vendors_from_hosts(hosts)
         projects = _derive_projects_from_ip_assets(ip_assets)
         return ImportBundle(vendors=vendors, projects=projects, hosts=hosts, ip_assets=ip_assets)

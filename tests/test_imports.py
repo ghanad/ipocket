@@ -182,6 +182,37 @@ def test_csv_dry_run_and_apply(client) -> None:
         connection.close()
 
 
+def test_csv_dry_run_single_file_imports(client) -> None:
+    test_client, db_path = client
+    _create_user(db_path, "viewer", "viewer-pass", UserRole.VIEWER)
+
+    viewer_token = _login(test_client, "viewer", "viewer-pass")
+
+    hosts_csv = "name,notes,vendor_name\nnode-03,edge,Cisco\n"
+    hosts_only_response = test_client.post(
+        "/import/csv?dry_run=1",
+        headers=_auth_headers(viewer_token),
+        files={"hosts": ("hosts.csv", hosts_csv, "text/csv")},
+    )
+    assert hosts_only_response.status_code == 200
+    hosts_summary = hosts_only_response.json()["summary"]
+    assert hosts_summary["hosts"]["would_create"] == 1
+    assert hosts_summary["vendors"]["would_create"] == 1
+    assert hosts_summary["ip_assets"]["would_create"] == 0
+
+    ip_assets_csv = "ip_address,type,project_name,host_name,notes,archived\n10.0.0.30,VM,Solo,,edge,false\n"
+    ip_assets_only_response = test_client.post(
+        "/import/csv?dry_run=1",
+        headers=_auth_headers(viewer_token),
+        files={"ip_assets": ("ip-assets.csv", ip_assets_csv, "text/csv")},
+    )
+    assert ip_assets_only_response.status_code == 200
+    assets_summary = ip_assets_only_response.json()["summary"]
+    assert assets_summary["projects"]["would_create"] == 1
+    assert assets_summary["ip_assets"]["would_create"] == 1
+    assert assets_summary["hosts"]["would_create"] == 0
+
+
 def test_validation_errors(client) -> None:
     test_client, db_path = client
     _create_user(db_path, "viewer", "viewer-pass", UserRole.VIEWER)
@@ -231,8 +262,8 @@ def test_viewer_cannot_apply_import(client) -> None:
     assert response.status_code == 403
 
 
-def test_round_trip_bundle_import() -> None:
-    source_connection = db.connect(":memory:")
+def test_round_trip_bundle_import(tmp_path) -> None:
+    source_connection = db.connect(str(tmp_path / "source.db"))
     try:
         db.init_db(source_connection)
         vendor = repository.create_vendor(source_connection, "HPE")
@@ -250,7 +281,7 @@ def test_round_trip_bundle_import() -> None:
     finally:
         source_connection.close()
 
-    target_connection = db.connect(":memory:")
+    target_connection = db.connect(str(tmp_path / "target.db"))
     try:
         db.init_db(target_connection)
         result = run_import(

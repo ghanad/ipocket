@@ -390,7 +390,7 @@ async def ui_import_csv(
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN)
     hosts_file = form_data.get("hosts_file")
     ip_assets_file = form_data.get("ip_assets_file")
-    if hosts_file is None or ip_assets_file is None:
+    if hosts_file is None and ip_assets_file is None:
         return _render_template(
             request,
             "import.html",
@@ -398,15 +398,16 @@ async def ui_import_csv(
                 "title": "ipocket - Import",
                 "bundle_result": None,
                 "csv_result": None,
-                "errors": ["hosts.csv and ip-assets.csv files are required."],
+                "errors": ["Upload at least one CSV file (hosts.csv or ip-assets.csv)."],
             },
             active_nav="import",
             status_code=status.HTTP_400_BAD_REQUEST,
         )
-    inputs = {
-        "hosts": await hosts_file.read(),
-        "ip_assets": await ip_assets_file.read(),
-    }
+    inputs: dict[str, bytes] = {}
+    if hosts_file is not None:
+        inputs["hosts"] = await hosts_file.read()
+    if ip_assets_file is not None:
+        inputs["ip_assets"] = await ip_assets_file.read()
     result = run_import(connection, CsvImporter(), inputs, dry_run=dry_run)
     return _render_template(
         request,
