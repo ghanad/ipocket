@@ -41,6 +41,23 @@ Run the web app:
 uvicorn app.main:app --reload
 ```
 
+## Run with Docker
+Build the image:
+
+```bash
+docker build -t ipocket:latest .
+```
+
+Run the container (persisting SQLite in a local `data/` directory):
+
+```bash
+mkdir -p data
+docker run --rm -p 8000:8000 -v "$(pwd)/data:/data" ipocket:latest
+```
+
+The container runs `alembic upgrade head` on startup and stores the SQLite
+database at `/data/ipocket.db`.
+
 ### Version metadata (recommended for deployments)
 ipocket reads version info from environment variables and includes them in the
 `/health` response and the authenticated UI footer (`ipocket v{version} ({commit}) • built {build_time}`).
