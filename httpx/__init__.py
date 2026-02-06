@@ -165,6 +165,41 @@ class Client:
         if json is not None:
             body = json_encode(json)
             request_headers.setdefault("content-type", "application/json")
+        elif files is not None:
+            boundary = "----ipocketformboundary"
+            parts: list[bytes] = []
+            if data:
+                for key, value in data.items():
+                    parts.append(
+                        b"".join(
+                            [
+                                f"--{boundary}\r\n".encode("utf-8"),
+                                f'Content-Disposition: form-data; name="{key}"\r\n\r\n'.encode(
+                                    "utf-8"
+                                ),
+                                _to_bytes(value),
+                                b"\r\n",
+                            ]
+                        )
+                    )
+            for field, file_info in _iter_files(files):
+                filename, file_content, content_type = file_info
+                parts.append(
+                    b"".join(
+                        [
+                            f"--{boundary}\r\n".encode("utf-8"),
+                            f'Content-Disposition: form-data; name="{field}"; filename="{filename}"\r\n'.encode(
+                                "utf-8"
+                            ),
+                            f"Content-Type: {content_type}\r\n\r\n".encode("utf-8"),
+                            _to_bytes(file_content),
+                            b"\r\n",
+                        ]
+                    )
+                )
+            parts.append(f"--{boundary}--\r\n".encode("utf-8"))
+            body = b"".join(parts)
+            request_headers.setdefault("content-type", f"multipart/form-data; boundary={boundary}")
         elif content is not None:
             body = content.encode("utf-8") if isinstance(content, str) else content
         elif data is not None:
@@ -185,6 +220,34 @@ class Client:
 
 def json_encode(value: Any) -> bytes:
     return json.dumps(value, separators=(",", ":"), ensure_ascii=False).encode("utf-8")
+
+
+def _to_bytes(value: Any) -> bytes:
+    if value is None:
+        return b""
+    if isinstance(value, bytes):
+        return value
+    if hasattr(value, "read"):
+        return value.read()
+    return str(value).encode("utf-8")
+
+
+def _iter_files(files: _types.RequestFiles) -> list[tuple[str, tuple[str, Any, str]]]:
+    items = files.items() if isinstance(files, Mapping) else files
+    normalized: list[tuple[str, tuple[str, Any, str]]] = []
+    for field, file_value in items:
+        filename = "upload"
+        content = file_value
+        content_type = "application/octet-stream"
+        if isinstance(file_value, tuple):
+            if len(file_value) == 3:
+                filename, content, content_type = file_value
+            elif len(file_value) == 2:
+                filename, content = file_value
+        else:
+            filename = getattr(file_value, "name", filename)
+        normalized.append((field, (str(filename), content, str(content_type))))
+    return normalized
 
 
 __all__ = [

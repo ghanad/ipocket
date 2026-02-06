@@ -9,14 +9,14 @@ ipocket supports round-trip workflows: export data (CSV/JSON/bundle) and re-impo
 - `POST /import/bundle?dry_run=1`
   - Multipart form upload with field: `file` (bundle.json).
 - `POST /import/csv?dry_run=1`
-  - Multipart form upload with fields: `hosts` (hosts.csv) and `ip_assets` (ip-assets.csv).
+  - Multipart form upload with fields: `hosts` (hosts.csv) and/or `ip_assets` (ip-assets.csv). Empty files are ignored.
 
 ### UI
 
 Open `/ui/import` and upload:
 
 - Bundle JSON section: `bundle.json`
-- CSV section: `hosts.csv` + `ip-assets.csv`
+- CSV section: `hosts.csv` and/or `ip-assets.csv` (empty uploads are ignored)
 
 Sample CSVs are available for download on the import page (or directly via `/static/samples/hosts.csv` and
 `/static/samples/ip-assets.csv`) to illustrate the required columns and formatting.
