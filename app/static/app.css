@@ -466,13 +466,20 @@ p {
   font-size: 13px;
 }
 
-.host-quick-add {
-  margin-top: 16px;
-  padding-top: 16px;
+.host-edit-sections {
+  display: grid;
+  gap: 16px;
+}
+
+.host-edit-section {
+  padding: 12px 0 0;
+}
+
+.host-edit-section + .host-edit-section {
   border-top: 1px solid var(--color-border);
 }
 
-.host-quick-add-title {
+.host-edit-section-title {
   margin: 0 0 8px;
   font-size: 12px;
   font-weight: 600;
@@ -482,7 +489,7 @@ p {
 }
 
 .host-quick-add-form {
-  grid-template-columns: 2fr 2fr auto;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
   align-items: end;
 }
 

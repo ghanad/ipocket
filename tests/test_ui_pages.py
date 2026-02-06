@@ -520,6 +520,29 @@ def test_hosts_list_includes_quick_add_os_ip_form(client) -> None:
     assert "host-quick-add-form" in response.text
 
 
+def test_hosts_list_hides_quick_add_when_os_ip_exists(client) -> None:
+    import os
+    from app import db, repository
+
+    connection = db.connect(os.environ["IPAM_DB_PATH"])
+    try:
+        db.init_db(connection)
+        host = repository.create_host(connection, name="node-quick-02")
+        repository.create_ip_asset(
+            connection,
+            ip_address="10.60.0.10",
+            asset_type=IPAssetType.OS,
+            host_id=host.id,
+        )
+    finally:
+        connection.close()
+
+    response = client.get("/ui/hosts")
+
+    assert response.status_code == 200
+    assert f'action="/ui/hosts/{host.id}/os-ip"' not in response.text
+
+
 def test_hosts_add_form_above_table_and_compact(client) -> None:
     response = client.get("/ui/hosts")
 
