@@ -136,6 +136,43 @@
 <script>
   (() => {
     const actionMenus = document.querySelectorAll('[data-row-actions]');
+    const POSITION_MARGIN = 12;
+
+    const positionMenuPanel = (toggle, panel) => {
+      const triggerRect = toggle.getBoundingClientRect();
+      panel.style.position = 'fixed';
+      panel.style.top = '0';
+      panel.style.left = '0';
+      panel.style.right = 'auto';
+      panel.style.bottom = 'auto';
+      panel.style.visibility = 'hidden';
+      panel.hidden = false;
+
+      const panelRect = panel.getBoundingClientRect();
+      let top = triggerRect.bottom + 6;
+      let left = triggerRect.right - panelRect.width;
+
+      if (left < POSITION_MARGIN) {
+        left = POSITION_MARGIN;
+      }
+
+      if (left + panelRect.width > window.innerWidth - POSITION_MARGIN) {
+        left = Math.max(POSITION_MARGIN, window.innerWidth - panelRect.width - POSITION_MARGIN);
+      }
+
+      if (top + panelRect.height > window.innerHeight - POSITION_MARGIN) {
+        top = triggerRect.top - panelRect.height - 6;
+      }
+
+      if (top < POSITION_MARGIN) {
+        top = POSITION_MARGIN;
+      }
+
+      panel.style.top = `${top}px`;
+      panel.style.left = `${left}px`;
+      panel.style.visibility = 'visible';
+    };
+
     const closeAllMenus = () => {
       actionMenus.forEach((menu) => {
         const toggle = menu.querySelector('[data-row-actions-toggle]');
@@ -143,6 +180,7 @@
         if (toggle && panel) {
           toggle.setAttribute('aria-expanded', 'false');
           panel.hidden = true;
+          panel.style.visibility = '';
           menu.classList.remove('is-open');
         }
       });
@@ -161,7 +199,7 @@
         closeAllMenus();
         if (!isOpen) {
           toggle.setAttribute('aria-expanded', 'true');
-          panel.hidden = false;
+          positionMenuPanel(toggle, panel);
           menu.classList.add('is-open');
         }
       });
@@ -179,6 +217,25 @@
       if (event.key === 'Escape') {
         closeAllMenus();
       }
+    });
+
+    window.addEventListener(
+      'scroll',
+      () => {
+        closeAllMenus();
+      },
+      true,
+    );
+
+    const tableWrapper = document.querySelector('.table-wrapper');
+    if (tableWrapper) {
+      tableWrapper.addEventListener('scroll', () => {
+        closeAllMenus();
+      });
+    }
+
+    window.addEventListener('resize', () => {
+      closeAllMenus();
     });
 
     const openButtons = document.querySelectorAll('[data-delete-dialog-id]');

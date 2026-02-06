@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from pathlib import Path
+
 import pytest
 from fastapi.testclient import TestClient
 
@@ -47,6 +49,14 @@ def test_ip_assets_list_uses_overflow_actions_menu_with_delete_dialog(client) ->
     assert f'id="delete-ip-{asset.id}"' in response.text
     assert "Delete IP asset?" in response.text
     assert "Continue to delete" in response.text
+    assert "window.addEventListener" in response.text
+    assert "positionMenuPanel" in response.text
+
+
+def test_row_actions_panel_hidden_style_present() -> None:
+    css = Path("app/static/app.css").read_text(encoding="utf-8")
+    assert ".row-actions-panel[hidden]" in css
+    assert "display: none" in css
 
 
 def test_ui_create_bmc_passes_auto_host_flag_enabled(client, monkeypatch) -> None:
