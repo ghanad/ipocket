@@ -163,12 +163,31 @@ def test_hosts_add_form_above_table_and_compact(client) -> None:
 
     assert response.status_code == 200
     assert 'id="add-host-card"' in response.text
-    assert 'class="card compact-card host-add-card"' in response.text
+    assert 'class="card compact-card collapsible-card host-add-card"' in response.text
     add_card_index = response.text.find('id="add-host-card"')
     table_index = response.text.find('class="card table-card"')
     assert add_card_index != -1
     assert table_index != -1
     assert add_card_index < table_index
+
+
+def test_hosts_list_search_trims_whitespace(client) -> None:
+    import os
+    from app import db, repository
+
+    connection = db.connect(os.environ["IPAM_DB_PATH"])
+    try:
+        db.init_db(connection)
+        repository.create_host(connection, name="edge-01", notes="rack-1")
+        repository.create_host(connection, name="core-02", notes="rack-2")
+    finally:
+        connection.close()
+
+    response = client.get("/ui/hosts", params={"q": " edge-01 "})
+
+    assert response.status_code == 200
+    assert "edge-01" in response.text
+    assert "core-02" not in response.text
 
 
 def test_audit_log_page_lists_ip_entries(client) -> None:

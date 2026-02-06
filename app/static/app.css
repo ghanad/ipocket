@@ -358,6 +358,63 @@ p {
   gap: 6px;
 }
 
+.host-add-card .input,
+.host-add-card .select,
+.host-add-card .textarea {
+  padding: 8px 10px;
+  font-size: 13px;
+}
+
+.collapsible-card > summary {
+  list-style: none;
+  cursor: pointer;
+}
+
+.collapsible-card > summary::-webkit-details-marker {
+  display: none;
+}
+
+.collapsible-card > summary::marker {
+  content: "";
+}
+
+.collapsible-card.compact-card > summary {
+  margin: -16px;
+  padding: 16px;
+}
+
+.collapsible-card.compact-card[open] > summary {
+  margin-bottom: 12px;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.collapsible-summary {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+}
+
+.collapsible-indicator {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  border: 1px solid var(--color-border);
+  color: var(--color-muted);
+  background: #fff;
+  transition: transform 0.2s ease;
+}
+
+.collapsible-card[open] .collapsible-indicator {
+  transform: rotate(90deg);
+  color: var(--color-primary);
+  border-color: #c7dcff;
+  background: #eef2ff;
+}
+
 .field {
   display: flex;
   flex-direction: column;

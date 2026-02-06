@@ -15,35 +15,66 @@
 </div>
 {% endif %}
 
-<section class="card compact-card host-add-card" id="add-host-card">
-  <div class="card-header">
-    <div>
-      <h2>Add Host</h2>
-      <p class="subtitle">Create a new host before assigning IP addresses.</p>
-    </div>
-  </div>
-  <form class="form-grid form-grid-two" method="post" action="/ui/hosts">
-    <label class="field">
-      <span>Name</span>
-      <input class="input" type="text" name="name" value="{{ form_state.name }}" />
-    </label>
-    <label class="field">
-      <span>Vendor</span>
-      <select class="select" name="vendor_id">
-        <option value="">UNASSIGNED</option>
-        {% for vendor in vendors %}
-        <option value="{{ vendor.id }}"{% if form_state.vendor_id == (vendor.id|string) %} selected{% endif %}>{{ vendor.name }}</option>
-        {% endfor %}
-      </select>
-    </label>
-    <label class="field field-span">
-      <span>Notes</span>
-      <textarea class="textarea" name="notes" rows="2">{{ form_state.notes }}</textarea>
-    </label>
-    <div class="form-actions field-span">
-      <button class="btn btn-primary" type="submit">Add Host</button>
-    </div>
-  </form>
+<section>
+  <details class="card compact-card collapsible-card filter-card" id="host-search-card"{% if show_search %} open{% endif %}>
+    <summary class="card-header collapsible-summary">
+      <div>
+        <h2>Search Hosts</h2>
+        <p class="subtitle">Filter by host name, vendor, notes, or linked IPs.</p>
+      </div>
+      <span class="collapsible-indicator" aria-hidden="true">▸</span>
+    </summary>
+    <form class="filters-grid" method="get" action="/ui/hosts">
+      <label class="field">
+        <span>Search</span>
+        <input
+          class="input"
+          type="text"
+          name="q"
+          value="{{ filters.q }}"
+          placeholder="Name, vendor, notes, or IP"
+        />
+      </label>
+      <div class="form-actions">
+        <button class="btn btn-primary" type="submit">Apply</button>
+        <a class="btn btn-secondary" href="/ui/hosts">Clear</a>
+      </div>
+    </form>
+  </details>
+</section>
+
+<section>
+  <details class="card compact-card collapsible-card host-add-card" id="add-host-card"{% if show_add_host %} open{% endif %}>
+    <summary class="card-header collapsible-summary">
+      <div>
+        <h2>Add Host</h2>
+        <p class="subtitle">Create a new host before assigning IP addresses.</p>
+      </div>
+      <span class="collapsible-indicator" aria-hidden="true">▸</span>
+    </summary>
+    <form class="form-grid form-grid-two" method="post" action="/ui/hosts">
+      <label class="field">
+        <span>Name</span>
+        <input class="input" type="text" name="name" value="{{ form_state.name }}" />
+      </label>
+      <label class="field">
+        <span>Vendor</span>
+        <select class="select" name="vendor_id">
+          <option value="">UNASSIGNED</option>
+          {% for vendor in vendors %}
+          <option value="{{ vendor.id }}"{% if form_state.vendor_id == (vendor.id|string) %} selected{% endif %}>{{ vendor.name }}</option>
+          {% endfor %}
+        </select>
+      </label>
+      <label class="field field-span">
+        <span>Notes</span>
+        <textarea class="textarea" name="notes" rows="2">{{ form_state.notes }}</textarea>
+      </label>
+      <div class="form-actions field-span">
+        <button class="btn btn-primary" type="submit">Add Host</button>
+      </div>
+    </form>
+  </details>
 </section>
 
 <section class="card table-card">
