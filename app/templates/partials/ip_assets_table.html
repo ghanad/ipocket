@@ -1,0 +1,60 @@
+<section class="card table-card">
+  <div class="table-wrapper">
+    <table class="table">
+      <thead>
+        <tr>
+          <th>IP address</th>
+          <th>Project</th>
+          <th>Type</th>
+          <th>Notes</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody id="ip-table-body">
+        {% include "partials/ip_table_rows.html" %}
+      </tbody>
+    </table>
+  </div>
+  <div class="table-footer">
+    <div class="table-meta">
+      {% if pagination.total %}
+      Showing {{ pagination.start_index }}-{{ pagination.end_index }} of {{ pagination.total }}
+      {% else %}
+      No results to display.
+      {% endif %}
+    </div>
+    {% if pagination.total_pages > 1 %}
+    <nav class="pagination" aria-label="IP assets pagination">
+      <a
+        class="btn btn-secondary btn-small{% if not pagination.has_prev %} btn-disabled{% endif %}"
+        href="/ui/ip-assets?{{ pagination.base_query }}&page={{ pagination.page - 1 }}"
+        {% if pagination.has_prev %}
+        hx-get="/ui/ip-assets?{{ pagination.base_query }}&page={{ pagination.page - 1 }}"
+        hx-target="#ip-table-container"
+        hx-push-url="true"
+        {% else %}
+        aria-disabled="true"
+        tabindex="-1"
+        {% endif %}
+      >
+        Previous
+      </a>
+      <span class="pagination-status">Page {{ pagination.page }} of {{ pagination.total_pages }}</span>
+      <a
+        class="btn btn-secondary btn-small{% if not pagination.has_next %} btn-disabled{% endif %}"
+        href="/ui/ip-assets?{{ pagination.base_query }}&page={{ pagination.page + 1 }}"
+        {% if pagination.has_next %}
+        hx-get="/ui/ip-assets?{{ pagination.base_query }}&page={{ pagination.page + 1 }}"
+        hx-target="#ip-table-container"
+        hx-push-url="true"
+        {% else %}
+        aria-disabled="true"
+        tabindex="-1"
+        {% endif %}
+      >
+        Next
+      </a>
+    </nav>
+    {% endif %}
+  </div>
+</section>

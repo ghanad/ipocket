@@ -5,12 +5,13 @@ import hashlib
 import hmac
 import io
 import json
+import math
 import os
 import secrets
 import sqlite3
 import zipfile
 from typing import Optional
-from urllib.parse import parse_qs
+from urllib.parse import parse_qs, urlencode
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse, Response
@@ -176,6 +177,13 @@ def _parse_optional_str(value: Optional[str]) -> Optional[str]:
         return None
     stripped = value.strip()
     return stripped if stripped else None
+
+
+def _parse_positive_int_query(value: Optional[str], default: int) -> int:
+    parsed = _parse_optional_int_query(value)
+    if parsed is None or parsed <= 0:
+        return default
+    return parsed
 
 
 def _normalize_project_color(value: Optional[str]) -> Optional[str]:
@@ -1224,30 +1232,41 @@ def ui_list_ip_assets(
     project_id: Optional[str] = None,
     asset_type: Optional[str] = Query(default=None, alias="type"),
     unassigned_only: bool = Query(default=False, alias="unassigned-only"),
+    page: Optional[str] = None,
+    per_page: Optional[str] = Query(default=None, alias="per-page"),
     connection=Depends(get_connection),
 ):
+    per_page_value = _parse_positive_int_query(per_page, 20)
+    allowed_page_sizes = {10, 20, 50, 100}
+    if per_page_value not in allowed_page_sizes:
+        per_page_value = 20
+    page_value = _parse_positive_int_query(page, 1)
     parsed_project_id = _parse_optional_int_query(project_id)
     try:
         asset_type_enum = _normalize_asset_type(asset_type)
     except ValueError:
         asset_type_enum = None
-    assets = list(
-        repository.list_active_ip_assets(
-            connection,
-            project_id=parsed_project_id,
-            asset_type=asset_type_enum,
-            unassigned_only=unassigned_only,
-        )
-    )
     q_value = (q or "").strip()
-    if q_value:
-        q_lower = q_value.lower()
-        assets = [
-            asset
-            for asset in assets
-            if q_lower in asset.ip_address.lower()
-            or (asset.notes or "").lower().find(q_lower) >= 0
-        ]
+    query_text = q_value or None
+    total_count = repository.count_active_ip_assets(
+        connection,
+        project_id=parsed_project_id,
+        asset_type=asset_type_enum,
+        unassigned_only=unassigned_only,
+        query_text=query_text,
+    )
+    total_pages = max(1, math.ceil(total_count / per_page_value)) if total_count else 1
+    page_value = max(1, min(page_value, total_pages))
+    offset = (page_value - 1) * per_page_value if total_count else 0
+    assets = repository.list_active_ip_assets_paginated(
+        connection,
+        project_id=parsed_project_id,
+        asset_type=asset_type_enum,
+        unassigned_only=unassigned_only,
+        query_text=query_text,
+        limit=per_page_value,
+        offset=offset,
+    )
 
     projects = list(repository.list_projects(connection))
     project_lookup = {project.id: {"name": project.name, "color": project.color} for project in projects}
@@ -1255,10 +1274,33 @@ def ui_list_ip_assets(
     view_models = _build_asset_view_models(assets, project_lookup, host_lookup)
 
     is_htmx = request.headers.get("HX-Request") is not None
-    template_name = "partials/ip_table_rows.html" if is_htmx else "ip_assets_list.html"
+    template_name = "partials/ip_assets_table.html" if is_htmx else "ip_assets_list.html"
+    start_index = (page_value - 1) * per_page_value + 1 if total_count else 0
+    end_index = min(page_value * per_page_value, total_count) if total_count else 0
+    pagination_params: dict[str, object] = {"per-page": per_page_value}
+    if q_value:
+        pagination_params["q"] = q_value
+    if parsed_project_id is not None:
+        pagination_params["project_id"] = parsed_project_id
+    if asset_type_enum:
+        pagination_params["type"] = asset_type_enum.value
+    if unassigned_only:
+        pagination_params["unassigned-only"] = "true"
+    base_query = urlencode(pagination_params)
     context = {
         "title": "ipocket - IP Assets",
         "assets": view_models,
+        "pagination": {
+            "page": page_value,
+            "per_page": per_page_value,
+            "total": total_count,
+            "total_pages": total_pages,
+            "has_prev": page_value > 1,
+            "has_next": page_value < total_pages,
+            "start_index": start_index,
+            "end_index": end_index,
+            "base_query": base_query,
+        },
     }
     if not is_htmx:
         context.update(
@@ -1270,6 +1312,8 @@ def ui_list_ip_assets(
                     "project_id": parsed_project_id,
                     "type": asset_type_enum.value if asset_type_enum else "",
                     "unassigned_only": unassigned_only,
+                    "page": page_value,
+                    "per_page": per_page_value,
                 },
             }
         )

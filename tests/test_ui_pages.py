@@ -110,7 +110,7 @@ def test_ip_assets_list_uses_overflow_actions_menu_with_delete_dialog(client) ->
     assert "positionMenuPanel" in response.text
 
 
-def test_ip_assets_list_htmx_response_renders_rows_only(client) -> None:
+def test_ip_assets_list_htmx_response_renders_table_partial(client) -> None:
     import os
     from app import db, repository
 
@@ -126,7 +126,7 @@ def test_ip_assets_list_htmx_response_renders_rows_only(client) -> None:
     assert response.status_code == 200
     assert f"/ui/ip-assets/{asset.id}" in response.text
     assert 'data-row-actions' in response.text
-    assert "<table" not in response.text
+    assert "<table" in response.text
     assert "Apply filters" not in response.text
 
 
@@ -172,6 +172,56 @@ def test_ip_assets_list_search_trims_whitespace(client) -> None:
     assert response.status_code == 200
     assert "10.30.0.21" in response.text
     assert "10.30.0.22" not in response.text
+
+
+def test_ip_assets_list_paginates_with_default_page_size(client) -> None:
+    import os
+    from app import db, repository
+
+    connection = db.connect(os.environ["IPAM_DB_PATH"])
+    try:
+        db.init_db(connection)
+        for index in range(25):
+            repository.create_ip_asset(
+                connection,
+                ip_address=f"10.40.0.{index:02d}",
+                asset_type=IPAssetType.VM,
+            )
+    finally:
+        connection.close()
+
+    response = client.get("/ui/ip-assets")
+
+    assert response.status_code == 200
+    assert "Showing 1-20 of 25" in response.text
+    assert "Page 1 of 2" in response.text
+    assert "10.40.0.00" in response.text
+    assert "10.40.0.20" not in response.text
+
+
+def test_ip_assets_list_paginates_with_custom_page_size(client) -> None:
+    import os
+    from app import db, repository
+
+    connection = db.connect(os.environ["IPAM_DB_PATH"])
+    try:
+        db.init_db(connection)
+        for index in range(30):
+            repository.create_ip_asset(
+                connection,
+                ip_address=f"10.50.0.{index:02d}",
+                asset_type=IPAssetType.VM,
+            )
+    finally:
+        connection.close()
+
+    response = client.get("/ui/ip-assets", params={"per-page": "10", "page": "2"})
+
+    assert response.status_code == 200
+    assert "Showing 11-20 of 30" in response.text
+    assert "Page 2 of 3" in response.text
+    assert "10.50.0.09" not in response.text
+    assert "10.50.0.10" in response.text
 
 
 def test_hosts_list_uses_overflow_actions_menu(client) -> None:

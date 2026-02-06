@@ -466,6 +466,59 @@ def list_active_ip_assets(connection: sqlite3.Connection, project_id: Optional[i
     return [_row_to_ip_asset(row) for row in rows]
 
 
+def count_active_ip_assets(
+    connection: sqlite3.Connection,
+    project_id: Optional[int] = None,
+    asset_type: Optional[IPAssetType] = None,
+    unassigned_only: bool = False,
+    query_text: Optional[str] = None,
+) -> int:
+    query = "SELECT COUNT(*) FROM ip_assets WHERE archived = 0"
+    params: list[object] = []
+    if project_id is not None:
+        query += " AND project_id = ?"
+        params.append(project_id)
+    if asset_type is not None:
+        query += " AND type = ?"
+        params.append(asset_type.value)
+    if unassigned_only:
+        query += " AND project_id IS NULL"
+    if query_text:
+        query += " AND (LOWER(ip_address) LIKE ? OR LOWER(COALESCE(notes, '')) LIKE ?)"
+        query_value = f"%{query_text.lower()}%"
+        params.extend([query_value, query_value])
+    return int(connection.execute(query, params).fetchone()[0])
+
+
+def list_active_ip_assets_paginated(
+    connection: sqlite3.Connection,
+    project_id: Optional[int] = None,
+    asset_type: Optional[IPAssetType] = None,
+    unassigned_only: bool = False,
+    query_text: Optional[str] = None,
+    limit: int = 20,
+    offset: int = 0,
+) -> list[IPAsset]:
+    query = "SELECT * FROM ip_assets WHERE archived = 0"
+    params: list[object] = []
+    if project_id is not None:
+        query += " AND project_id = ?"
+        params.append(project_id)
+    if asset_type is not None:
+        query += " AND type = ?"
+        params.append(asset_type.value)
+    if unassigned_only:
+        query += " AND project_id IS NULL"
+    if query_text:
+        query += " AND (LOWER(ip_address) LIKE ? OR LOWER(COALESCE(notes, '')) LIKE ?)"
+        query_value = f"%{query_text.lower()}%"
+        params.extend([query_value, query_value])
+    query += " ORDER BY ip_address LIMIT ? OFFSET ?"
+    params.extend([limit, offset])
+    rows = connection.execute(query, params).fetchall()
+    return [_row_to_ip_asset(row) for row in rows]
+
+
 def list_sd_targets(connection: sqlite3.Connection, port: int, only_assigned: bool = False, project_names: Optional[list[str]] = None, asset_types: Optional[list[IPAssetType]] = None, group_by: str = "none") -> list[dict[str, object]]:
     query = "SELECT ip_assets.ip_address AS ip_address, ip_assets.type AS asset_type, projects.name AS project_name FROM ip_assets LEFT JOIN projects ON projects.id = ip_assets.project_id WHERE ip_assets.archived = 0"
     params: list[object] = []

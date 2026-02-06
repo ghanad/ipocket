@@ -340,6 +340,41 @@ p {
   background: #f1f5f9;
 }
 
+.table-footer {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+}
+
+.table-meta {
+  color: var(--color-muted-light);
+  font-size: 13px;
+}
+
+.pagination {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.pagination-status {
+  font-size: 13px;
+  color: var(--color-muted);
+}
+
+.btn.btn-small {
+  padding: 6px 12px;
+  font-size: 12px;
+}
+
+.btn.btn-disabled {
+  opacity: 0.5;
+  pointer-events: none;
+}
+
 .empty-state {
   text-align: center;
   color: var(--color-muted-light);

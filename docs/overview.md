@@ -8,6 +8,7 @@ ipocket is a lightweight IP inventory app to track addresses and their project a
 - Project colors to quickly scan ownership in the IP assets list
 - Needs Assignment UI for project-only assignment
 - IP assets list supports HTMX-powered live search and filtering (including an assignment dropdown) without full page reloads.
+- IP assets list includes pagination with a user-selectable page size (default 20) to keep large inventories manageable.
 - IP list UI uses a compact three-dot actions menu per row to reduce clutter and separate safe actions from destructive actions.
 - Deleting an IP from the list is now two-step: open row actions, confirm intent in a warning dialog, then complete deletion on the existing confirmation page (type exact IP).
 - Management overview dashboard with quick totals for IPs, hosts, vendors, and projects.
