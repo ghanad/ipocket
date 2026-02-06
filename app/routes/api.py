@@ -131,6 +131,8 @@ def _metrics_payload(metrics: dict[str, int]) -> str:
             f"ipam_ip_total {metrics['total']}",
             f"ipam_ip_archived_total {metrics['archived_total']}",
             f"ipam_ip_unassigned_project_total {metrics['unassigned_project_total']}",
+            f"ipam_ip_unassigned_owner_total {metrics['unassigned_owner_total']}",
+            f"ipam_ip_unassigned_both_total {metrics['unassigned_both_total']}",
             "",
         ]
     )
