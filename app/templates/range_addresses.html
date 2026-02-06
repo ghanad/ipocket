@@ -37,6 +37,7 @@
           <th>IP address</th>
           <th>Status</th>
           <th>Project</th>
+          <th>Tags</th>
           <th>Type</th>
         </tr>
       </thead>
@@ -66,6 +67,15 @@
             <span class="muted">—</span>
             {% endif %}
           </td>
+          <td>
+            {% if entry.status == "used" and entry.tags %}
+            {% for tag in entry.tags %}
+            <span class="tag tag-color" style="--tag-color: {{ tag.color }}">{{ tag.name }}</span>
+            {% endfor %}
+            {% else %}
+            <span class="muted">—</span>
+            {% endif %}
+          </td>
           <td class="muted">
             {% if entry.status == "used" %}
             {{ entry.asset_type }}
@@ -76,7 +86,7 @@
         </tr>
         {% else %}
         <tr>
-          <td colspan="4" class="empty-state">No addresses in this range.</td>
+          <td colspan="5" class="empty-state">No addresses in this range.</td>
         </tr>
         {% endfor %}
       </tbody>

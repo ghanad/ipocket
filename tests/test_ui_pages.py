@@ -95,6 +95,32 @@ def test_ranges_page_renders_add_form_and_saved_ranges(client) -> None:
     assert "data-row-actions" in response.text
 
 
+def test_range_addresses_page_shows_tags(client) -> None:
+    import os
+    from app import db, repository
+
+    connection = db.connect(os.environ["IPAM_DB_PATH"])
+    try:
+        db.init_db(connection)
+        ip_range = repository.create_ip_range(connection, name="Lab Range", cidr="10.40.0.0/24")
+        repository.create_tag(connection, name="core", color="#1d4ed8")
+        repository.create_ip_asset(
+            connection,
+            ip_address="10.40.0.10",
+            asset_type=IPAssetType.VM,
+            tags=["core"],
+        )
+    finally:
+        connection.close()
+
+    response = client.get(f"/ui/ranges/{ip_range.id}/addresses")
+
+    assert response.status_code == 200
+    assert "Addresses in this range" in response.text
+    assert "core" in response.text
+    assert "tag-color" in response.text
+
+
 def test_ranges_edit_and_delete_flow(client) -> None:
     import os
     from app import db, repository

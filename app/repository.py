@@ -349,6 +349,7 @@ def get_ip_range_address_breakdown(
     ).fetchall()
     used_entries: list[dict[str, object]] = []
     used_addresses: set[ipaddress.IPv4Address] = set()
+    used_asset_ids: list[int] = []
     for row in rows:
         try:
             ip_value = ipaddress.ip_address(row["ip_address"])
@@ -357,6 +358,7 @@ def get_ip_range_address_breakdown(
         if ip_value.version != 4 or ip_value not in network:
             continue
         used_addresses.add(ip_value)
+        used_asset_ids.append(row["asset_id"])
         used_entries.append(
             {
                 "ip_address": str(ip_value),
@@ -366,8 +368,13 @@ def get_ip_range_address_breakdown(
                 "project_color": row["project_color"] or DEFAULT_PROJECT_COLOR,
                 "project_unassigned": not row["project_name"],
                 "asset_type": row["asset_type"],
+                "tags": [],
             }
         )
+
+    tag_map = list_tag_details_for_ip_assets(connection, used_asset_ids)
+    for entry in used_entries:
+        entry["tags"] = tag_map.get(entry["asset_id"], [])
 
     used_sorted = sorted(used_entries, key=lambda entry: int(ipaddress.ip_address(entry["ip_address"])))
     usable_addresses = list(network.hosts())
@@ -380,6 +387,7 @@ def get_ip_range_address_breakdown(
             "project_color": DEFAULT_PROJECT_COLOR,
             "project_unassigned": True,
             "asset_type": None,
+            "tags": [],
         }
         for ip_value in usable_addresses
         if ip_value not in used_addresses
