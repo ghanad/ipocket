@@ -317,6 +317,10 @@ p {
   margin-bottom: 16px;
 }
 
+.card-header-padded {
+  padding: 24px 24px 0;
+}
+
 .table-card {
   padding: 0;
 }
