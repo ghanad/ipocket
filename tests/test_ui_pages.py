@@ -67,6 +67,7 @@ def test_management_page_shows_summary_counts(client) -> None:
     assert 'href="/ui/hosts"' in response.text
     assert 'href="/ui/vendors"' in response.text
     assert 'href="/ui/projects"' in response.text
+    assert 'class="card-header card-header-padded"' in response.text
     assert "Subnet Utilization" in response.text
     assert "192.168.10.0/24" in response.text
     assert "254</td>" in response.text
