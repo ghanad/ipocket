@@ -62,7 +62,7 @@ def _seed_export_data(db_path) -> None:
     try:
         db.init_db(connection)
         vendor = repository.create_vendor(connection, "Dell")
-        project = repository.create_project(connection, "core", "Core systems")
+        project = repository.create_project(connection, "core", "Core systems", color="#123456")
         host = repository.create_host(connection, name="node-01", notes="primary", vendor=vendor.name)
         repository.create_ip_asset(
             connection,
@@ -134,6 +134,10 @@ def test_export_content_types_and_archived_filter(client) -> None:
         csv_response = test_client.get(endpoint, headers=_auth_headers(session_cookie))
         assert csv_response.status_code == 200
         assert csv_response.headers["content-type"].startswith("text/csv")
+
+    projects_response = test_client.get("/export/projects.csv", headers=_auth_headers(session_cookie))
+    project_rows = _parse_csv_rows(projects_response.text)
+    assert project_rows == [{"name": "core", "description": "Core systems", "color": "#123456"}]
 
 
 def test_bundle_json_schema(client) -> None:

@@ -16,7 +16,10 @@ def export_projects(connection, project_name: Optional[str] = None) -> list[dict
     projects = repository.list_projects(connection)
     if project_name:
         projects = [project for project in projects if project.name == project_name]
-    return [{"name": project.name, "description": project.description} for project in projects]
+    return [
+        {"name": project.name, "description": project.description, "color": project.color}
+        for project in projects
+    ]
 
 
 def export_hosts(connection, host_name: Optional[str] = None) -> list[dict[str, object]]:

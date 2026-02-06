@@ -352,6 +352,11 @@ p {
   background: #fff;
 }
 
+.input-color {
+  height: 42px;
+  padding: 4px 6px;
+}
+
 .input:focus,
 .select:focus,
 .textarea:focus {
@@ -459,6 +464,12 @@ p {
   font-weight: 600;
   background: #f1f5f9;
   color: var(--color-text);
+}
+
+.tag-project {
+  background: var(--project-color, #94a3b8);
+  color: #f8fafc;
+  box-shadow: inset 0 0 0 1px rgba(15, 23, 42, 0.1);
 }
 
 .tag-warning {

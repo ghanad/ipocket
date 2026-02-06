@@ -18,7 +18,7 @@ from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse, Resp
 from app import auth, build_info, exports, repository
 from app.dependencies import get_connection
 from app.models import IPAsset, IPAssetType, UserRole
-from app.utils import validate_ip_address
+from app.utils import DEFAULT_PROJECT_COLOR, normalize_hex_color, validate_ip_address
 
 router = APIRouter()
 
@@ -171,6 +171,13 @@ def _parse_optional_str(value: Optional[str]) -> Optional[str]:
     return stripped if stripped else None
 
 
+def _normalize_project_color(value: Optional[str]) -> Optional[str]:
+    normalized_value = _parse_optional_str(value)
+    if normalized_value is None:
+        return None
+    return normalize_hex_color(normalized_value)
+
+
 def _normalize_assignment_filter(value: Optional[str]) -> str:
     if value == "project":
         return value
@@ -229,12 +236,14 @@ def _zip_response(filename: str, files: dict[str, str]) -> Response:
 
 def _build_asset_view_models(
     assets: list[IPAsset],
-    project_lookup: dict[int, str],
+    project_lookup: dict[int, dict[str, Optional[str]]],
     host_lookup: dict[int, str],
 ) -> list[dict]:
     view_models = []
     for asset in assets:
-        project_name = project_lookup.get(asset.project_id) if asset.project_id else ""
+        project = project_lookup.get(asset.project_id) if asset.project_id else None
+        project_name = project.get("name") if project else ""
+        project_color = project.get("color") if project else None
         project_unassigned = not project_name
         host_name = host_lookup.get(asset.host_id) if asset.host_id else ""
         view_models.append(
@@ -245,6 +254,7 @@ def _build_asset_view_models(
                 "gateway": asset.gateway,
                 "type": asset.asset_type.value,
                 "project_name": project_name,
+                "project_color": project_color,
                 "notes": asset.notes or "",
                 "host_name": host_name,
                 "unassigned": _is_unassigned(asset.project_id),
@@ -393,7 +403,7 @@ def export_projects_csv(
     _user=Depends(get_current_ui_user),
 ) -> Response:
     export_rows = exports.export_projects(connection, project_name=project)
-    headers = ["name", "description"]
+    headers = ["name", "description", "color"]
     return _csv_response("projects.csv", headers, export_rows)
 
 
@@ -472,7 +482,7 @@ def export_bundle_zip(
             ],
             ip_assets,
         ),
-        "projects.csv": _build_csv_content(["name", "description"], projects),
+        "projects.csv": _build_csv_content(["name", "description", "color"], projects),
         "hosts.csv": _build_csv_content(["name", "notes", "vendor_name"], hosts),
         "vendors.csv": _build_csv_content(["name"], vendors),
     }
@@ -546,7 +556,7 @@ def ui_list_projects(
             "title": "ipocket - Projects",
             "projects": projects,
             "errors": [],
-            "form_state": {"name": "", "description": ""},
+            "form_state": {"name": "", "description": "", "color": DEFAULT_PROJECT_COLOR},
         },
         active_nav="projects",
     )
@@ -562,10 +572,18 @@ async def ui_update_project(
     form_data = await _parse_form_data(request)
     name = (form_data.get("name") or "").strip()
     description = _parse_optional_str(form_data.get("description"))
+    color = form_data.get("color")
 
     errors = []
     if not name:
         errors.append("Project name is required.")
+
+    normalized_color = None
+    if not errors:
+        try:
+            normalized_color = _normalize_project_color(color) or DEFAULT_PROJECT_COLOR
+        except ValueError:
+            errors.append("Project color must be a valid hex color (example: #1a2b3c).")
 
     if errors:
         projects = list(repository.list_projects(connection))
@@ -576,7 +594,7 @@ async def ui_update_project(
                 "title": "ipocket - Projects",
                 "projects": projects,
                 "errors": errors,
-                "form_state": {"name": "", "description": ""},
+                "form_state": {"name": "", "description": "", "color": DEFAULT_PROJECT_COLOR},
             },
             status_code=400,
             active_nav="projects",
@@ -588,6 +606,7 @@ async def ui_update_project(
             project_id=project_id,
             name=name,
             description=description,
+            color=normalized_color,
         )
     except sqlite3.IntegrityError:
         projects = list(repository.list_projects(connection))
@@ -598,7 +617,7 @@ async def ui_update_project(
                 "title": "ipocket - Projects",
                 "projects": projects,
                 "errors": ["Project name already exists."],
-                "form_state": {"name": "", "description": ""},
+                "form_state": {"name": "", "description": "", "color": DEFAULT_PROJECT_COLOR},
             },
             status_code=409,
             active_nav="projects",
@@ -619,10 +638,18 @@ async def ui_create_project(
     form_data = await _parse_form_data(request)
     name = (form_data.get("name") or "").strip()
     description = _parse_optional_str(form_data.get("description"))
+    color = form_data.get("color")
 
     errors = []
     if not name:
         errors.append("Project name is required.")
+
+    normalized_color = None
+    if not errors:
+        try:
+            normalized_color = _normalize_project_color(color) or DEFAULT_PROJECT_COLOR
+        except ValueError:
+            errors.append("Project color must be a valid hex color (example: #1a2b3c).")
 
     if errors:
         projects = list(repository.list_projects(connection))
@@ -633,14 +660,14 @@ async def ui_create_project(
                 "title": "ipocket - Projects",
                 "projects": projects,
                 "errors": errors,
-                "form_state": {"name": name, "description": description or ""},
+                "form_state": {"name": name, "description": description or "", "color": color or DEFAULT_PROJECT_COLOR},
             },
             status_code=400,
             active_nav="projects",
         )
 
     try:
-        repository.create_project(connection, name=name, description=description)
+        repository.create_project(connection, name=name, description=description, color=normalized_color)
     except sqlite3.IntegrityError:
         errors.append("Project name already exists.")
         projects = list(repository.list_projects(connection))
@@ -651,7 +678,7 @@ async def ui_create_project(
                 "title": "ipocket - Projects",
                 "projects": projects,
                 "errors": errors,
-                "form_state": {"name": name, "description": description or ""},
+                "form_state": {"name": name, "description": description or "", "color": color or DEFAULT_PROJECT_COLOR},
             },
             status_code=409,
             active_nav="projects",
@@ -1038,7 +1065,7 @@ def ui_list_ip_assets(
         ]
 
     projects = list(repository.list_projects(connection))
-    project_lookup = {project.id: project.name for project in projects}
+    project_lookup = {project.id: {"name": project.name, "color": project.color} for project in projects}
     host_lookup = {host.id: host.name for host in repository.list_hosts(connection)}
     view_models = _build_asset_view_models(assets, project_lookup, host_lookup)
 
@@ -1072,7 +1099,7 @@ def ui_needs_assignment(
         repository.list_ip_assets_needing_assignment(connection, assignment_filter)
     )
     projects = list(repository.list_projects(connection))
-    project_lookup = {project.id: project.name for project in projects}
+    project_lookup = {project.id: {"name": project.name, "color": project.color} for project in projects}
     host_lookup = {host.id: host.name for host in repository.list_hosts(connection)}
     view_models = _build_asset_view_models(assets, project_lookup, host_lookup)
     form_state = {
@@ -1125,7 +1152,7 @@ async def ui_needs_assignment_assign(
             )
         )
         projects = list(repository.list_projects(connection))
-        project_lookup = {project.id: project.name for project in projects}
+        project_lookup = {project.id: {"name": project.name, "color": project.color} for project in projects}
         host_lookup = {host.id: host.name for host in repository.list_hosts(connection)}
         view_models = _build_asset_view_models(assets, project_lookup, host_lookup)
         return _render_template(
@@ -1311,7 +1338,8 @@ def ui_ip_asset_detail(
     if asset is None or asset.archived:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
     project_lookup = {
-        project.id: project.name for project in repository.list_projects(connection)
+        project.id: {"name": project.name, "color": project.color}
+        for project in repository.list_projects(connection)
     }
     host_lookup = {host.id: host.name for host in repository.list_hosts(connection)}
     view_model = _build_asset_view_models([asset], project_lookup, host_lookup)[0]

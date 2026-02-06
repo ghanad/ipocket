@@ -53,6 +53,31 @@ def test_ip_assets_list_uses_overflow_actions_menu_with_delete_dialog(client) ->
     assert "positionMenuPanel" in response.text
 
 
+def test_ip_assets_list_renders_project_color_tag(client) -> None:
+    import os
+    from app import db, repository
+
+    connection = db.connect(os.environ["IPAM_DB_PATH"])
+    try:
+        db.init_db(connection)
+        project = repository.create_project(connection, name="Core", color="#1d4ed8")
+        repository.create_ip_asset(
+            connection,
+            ip_address="10.30.0.11",
+            asset_type=IPAssetType.VM,
+            project_id=project.id,
+        )
+    finally:
+        connection.close()
+
+    response = client.get("/ui/ip-assets")
+
+    assert response.status_code == 200
+    assert 'class="tag tag-project"' in response.text
+    assert "--project-color: #1d4ed8" in response.text
+    assert "project-color-dot" not in response.text
+
+
 def test_hosts_list_uses_overflow_actions_menu(client) -> None:
     import os
     from app import db, repository

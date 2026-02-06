@@ -17,7 +17,8 @@ def init_db(connection: sqlite3.Connection) -> None:
         CREATE TABLE IF NOT EXISTS projects (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             name TEXT NOT NULL UNIQUE,
-            description TEXT
+            description TEXT,
+            color TEXT NOT NULL DEFAULT '#94a3b8'
         )
         """,
         """
@@ -95,5 +96,11 @@ def init_db(connection: sqlite3.Connection) -> None:
             else:
                 vendor_id = existing["id"]
             connection.execute("UPDATE hosts SET vendor_id = ? WHERE id = ?", (vendor_id, row["id"]))
+
+    project_columns = {
+        row["name"] for row in connection.execute("PRAGMA table_info(projects)").fetchall()
+    }
+    if "color" not in project_columns:
+        connection.execute("ALTER TABLE projects ADD COLUMN color TEXT NOT NULL DEFAULT '#94a3b8'")
 
     connection.commit()

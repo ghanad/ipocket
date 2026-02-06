@@ -32,6 +32,7 @@ class Project:
     id: int
     name: str
     description: Optional[str]
+    color: Optional[str]
 
 
 @dataclass

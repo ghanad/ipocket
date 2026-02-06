@@ -5,6 +5,7 @@ ipocket is a lightweight IP inventory app to track addresses and their project a
 ## Highlights
 - CRUD API for IP records (including permanent delete endpoint for editors/admins)
 - Project management
+- Project colors to quickly scan ownership in the IP assets list
 - Needs Assignment UI for project-only assignment
 - IP list UI uses a compact three-dot actions menu per row to reduce clutter and separate safe actions from destructive actions.
 - Deleting an IP from the list is now two-step: open row actions, confirm intent in a warning dialog, then complete deletion on the existing confirmation page (type exact IP).

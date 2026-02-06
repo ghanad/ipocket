@@ -14,6 +14,7 @@
 ## Project
 - `name` (unique)
 - `description` (optional)
+- `color` (hex color, default `#94a3b8`)
 
 
 ## BMC auto-host linkage

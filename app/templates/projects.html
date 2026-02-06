@@ -35,6 +35,10 @@
       <span>Description</span>
       <input class="input" type="text" name="description" value="{{ form_state.description }}" />
     </label>
+    <label class="field">
+      <span>Color</span>
+      <input class="input input-color" type="color" name="color" value="{{ form_state.color }}" />
+    </label>
     <div class="form-actions">
       <button class="btn btn-primary" type="submit">Create project</button>
     </div>
@@ -54,6 +58,7 @@
         <tr>
           <th>Name</th>
           <th>Description</th>
+          <th>Color</th>
           <th>Actions</th>
         </tr>
       </thead>
@@ -68,6 +73,9 @@
             <input class="input" type="text" name="description" value="{{ project.description or '' }}" form="edit-project-{{ project.id }}" />
           </td>
           <td>
+            <input class="input input-color" type="color" name="color" value="{{ project.color }}" form="edit-project-{{ project.id }}" />
+          </td>
+          <td>
             <form id="edit-project-{{ project.id }}" method="post" action="/ui/projects/{{ project.id }}/edit" class="inline-edit-form">
               <button class="btn btn-secondary" type="submit">Save</button>
             </form>
@@ -76,7 +84,7 @@
         {% endfor %}
         {% else %}
         <tr>
-          <td colspan="3" class="empty-state">No projects yet.</td>
+          <td colspan="4" class="empty-state">No projects yet.</td>
         </tr>
         {% endif %}
       </tbody>
