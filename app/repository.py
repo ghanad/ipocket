@@ -303,6 +303,62 @@ def list_ip_assets_needing_assignment(connection: sqlite3.Connection, filter_mod
     return [_row_to_ip_asset(row) for row in rows]
 
 
+def list_ip_assets_for_export(
+    connection: sqlite3.Connection,
+    include_archived: bool = False,
+    asset_type: Optional[IPAssetType] = None,
+    project_name: Optional[str] = None,
+    host_name: Optional[str] = None,
+) -> list[dict[str, object]]:
+    query = """
+        SELECT ip_assets.ip_address AS ip_address,
+               ip_assets.subnet AS subnet,
+               ip_assets.gateway AS gateway,
+               ip_assets.type AS asset_type,
+               projects.name AS project_name,
+               hosts.name AS host_name,
+               ip_assets.notes AS notes,
+               ip_assets.archived AS archived,
+               ip_assets.created_at AS created_at,
+               ip_assets.updated_at AS updated_at
+        FROM ip_assets
+        LEFT JOIN projects ON projects.id = ip_assets.project_id
+        LEFT JOIN hosts ON hosts.id = ip_assets.host_id
+    """
+    filters: list[str] = []
+    params: list[object] = []
+    if not include_archived:
+        filters.append("ip_assets.archived = 0")
+    if asset_type is not None:
+        filters.append("ip_assets.type = ?")
+        params.append(asset_type.value)
+    if project_name:
+        filters.append("projects.name = ?")
+        params.append(project_name)
+    if host_name:
+        filters.append("hosts.name = ?")
+        params.append(host_name)
+    if filters:
+        query += " WHERE " + " AND ".join(filters)
+    query += " ORDER BY ip_assets.ip_address"
+    rows = connection.execute(query, params).fetchall()
+    return [
+        {
+            "ip_address": row["ip_address"],
+            "subnet": row["subnet"],
+            "gateway": row["gateway"],
+            "type": row["asset_type"],
+            "project_name": row["project_name"],
+            "host_name": row["host_name"],
+            "notes": row["notes"],
+            "archived": bool(row["archived"]),
+            "created_at": row["created_at"],
+            "updated_at": row["updated_at"],
+        }
+        for row in rows
+    ]
+
+
 def get_ip_asset_metrics(connection: sqlite3.Connection) -> dict[str, int]:
     row = connection.execute(
         """

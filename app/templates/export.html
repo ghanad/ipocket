@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="page-header">
+  <div>
+    <p class="eyebrow">Export</p>
+    <h1>Exports</h1>
+    <p class="subtitle">Download IP inventory data for backup or round-trip import.</p>
+  </div>
+</section>
+
+<section class="card">
+  <div class="card-header">
+    <div>
+      <h2>Export all data</h2>
+      <p class="subtitle">Bundle every entity into a single JSON package.</p>
+    </div>
+  </div>
+  <div class="card-body">
+    <a class="btn btn-primary" href="/export/bundle.json">Export All (bundle.json)</a>
+    <a class="btn btn-secondary" href="/export/bundle.zip">Export All (bundle.zip)</a>
+  </div>
+</section>
+
+<section class="card">
+  <div class="card-header">
+    <div>
+      <h2>Per-entity exports</h2>
+      <p class="subtitle">Download CSV or JSON for a single entity.</p>
+    </div>
+  </div>
+  <div class="card-body">
+    <div class="export-grid">
+      <div class="export-item">
+        <h3>IP Assets</h3>
+        <div class="export-actions">
+          <a class="btn btn-secondary" href="/export/ip-assets.csv">CSV</a>
+          <a class="btn btn-secondary" href="/export/ip-assets.json">JSON</a>
+        </div>
+      </div>
+      <div class="export-item">
+        <h3>Hosts</h3>
+        <div class="export-actions">
+          <a class="btn btn-secondary" href="/export/hosts.csv">CSV</a>
+          <a class="btn btn-secondary" href="/export/hosts.json">JSON</a>
+        </div>
+      </div>
+      <div class="export-item">
+        <h3>Vendors</h3>
+        <div class="export-actions">
+          <a class="btn btn-secondary" href="/export/vendors.csv">CSV</a>
+          <a class="btn btn-secondary" href="/export/vendors.json">JSON</a>
+        </div>
+      </div>
+      <div class="export-item">
+        <h3>Projects</h3>
+        <div class="export-actions">
+          <a class="btn btn-secondary" href="/export/projects.csv">CSV</a>
+          <a class="btn btn-secondary" href="/export/projects.json">JSON</a>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+{% endblock %}
