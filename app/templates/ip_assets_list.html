@@ -71,11 +71,26 @@
           <td class="muted">{{ asset.type }}</td>
           <td class="muted">{{ asset.notes }}</td>
           <td class="asset-actions-cell">
-            <details class="row-actions-menu">
-              <summary class="row-actions-trigger" aria-label="Open actions for {{ asset.ip_address }}">
+            <div class="row-actions-menu" data-row-actions>
+              <button
+                class="row-actions-trigger"
+                type="button"
+                aria-label="Open actions for {{ asset.ip_address }}"
+                aria-expanded="false"
+                aria-haspopup="true"
+                aria-controls="row-actions-{{ asset.id }}"
+                data-row-actions-toggle
+              >
                 <span class="row-actions-icon" aria-hidden="true">⋮</span>
-              </summary>
-              <div class="row-actions-panel" role="menu" aria-label="Actions for {{ asset.ip_address }}">
+              </button>
+              <div
+                class="row-actions-panel"
+                id="row-actions-{{ asset.id }}"
+                role="menu"
+                aria-label="Actions for {{ asset.ip_address }}"
+                data-row-actions-panel
+                hidden
+              >
                 <a class="row-action-item" role="menuitem" href="/ui/ip-assets/{{ asset.id }}/edit">
                   <span aria-hidden="true">✏️</span>
                   <span>Edit</span>
@@ -90,7 +105,7 @@
                   <span>Delete</span>
                 </button>
               </div>
-            </details>
+            </div>
 
             <dialog class="delete-confirm-dialog" id="delete-ip-{{ asset.id }}">
               <form method="dialog" class="delete-confirm-dialog-card">
@@ -120,6 +135,52 @@
 
 <script>
   (() => {
+    const actionMenus = document.querySelectorAll('[data-row-actions]');
+    const closeAllMenus = () => {
+      actionMenus.forEach((menu) => {
+        const toggle = menu.querySelector('[data-row-actions-toggle]');
+        const panel = menu.querySelector('[data-row-actions-panel]');
+        if (toggle && panel) {
+          toggle.setAttribute('aria-expanded', 'false');
+          panel.hidden = true;
+          menu.classList.remove('is-open');
+        }
+      });
+    };
+
+    actionMenus.forEach((menu) => {
+      const toggle = menu.querySelector('[data-row-actions-toggle]');
+      const panel = menu.querySelector('[data-row-actions-panel]');
+      if (!toggle || !panel) {
+        return;
+      }
+
+      toggle.addEventListener('click', (event) => {
+        event.stopPropagation();
+        const isOpen = toggle.getAttribute('aria-expanded') === 'true';
+        closeAllMenus();
+        if (!isOpen) {
+          toggle.setAttribute('aria-expanded', 'true');
+          panel.hidden = false;
+          menu.classList.add('is-open');
+        }
+      });
+
+      panel.addEventListener('click', (event) => {
+        event.stopPropagation();
+      });
+    });
+
+    document.addEventListener('click', () => {
+      closeAllMenus();
+    });
+
+    document.addEventListener('keydown', (event) => {
+      if (event.key === 'Escape') {
+        closeAllMenus();
+      }
+    });
+
     const openButtons = document.querySelectorAll('[data-delete-dialog-id]');
     openButtons.forEach((button) => {
       button.addEventListener('click', () => {
