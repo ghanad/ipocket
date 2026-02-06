@@ -899,9 +899,22 @@ async def ui_edit_vendor(vendor_id: int, request: Request, connection=Depends(ge
 @router.get("/ui/hosts", response_class=HTMLResponse)
 def ui_list_hosts(
     request: Request,
+    q: Optional[str] = None,
     connection=Depends(get_connection),
 ) -> HTMLResponse:
     hosts = repository.list_hosts_with_ip_counts(connection)
+    q_value = (q or "").strip()
+    if q_value:
+        q_lower = q_value.lower()
+        hosts = [
+            host
+            for host in hosts
+            if q_lower in (host["name"] or "").lower()
+            or q_lower in (host["notes"] or "").lower()
+            or q_lower in (host["vendor"] or "").lower()
+            or q_lower in (host["os_ips"] or "").lower()
+            or q_lower in (host["bmc_ips"] or "").lower()
+        ]
     return _render_template(
         request,
         "hosts.html",
@@ -911,6 +924,9 @@ def ui_list_hosts(
             "errors": [],
             "vendors": list(repository.list_vendors(connection)),
             "form_state": {"name": "", "notes": "", "vendor_id": ""},
+            "filters": {"q": q_value},
+            "show_search": bool(q_value),
+            "show_add_host": False,
         },
         active_nav="hosts",
     )
@@ -938,10 +954,13 @@ async def ui_create_host(
             "hosts.html",
             {
                 "title": "ipocket - Hosts",
-                    "errors": errors,
+                "errors": errors,
                 "hosts": hosts,
                 "vendors": list(repository.list_vendors(connection)),
                 "form_state": {"name": name, "notes": notes or "", "vendor_id": str(vendor_id or "")},
+                "filters": {"q": ""},
+                "show_search": False,
+                "show_add_host": True,
             },
             status_code=400,
             active_nav="hosts",
@@ -959,10 +978,13 @@ async def ui_create_host(
             "hosts.html",
             {
                 "title": "ipocket - Hosts",
-                    "errors": ["Host name already exists."],
+                "errors": ["Host name already exists."],
                 "hosts": hosts,
                 "vendors": list(repository.list_vendors(connection)),
                 "form_state": {"name": name, "notes": notes or "", "vendor_id": str(vendor_id or "")},
+                "filters": {"q": ""},
+                "show_search": False,
+                "show_add_host": True,
             },
             status_code=409,
             active_nav="hosts",
@@ -993,6 +1015,9 @@ async def ui_edit_host(
                 "hosts": repository.list_hosts_with_ip_counts(connection),
                 "vendors": list(repository.list_vendors(connection)),
                 "form_state": {"name": "", "notes": "", "vendor_id": ""},
+                "filters": {"q": ""},
+                "show_search": False,
+                "show_add_host": False,
             },
             status_code=400,
             active_nav="hosts",
@@ -1009,6 +1034,9 @@ async def ui_edit_host(
                 "hosts": repository.list_hosts_with_ip_counts(connection),
                 "vendors": list(repository.list_vendors(connection)),
                 "form_state": {"name": "", "notes": "", "vendor_id": ""},
+                "filters": {"q": ""},
+                "show_search": False,
+                "show_add_host": False,
             },
             status_code=422,
             active_nav="hosts",
@@ -1032,6 +1060,9 @@ async def ui_edit_host(
                 "hosts": repository.list_hosts_with_ip_counts(connection),
                 "vendors": list(repository.list_vendors(connection)),
                 "form_state": {"name": "", "notes": "", "vendor_id": ""},
+                "filters": {"q": ""},
+                "show_search": False,
+                "show_add_host": False,
             },
             status_code=409,
             active_nav="hosts",
