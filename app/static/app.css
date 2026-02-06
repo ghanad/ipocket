@@ -391,6 +391,18 @@ p {
   font-size: 12px;
 }
 
+.table-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.inline-form {
+  display: inline-flex;
+  margin: 0;
+}
+
 .btn.btn-disabled {
   opacity: 0.5;
   pointer-events: none;

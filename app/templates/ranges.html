@@ -95,6 +95,7 @@
           <th>CIDR</th>
           <th>Notes</th>
           <th>Created</th>
+          <th>Actions</th>
         </tr>
       </thead>
       <tbody>
@@ -104,10 +105,16 @@
           <td>{{ ip_range.cidr }}</td>
           <td>{{ ip_range.notes or "—" }}</td>
           <td>{{ ip_range.created_at }}</td>
+          <td class="table-actions">
+            <a class="btn btn-outline btn-small" href="/ui/ranges/{{ ip_range.id }}/edit">Edit</a>
+            <form method="post" action="/ui/ranges/{{ ip_range.id }}/delete" class="inline-form" onsubmit="return confirm('Delete this IP range?');">
+              <button class="btn btn-outline btn-small" type="submit">Delete</button>
+            </form>
+          </td>
         </tr>
         {% else %}
         <tr>
-          <td colspan="4" class="empty-state">No ranges saved yet.</td>
+          <td colspan="5" class="empty-state">No ranges saved yet.</td>
         </tr>
         {% endfor %}
       </tbody>
