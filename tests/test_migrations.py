@@ -1,0 +1,22 @@
+import sqlite3
+
+from app import db
+
+
+def test_init_db_runs_alembic_migrations(tmp_path) -> None:
+    db_path = tmp_path / "migrations.db"
+    connection = sqlite3.connect(db_path)
+    connection.row_factory = sqlite3.Row
+    try:
+        db.init_db(connection)
+        tables = {
+            row["name"]
+            for row in connection.execute(
+                "SELECT name FROM sqlite_master WHERE type='table'"
+            ).fetchall()
+        }
+        assert "alembic_version" in tables
+        assert "ip_assets" in tables
+        assert "hosts" in tables
+    finally:
+        connection.close()

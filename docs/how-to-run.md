@@ -13,17 +13,26 @@ source .venv/bin/activate
 pip install -r requirements.txt
 ```
 
-Initialize the database (creates tables):
+Initialize the database (runs migrations):
 
 ```bash
-python -c "from app.db import connect, init_db; conn = connect('ipocket.db'); init_db(conn); conn.close()"
+alembic upgrade head
 ```
+
+The migration runner reads `IPAM_DB_PATH` (defaults to `ipocket.db`) to locate the
+SQLite file.
 
 Reset the database for local dev (removes data):
 
 ```bash
 rm -f ipocket.db
-python -c "from app.db import connect, init_db; conn = connect('ipocket.db'); init_db(conn); conn.close()"
+alembic upgrade head
+```
+
+Create a new migration (auto-generate from SQLAlchemy models):
+
+```bash
+alembic revision --autogenerate -m "describe_change"
 ```
 
 Run the web app:

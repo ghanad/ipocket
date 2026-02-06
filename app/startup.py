@@ -25,7 +25,7 @@ def bootstrap_admin(connection) -> None:
 def init_database() -> None:
     connection = db.connect(get_db_path())
     try:
-        db.init_db(connection)
+        db.run_migrations(connection=connection)
         bootstrap_admin(connection)
     finally:
         connection.close()
