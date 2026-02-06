@@ -11,6 +11,17 @@
   </div>
 </section>
 
+{% if errors %}
+<div class="alert alert-error">
+  <p class="alert-title">Fix the following:</p>
+  <ul>
+    {% for error in errors %}
+    <li>{{ error }}</li>
+    {% endfor %}
+  </ul>
+</div>
+{% endif %}
+
 <section class="card">
   <div class="card-header">
     <div>
@@ -41,6 +52,7 @@
           <th>Host Pair</th>
           <th>Tags</th>
           <th>Notes</th>
+          <th>Quick add</th>
         </tr>
       </thead>
       <tbody>
@@ -99,10 +111,31 @@
             —
             {% endif %}
           </td>
+          <td>
+            {% if entry.status == "free" %}
+            <form class="inline-form" method="post" action="/ui/ranges/{{ ip_range.id }}/addresses/add">
+              <input type="hidden" name="ip_address" value="{{ entry.ip_address }}" />
+              <select class="select" name="type" aria-label="Asset type">
+                {% for asset_type in types %}
+                <option value="{{ asset_type }}"{% if asset_type == "VM" %} selected{% endif %}>{{ asset_type }}</option>
+                {% endfor %}
+              </select>
+              <select class="select" name="project_id" aria-label="Project">
+                <option value="">No project</option>
+                {% for project in projects %}
+                <option value="{{ project.id }}">{{ project.name }}</option>
+                {% endfor %}
+              </select>
+              <button class="btn btn-primary btn-small" type="submit">Add</button>
+            </form>
+            {% else %}
+            <span class="muted">—</span>
+            {% endif %}
+          </td>
         </tr>
         {% else %}
         <tr>
-          <td colspan="7" class="empty-state">No addresses in this range.</td>
+          <td colspan="8" class="empty-state">No addresses in this range.</td>
         </tr>
         {% endfor %}
       </tbody>

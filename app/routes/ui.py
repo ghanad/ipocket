@@ -1397,9 +1397,122 @@ def ui_range_addresses(
             "display_limit": display_limit,
             "address_display": addresses[:display_limit],
             "address_overflow": len(addresses) > display_limit,
+            "projects": list(repository.list_projects(connection)),
+            "types": [asset.value for asset in IPAssetType],
+            "errors": [],
         },
         active_nav="ranges",
     )
+
+
+@router.post("/ui/ranges/{range_id}/addresses/add", response_class=HTMLResponse)
+async def ui_range_quick_add_address(
+    range_id: int,
+    request: Request,
+    connection=Depends(get_connection),
+    user=Depends(require_ui_editor),
+) -> HTMLResponse:
+    form_data = await _parse_form_data(request)
+    ip_address = form_data.get("ip_address")
+    asset_type = form_data.get("type")
+    project_id = _parse_optional_int(form_data.get("project_id"))
+    projects = list(repository.list_projects(connection))
+
+    errors: list[str] = []
+    if not ip_address:
+        errors.append("IP address is required.")
+    else:
+        try:
+            validate_ip_address(ip_address)
+        except HTTPException as exc:
+            errors.append(exc.detail)
+
+    normalized_asset_type = None
+    try:
+        normalized_asset_type = _normalize_asset_type(asset_type)
+    except ValueError:
+        errors.append("Asset type is required.")
+    if normalized_asset_type is None and not errors:
+        errors.append("Asset type is required.")
+
+    if project_id is not None and not any(project.id == project_id for project in projects):
+        errors.append("Selected project does not exist.")
+
+    breakdown = repository.get_ip_range_address_breakdown(connection, range_id)
+    if breakdown is None:
+        raise HTTPException(status_code=404, detail="IP range not found.")
+
+    address_lookup = {
+        entry["ip_address"]: entry for entry in breakdown["addresses"]
+    }
+    if ip_address and ip_address not in address_lookup:
+        errors.append("IP address is not part of this range.")
+    elif ip_address and address_lookup[ip_address]["status"] != "free":
+        errors.append("IP address is already assigned.")
+
+    if errors:
+        addresses = breakdown["addresses"]
+        display_limit = 512
+        return _render_template(
+            request,
+            "range_addresses.html",
+            {
+                "title": "ipocket - Range Addresses",
+                "ip_range": breakdown["ip_range"],
+                "addresses": addresses,
+                "used_total": breakdown["used"],
+                "free_total": breakdown["free"],
+                "total_usable": breakdown["total_usable"],
+                "display_limit": display_limit,
+                "address_display": addresses[:display_limit],
+                "address_overflow": len(addresses) > display_limit,
+                "projects": projects,
+                "types": [asset.value for asset in IPAssetType],
+                "errors": errors,
+            },
+            status_code=400,
+            active_nav="ranges",
+        )
+
+    try:
+        repository.create_ip_asset(
+            connection,
+            ip_address=ip_address,
+            asset_type=normalized_asset_type,
+            project_id=project_id,
+            notes=None,
+            tags=[],
+            auto_host_for_bmc=_is_auto_host_for_bmc_enabled(),
+            current_user=user,
+        )
+    except sqlite3.IntegrityError:
+        errors.append("IP address already exists.")
+
+    if errors:
+        addresses = breakdown["addresses"]
+        display_limit = 512
+        return _render_template(
+            request,
+            "range_addresses.html",
+            {
+                "title": "ipocket - Range Addresses",
+                "ip_range": breakdown["ip_range"],
+                "addresses": addresses,
+                "used_total": breakdown["used"],
+                "free_total": breakdown["free"],
+                "total_usable": breakdown["total_usable"],
+                "display_limit": display_limit,
+                "address_display": addresses[:display_limit],
+                "address_overflow": len(addresses) > display_limit,
+                "projects": projects,
+                "types": [asset.value for asset in IPAssetType],
+                "errors": errors,
+            },
+            status_code=409,
+            active_nav="ranges",
+        )
+
+    return RedirectResponse(url=f"/ui/ranges/{range_id}/addresses", status_code=303)
 
 
 @router.get("/ui/vendors", response_class=HTMLResponse)
