@@ -252,6 +252,38 @@ p {
   box-shadow: var(--shadow-sm);
 }
 
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 16px;
+}
+
+.stat-card {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.stat-label {
+  text-transform: uppercase;
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  color: var(--color-muted-light);
+  margin: 0;
+}
+
+.stat-value {
+  font-size: 28px;
+  font-weight: 700;
+  margin: 0;
+}
+
+.stat-helper {
+  margin: 0;
+  color: var(--color-muted);
+  font-size: 13px;
+}
+
 .compact-card {
   padding: 16px;
 }

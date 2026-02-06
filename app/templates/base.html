@@ -19,6 +19,7 @@
       </div>
     </div>
     <nav class="sidebar-nav">
+      <a class="nav-link{% if active_nav == 'management' %} nav-link-active{% endif %}" href="/ui/management">Management</a>
       <a class="nav-link{% if active_nav == 'ip-assets' %} nav-link-active{% endif %}" href="/ui/ip-assets">IP Assets</a>
       <a class="nav-link{% if active_nav == 'needs-assignment' %} nav-link-active{% endif %}" href="/ui/ip-assets/needs-assignment">Needs Assignment</a>
       <a class="nav-link{% if active_nav == 'projects' %} nav-link-active{% endif %}" href="/ui/projects">Projects</a>

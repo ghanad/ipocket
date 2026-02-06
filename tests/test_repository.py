@@ -10,9 +10,11 @@ from app.repository import (
     create_ip_asset,
     create_project,
     create_user,
+    create_vendor,
     get_audit_logs_for_ip,
     get_host_by_name,
     get_ip_asset_by_ip,
+    get_management_summary,
     delete_ip_asset,
     delete_host,
     get_ip_asset_metrics,
@@ -62,6 +64,24 @@ def test_get_ip_asset_metrics_counts(tmp_path) -> None:
     assert metrics["total"] == 4
     assert metrics["archived_total"] == 1
     assert metrics["unassigned_project_total"] == 2
+
+
+def test_get_management_summary_counts(tmp_path) -> None:
+    connection = _setup_connection(tmp_path)
+    project = create_project(connection, name="Infra")
+    vendor = create_vendor(connection, name="Dell")
+    host = create_host(connection, name="edge-01", vendor=vendor.name)
+    create_ip_asset(connection, "10.10.0.1", IPAssetType.VM, project_id=project.id, host_id=host.id)
+    archived_asset = create_ip_asset(connection, "10.10.0.2", IPAssetType.OS)
+    archive_ip_asset(connection, archived_asset.ip_address)
+
+    summary = get_management_summary(connection)
+
+    assert summary["active_ip_total"] == 1
+    assert summary["archived_ip_total"] == 1
+    assert summary["host_total"] == 1
+    assert summary["vendor_total"] == 1
+    assert summary["project_total"] == 1
 
 
 def test_update_project_color(tmp_path) -> None:

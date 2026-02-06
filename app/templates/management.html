@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="page-header">
+  <div>
+    <h1>Management Overview</h1>
+    <p class="subtitle">Quick snapshot of inventory health and coverage.</p>
+  </div>
+</section>
+
+<section class="stats-grid">
+  <article class="card stat-card">
+    <p class="stat-label">Active IPs</p>
+    <p class="stat-value" data-testid="stat-active-ips">{{ summary.active_ip_total }}</p>
+    <p class="stat-helper">IPs currently in service</p>
+  </article>
+  <article class="card stat-card">
+    <p class="stat-label">Archived IPs</p>
+    <p class="stat-value" data-testid="stat-archived-ips">{{ summary.archived_ip_total }}</p>
+    <p class="stat-helper">Soft-deleted records</p>
+  </article>
+  <article class="card stat-card">
+    <p class="stat-label">Hosts</p>
+    <p class="stat-value" data-testid="stat-hosts">{{ summary.host_total }}</p>
+    <p class="stat-helper">Distinct hardware or VM entries</p>
+  </article>
+  <article class="card stat-card">
+    <p class="stat-label">Vendors</p>
+    <p class="stat-value" data-testid="stat-vendors">{{ summary.vendor_total }}</p>
+    <p class="stat-helper">Partner or manufacturer list</p>
+  </article>
+  <article class="card stat-card">
+    <p class="stat-label">Projects</p>
+    <p class="stat-value" data-testid="stat-projects">{{ summary.project_total }}</p>
+    <p class="stat-helper">Active assignments</p>
+  </article>
+</section>
+{% endblock %}

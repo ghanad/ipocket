@@ -26,8 +26,47 @@ def test_needs_assignment_page_renders(client) -> None:
     assert response.status_code == 200
 
 
+def test_management_page_shows_summary_counts(client) -> None:
+    import os
+    from app import db, repository
+
+    connection = db.connect(os.environ["IPAM_DB_PATH"])
+    try:
+        db.init_db(connection)
+        project = repository.create_project(connection, name="Apps")
+        vendor = repository.create_vendor(connection, name="Lenovo")
+        host = repository.create_host(connection, name="edge-01", vendor=vendor.name)
+        repository.create_ip_asset(
+            connection,
+            ip_address="10.50.0.10",
+            asset_type=IPAssetType.VM,
+            project_id=project.id,
+            host_id=host.id,
+        )
+        archived_asset = repository.create_ip_asset(
+            connection, ip_address="10.50.0.11", asset_type=IPAssetType.OS
+        )
+        repository.archive_ip_asset(connection, archived_asset.ip_address)
+    finally:
+        connection.close()
+
+    response = client.get("/ui/management")
+
+    assert response.status_code == 200
+    assert "Management Overview" in response.text
+    assert 'data-testid="stat-active-ips">1<' in response.text
+    assert 'data-testid="stat-archived-ips">1<' in response.text
+    assert 'data-testid="stat-hosts">1<' in response.text
+    assert 'data-testid="stat-vendors">1<' in response.text
+    assert 'data-testid="stat-projects">1<' in response.text
+
+
 def test_import_page_includes_sample_csv_links(client) -> None:
-    response = client.get("/ui/import")
+    app.dependency_overrides[ui.get_current_ui_user] = lambda: User(1, "viewer", "x", UserRole.VIEWER, True)
+    try:
+        response = client.get("/ui/import")
+    finally:
+        app.dependency_overrides.pop(ui.get_current_ui_user, None)
 
     assert response.status_code == 200
     assert "/static/samples/hosts.csv" in response.text
@@ -380,11 +419,12 @@ def test_ui_delete_ip_asset_with_confirmation_text(client) -> None:
     connection = db.connect(os.environ["IPAM_DB_PATH"])
     try:
         db.init_db(connection)
+        user = repository.create_user(connection, username="editor", hashed_password="x", role=UserRole.EDITOR)
         asset = repository.create_ip_asset(connection, ip_address="10.20.0.11", asset_type=IPAssetType.VM)
     finally:
         connection.close()
 
-    app.dependency_overrides[ui.require_ui_editor] = lambda: User(1, "editor", "x", UserRole.EDITOR, True)
+    app.dependency_overrides[ui.require_ui_editor] = lambda: user
     try:
         response = client.post(
             f"/ui/ip-assets/{asset.id}/delete",
