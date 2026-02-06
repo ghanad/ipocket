@@ -9,6 +9,43 @@
   </div>
 </section>
 
+{% if errors %}
+<div class="alert alert-error">
+  <ul>{% for error in errors %}<li>{{ error }}</li>{% endfor %}</ul>
+</div>
+{% endif %}
+
+<section class="card compact-card host-add-card" id="add-host-card">
+  <div class="card-header">
+    <div>
+      <h2>Add Host</h2>
+      <p class="subtitle">Create a new host before assigning IP addresses.</p>
+    </div>
+  </div>
+  <form class="form-grid form-grid-two" method="post" action="/ui/hosts">
+    <label class="field">
+      <span>Name</span>
+      <input class="input" type="text" name="name" value="{{ form_state.name }}" />
+    </label>
+    <label class="field">
+      <span>Vendor</span>
+      <select class="select" name="vendor_id">
+        <option value="">UNASSIGNED</option>
+        {% for vendor in vendors %}
+        <option value="{{ vendor.id }}"{% if form_state.vendor_id == (vendor.id|string) %} selected{% endif %}>{{ vendor.name }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <label class="field field-span">
+      <span>Notes</span>
+      <textarea class="textarea" name="notes" rows="2">{{ form_state.notes }}</textarea>
+    </label>
+    <div class="form-actions field-span">
+      <button class="btn btn-primary" type="submit">Add Host</button>
+    </div>
+  </form>
+</section>
+
 <section class="card table-card">
   <div class="table-wrapper">
     <table class="table">
@@ -16,6 +53,8 @@
         <tr>
           <th>Host name</th>
           <th>Vendor</th>
+          <th>OS IPs</th>
+          <th>BMC IPs</th>
           <th>Linked IPs</th>
           <th>Actions</th>
         </tr>
@@ -26,6 +65,8 @@
         <tr>
           <td><a href="/ui/hosts/{{ host.id }}">{{ host.name }}</a></td>
           <td>{{ host.vendor or "" }}</td>
+          <td>{{ host.os_ips or "" }}</td>
+          <td>{{ host.bmc_ips or "" }}</td>
           <td>{{ host.ip_count }}</td>
           <td class="asset-actions-cell">
             <div class="row-actions-menu" data-row-actions>
@@ -66,7 +107,7 @@
           </td>
         </tr>
         <tr id="host-edit-row-{{ host.id }}" style="display: none;">
-          <td colspan="4">
+          <td colspan="6">
             <form class="form-grid" method="post" action="/ui/hosts/{{ host.id }}/edit">
               <label class="field">
                 <span>Name</span>
@@ -94,43 +135,11 @@
         </tr>
         {% endfor %}
         {% else %}
-        <tr><td colspan="4" class="empty-state">No hosts found.</td></tr>
+        <tr><td colspan="6" class="empty-state">No hosts found.</td></tr>
         {% endif %}
       </tbody>
     </table>
   </div>
-</section>
-
-{% if errors %}
-<div class="alert alert-error">
-  <ul>{% for error in errors %}<li>{{ error }}</li>{% endfor %}</ul>
-</div>
-{% endif %}
-
-<section class="card">
-  <h2>Add Host</h2>
-  <form class="form-grid" method="post" action="/ui/hosts">
-    <label class="field">
-      <span>Name</span>
-      <input class="input" type="text" name="name" value="{{ form_state.name }}" />
-    </label>
-    <label class="field">
-      <span>Vendor</span>
-      <select class="select" name="vendor_id">
-        <option value="">UNASSIGNED</option>
-        {% for vendor in vendors %}
-        <option value="{{ vendor.id }}"{% if form_state.vendor_id == (vendor.id|string) %} selected{% endif %}>{{ vendor.name }}</option>
-        {% endfor %}
-      </select>
-    </label>
-    <label class="field">
-      <span>Notes</span>
-      <textarea class="textarea" name="notes" rows="3">{{ form_state.notes }}</textarea>
-    </label>
-    <div class="form-actions">
-      <button class="btn btn-primary" type="submit">Add Host</button>
-    </div>
-  </form>
 </section>
 
 <script>

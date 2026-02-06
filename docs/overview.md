@@ -13,6 +13,7 @@ ipocket is a lightweight IP inventory app to track addresses and their project a
 - Import data from bundle.json or CSV with dry-run support and upserts.
 - Prometheus metrics on `/metrics`
 - Prometheus SD endpoint on `/sd/node` with project grouping
+- Database schema managed through Alembic migrations
 
 ## Note
 Owner support has been removed in development phase, so assignment is now project-only.
@@ -24,6 +25,8 @@ Hosts can be linked to a vendor from the shared **Vendors** catalog.
 
 - Hosts list supports inline edit for name, vendor, and notes.
 - Hosts list uses the same three-dot actions menu pattern for edit/delete to keep the table compact.
+- Hosts list shows linked OS and BMC IP addresses alongside the total linked IP count.
+- Add Host form appears in a compact card above the hosts table for quick entry in large inventories.
 - Host deletion from UI is a two-step safety flow: open delete page, then type exact host name to confirm permanent deletion.
 
 ## Vendors
