@@ -25,7 +25,11 @@ from app.repository import (
     list_hosts_with_ip_counts,
     list_active_ip_assets_paginated,
     count_active_ip_assets,
+    create_tag,
+    delete_tag,
     list_tags_for_ip_assets,
+    list_tags,
+    update_tag,
     get_ip_range_address_breakdown,
     update_ip_asset,
     update_project,
@@ -93,6 +97,22 @@ def test_tag_normalization_rules() -> None:
     assert normalize_tag_name(" Prod ") == "prod"
     with pytest.raises(ValueError):
         normalize_tag_name("bad tag")
+
+
+def test_create_update_delete_tag(tmp_path) -> None:
+    connection = _setup_connection(tmp_path)
+    tag = create_tag(connection, name="prod", color="#22c55e")
+    assert tag.color == "#22c55e"
+
+    updated = update_tag(connection, tag.id, name="prod", color="#0ea5e9")
+    assert updated is not None
+    assert updated.color == "#0ea5e9"
+
+    tags = list(list_tags(connection))
+    assert tags[0].name == "prod"
+
+    deleted = delete_tag(connection, tag.id)
+    assert deleted is True
 
 
 def test_get_management_summary_counts(tmp_path) -> None:

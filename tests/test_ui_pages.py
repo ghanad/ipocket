@@ -148,6 +148,30 @@ def test_ip_asset_form_includes_tags_field_and_prefill(client) -> None:
     assert 'value="edge, prod"' in edit_response.text
 
 
+def test_tags_page_renders_and_allows_edit_delete(client) -> None:
+    import os
+    from app import db, repository
+
+    connection = db.connect(os.environ["IPAM_DB_PATH"])
+    try:
+        db.init_db(connection)
+        tag = repository.create_tag(connection, name="prod", color="#22c55e")
+    finally:
+        connection.close()
+
+    app.dependency_overrides[ui.require_ui_editor] = lambda: User(1, "editor", "x", UserRole.EDITOR, True)
+    try:
+        response = client.get("/ui/tags")
+    finally:
+        app.dependency_overrides.pop(ui.require_ui_editor, None)
+
+    assert response.status_code == 200
+    assert 'action="/ui/tags"' in response.text
+    assert 'type="color"' in response.text
+    assert f'action="/ui/tags/{tag.id}/edit"' in response.text
+    assert f'action="/ui/tags/{tag.id}/delete"' in response.text
+
+
 def test_ip_assets_list_uses_overflow_actions_menu_with_delete_dialog(client) -> None:
     import os
     from app import db, repository

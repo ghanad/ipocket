@@ -24,8 +24,10 @@ from app.imports.models import ImportApplyResult, ImportSummary
 from app.models import IPAsset, IPAssetType, UserRole
 from app.utils import (
     DEFAULT_PROJECT_COLOR,
+    DEFAULT_TAG_COLOR,
     normalize_cidr,
     normalize_hex_color,
+    normalize_tag_name,
     normalize_tag_names,
     split_tag_string,
     validate_ip_address,
@@ -281,7 +283,7 @@ def _build_asset_view_models(
     assets: list[IPAsset],
     project_lookup: dict[int, dict[str, Optional[str]]],
     host_lookup: dict[int, str],
-    tag_lookup: dict[int, list[str]],
+    tag_lookup: dict[int, list[dict[str, str]]],
 ) -> list[dict]:
     view_models = []
     for asset in assets:
@@ -976,6 +978,161 @@ async def ui_create_project(
     return RedirectResponse(url="/ui/projects", status_code=303)
 
 
+@router.get("/ui/tags", response_class=HTMLResponse)
+def ui_list_tags(
+    request: Request,
+    connection=Depends(get_connection),
+) -> HTMLResponse:
+    tags = list(repository.list_tags(connection))
+    return _render_template(
+        request,
+        "tags.html",
+        {
+            "title": "ipocket - Tags",
+            "tags": tags,
+            "errors": [],
+            "form_state": {"name": "", "color": DEFAULT_TAG_COLOR},
+        },
+        active_nav="tags",
+    )
+
+
+@router.post("/ui/tags", response_class=HTMLResponse)
+async def ui_create_tag(
+    request: Request,
+    connection=Depends(get_connection),
+    _user=Depends(require_ui_editor),
+) -> HTMLResponse:
+    form_data = await _parse_form_data(request)
+    name = (form_data.get("name") or "").strip()
+    color = form_data.get("color")
+
+    errors = []
+    normalized_name = ""
+    if not name:
+        errors.append("Tag name is required.")
+    else:
+        try:
+            normalized_name = normalize_tag_name(name)
+        except ValueError as exc:
+            errors.append(str(exc))
+
+    normalized_color = None
+    if not errors:
+        try:
+            normalized_color = normalize_hex_color(color) or DEFAULT_TAG_COLOR
+        except ValueError:
+            errors.append("Tag color must be a valid hex color (example: #1a2b3c).")
+
+    if errors:
+        return _render_template(
+            request,
+            "tags.html",
+            {
+                "title": "ipocket - Tags",
+                "tags": list(repository.list_tags(connection)),
+                "errors": errors,
+                "form_state": {"name": name, "color": color or DEFAULT_TAG_COLOR},
+            },
+            status_code=400,
+            active_nav="tags",
+        )
+
+    try:
+        repository.create_tag(connection, name=normalized_name, color=normalized_color)
+    except sqlite3.IntegrityError:
+        return _render_template(
+            request,
+            "tags.html",
+            {
+                "title": "ipocket - Tags",
+                "tags": list(repository.list_tags(connection)),
+                "errors": ["Tag name already exists."],
+                "form_state": {"name": name, "color": color or DEFAULT_TAG_COLOR},
+            },
+            status_code=409,
+            active_nav="tags",
+        )
+
+    return RedirectResponse(url="/ui/tags", status_code=303)
+
+
+@router.post("/ui/tags/{tag_id}/edit", response_class=HTMLResponse)
+async def ui_edit_tag(
+    tag_id: int,
+    request: Request,
+    connection=Depends(get_connection),
+    _user=Depends(require_ui_editor),
+) -> HTMLResponse:
+    form_data = await _parse_form_data(request)
+    name = (form_data.get("name") or "").strip()
+    color = form_data.get("color")
+
+    errors = []
+    normalized_name = ""
+    if not name:
+        errors.append("Tag name is required.")
+    else:
+        try:
+            normalized_name = normalize_tag_name(name)
+        except ValueError as exc:
+            errors.append(str(exc))
+
+    normalized_color = None
+    if not errors:
+        try:
+            normalized_color = normalize_hex_color(color) or DEFAULT_TAG_COLOR
+        except ValueError:
+            errors.append("Tag color must be a valid hex color (example: #1a2b3c).")
+
+    if errors:
+        return _render_template(
+            request,
+            "tags.html",
+            {
+                "title": "ipocket - Tags",
+                "tags": list(repository.list_tags(connection)),
+                "errors": errors,
+                "form_state": {"name": "", "color": DEFAULT_TAG_COLOR},
+            },
+            status_code=400,
+            active_nav="tags",
+        )
+
+    try:
+        updated = repository.update_tag(connection, tag_id, normalized_name, normalized_color)
+    except sqlite3.IntegrityError:
+        return _render_template(
+            request,
+            "tags.html",
+            {
+                "title": "ipocket - Tags",
+                "tags": list(repository.list_tags(connection)),
+                "errors": ["Tag name already exists."],
+                "form_state": {"name": "", "color": DEFAULT_TAG_COLOR},
+            },
+            status_code=409,
+            active_nav="tags",
+        )
+
+    if updated is None:
+        return Response(status_code=404)
+    return RedirectResponse(url="/ui/tags", status_code=303)
+
+
+@router.post("/ui/tags/{tag_id}/delete", response_class=HTMLResponse)
+async def ui_delete_tag(
+    tag_id: int,
+    request: Request,
+    connection=Depends(get_connection),
+    _user=Depends(require_ui_editor),
+) -> HTMLResponse:
+    deleted = repository.delete_tag(connection, tag_id)
+    if not deleted:
+        return Response(status_code=404)
+    return RedirectResponse(url="/ui/tags", status_code=303)
+
+
 @router.get("/ui/ranges", response_class=HTMLResponse)
 def ui_list_ranges(request: Request, connection=Depends(get_connection)) -> HTMLResponse:
     ranges = list(repository.list_ip_ranges(connection))
@@ -1514,7 +1671,7 @@ def ui_list_ip_assets(
     projects = list(repository.list_projects(connection))
     project_lookup = {project.id: {"name": project.name, "color": project.color} for project in projects}
     host_lookup = {host.id: host.name for host in repository.list_hosts(connection)}
-    tag_lookup = repository.list_tags_for_ip_assets(connection, [asset.id for asset in assets])
+    tag_lookup = repository.list_tag_details_for_ip_assets(connection, [asset.id for asset in assets])
     view_models = _build_asset_view_models(assets, project_lookup, host_lookup, tag_lookup)
 
     is_htmx = request.headers.get("HX-Request") is not None
@@ -1610,7 +1767,7 @@ def ui_needs_assignment(
     projects = list(repository.list_projects(connection))
     project_lookup = {project.id: {"name": project.name, "color": project.color} for project in projects}
     host_lookup = {host.id: host.name for host in repository.list_hosts(connection)}
-    tag_lookup = repository.list_tags_for_ip_assets(connection, [asset.id for asset in assets])
+    tag_lookup = repository.list_tag_details_for_ip_assets(connection, [asset.id for asset in assets])
     view_models = _build_asset_view_models(assets, project_lookup, host_lookup, tag_lookup)
     form_state = {
         "ip_address": view_models[0]["ip_address"] if view_models else "",
@@ -1664,7 +1821,7 @@ async def ui_needs_assignment_assign(
         projects = list(repository.list_projects(connection))
         project_lookup = {project.id: {"name": project.name, "color": project.color} for project in projects}
         host_lookup = {host.id: host.name for host in repository.list_hosts(connection)}
-        tag_lookup = repository.list_tags_for_ip_assets(connection, [asset.id for asset in assets])
+        tag_lookup = repository.list_tag_details_for_ip_assets(connection, [asset.id for asset in assets])
         view_models = _build_asset_view_models(assets, project_lookup, host_lookup, tag_lookup)
         return _render_template(
             request,
@@ -1855,7 +2012,7 @@ def ui_ip_asset_detail(
         for project in repository.list_projects(connection)
     }
     host_lookup = {host.id: host.name for host in repository.list_hosts(connection)}
-    tag_lookup = repository.list_tags_for_ip_assets(connection, [asset.id])
+    tag_lookup = repository.list_tag_details_for_ip_assets(connection, [asset.id])
     view_model = _build_asset_view_models([asset], project_lookup, host_lookup, tag_lookup)[0]
     audit_logs = repository.get_audit_logs_for_ip(connection, asset.id)
     audit_log_rows = [

@@ -14,7 +14,7 @@
     <strong>Tags:</strong>
     {% if asset.tags %}
       {% for tag in asset.tags %}
-      <span class="tag">{{ tag }}</span>
+      <span class="tag tag-color" style="--tag-color: {{ tag.color }}">{{ tag.name }}</span>
       {% endfor %}
     {% else %}
       None

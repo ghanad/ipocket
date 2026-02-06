@@ -33,6 +33,7 @@ def parse_ipv4_network(value: str) -> ipaddress.IPv4Network:
 
 
 DEFAULT_PROJECT_COLOR = "#94a3b8"
+DEFAULT_TAG_COLOR = "#e2e8f0"
 
 _HEX_COLOR_PATTERN = re.compile(r"^#[0-9a-fA-F]{6}$")
 _TAG_PATTERN = re.compile(r"^[a-z0-9_-]+$")

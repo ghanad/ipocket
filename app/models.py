@@ -53,6 +53,7 @@ class Vendor:
 class Tag:
     id: int
     name: str
+    color: str
 
 
 @dataclass

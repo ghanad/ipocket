@@ -24,6 +24,7 @@
 
 ## Tag
 - `name` (unique, required)
+- `color` (hex color, default `#e2e8f0`)
 - timestamps (`created_at`, `updated_at`)
 
 Tag names are normalized by trimming whitespace and lowercasing. Allowed characters are letters, digits, dashes, and

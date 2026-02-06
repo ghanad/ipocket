@@ -44,6 +44,7 @@ class Tag(Base):
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     name = Column(Text, nullable=False, unique=True)
+    color = Column(Text, nullable=False, server_default=text("'#e2e8f0'"))
     created_at = Column(Text, nullable=False, server_default=text("CURRENT_TIMESTAMP"))
     updated_at = Column(Text, nullable=False, server_default=text("CURRENT_TIMESTAMP"))
 

@@ -22,6 +22,12 @@ def test_init_db_runs_alembic_migrations(tmp_path) -> None:
         assert "ip_ranges" in tables
         assert "tags" in tables
         assert "ip_asset_tags" in tables
+
+        tag_columns = {
+            row["name"]
+            for row in connection.execute("PRAGMA table_info(tags)").fetchall()
+        }
+        assert "color" in tag_columns
     finally:
         connection.close()
 
