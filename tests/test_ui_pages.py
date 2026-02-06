@@ -26,6 +26,24 @@ def test_needs_assignment_page_renders(client) -> None:
     assert response.status_code == 200
 
 
+def test_import_page_includes_sample_csv_links(client) -> None:
+    response = client.get("/ui/import")
+
+    assert response.status_code == 200
+    assert "/static/samples/hosts.csv" in response.text
+    assert "/static/samples/ip-assets.csv" in response.text
+
+
+def test_sample_csv_files_are_available(client) -> None:
+    hosts_response = client.get("/static/samples/hosts.csv")
+    assets_response = client.get("/static/samples/ip-assets.csv")
+
+    assert hosts_response.status_code == 200
+    assert assets_response.status_code == 200
+    assert "name,notes,vendor_name" in hosts_response.text
+    assert "ip_address,type,project_name,host_name,notes,archived" in assets_response.text
+
+
 def test_ip_assets_list_uses_overflow_actions_menu_with_delete_dialog(client) -> None:
     import os
     from app import db, repository

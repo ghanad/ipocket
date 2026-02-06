@@ -1,0 +1,4 @@
+ip_address,type,project_name,host_name,notes,archived
+10.0.0.10,VM,Core,node-01,web server,false
+10.0.0.11,VIP,Core,,load balancer,false
+10.0.0.12,OTHER,,node-02,spare,true
