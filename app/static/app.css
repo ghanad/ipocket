@@ -545,6 +545,126 @@ p {
   margin-top: 12px;
 }
 
+
+.asset-actions-cell {
+  width: 92px;
+}
+
+.row-actions-menu {
+  position: relative;
+  display: inline-block;
+}
+
+.row-actions-trigger {
+  list-style: none;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  border: 1px solid var(--color-border);
+  background: #fff;
+  color: var(--color-muted);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 18px;
+  line-height: 1;
+}
+
+.row-actions-trigger::-webkit-details-marker {
+  display: none;
+}
+
+.row-actions-menu[open] .row-actions-trigger,
+.row-actions-trigger:hover,
+.row-actions-trigger:focus-visible {
+  color: var(--color-primary);
+  border-color: #c7dcff;
+  background: #eef2ff;
+}
+
+.row-actions-panel {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 6px);
+  min-width: 180px;
+  background: #fff;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow-sm);
+  padding: 6px;
+  display: grid;
+  gap: 2px;
+  z-index: 20;
+}
+
+.row-action-item {
+  width: 100%;
+  border: none;
+  background: transparent;
+  color: var(--color-text);
+  border-radius: 8px;
+  padding: 8px 10px;
+  font: inherit;
+  font-size: 13px;
+  text-align: left;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+}
+
+.row-action-item:hover,
+.row-action-item:focus-visible {
+  background: #f1f5f9;
+  color: var(--color-text);
+}
+
+.row-action-item-danger {
+  color: #b91c1c;
+}
+
+.row-action-item-danger:hover,
+.row-action-item-danger:focus-visible {
+  background: #fef2f2;
+  color: #991b1b;
+}
+
+.delete-confirm-dialog {
+  border: none;
+  padding: 0;
+  border-radius: var(--radius-md);
+  max-width: 440px;
+  width: calc(100% - 32px);
+}
+
+.delete-confirm-dialog::backdrop {
+  background: rgba(15, 23, 42, 0.45);
+}
+
+.delete-confirm-dialog-card {
+  padding: 20px;
+  display: grid;
+  gap: 12px;
+}
+
+.delete-confirm-dialog-card h2 {
+  margin: 0;
+  font-size: 18px;
+}
+
+.delete-confirm-dialog-card p {
+  color: var(--color-muted);
+  line-height: 1.45;
+}
+
+.delete-confirm-dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 6px;
+}
+
 .mono {
   font-family: "JetBrains Mono", "SFMono-Regular", "Consolas", monospace;
 }

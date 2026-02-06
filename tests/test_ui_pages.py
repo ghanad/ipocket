@@ -24,6 +24,27 @@ def test_needs_assignment_page_renders(client) -> None:
     assert response.status_code == 200
 
 
+def test_ip_assets_list_uses_overflow_actions_menu_with_delete_dialog(client) -> None:
+    import os
+    from app import db, repository
+
+    connection = db.connect(os.environ["IPAM_DB_PATH"])
+    try:
+        db.init_db(connection)
+        asset = repository.create_ip_asset(connection, ip_address="10.30.0.10", asset_type=IPAssetType.VM)
+    finally:
+        connection.close()
+
+    response = client.get("/ui/ip-assets")
+
+    assert response.status_code == 200
+    assert 'class="row-actions-trigger"' in response.text
+    assert f'data-delete-dialog-id="delete-ip-{asset.id}"' in response.text
+    assert f'id="delete-ip-{asset.id}"' in response.text
+    assert "Delete IP asset?" in response.text
+    assert "Continue to delete" in response.text
+
+
 def test_ui_create_bmc_passes_auto_host_flag_enabled(client, monkeypatch) -> None:
     captured: dict[str, object] = {}
 
