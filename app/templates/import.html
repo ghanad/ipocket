@@ -138,12 +138,16 @@
 <section class="card">
   <div class="card-header">
     <div>
-      <h2>Run Nmap</h2>
-      <p class="subtitle">Use one of the following commands and upload the resulting XML.</p>
+      <h2>Upload Nmap XML</h2>
+      <p class="subtitle">Viewer role can only dry-run. Editors/Admins can apply.</p>
     </div>
   </div>
   <div class="card-body">
     <div class="stack">
+      <div>
+        <p class="label">Run Nmap</p>
+        <p class="subtitle">Use one of the following commands and upload the resulting XML.</p>
+      </div>
       <div>
         <p class="label">Basic</p>
         <code>nmap -sn -oX ipocket.xml &lt;CIDR&gt;</code>
@@ -153,17 +157,6 @@
         <code>nmap -sn -PS80,443 -oX ipocket.xml &lt;CIDR&gt;</code>
       </div>
     </div>
-  </div>
-</section>
-
-<section class="card">
-  <div class="card-header">
-    <div>
-      <h2>Upload Nmap XML</h2>
-      <p class="subtitle">Viewer role can only dry-run. Editors/Admins can apply.</p>
-    </div>
-  </div>
-  <div class="card-body">
     {% if nmap_errors and nmap_errors|length > 0 %}
     <p class="alert">{{ nmap_errors | join(', ') }}</p>
     {% endif %}
