@@ -124,4 +124,64 @@ def _apply_legacy_migrations(connection: sqlite3.Connection) -> None:
         if "color" not in project_columns:
             connection.execute("ALTER TABLE projects ADD COLUMN color TEXT NOT NULL DEFAULT '#94a3b8'")
 
+    _drop_legacy_ip_asset_addressing(connection)
+
     connection.commit()
+
+
+def _drop_legacy_ip_asset_addressing(connection: sqlite3.Connection) -> None:
+    if not _has_table(connection, "ip_assets"):
+        return
+    columns = [row["name"] for row in connection.execute("PRAGMA table_info(ip_assets)").fetchall()]
+    if "subnet" not in columns and "gateway" not in columns:
+        return
+
+    select_host_id = "host_id" if "host_id" in columns else "NULL AS host_id"
+    select_notes = "notes" if "notes" in columns else "NULL AS notes"
+    select_archived = "archived" if "archived" in columns else "0 AS archived"
+    select_created_at = "created_at" if "created_at" in columns else "CURRENT_TIMESTAMP AS created_at"
+    select_updated_at = "updated_at" if "updated_at" in columns else "CURRENT_TIMESTAMP AS updated_at"
+
+    connection.execute("ALTER TABLE ip_assets RENAME TO ip_assets_old")
+    connection.execute(
+        """
+        CREATE TABLE ip_assets (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            ip_address TEXT NOT NULL UNIQUE,
+            type TEXT NOT NULL CHECK (type IN ('VM', 'OS', 'BMC', 'VIP', 'OTHER')),
+            project_id INTEGER REFERENCES projects(id),
+            host_id INTEGER REFERENCES hosts(id),
+            notes TEXT,
+            archived INTEGER NOT NULL DEFAULT 0,
+            created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+        )
+        """
+    )
+    connection.execute(
+        f"""
+        INSERT INTO ip_assets (
+            id,
+            ip_address,
+            type,
+            project_id,
+            host_id,
+            notes,
+            archived,
+            created_at,
+            updated_at
+        )
+        SELECT
+            id,
+            ip_address,
+            type,
+            project_id,
+            {select_host_id},
+            {select_notes},
+            {select_archived},
+            {select_created_at},
+            {select_updated_at}
+        FROM ip_assets_old
+        """
+    )
+    connection.execute("DROP TABLE ip_assets_old")

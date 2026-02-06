@@ -55,8 +55,6 @@ class IPAsset(Base):
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     ip_address = Column(Text, nullable=False, unique=True)
-    subnet = Column(Text, nullable=False)
-    gateway = Column(Text, nullable=False)
     type = Column(Text, nullable=False)
     project_id = Column(Integer, ForeignKey("projects.id"))
     host_id = Column(Integer, ForeignKey("hosts.id"))

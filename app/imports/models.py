@@ -35,8 +35,6 @@ class ImportHost:
 class ImportIPAsset:
     ip_address: str
     asset_type: str
-    subnet: Optional[str] = None
-    gateway: Optional[str] = None
     project_name: Optional[str] = None
     host_name: Optional[str] = None
     notes: Optional[str] = None

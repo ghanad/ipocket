@@ -38,8 +38,6 @@ All CSV exports include a header row. Relationships are represented by name.
 Columns:
 
 - `ip_address`
-- `subnet`
-- `gateway`
 - `type`
 - `project_name`
 - `host_name`
@@ -80,8 +78,6 @@ Each JSON endpoint returns an array of objects with the same fields as the CSV c
 [
   {
     "ip_address": "10.0.0.10",
-    "subnet": "10.0.0.0/24",
-    "gateway": "10.0.0.1",
     "type": "VM",
     "project_name": "core",
     "host_name": "node-01",

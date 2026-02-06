@@ -52,8 +52,6 @@ def test_ipasset_crud_without_owner(client) -> None:
         headers=headers,
         json={
             "ip_address": "10.10.0.10",
-            "subnet": "10.10.0.0/24",
-            "gateway": "10.10.0.1",
             "type": "VM",
             "project_id": project_id,
         },

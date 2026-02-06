@@ -34,7 +34,6 @@ Non-goals for MVP:
 ## Key Data (IPAsset)
 Each IP record will support:
 - `ip_address` (unique)
-- `subnet`, `gateway`
 - `project` (may be empty in MVP)
 - `owner` (may be empty in MVP)
 - `type`: `VM | OS | BMC | VIP | OTHER`

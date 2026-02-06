@@ -20,3 +20,16 @@ def test_init_db_runs_alembic_migrations(tmp_path) -> None:
         assert "hosts" in tables
     finally:
         connection.close()
+
+
+def test_ip_assets_table_excludes_subnet_and_gateway(tmp_path) -> None:
+    db_path = tmp_path / "schema.db"
+    connection = sqlite3.connect(db_path)
+    connection.row_factory = sqlite3.Row
+    try:
+        db.init_db(connection)
+        columns = {row["name"] for row in connection.execute("PRAGMA table_info(ip_assets)").fetchall()}
+        assert "subnet" not in columns
+        assert "gateway" not in columns
+    finally:
+        connection.close()

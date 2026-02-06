@@ -67,8 +67,6 @@ def _seed_export_data(db_path) -> None:
         repository.create_ip_asset(
             connection,
             ip_address="10.0.0.10",
-            subnet="10.0.0.0/24",
-            gateway="10.0.0.1",
             asset_type=IPAssetType.VM,
             project_id=project.id,
             host_id=host.id,
@@ -77,8 +75,6 @@ def _seed_export_data(db_path) -> None:
         repository.create_ip_asset(
             connection,
             ip_address="10.0.0.99",
-            subnet="10.0.0.0/24",
-            gateway="10.0.0.1",
             asset_type=IPAssetType.VIP,
             project_id=project.id,
             host_id=host.id,

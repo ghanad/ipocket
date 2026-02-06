@@ -2,8 +2,6 @@
 
 ## IPAsset
 - `ip_address` (unique)
-- `subnet`
-- `gateway`
 - `project_id` (optional)
 - `type` (`VM`, `OS`, `BMC`, `VIP`, `OTHER`)
 - `host_id` (optional)

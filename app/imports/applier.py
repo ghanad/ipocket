@@ -198,8 +198,6 @@ def _upsert_ip_assets(
             created = repository.create_ip_asset(
                 connection,
                 ip_address=ip_address,
-                subnet=asset.subnet,
-                gateway=asset.gateway,
                 asset_type=asset_type,
                 project_id=project_id,
                 host_id=host_id,
@@ -209,17 +207,13 @@ def _upsert_ip_assets(
                 repository.set_ip_asset_archived(connection, created.ip_address, archived=True)
             continue
 
-        target_subnet = asset.subnet if asset.subnet is not None else existing.subnet
-        target_gateway = asset.gateway if asset.gateway is not None else existing.gateway
         target_notes = asset.notes if asset.notes is not None else existing.notes
         target_project_id = project_id if asset.project_name is not None else existing.project_id
         target_host_id = host_id if asset.host_name is not None else existing.host_id
         target_archived = asset.archived if asset.archived is not None else existing.archived
 
         if (
-            target_subnet == existing.subnet
-            and target_gateway == existing.gateway
-            and target_notes == existing.notes
+            target_notes == existing.notes
             and target_project_id == existing.project_id
             and target_host_id == existing.host_id
             and asset_type == existing.asset_type
@@ -235,8 +229,6 @@ def _upsert_ip_assets(
         repository.update_ip_asset(
             connection,
             ip_address=ip_address,
-            subnet=asset.subnet,
-            gateway=asset.gateway,
             asset_type=asset_type,
             project_id=project_id,
             host_id=host_id,

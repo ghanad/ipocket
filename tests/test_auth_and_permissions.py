@@ -53,8 +53,6 @@ def _create_ip_asset(db_path, ip_address: str) -> None:
         repository.create_ip_asset(
             connection,
             ip_address=ip_address,
-            subnet="10.0.0.0/24",
-            gateway="10.0.0.1",
             asset_type=IPAssetType.VM,
         )
     finally:
@@ -80,8 +78,6 @@ def test_auth_required_for_write_endpoints(client) -> None:
         "/ip-assets",
         json={
             "ip_address": "10.0.0.30",
-            "subnet": "10.0.0.0/24",
-            "gateway": "10.0.0.1",
             "type": IPAssetType.VM.value,
         },
     )
@@ -100,8 +96,6 @@ def test_viewer_cannot_write(client) -> None:
         headers=_auth_header(token),
         json={
             "ip_address": "10.0.0.31",
-            "subnet": "10.0.0.0/24",
-            "gateway": "10.0.0.1",
             "type": IPAssetType.VM.value,
         },
     )
@@ -136,8 +130,6 @@ def test_editor_can_create_update_and_delete(client) -> None:
         headers=_auth_header(token),
         json={
             "ip_address": "10.0.0.32",
-            "subnet": "10.0.0.0/24",
-            "gateway": "10.0.0.1",
             "type": IPAssetType.VM.value,
         },
     )

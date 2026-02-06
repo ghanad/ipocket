@@ -34,8 +34,6 @@ class TokenResponse(BaseModel):
 
 class IPAssetCreate(BaseModel):
     ip_address: str
-    subnet: Optional[str] = None
-    gateway: Optional[str] = None
     asset_type: IPAssetType = Field(alias="type")
     project_id: Optional[int] = None
     notes: Optional[str] = None
@@ -48,8 +46,6 @@ class IPAssetCreate(BaseModel):
 
 
 class IPAssetUpdate(BaseModel):
-    subnet: Optional[str] = None
-    gateway: Optional[str] = None
     asset_type: Optional[IPAssetType] = Field(default=None, alias="type")
     project_id: Optional[int] = None
     notes: Optional[str] = None
@@ -119,8 +115,6 @@ def _asset_payload(asset: IPAsset) -> dict:
     return {
         "id": asset.id,
         "ip_address": asset.ip_address,
-        "subnet": asset.subnet,
-        "gateway": asset.gateway,
         "type": asset.asset_type.value,
         "project_id": asset.project_id,
         "notes": asset.notes,
@@ -272,8 +266,6 @@ def create_ip_asset(
         asset = repository.create_ip_asset(
             connection,
             ip_address=payload.ip_address,
-            subnet=payload.subnet,
-            gateway=payload.gateway,
             asset_type=payload.asset_type,
             project_id=payload.project_id,
             notes=payload.notes,
@@ -330,8 +322,6 @@ def update_ip_asset(
     updated = repository.update_ip_asset(
         connection,
         ip_address=ip_address,
-        subnet=payload.subnet,
-        gateway=payload.gateway,
         asset_type=payload.asset_type,
         project_id=payload.project_id,
         notes=payload.notes,

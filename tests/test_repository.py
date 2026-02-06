@@ -35,8 +35,6 @@ def test_create_project_and_ipasset(tmp_path) -> None:
     asset = create_ip_asset(
         connection,
         ip_address="10.0.0.10",
-        subnet="10.0.0.0/24",
-        gateway="10.0.0.1",
         asset_type=IPAssetType.VM,
         project_id=project.id,
     )

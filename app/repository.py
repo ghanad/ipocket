@@ -38,8 +38,6 @@ def _row_to_ip_asset(row: sqlite3.Row) -> IPAsset:
     return IPAsset(
         id=row["id"],
         ip_address=row["ip_address"],
-        subnet=row["subnet"],
-        gateway=row["gateway"],
         asset_type=IPAssetType(row["type"]),
         project_id=row["project_id"],
         host_id=row["host_id"],
@@ -269,8 +267,6 @@ def create_ip_asset(
     connection: sqlite3.Connection,
     ip_address: str,
     asset_type: IPAssetType,
-    subnet: Optional[str] = None,
-    gateway: Optional[str] = None,
     project_id: Optional[int] = None,
     host_id: Optional[int] = None,
     notes: Optional[str] = None,
@@ -288,8 +284,8 @@ def create_ip_asset(
                 resolved_host_id = existing_host["id"]
 
         cursor = connection.execute(
-            "INSERT INTO ip_assets (ip_address, subnet, gateway, type, project_id, host_id, notes) VALUES (?, ?, ?, ?, ?, ?, ?)",
-            (ip_address, subnet or "", gateway or "", asset_type.value, project_id, resolved_host_id, notes),
+            "INSERT INTO ip_assets (ip_address, type, project_id, host_id, notes) VALUES (?, ?, ?, ?, ?)",
+            (ip_address, asset_type.value, project_id, resolved_host_id, notes),
         )
     row = connection.execute("SELECT * FROM ip_assets WHERE id = ?", (cursor.lastrowid,)).fetchone()
     if row is None:
@@ -375,8 +371,6 @@ def list_ip_assets_for_export(
 ) -> list[dict[str, object]]:
     query = """
         SELECT ip_assets.ip_address AS ip_address,
-               ip_assets.subnet AS subnet,
-               ip_assets.gateway AS gateway,
                ip_assets.type AS asset_type,
                projects.name AS project_name,
                hosts.name AS host_name,
@@ -408,8 +402,6 @@ def list_ip_assets_for_export(
     return [
         {
             "ip_address": row["ip_address"],
-            "subnet": row["subnet"],
-            "gateway": row["gateway"],
             "type": row["asset_type"],
             "project_name": row["project_name"],
             "host_name": row["host_name"],
@@ -459,16 +451,16 @@ def delete_ip_asset(connection: sqlite3.Connection, ip_address: str) -> bool:
     return cursor.rowcount > 0
 
 
-def update_ip_asset(connection: sqlite3.Connection, ip_address: str, subnet: Optional[str] = None, gateway: Optional[str] = None, asset_type: Optional[IPAssetType] = None, project_id: Optional[int] = None, host_id: Optional[int] = None, notes: Optional[str] = None) -> Optional[IPAsset]:
+def update_ip_asset(connection: sqlite3.Connection, ip_address: str, asset_type: Optional[IPAssetType] = None, project_id: Optional[int] = None, host_id: Optional[int] = None, notes: Optional[str] = None) -> Optional[IPAsset]:
     connection.execute(
         """
         UPDATE ip_assets
-        SET subnet = COALESCE(?, subnet), gateway = COALESCE(?, gateway), type = COALESCE(?, type),
+        SET type = COALESCE(?, type),
             project_id = COALESCE(?, project_id), host_id = COALESCE(?, host_id), notes = COALESCE(?, notes),
             updated_at = CURRENT_TIMESTAMP
         WHERE ip_address = ?
         """,
-        (subnet, gateway, asset_type.value if asset_type else None, project_id, host_id, notes, ip_address),
+        (asset_type.value if asset_type else None, project_id, host_id, notes, ip_address),
     )
     connection.commit()
     return get_ip_asset_by_ip(connection, ip_address)

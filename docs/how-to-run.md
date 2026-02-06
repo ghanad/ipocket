@@ -115,8 +115,6 @@ curl -s -X POST http://127.0.0.1:8000/login \
 
 Create an IP asset (Editor/Admin):
 
-Subnet and Gateway are optional when creating new IP assets via API and UI.
-
 ```bash
 curl -s -X POST http://127.0.0.1:8000/ip-assets \
   -H "Authorization: Bearer <token>" \

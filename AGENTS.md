@@ -25,7 +25,6 @@ You are an AI coding agent contributing to **ipocket** (a lightweight IP invento
 ## Core Data (MVP)
 Each IP record must support:
 - ip_address (unique)
-- subnet, gateway
 - project (can be empty)
 - owner (can be empty)
 - type: VM / PHYSICAL / IPMI_ILO / VIP / OTHER
