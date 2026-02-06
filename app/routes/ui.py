@@ -1,17 +1,21 @@
 from __future__ import annotations
 
+import csv
 import hashlib
 import hmac
+import io
+import json
 import os
 import secrets
 import sqlite3
+import zipfile
 from typing import Optional
 from urllib.parse import parse_qs
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
-from fastapi.responses import HTMLResponse, RedirectResponse, Response
+from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse, Response
 
-from app import auth, build_info, repository
+from app import auth, build_info, exports, repository
 from app.dependencies import get_connection
 from app.models import IPAsset, IPAssetType, UserRole
 from app.utils import validate_ip_address
@@ -180,6 +184,49 @@ def _normalize_asset_type(value: Optional[str]) -> Optional[IPAssetType]:
     return IPAssetType.normalize(normalized_value)
 
 
+def _normalize_export_asset_type(value: Optional[str]) -> Optional[IPAssetType]:
+    if value is None:
+        return None
+    try:
+        return IPAssetType.normalize(value)
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Invalid asset type. Use VM, OS, BMC (formerly IPMI/iLO), VIP, OTHER.",
+        ) from exc
+
+
+def _build_csv_content(headers: list[str], rows: list[dict[str, object]]) -> str:
+    buffer = io.StringIO()
+    writer = csv.DictWriter(buffer, fieldnames=headers)
+    writer.writeheader()
+    for row in rows:
+        writer.writerow({key: "" if row.get(key) is None else row.get(key) for key in headers})
+    return buffer.getvalue()
+
+
+def _csv_response(filename: str, headers: list[str], rows: list[dict[str, object]]) -> Response:
+    response = Response(content=_build_csv_content(headers, rows), media_type="text/csv")
+    response.headers["Content-Disposition"] = f'attachment; filename="{filename}"'
+    return response
+
+
+def _json_response(filename: str, payload: object) -> Response:
+    response = JSONResponse(content=payload)
+    response.headers["Content-Disposition"] = f'attachment; filename="{filename}"'
+    return response
+
+
+def _zip_response(filename: str, files: dict[str, str]) -> Response:
+    buffer = io.BytesIO()
+    with zipfile.ZipFile(buffer, "w", compression=zipfile.ZIP_DEFLATED) as archive:
+        for file_name, content in files.items():
+            archive.writestr(file_name, content)
+    response = Response(content=buffer.getvalue(), media_type="application/zip")
+    response.headers["Content-Disposition"] = f'attachment; filename="{filename}"'
+    return response
+
+
 def _build_asset_view_models(
     assets: list[IPAsset],
     project_lookup: dict[int, str],
@@ -229,6 +276,207 @@ def ui_about(
         {"title": "ipocket - About"},
         active_nav="",
     )
+
+
+@router.get("/ui/export", response_class=HTMLResponse)
+def ui_export(
+    request: Request,
+    _user=Depends(get_current_ui_user),
+) -> HTMLResponse:
+    return _render_template(
+        request,
+        "export.html",
+        {"title": "ipocket - Export"},
+        active_nav="export",
+    )
+
+
+@router.get("/export/ip-assets.csv")
+def export_ip_assets_csv(
+    include_archived: bool = Query(default=False),
+    asset_type: Optional[str] = Query(default=None, alias="type"),
+    project: Optional[str] = Query(default=None),
+    host: Optional[str] = Query(default=None),
+    connection=Depends(get_connection),
+    _user=Depends(get_current_ui_user),
+) -> Response:
+    export_rows = exports.export_ip_assets(
+        connection,
+        include_archived=include_archived,
+        asset_type=_normalize_export_asset_type(asset_type),
+        project_name=project,
+        host_name=host,
+    )
+    headers = [
+        "ip_address",
+        "subnet",
+        "gateway",
+        "type",
+        "project_name",
+        "host_name",
+        "notes",
+        "archived",
+        "created_at",
+        "updated_at",
+    ]
+    return _csv_response("ip-assets.csv", headers, export_rows)
+
+
+@router.get("/export/ip-assets.json")
+def export_ip_assets_json(
+    include_archived: bool = Query(default=False),
+    asset_type: Optional[str] = Query(default=None, alias="type"),
+    project: Optional[str] = Query(default=None),
+    host: Optional[str] = Query(default=None),
+    connection=Depends(get_connection),
+    _user=Depends(get_current_ui_user),
+) -> Response:
+    export_rows = exports.export_ip_assets(
+        connection,
+        include_archived=include_archived,
+        asset_type=_normalize_export_asset_type(asset_type),
+        project_name=project,
+        host_name=host,
+    )
+    return _json_response("ip-assets.json", export_rows)
+
+
+@router.get("/export/hosts.csv")
+def export_hosts_csv(
+    include_archived: bool = Query(default=False),
+    host: Optional[str] = Query(default=None),
+    connection=Depends(get_connection),
+    _user=Depends(get_current_ui_user),
+) -> Response:
+    export_rows = exports.export_hosts(connection, host_name=host)
+    headers = ["name", "notes", "vendor_name"]
+    return _csv_response("hosts.csv", headers, export_rows)
+
+
+@router.get("/export/hosts.json")
+def export_hosts_json(
+    include_archived: bool = Query(default=False),
+    host: Optional[str] = Query(default=None),
+    connection=Depends(get_connection),
+    _user=Depends(get_current_ui_user),
+) -> Response:
+    export_rows = exports.export_hosts(connection, host_name=host)
+    return _json_response("hosts.json", export_rows)
+
+
+@router.get("/export/vendors.csv")
+def export_vendors_csv(
+    include_archived: bool = Query(default=False),
+    connection=Depends(get_connection),
+    _user=Depends(get_current_ui_user),
+) -> Response:
+    export_rows = exports.export_vendors(connection)
+    headers = ["name"]
+    return _csv_response("vendors.csv", headers, export_rows)
+
+
+@router.get("/export/vendors.json")
+def export_vendors_json(
+    include_archived: bool = Query(default=False),
+    connection=Depends(get_connection),
+    _user=Depends(get_current_ui_user),
+) -> Response:
+    export_rows = exports.export_vendors(connection)
+    return _json_response("vendors.json", export_rows)
+
+
+@router.get("/export/projects.csv")
+def export_projects_csv(
+    include_archived: bool = Query(default=False),
+    project: Optional[str] = Query(default=None),
+    connection=Depends(get_connection),
+    _user=Depends(get_current_ui_user),
+) -> Response:
+    export_rows = exports.export_projects(connection, project_name=project)
+    headers = ["name", "description"]
+    return _csv_response("projects.csv", headers, export_rows)
+
+
+@router.get("/export/projects.json")
+def export_projects_json(
+    include_archived: bool = Query(default=False),
+    project: Optional[str] = Query(default=None),
+    connection=Depends(get_connection),
+    _user=Depends(get_current_ui_user),
+) -> Response:
+    export_rows = exports.export_projects(connection, project_name=project)
+    return _json_response("projects.json", export_rows)
+
+
+@router.get("/export/bundle.json")
+def export_bundle_json(
+    include_archived: bool = Query(default=False),
+    asset_type: Optional[str] = Query(default=None, alias="type"),
+    project: Optional[str] = Query(default=None),
+    host: Optional[str] = Query(default=None),
+    connection=Depends(get_connection),
+    _user=Depends(get_current_ui_user),
+) -> Response:
+    normalized_type = _normalize_export_asset_type(asset_type)
+    bundle = exports.export_bundle(
+        connection,
+        include_archived=include_archived,
+        asset_type=normalized_type,
+        project_name=project,
+        host_name=host,
+    )
+    return _json_response("bundle.json", bundle)
+
+
+@router.get("/export/bundle.zip")
+def export_bundle_zip(
+    include_archived: bool = Query(default=False),
+    asset_type: Optional[str] = Query(default=None, alias="type"),
+    project: Optional[str] = Query(default=None),
+    host: Optional[str] = Query(default=None),
+    connection=Depends(get_connection),
+    _user=Depends(get_current_ui_user),
+) -> Response:
+    normalized_type = _normalize_export_asset_type(asset_type)
+    ip_assets = exports.export_ip_assets(
+        connection,
+        include_archived=include_archived,
+        asset_type=normalized_type,
+        project_name=project,
+        host_name=host,
+    )
+    projects = exports.export_projects(connection, project_name=project)
+    hosts = exports.export_hosts(connection, host_name=host)
+    vendors = exports.export_vendors(connection)
+    bundle = exports.export_bundle(
+        connection,
+        include_archived=include_archived,
+        asset_type=normalized_type,
+        project_name=project,
+        host_name=host,
+    )
+    files = {
+        "bundle.json": json.dumps(bundle),
+        "ip-assets.csv": _build_csv_content(
+            [
+                "ip_address",
+                "subnet",
+                "gateway",
+                "type",
+                "project_name",
+                "host_name",
+                "notes",
+                "archived",
+                "created_at",
+                "updated_at",
+            ],
+            ip_assets,
+        ),
+        "projects.csv": _build_csv_content(["name", "description"], projects),
+        "hosts.csv": _build_csv_content(["name", "notes", "vendor_name"], hosts),
+        "vendors.csv": _build_csv_content(["name"], vendors),
+    }
+    return _zip_response("bundle.zip", files)
 
 
 @router.get("/ui/login", response_class=HTMLResponse)
