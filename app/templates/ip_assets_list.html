@@ -25,7 +25,6 @@
         hx-get="/ui/ip-assets"
         hx-trigger="keyup changed delay:500ms, search"
         hx-target="#ip-table-body"
-        hx-select="#ip-table-body"
         hx-push-url="true"
         hx-include="closest form"
       />
@@ -64,21 +63,21 @@
         {% endfor %}
       </select>
     </label>
-    <label class="checkbox-field">
-      <input
-        type="checkbox"
+    <label class="field">
+      <span>Assignment</span>
+      <select
+        class="select"
         name="unassigned-only"
-        value="true"
-        {% if filters.unassigned_only %} checked{% endif %}
         hx-get="/ui/ip-assets"
         hx-trigger="change"
         hx-target="#ip-table-body"
         hx-push-url="true"
         hx-include="closest form"
-      />
-      <span>Unassigned only</span>
+      >
+        <option value="false"{% if not filters.unassigned_only %} selected{% endif %}>All</option>
+        <option value="true"{% if filters.unassigned_only %} selected{% endif %}>Unassigned only</option>
+      </select>
     </label>
-    <button class="btn btn-outline" type="submit">Apply filters</button>
   </form>
 </section>
 

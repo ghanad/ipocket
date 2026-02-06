@@ -1171,8 +1171,9 @@ def ui_list_ip_assets(
             unassigned_only=unassigned_only,
         )
     )
-    if q:
-        q_lower = q.lower()
+    q_value = (q or "").strip()
+    if q_value:
+        q_lower = q_value.lower()
         assets = [
             asset
             for asset in assets

@@ -98,6 +98,25 @@ def test_ip_assets_list_renders_project_color_tag(client) -> None:
     assert "project-color-dot" not in response.text
 
 
+def test_ip_assets_list_search_trims_whitespace(client) -> None:
+    import os
+    from app import db, repository
+
+    connection = db.connect(os.environ["IPAM_DB_PATH"])
+    try:
+        db.init_db(connection)
+        repository.create_ip_asset(connection, ip_address="10.30.0.21", asset_type=IPAssetType.VM)
+        repository.create_ip_asset(connection, ip_address="10.30.0.22", asset_type=IPAssetType.VM)
+    finally:
+        connection.close()
+
+    response = client.get("/ui/ip-assets", params={"q": " 10.30.0.21 "})
+
+    assert response.status_code == 200
+    assert "10.30.0.21" in response.text
+    assert "10.30.0.22" not in response.text
+
+
 def test_hosts_list_uses_overflow_actions_menu(client) -> None:
     import os
     from app import db, repository
