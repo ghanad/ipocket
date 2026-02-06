@@ -114,6 +114,24 @@ def test_hosts_add_form_above_table_and_compact(client) -> None:
     assert add_card_index < table_index
 
 
+def test_audit_log_page_lists_ip_entries(client) -> None:
+    import os
+    from app import db, repository
+
+    connection = db.connect(os.environ["IPAM_DB_PATH"])
+    try:
+        db.init_db(connection)
+        repository.create_ip_asset(connection, ip_address="10.40.0.10", asset_type=IPAssetType.VM)
+    finally:
+        connection.close()
+
+    response = client.get("/ui/audit-log")
+
+    assert response.status_code == 200
+    assert "10.40.0.10" in response.text
+    assert "CREATE" in response.text
+
+
 def test_row_actions_panel_hidden_style_present() -> None:
     css = Path("app/static/app.css").read_text(encoding="utf-8")
     assert ".row-actions-panel[hidden]" in css

@@ -110,6 +110,24 @@ def get_audit_logs_for_ip(connection: sqlite3.Connection, ip_asset_id: int) -> l
     return [_row_to_audit_log(row) for row in rows]
 
 
+def list_audit_logs(
+    connection: sqlite3.Connection,
+    target_type: str = "IP_ASSET",
+    limit: int = 200,
+) -> list[AuditLog]:
+    rows = connection.execute(
+        """
+        SELECT *
+        FROM audit_logs
+        WHERE target_type = ?
+        ORDER BY created_at DESC, id DESC
+        LIMIT ?
+        """,
+        (target_type, limit),
+    ).fetchall()
+    return [_row_to_audit_log(row) for row in rows]
+
+
 def _project_label(connection: sqlite3.Connection, project_id: Optional[int]) -> str:
     if project_id is None:
         return "Unassigned"
