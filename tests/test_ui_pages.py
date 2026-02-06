@@ -53,6 +53,29 @@ def test_ip_assets_list_uses_overflow_actions_menu_with_delete_dialog(client) ->
     assert "positionMenuPanel" in response.text
 
 
+def test_hosts_list_uses_overflow_actions_menu(client) -> None:
+    import os
+    from app import db, repository
+
+    connection = db.connect(os.environ["IPAM_DB_PATH"])
+    try:
+        db.init_db(connection)
+        host = repository.create_host(connection, name="node-12", notes="rack-1")
+    finally:
+        connection.close()
+
+    response = client.get("/ui/hosts")
+
+    assert response.status_code == 200
+    assert 'data-row-actions' in response.text
+    assert 'data-row-actions-toggle' in response.text
+    assert 'data-row-actions-panel' in response.text
+    assert 'class="row-actions-icon"' in response.text
+    assert f'aria-controls="row-actions-host-{host.id}"' in response.text
+    assert f'data-host-edit-toggle="{host.id}"' in response.text
+    assert "positionMenuPanel" in response.text
+
+
 def test_row_actions_panel_hidden_style_present() -> None:
     css = Path("app/static/app.css").read_text(encoding="utf-8")
     assert ".row-actions-panel[hidden]" in css

@@ -27,9 +27,42 @@
           <td><a href="/ui/hosts/{{ host.id }}">{{ host.name }}</a></td>
           <td>{{ host.vendor or "" }}</td>
           <td>{{ host.ip_count }}</td>
-          <td>
-            <button class="btn btn-secondary" type="button" onclick="toggleHostEdit({{ host.id }})">Edit</button>
-            <a class="btn btn-outline" href="/ui/hosts/{{ host.id }}/delete">Delete</a>
+          <td class="asset-actions-cell">
+            <div class="row-actions-menu" data-row-actions>
+              <button
+                class="row-actions-trigger"
+                type="button"
+                aria-label="Open actions for {{ host.name }}"
+                aria-expanded="false"
+                aria-haspopup="true"
+                aria-controls="row-actions-host-{{ host.id }}"
+                data-row-actions-toggle
+              >
+                <span class="row-actions-icon" aria-hidden="true">⋮</span>
+              </button>
+              <div
+                class="row-actions-panel"
+                id="row-actions-host-{{ host.id }}"
+                role="menu"
+                aria-label="Actions for {{ host.name }}"
+                data-row-actions-panel
+                hidden
+              >
+                <button
+                  class="row-action-item"
+                  type="button"
+                  role="menuitem"
+                  data-host-edit-toggle="{{ host.id }}"
+                >
+                  <span aria-hidden="true">✏️</span>
+                  <span>Edit</span>
+                </button>
+                <a class="row-action-item row-action-item-danger" role="menuitem" href="/ui/hosts/{{ host.id }}/delete">
+                  <span aria-hidden="true">🗑️</span>
+                  <span>Delete</span>
+                </a>
+              </div>
+            </div>
           </td>
         </tr>
         <tr id="host-edit-row-{{ host.id }}" style="display: none;">
@@ -106,5 +139,118 @@ function toggleHostEdit(hostId) {
   if (!row) return;
   row.style.display = row.style.display === "none" ? "table-row" : "none";
 }
+
+(() => {
+  const actionMenus = document.querySelectorAll("[data-row-actions]");
+  const POSITION_MARGIN = 12;
+
+  const positionMenuPanel = (toggle, panel) => {
+    const triggerRect = toggle.getBoundingClientRect();
+    panel.style.position = "fixed";
+    panel.style.top = "0";
+    panel.style.left = "0";
+    panel.style.right = "auto";
+    panel.style.bottom = "auto";
+    panel.style.visibility = "hidden";
+    panel.hidden = false;
+
+    const panelRect = panel.getBoundingClientRect();
+    let top = triggerRect.bottom + 6;
+    let left = triggerRect.right - panelRect.width;
+
+    if (left < POSITION_MARGIN) {
+      left = POSITION_MARGIN;
+    }
+
+    if (left + panelRect.width > window.innerWidth - POSITION_MARGIN) {
+      left = Math.max(POSITION_MARGIN, window.innerWidth - panelRect.width - POSITION_MARGIN);
+    }
+
+    if (top + panelRect.height > window.innerHeight - POSITION_MARGIN) {
+      top = triggerRect.top - panelRect.height - 6;
+    }
+
+    if (top < POSITION_MARGIN) {
+      top = POSITION_MARGIN;
+    }
+
+    panel.style.top = `${top}px`;
+    panel.style.left = `${left}px`;
+    panel.style.visibility = "visible";
+  };
+
+  const closeAllMenus = () => {
+    actionMenus.forEach((menu) => {
+      const toggle = menu.querySelector("[data-row-actions-toggle]");
+      const panel = menu.querySelector("[data-row-actions-panel]");
+      if (toggle && panel) {
+        toggle.setAttribute("aria-expanded", "false");
+        panel.hidden = true;
+        panel.style.visibility = "";
+        menu.classList.remove("is-open");
+      }
+    });
+  };
+
+  actionMenus.forEach((menu) => {
+    const toggle = menu.querySelector("[data-row-actions-toggle]");
+    const panel = menu.querySelector("[data-row-actions-panel]");
+    if (!toggle || !panel) {
+      return;
+    }
+
+    toggle.addEventListener("click", (event) => {
+      event.stopPropagation();
+      const isOpen = toggle.getAttribute("aria-expanded") === "true";
+      closeAllMenus();
+      if (!isOpen) {
+        toggle.setAttribute("aria-expanded", "true");
+        positionMenuPanel(toggle, panel);
+        menu.classList.add("is-open");
+      }
+    });
+
+    panel.addEventListener("click", (event) => {
+      event.stopPropagation();
+    });
+  });
+
+  document.addEventListener("click", () => {
+    closeAllMenus();
+  });
+
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape") {
+      closeAllMenus();
+    }
+  });
+
+  window.addEventListener(
+    "scroll",
+    () => {
+      closeAllMenus();
+    },
+    true,
+  );
+
+  const tableWrapper = document.querySelector(".table-wrapper");
+  if (tableWrapper) {
+    tableWrapper.addEventListener("scroll", () => {
+      closeAllMenus();
+    });
+  }
+
+  window.addEventListener("resize", () => {
+    closeAllMenus();
+  });
+
+  const editButtons = document.querySelectorAll("[data-host-edit-toggle]");
+  editButtons.forEach((button) => {
+    button.addEventListener("click", () => {
+      toggleHostEdit(Number(button.dataset.hostEditToggle));
+      closeAllMenus();
+    });
+  });
+})();
 </script>
 {% endblock %}
