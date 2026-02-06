@@ -95,6 +95,7 @@
           <th>CIDR</th>
           <th>Notes</th>
           <th>Created</th>
+          <th>Actions</th>
         </tr>
       </thead>
       <tbody>
@@ -104,14 +105,163 @@
           <td>{{ ip_range.cidr }}</td>
           <td>{{ ip_range.notes or "—" }}</td>
           <td>{{ ip_range.created_at }}</td>
+          <td class="asset-actions-cell">
+            <div class="row-actions-menu" data-row-actions>
+              <button
+                class="row-actions-trigger"
+                type="button"
+                aria-label="Open actions for {{ ip_range.name }}"
+                aria-expanded="false"
+                aria-haspopup="true"
+                aria-controls="row-actions-range-{{ ip_range.id }}"
+                data-row-actions-toggle
+              >
+                <span class="row-actions-icon" aria-hidden="true">⋮</span>
+              </button>
+              <div
+                class="row-actions-panel"
+                id="row-actions-range-{{ ip_range.id }}"
+                role="menu"
+                aria-label="Actions for {{ ip_range.name }}"
+                data-row-actions-panel
+                hidden
+              >
+                <a class="row-action-item" role="menuitem" href="/ui/ranges/{{ ip_range.id }}/edit">
+                  <span aria-hidden="true">✏️</span>
+                  <span>Edit</span>
+                </a>
+                <a class="row-action-item row-action-item-danger" role="menuitem" href="/ui/ranges/{{ ip_range.id }}/delete">
+                  <span aria-hidden="true">🗑️</span>
+                  <span>Delete</span>
+                </a>
+              </div>
+            </div>
+          </td>
         </tr>
         {% else %}
         <tr>
-          <td colspan="4" class="empty-state">No ranges saved yet.</td>
+          <td colspan="5" class="empty-state">No ranges saved yet.</td>
         </tr>
         {% endfor %}
       </tbody>
     </table>
   </div>
 </section>
+<script>
+  (() => {
+    const GLOBAL_FLAG = '__ipocket_range_row_actions_bound__';
+    const POSITION_MARGIN = 12;
+
+    const positionMenuPanel = (toggle, panel) => {
+      const triggerRect = toggle.getBoundingClientRect();
+      panel.style.top = '0px';
+      panel.style.left = '0px';
+      panel.style.bottom = 'auto';
+      panel.style.visibility = 'hidden';
+      panel.hidden = false;
+
+      const panelRect = panel.getBoundingClientRect();
+      let top = triggerRect.bottom + 6;
+      let left = triggerRect.right - panelRect.width;
+
+      if (left < POSITION_MARGIN) {
+        left = POSITION_MARGIN;
+      }
+
+      if (left + panelRect.width > window.innerWidth - POSITION_MARGIN) {
+        left = Math.max(POSITION_MARGIN, window.innerWidth - panelRect.width - POSITION_MARGIN);
+      }
+
+      if (top + panelRect.height > window.innerHeight - POSITION_MARGIN) {
+        top = triggerRect.top - panelRect.height - 6;
+      }
+
+      if (top < POSITION_MARGIN) {
+        top = POSITION_MARGIN;
+      }
+
+      panel.style.top = `${top}px`;
+      panel.style.left = `${left}px`;
+      panel.style.visibility = 'visible';
+    };
+
+    const closeAllMenus = () => {
+      const actionMenus = document.querySelectorAll('[data-row-actions]');
+      actionMenus.forEach((menu) => {
+        const toggle = menu.querySelector('[data-row-actions-toggle]');
+        const panel = menu.querySelector('[data-row-actions-panel]');
+        if (toggle && panel) {
+          toggle.setAttribute('aria-expanded', 'false');
+          panel.hidden = true;
+          panel.style.visibility = '';
+          menu.classList.remove('is-open');
+        }
+      });
+    };
+
+    const bindRowActions = (root = document) => {
+      const actionMenus = root.querySelectorAll('[data-row-actions]');
+      actionMenus.forEach((menu) => {
+        if (menu.dataset.rowActionsBound) {
+          return;
+        }
+        const toggle = menu.querySelector('[data-row-actions-toggle]');
+        const panel = menu.querySelector('[data-row-actions-panel]');
+        if (!toggle || !panel) {
+          return;
+        }
+        menu.dataset.rowActionsBound = 'true';
+
+        toggle.addEventListener('click', (event) => {
+          event.stopPropagation();
+          const isOpen = toggle.getAttribute('aria-expanded') === 'true';
+          closeAllMenus();
+          if (!isOpen) {
+            toggle.setAttribute('aria-expanded', 'true');
+            positionMenuPanel(toggle, panel);
+            menu.classList.add('is-open');
+          }
+        });
+
+        panel.addEventListener('click', (event) => {
+          event.stopPropagation();
+        });
+      });
+    };
+
+    if (!window[GLOBAL_FLAG]) {
+      window[GLOBAL_FLAG] = true;
+      document.addEventListener('click', () => {
+        closeAllMenus();
+      });
+
+      document.addEventListener('keydown', (event) => {
+        if (event.key === 'Escape') {
+          closeAllMenus();
+        }
+      });
+
+      window.addEventListener(
+        'scroll',
+        () => {
+          closeAllMenus();
+        },
+        true,
+      );
+
+      const tableWrapper = document.querySelector('.table-wrapper');
+      if (tableWrapper) {
+        tableWrapper.addEventListener('scroll', () => {
+          closeAllMenus();
+        });
+      }
+
+      window.addEventListener('resize', () => {
+        closeAllMenus();
+      });
+    }
+
+    bindRowActions();
+  })();
+</script>
 {% endblock %}

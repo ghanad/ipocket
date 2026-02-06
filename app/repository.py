@@ -258,6 +258,28 @@ def get_ip_range_by_id(connection: sqlite3.Connection, range_id: int) -> IPRange
     return _row_to_ip_range(row)
 
 
+def update_ip_range(
+    connection: sqlite3.Connection,
+    range_id: int,
+    name: str,
+    cidr: str,
+    notes: Optional[str] = None,
+) -> IPRange | None:
+    normalized_cidr = normalize_cidr(cidr)
+    connection.execute(
+        "UPDATE ip_ranges SET name = ?, cidr = ?, notes = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
+        (name, normalized_cidr, notes, range_id),
+    )
+    connection.commit()
+    return get_ip_range_by_id(connection, range_id)
+
+
+def delete_ip_range(connection: sqlite3.Connection, range_id: int) -> bool:
+    cursor = connection.execute("DELETE FROM ip_ranges WHERE id = ?", (range_id,))
+    connection.commit()
+    return cursor.rowcount > 0
+
+
 def _total_usable_addresses(network: ipaddress.IPv4Network) -> int:
     if network.prefixlen == 32:
         return 1
