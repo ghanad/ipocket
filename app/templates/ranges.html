@@ -105,11 +105,37 @@
           <td>{{ ip_range.cidr }}</td>
           <td>{{ ip_range.notes or "—" }}</td>
           <td>{{ ip_range.created_at }}</td>
-          <td class="table-actions">
-            <a class="btn btn-outline btn-small" href="/ui/ranges/{{ ip_range.id }}/edit">Edit</a>
-            <form method="post" action="/ui/ranges/{{ ip_range.id }}/delete" class="inline-form" onsubmit="return confirm('Delete this IP range?');">
-              <button class="btn btn-outline btn-small" type="submit">Delete</button>
-            </form>
+          <td class="asset-actions-cell">
+            <div class="row-actions-menu" data-row-actions>
+              <button
+                class="row-actions-trigger"
+                type="button"
+                aria-label="Open actions for {{ ip_range.name }}"
+                aria-expanded="false"
+                aria-haspopup="true"
+                aria-controls="row-actions-range-{{ ip_range.id }}"
+                data-row-actions-toggle
+              >
+                <span class="row-actions-icon" aria-hidden="true">⋮</span>
+              </button>
+              <div
+                class="row-actions-panel"
+                id="row-actions-range-{{ ip_range.id }}"
+                role="menu"
+                aria-label="Actions for {{ ip_range.name }}"
+                data-row-actions-panel
+                hidden
+              >
+                <a class="row-action-item" role="menuitem" href="/ui/ranges/{{ ip_range.id }}/edit">
+                  <span aria-hidden="true">✏️</span>
+                  <span>Edit</span>
+                </a>
+                <a class="row-action-item row-action-item-danger" role="menuitem" href="/ui/ranges/{{ ip_range.id }}/delete">
+                  <span aria-hidden="true">🗑️</span>
+                  <span>Delete</span>
+                </a>
+              </div>
+            </div>
           </td>
         </tr>
         {% else %}
@@ -121,4 +147,60 @@
     </table>
   </div>
 </section>
+<script>
+  const rangeActionMenus = document.querySelectorAll('[data-row-actions]');
+
+  rangeActionMenus.forEach((menu) => {
+    const toggle = menu.querySelector('[data-row-actions-toggle]');
+    const panel = menu.querySelector('[data-row-actions-panel]');
+
+    if (!toggle || !panel) {
+      return;
+    }
+
+    const closeMenu = () => {
+      menu.classList.remove('is-open');
+      toggle.setAttribute('aria-expanded', 'false');
+      panel.hidden = true;
+    };
+
+    toggle.addEventListener('click', (event) => {
+      event.stopPropagation();
+      const isOpen = menu.classList.contains('is-open');
+      rangeActionMenus.forEach((other) => {
+        if (other !== menu) {
+          const otherToggle = other.querySelector('[data-row-actions-toggle]');
+          const otherPanel = other.querySelector('[data-row-actions-panel]');
+          other.classList.remove('is-open');
+          if (otherToggle) {
+            otherToggle.setAttribute('aria-expanded', 'false');
+          }
+          if (otherPanel) {
+            otherPanel.hidden = true;
+          }
+        }
+      });
+      if (isOpen) {
+        closeMenu();
+      } else {
+        menu.classList.add('is-open');
+        toggle.setAttribute('aria-expanded', 'true');
+        panel.hidden = false;
+        panel.focus?.();
+      }
+    });
+
+    document.addEventListener('click', (event) => {
+      if (!menu.contains(event.target)) {
+        closeMenu();
+      }
+    });
+
+    document.addEventListener('keydown', (event) => {
+      if (event.key === 'Escape') {
+        closeMenu();
+      }
+    });
+  });
+</script>
 {% endblock %}
