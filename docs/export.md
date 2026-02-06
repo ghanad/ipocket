@@ -68,6 +68,7 @@ Columns:
 
 - `name`
 - `description`
+- `color`
 
 ## JSON formats (per-entity)
 

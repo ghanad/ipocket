@@ -4,10 +4,16 @@ import sqlite3
 from typing import Iterable, Optional
 
 from app.models import Host, IPAsset, IPAssetType, Project, User, UserRole, Vendor
+from app.utils import DEFAULT_PROJECT_COLOR
 
 
 def _row_to_project(row: sqlite3.Row) -> Project:
-    return Project(id=row["id"], name=row["name"], description=row["description"])
+    return Project(
+        id=row["id"],
+        name=row["name"],
+        description=row["description"],
+        color=row["color"],
+    )
 
 
 def _row_to_host(row: sqlite3.Row) -> Host:
@@ -44,29 +50,45 @@ def _row_to_ip_asset(row: sqlite3.Row) -> IPAsset:
     )
 
 
-def create_project(connection: sqlite3.Connection, name: str, description: Optional[str] = None) -> Project:
-    cursor = connection.execute("INSERT INTO projects (name, description) VALUES (?, ?)", (name, description))
+def create_project(
+    connection: sqlite3.Connection,
+    name: str,
+    description: Optional[str] = None,
+    color: Optional[str] = None,
+) -> Project:
+    normalized_color = color or DEFAULT_PROJECT_COLOR
+    cursor = connection.execute(
+        "INSERT INTO projects (name, description, color) VALUES (?, ?, ?)",
+        (name, description, normalized_color),
+    )
     connection.commit()
-    return Project(id=cursor.lastrowid, name=name, description=description)
+    return Project(id=cursor.lastrowid, name=name, description=description, color=normalized_color)
 
 
-def update_project(connection: sqlite3.Connection, project_id: int, name: Optional[str] = None, description: Optional[str] = None) -> Optional[Project]:
+def update_project(
+    connection: sqlite3.Connection,
+    project_id: int,
+    name: Optional[str] = None,
+    description: Optional[str] = None,
+    color: Optional[str] = None,
+) -> Optional[Project]:
     connection.execute(
         """
         UPDATE projects
         SET name = COALESCE(?, name),
-            description = COALESCE(?, description)
+            description = COALESCE(?, description),
+            color = COALESCE(?, color)
         WHERE id = ?
         """,
-        (name, description, project_id),
+        (name, description, color, project_id),
     )
     connection.commit()
-    row = connection.execute("SELECT id, name, description FROM projects WHERE id = ?", (project_id,)).fetchone()
+    row = connection.execute("SELECT id, name, description, color FROM projects WHERE id = ?", (project_id,)).fetchone()
     return _row_to_project(row) if row else None
 
 
 def list_projects(connection: sqlite3.Connection) -> Iterable[Project]:
-    rows = connection.execute("SELECT id, name, description FROM projects ORDER BY name").fetchall()
+    rows = connection.execute("SELECT id, name, description, color FROM projects ORDER BY name").fetchall()
     return [_row_to_project(row) for row in rows]
 
 

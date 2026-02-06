@@ -15,6 +15,7 @@ from app.repository import (
     delete_host,
     get_ip_asset_metrics,
     list_hosts,
+    update_project,
 )
 
 
@@ -29,7 +30,7 @@ def _setup_connection(tmp_path) -> sqlite3.Connection:
 
 def test_create_project_and_ipasset(tmp_path) -> None:
     connection = _setup_connection(tmp_path)
-    project = create_project(connection, name="Core")
+    project = create_project(connection, name="Core", color="#223344")
     asset = create_ip_asset(
         connection,
         ip_address="10.0.0.10",
@@ -42,6 +43,7 @@ def test_create_project_and_ipasset(tmp_path) -> None:
     assert fetched is not None
     assert fetched.ip_address == asset.ip_address
     assert fetched.project_id == project.id
+    assert project.color == "#223344"
 
 
 def test_get_ip_asset_metrics_counts(tmp_path) -> None:
@@ -57,6 +59,16 @@ def test_get_ip_asset_metrics_counts(tmp_path) -> None:
     assert metrics["total"] == 4
     assert metrics["archived_total"] == 1
     assert metrics["unassigned_project_total"] == 2
+
+
+def test_update_project_color(tmp_path) -> None:
+    connection = _setup_connection(tmp_path)
+    project = create_project(connection, name="Edge")
+
+    updated = update_project(connection, project.id, color="#112233")
+
+    assert updated is not None
+    assert updated.color == "#112233"
 
 
 def test_create_bmc_without_host_creates_server_host_and_links_asset(tmp_path) -> None:

@@ -11,7 +11,7 @@ from pydantic import BaseModel, Field, field_validator
 from app import auth, build_info, repository
 from app.dependencies import get_connection
 from app.models import Host, IPAsset, IPAssetType, UserRole
-from app.utils import validate_ip_address
+from app.utils import normalize_hex_color, validate_ip_address
 
 router = APIRouter()
 
@@ -64,11 +64,29 @@ class IPAssetUpdate(BaseModel):
 class ProjectCreate(BaseModel):
     name: str
     description: Optional[str] = None
+    color: Optional[str] = None
+
+    @field_validator("color")
+    @classmethod
+    def normalize_color(cls, value: Optional[str]) -> Optional[str]:
+        try:
+            return normalize_hex_color(value)
+        except ValueError as exc:
+            raise ValueError(str(exc)) from exc
 
 
 class ProjectUpdate(BaseModel):
     name: Optional[str] = None
     description: Optional[str] = None
+    color: Optional[str] = None
+
+    @field_validator("color")
+    @classmethod
+    def normalize_color(cls, value: Optional[str]) -> Optional[str]:
+        try:
+            return normalize_hex_color(value)
+        except ValueError as exc:
+            raise ValueError(str(exc)) from exc
 
 
 class HostCreate(BaseModel):
@@ -337,16 +355,29 @@ def create_project(
     _user=Depends(require_editor),
 ):
     project = repository.create_project(
-        connection, name=payload.name, description=payload.description
+        connection,
+        name=payload.name,
+        description=payload.description,
+        color=payload.color,
     )
-    return {"id": project.id, "name": project.name, "description": project.description}
+    return {
+        "id": project.id,
+        "name": project.name,
+        "description": project.description,
+        "color": project.color,
+    }
 
 
 @router.get("/projects")
 def list_projects(connection=Depends(get_connection)):
     projects = repository.list_projects(connection)
     return [
-        {"id": project.id, "name": project.name, "description": project.description}
+        {
+            "id": project.id,
+            "name": project.name,
+            "description": project.description,
+            "color": project.color,
+        }
         for project in projects
     ]
 
@@ -363,10 +394,16 @@ def update_project(
         project_id=project_id,
         name=payload.name,
         description=payload.description,
+        color=payload.color,
     )
     if project is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
-    return {"id": project.id, "name": project.name, "description": project.description}
+    return {
+        "id": project.id,
+        "name": project.name,
+        "description": project.description,
+        "color": project.color,
+    }
 
 
 @router.get("/vendors")
