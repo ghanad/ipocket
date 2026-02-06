@@ -1,0 +1,131 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="page-header">
+  <div>
+    <p class="eyebrow">Import</p>
+    <h1>Imports</h1>
+    <p class="subtitle">Upload bundle.json or CSV exports to update inventory data.</p>
+  </div>
+</section>
+
+{% if errors and errors|length > 0 %}
+<section class="card">
+  <div class="card-body">
+    <p class="alert">{{ errors | join(', ') }}</p>
+  </div>
+</section>
+{% endif %}
+
+<section class="card">
+  <div class="card-header">
+    <div>
+      <h2>Import Bundle (JSON)</h2>
+      <p class="subtitle">Upload bundle.json to import vendors, projects, hosts, and IP assets.</p>
+    </div>
+  </div>
+  <div class="card-body">
+    <form class="form-grid" method="post" action="/ui/import/bundle" enctype="multipart/form-data">
+      <label class="field">
+        <span>bundle.json</span>
+        <input class="input" type="file" name="bundle_file" accept="application/json" />
+      </label>
+      <div class="form-actions">
+        <button class="btn btn-secondary" type="submit" name="mode" value="dry-run">Dry-run</button>
+        <button class="btn btn-primary" type="submit" name="mode" value="apply">Apply</button>
+      </div>
+    </form>
+
+    {% if bundle_result %}
+    <div class="import-results">
+      <h3>Summary</h3>
+      <ul>
+        <li>Total: {{ bundle_result.summary.total.would_create }} create, {{ bundle_result.summary.total.would_update }} update, {{ bundle_result.summary.total.would_skip }} skip</li>
+        <li>Vendors: {{ bundle_result.summary.vendors.would_create }} create, {{ bundle_result.summary.vendors.would_update }} update, {{ bundle_result.summary.vendors.would_skip }} skip</li>
+        <li>Projects: {{ bundle_result.summary.projects.would_create }} create, {{ bundle_result.summary.projects.would_update }} update, {{ bundle_result.summary.projects.would_skip }} skip</li>
+        <li>Hosts: {{ bundle_result.summary.hosts.would_create }} create, {{ bundle_result.summary.hosts.would_update }} update, {{ bundle_result.summary.hosts.would_skip }} skip</li>
+        <li>IP Assets: {{ bundle_result.summary.ip_assets.would_create }} create, {{ bundle_result.summary.ip_assets.would_update }} update, {{ bundle_result.summary.ip_assets.would_skip }} skip</li>
+      </ul>
+      {% if bundle_result.errors and bundle_result.errors|length > 0 %}
+      <div class="import-errors">
+        <h4>Errors</h4>
+        <ul>
+          {% for error in bundle_result.errors %}
+          <li>{{ error.location }}: {{ error.message }}</li>
+          {% endfor %}
+        </ul>
+      </div>
+      {% endif %}
+      {% if bundle_result.warnings and bundle_result.warnings|length > 0 %}
+      <div class="import-warnings">
+        <h4>Warnings</h4>
+        <ul>
+          {% for warning in bundle_result.warnings %}
+          <li>{{ warning.location }}: {{ warning.message }}</li>
+          {% endfor %}
+        </ul>
+      </div>
+      {% endif %}
+    </div>
+    {% endif %}
+  </div>
+</section>
+
+<section class="card">
+  <div class="card-header">
+    <div>
+      <h2>Import CSV</h2>
+      <p class="subtitle">Upload hosts.csv and ip-assets.csv exports together.</p>
+    </div>
+  </div>
+  <div class="card-body">
+    <form class="form-grid" method="post" action="/ui/import/csv" enctype="multipart/form-data">
+      <label class="field">
+        <span>hosts.csv</span>
+        <input class="input" type="file" name="hosts_file" accept="text/csv" />
+      </label>
+      <label class="field">
+        <span>ip-assets.csv</span>
+        <input class="input" type="file" name="ip_assets_file" accept="text/csv" />
+      </label>
+      <div class="form-actions">
+        <button class="btn btn-secondary" type="submit" name="mode" value="dry-run">Dry-run</button>
+        <button class="btn btn-primary" type="submit" name="mode" value="apply">Apply</button>
+      </div>
+    </form>
+
+    {% if csv_result %}
+    <div class="import-results">
+      <h3>Summary</h3>
+      <ul>
+        <li>Total: {{ csv_result.summary.total.would_create }} create, {{ csv_result.summary.total.would_update }} update, {{ csv_result.summary.total.would_skip }} skip</li>
+        <li>Vendors: {{ csv_result.summary.vendors.would_create }} create, {{ csv_result.summary.vendors.would_update }} update, {{ csv_result.summary.vendors.would_skip }} skip</li>
+        <li>Projects: {{ csv_result.summary.projects.would_create }} create, {{ csv_result.summary.projects.would_update }} update, {{ csv_result.summary.projects.would_skip }} skip</li>
+        <li>Hosts: {{ csv_result.summary.hosts.would_create }} create, {{ csv_result.summary.hosts.would_update }} update, {{ csv_result.summary.hosts.would_skip }} skip</li>
+        <li>IP Assets: {{ csv_result.summary.ip_assets.would_create }} create, {{ csv_result.summary.ip_assets.would_update }} update, {{ csv_result.summary.ip_assets.would_skip }} skip</li>
+      </ul>
+      {% if csv_result.errors and csv_result.errors|length > 0 %}
+      <div class="import-errors">
+        <h4>Errors</h4>
+        <ul>
+          {% for error in csv_result.errors %}
+          <li>{{ error.location }}: {{ error.message }}</li>
+          {% endfor %}
+        </ul>
+      </div>
+      {% endif %}
+      {% if csv_result.warnings and csv_result.warnings|length > 0 %}
+      <div class="import-warnings">
+        <h4>Warnings</h4>
+        <ul>
+          {% for warning in csv_result.warnings %}
+          <li>{{ warning.location }}: {{ warning.message }}</li>
+          {% endfor %}
+        </ul>
+      </div>
+      {% endif %}
+    </div>
+    {% endif %}
+  </div>
+</section>
+{% endblock %}
