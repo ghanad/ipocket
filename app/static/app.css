@@ -548,6 +548,7 @@ p {
 
 .asset-actions-cell {
   width: 92px;
+  text-align: center;
 }
 
 .row-actions-menu {
@@ -575,6 +576,15 @@ p {
   display: none;
 }
 
+.row-actions-trigger::marker {
+  content: "";
+}
+
+.row-actions-icon {
+  display: inline-block;
+  line-height: 1;
+}
+
 .row-actions-menu[open] .row-actions-trigger,
 .row-actions-trigger:hover,
 .row-actions-trigger:focus-visible {
@@ -591,10 +601,10 @@ p {
   background: #fff;
   border: 1px solid var(--color-border);
   border-radius: var(--radius-sm);
-  box-shadow: var(--shadow-sm);
-  padding: 6px;
+  box-shadow: 0 12px 30px rgba(15, 23, 42, 0.18);
+  padding: 8px;
   display: grid;
-  gap: 2px;
+  gap: 4px;
   z-index: 20;
 }
 
