@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="page-header">
+  <h1>Confirm Range Delete</h1>
+  <p class="subtitle">This action permanently removes the IP range and cannot be undone.</p>
+</section>
+
+<section class="card">
+  <p><strong>Range:</strong> <span class="mono">{{ ip_range.name }}</span></p>
+  <p><strong>CIDR:</strong> <span class="mono">{{ ip_range.cidr }}</span></p>
+  <p><strong>Instruction:</strong> To confirm permanent deletion, type the exact range name in the box below.</p>
+
+  {% if errors %}
+  <div class="alert alert-error">
+    {% for error in errors %}
+    <p class="alert-title">{{ error }}</p>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  <form method="post" action="/ui/ranges/{{ ip_range.id }}/delete">
+    <label class="field">
+      <span>Type <span class="mono">{{ ip_range.name }}</span> to confirm</span>
+      <input class="input" type="text" name="confirm_name" value="{{ confirm_value }}" required autocomplete="off" />
+    </label>
+    <div style="display:flex; gap:0.75rem; margin-top:1rem;">
+      <button class="btn btn-outline" type="submit">Delete permanently</button>
+      <a class="btn btn-secondary" href="/ui/ranges">Cancel</a>
+    </div>
+  </form>
+</section>
+{% endblock %}

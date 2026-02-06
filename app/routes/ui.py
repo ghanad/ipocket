@@ -1127,12 +1127,56 @@ async def ui_update_range(
     return RedirectResponse(url="/ui/ranges", status_code=303)
 
 
-@router.post("/ui/ranges/{range_id}/delete", response_class=HTMLResponse)
-def ui_delete_range(
+@router.get("/ui/ranges/{range_id}/delete", response_class=HTMLResponse)
+def ui_delete_range_confirm(
+    request: Request,
     range_id: int,
     connection=Depends(get_connection),
     _user=Depends(require_ui_editor),
 ) -> HTMLResponse:
+    ip_range = repository.get_ip_range_by_id(connection, range_id)
+    if ip_range is None:
+        raise HTTPException(status_code=404, detail="IP range not found.")
+    return _render_template(
+        request,
+        "range_delete_confirm.html",
+        {
+            "title": "ipocket - Confirm Range Delete",
+            "ip_range": ip_range,
+            "errors": [],
+            "confirm_value": "",
+        },
+        active_nav="ranges",
+    )
+
+
+@router.post("/ui/ranges/{range_id}/delete", response_class=HTMLResponse)
+async def ui_delete_range(
+    request: Request,
+    range_id: int,
+    connection=Depends(get_connection),
+    _user=Depends(require_ui_editor),
+) -> HTMLResponse:
+    ip_range = repository.get_ip_range_by_id(connection, range_id)
+    if ip_range is None:
+        raise HTTPException(status_code=404, detail="IP range not found.")
+
+    form_data = await _parse_form_data(request)
+    confirm_name = (form_data.get("confirm_name") or "").strip()
+    if confirm_name != ip_range.name:
+        return _render_template(
+            request,
+            "range_delete_confirm.html",
+            {
+                "title": "ipocket - Confirm Range Delete",
+                "ip_range": ip_range,
+                "errors": ["برای حذف کامل، نام رنج را دقیقاً وارد کنید."],
+                "confirm_value": confirm_name,
+            },
+            status_code=400,
+            active_nav="ranges",
+        )
+
     deleted = repository.delete_ip_range(connection, range_id)
     if not deleted:
         raise HTTPException(status_code=404, detail="IP range not found.")
