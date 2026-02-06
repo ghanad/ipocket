@@ -110,14 +110,36 @@ def get_audit_logs_for_ip(connection: sqlite3.Connection, ip_asset_id: int) -> l
     return [_row_to_audit_log(row) for row in rows]
 
 
-def _summarize_ip_asset_changes(existing: IPAsset, updated: IPAsset) -> str:
+def _project_label(connection: sqlite3.Connection, project_id: Optional[int]) -> str:
+    if project_id is None:
+        return "Unassigned"
+    project = connection.execute("SELECT name FROM projects WHERE id = ?", (project_id,)).fetchone()
+    if project is None:
+        return f"Unknown ({project_id})"
+    return project["name"]
+
+
+def _host_label(connection: sqlite3.Connection, host_id: Optional[int]) -> str:
+    if host_id is None:
+        return "Unassigned"
+    host = connection.execute("SELECT name FROM hosts WHERE id = ?", (host_id,)).fetchone()
+    if host is None:
+        return f"Unknown ({host_id})"
+    return host["name"]
+
+
+def _summarize_ip_asset_changes(connection: sqlite3.Connection, existing: IPAsset, updated: IPAsset) -> str:
     changes: list[str] = []
     if existing.asset_type != updated.asset_type:
         changes.append(f"type: {existing.asset_type.value} -> {updated.asset_type.value}")
     if existing.project_id != updated.project_id:
-        changes.append(f"project_id: {existing.project_id} -> {updated.project_id}")
+        changes.append(
+            f"project: {_project_label(connection, existing.project_id)} -> {_project_label(connection, updated.project_id)}"
+        )
     if existing.host_id != updated.host_id:
-        changes.append(f"host_id: {existing.host_id} -> {updated.host_id}")
+        changes.append(
+            f"host: {_host_label(connection, existing.host_id)} -> {_host_label(connection, updated.host_id)}"
+        )
     if (existing.notes or "") != (updated.notes or ""):
         changes.append(f"notes: {existing.notes or ''} -> {updated.notes or ''}")
     return "; ".join(changes) if changes else "No changes recorded."
@@ -584,6 +606,6 @@ def update_ip_asset(
                 target_type="IP_ASSET",
                 target_id=updated.id,
                 target_label=updated.ip_address,
-                changes=_summarize_ip_asset_changes(existing, updated),
+                changes=_summarize_ip_asset_changes(connection, existing, updated),
             )
     return updated

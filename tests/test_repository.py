@@ -197,6 +197,8 @@ def test_list_hosts_with_ip_counts_includes_os_and_bmc_ips(tmp_path) -> None:
 def test_audit_logs_record_ip_asset_changes(tmp_path) -> None:
     connection = _setup_connection(tmp_path)
     user = create_user(connection, username="auditor", hashed_password="x", role=UserRole.ADMIN)
+    project = create_project(connection, name="Core")
+    host = create_host(connection, name="node-01")
 
     asset = create_ip_asset(
         connection,
@@ -207,7 +209,8 @@ def test_audit_logs_record_ip_asset_changes(tmp_path) -> None:
     update_ip_asset(
         connection,
         ip_address="10.10.10.10",
-        project_id=None,
+        project_id=project.id,
+        host_id=host.id,
         notes="updated",
         current_user=user,
     )
@@ -217,4 +220,6 @@ def test_audit_logs_record_ip_asset_changes(tmp_path) -> None:
 
     assert [log.action for log in logs] == ["DELETE", "UPDATE", "CREATE"]
     assert all(log.username == "auditor" for log in logs)
+    assert any("project: Unassigned -> Core" in (log.changes or "") for log in logs)
+    assert any("host: Unassigned -> node-01" in (log.changes or "") for log in logs)
     assert any("notes:" in (log.changes or "") for log in logs)
