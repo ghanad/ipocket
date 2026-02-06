@@ -17,6 +17,7 @@ Open `/ui/import` and upload:
 
 - Bundle JSON section: `bundle.json`
 - CSV section: `hosts.csv` and/or `ip-assets.csv` (empty uploads are ignored)
+- Nmap XML section: `ipocket.xml` from your Nmap scan
 
 Sample CSVs are available for download on the import page (or directly via `/static/samples/hosts.csv` and
 `/static/samples/ip-assets.csv`) to illustrate the required columns and formatting.

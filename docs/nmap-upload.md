@@ -18,10 +18,11 @@ nmap -sn -PS80,443 -oX ipocket.xml <CIDR>
 
 ## Upload in the UI
 
-1) Visit **Upload Nmap XML** in the left navigation.
-2) Choose the `ipocket.xml` file from your Nmap run.
-3) Check **Dry-run** to preview changes without writing to the database.
-4) Submit the form.
+1) Visit **Import** in the left navigation.
+2) Scroll to **Upload Nmap XML**.
+3) Choose the `ipocket.xml` file from your Nmap run.
+4) Check **Dry-run** to preview changes without writing to the database.
+5) Submit the form.
 
 ## What ipocket does
 
