@@ -16,11 +16,31 @@
   <form class="filters-grid" method="get" action="/ui/ip-assets">
     <label class="field">
       <span>Search</span>
-      <input class="input" type="text" name="q" value="{{ filters.q }}" placeholder="IP or notes" />
+      <input
+        class="input"
+        type="text"
+        name="q"
+        value="{{ filters.q }}"
+        placeholder="IP or notes"
+        hx-get="/ui/ip-assets"
+        hx-trigger="keyup changed delay:500ms, search"
+        hx-target="#ip-table-body"
+        hx-select="#ip-table-body"
+        hx-push-url="true"
+        hx-include="closest form"
+      />
     </label>
     <label class="field">
       <span>Project</span>
-      <select class="select" name="project_id">
+      <select
+        class="select"
+        name="project_id"
+        hx-get="/ui/ip-assets"
+        hx-trigger="change"
+        hx-target="#ip-table-body"
+        hx-push-url="true"
+        hx-include="closest form"
+      >
         <option value="">All</option>
         {% for project in projects %}
         <option value="{{ project.id }}"{% if filters.project_id == project.id %} selected{% endif %}>{{ project.name }}</option>
@@ -29,7 +49,15 @@
     </label>
     <label class="field">
       <span>Type</span>
-      <select class="select" name="type">
+      <select
+        class="select"
+        name="type"
+        hx-get="/ui/ip-assets"
+        hx-trigger="change"
+        hx-target="#ip-table-body"
+        hx-push-url="true"
+        hx-include="closest form"
+      >
         <option value="">All</option>
         {% for asset_type in types %}
         <option value="{{ asset_type }}"{% if filters.type == asset_type %} selected{% endif %}>{{ asset_type }}</option>
@@ -37,7 +65,17 @@
       </select>
     </label>
     <label class="checkbox-field">
-      <input type="checkbox" name="unassigned-only" value="true"{% if filters.unassigned_only %} checked{% endif %} />
+      <input
+        type="checkbox"
+        name="unassigned-only"
+        value="true"
+        {% if filters.unassigned_only %} checked{% endif %}
+        hx-get="/ui/ip-assets"
+        hx-trigger="change"
+        hx-target="#ip-table-body"
+        hx-push-url="true"
+        hx-include="closest form"
+      />
       <span>Unassigned only</span>
     </label>
     <button class="btn btn-outline" type="submit">Apply filters</button>
@@ -56,80 +94,8 @@
           <th>Actions</th>
         </tr>
       </thead>
-      <tbody>
-        {% if assets %}
-        {% for asset in assets %}
-        <tr>
-          <td class="mono"><a href="/ui/ip-assets/{{ asset.id }}">{{ asset.ip_address }}</a></td>
-          <td>
-            {% if asset.project_unassigned %}
-            <span class="tag tag-warning">Unassigned</span>
-            {% else %}
-            <span class="tag tag-project" style="--project-color: {{ asset.project_color or '#94a3b8' }}">
-              {{ asset.project_name }}
-            </span>
-            {% endif %}
-          </td>
-          <td class="muted">{{ asset.type }}</td>
-          <td class="muted">{{ asset.notes }}</td>
-          <td class="asset-actions-cell">
-            <div class="row-actions-menu" data-row-actions>
-              <button
-                class="row-actions-trigger"
-                type="button"
-                aria-label="Open actions for {{ asset.ip_address }}"
-                aria-expanded="false"
-                aria-haspopup="true"
-                aria-controls="row-actions-{{ asset.id }}"
-                data-row-actions-toggle
-              >
-                <span class="row-actions-icon" aria-hidden="true">⋮</span>
-              </button>
-              <div
-                class="row-actions-panel"
-                id="row-actions-{{ asset.id }}"
-                role="menu"
-                aria-label="Actions for {{ asset.ip_address }}"
-                data-row-actions-panel
-                hidden
-              >
-                <a class="row-action-item" role="menuitem" href="/ui/ip-assets/{{ asset.id }}/edit">
-                  <span aria-hidden="true">✏️</span>
-                  <span>Edit</span>
-                </a>
-                <button
-                  class="row-action-item row-action-item-danger"
-                  type="button"
-                  role="menuitem"
-                  data-delete-dialog-id="delete-ip-{{ asset.id }}"
-                >
-                  <span aria-hidden="true">🗑️</span>
-                  <span>Delete</span>
-                </button>
-              </div>
-            </div>
-
-            <dialog class="delete-confirm-dialog" id="delete-ip-{{ asset.id }}">
-              <form method="dialog" class="delete-confirm-dialog-card">
-                <h2>Delete IP asset?</h2>
-                <p>
-                  <strong>{{ asset.ip_address }}</strong> will be removed permanently. You can review details on the
-                  confirmation page before deletion.
-                </p>
-                <div class="delete-confirm-dialog-actions">
-                  <button type="button" class="btn btn-secondary" data-close-delete-dialog>Cancel</button>
-                  <a class="btn btn-danger" href="/ui/ip-assets/{{ asset.id }}/delete">Continue to delete</a>
-                </div>
-              </form>
-            </dialog>
-          </td>
-        </tr>
-        {% endfor %}
-        {% else %}
-        <tr>
-          <td colspan="7" class="empty-state">No IP assets found.</td>
-        </tr>
-        {% endif %}
+      <tbody id="ip-table-body">
+        {% include "partials/ip_table_rows.html" %}
       </tbody>
     </table>
   </div>
@@ -137,8 +103,8 @@
 
 <script>
   (() => {
-    const actionMenus = document.querySelectorAll('[data-row-actions]');
     const POSITION_MARGIN = 12;
+    const GLOBAL_FLAG = 'ipocketRowActionsInitialized';
 
     const positionMenuPanel = (toggle, panel) => {
       const triggerRect = toggle.getBoundingClientRect();
@@ -176,6 +142,7 @@
     };
 
     const closeAllMenus = () => {
+      const actionMenus = document.querySelectorAll('[data-row-actions]');
       actionMenus.forEach((menu) => {
         const toggle = menu.querySelector('[data-row-actions-toggle]');
         const panel = menu.querySelector('[data-row-actions-panel]');
@@ -188,77 +155,104 @@
       });
     };
 
-    actionMenus.forEach((menu) => {
-      const toggle = menu.querySelector('[data-row-actions-toggle]');
-      const panel = menu.querySelector('[data-row-actions-panel]');
-      if (!toggle || !panel) {
-        return;
-      }
+    const bindRowActions = (root = document) => {
+      const actionMenus = root.querySelectorAll('[data-row-actions]');
+      actionMenus.forEach((menu) => {
+        if (menu.dataset.rowActionsBound) {
+          return;
+        }
+        const toggle = menu.querySelector('[data-row-actions-toggle]');
+        const panel = menu.querySelector('[data-row-actions-panel]');
+        if (!toggle || !panel) {
+          return;
+        }
+        menu.dataset.rowActionsBound = 'true';
 
-      toggle.addEventListener('click', (event) => {
-        event.stopPropagation();
-        const isOpen = toggle.getAttribute('aria-expanded') === 'true';
+        toggle.addEventListener('click', (event) => {
+          event.stopPropagation();
+          const isOpen = toggle.getAttribute('aria-expanded') === 'true';
+          closeAllMenus();
+          if (!isOpen) {
+            toggle.setAttribute('aria-expanded', 'true');
+            positionMenuPanel(toggle, panel);
+            menu.classList.add('is-open');
+          }
+        });
+
+        panel.addEventListener('click', (event) => {
+          event.stopPropagation();
+        });
+      });
+
+      const openButtons = root.querySelectorAll('[data-delete-dialog-id]');
+      openButtons.forEach((button) => {
+        if (button.dataset.deleteDialogBound) {
+          return;
+        }
+        button.dataset.deleteDialogBound = 'true';
+        button.addEventListener('click', () => {
+          const dialog = document.getElementById(button.dataset.deleteDialogId);
+          if (dialog && typeof dialog.showModal === 'function') {
+            dialog.showModal();
+          }
+        });
+      });
+
+      const closeButtons = root.querySelectorAll('[data-close-delete-dialog]');
+      closeButtons.forEach((button) => {
+        if (button.dataset.closeDialogBound) {
+          return;
+        }
+        button.dataset.closeDialogBound = 'true';
+        button.addEventListener('click', () => {
+          const dialog = button.closest('dialog');
+          if (dialog) {
+            dialog.close();
+          }
+        });
+      });
+    };
+
+    if (!window[GLOBAL_FLAG]) {
+      window[GLOBAL_FLAG] = true;
+      document.addEventListener('click', () => {
         closeAllMenus();
-        if (!isOpen) {
-          toggle.setAttribute('aria-expanded', 'true');
-          positionMenuPanel(toggle, panel);
-          menu.classList.add('is-open');
+      });
+
+      document.addEventListener('keydown', (event) => {
+        if (event.key === 'Escape') {
+          closeAllMenus();
         }
       });
 
-      panel.addEventListener('click', (event) => {
-        event.stopPropagation();
-      });
-    });
+      window.addEventListener(
+        'scroll',
+        () => {
+          closeAllMenus();
+        },
+        true,
+      );
 
-    document.addEventListener('click', () => {
-      closeAllMenus();
-    });
-
-    document.addEventListener('keydown', (event) => {
-      if (event.key === 'Escape') {
-        closeAllMenus();
+      const tableWrapper = document.querySelector('.table-wrapper');
+      if (tableWrapper) {
+        tableWrapper.addEventListener('scroll', () => {
+          closeAllMenus();
+        });
       }
-    });
 
-    window.addEventListener(
-      'scroll',
-      () => {
+      window.addEventListener('resize', () => {
         closeAllMenus();
-      },
-      true,
-    );
+      });
 
-    const tableWrapper = document.querySelector('.table-wrapper');
-    if (tableWrapper) {
-      tableWrapper.addEventListener('scroll', () => {
-        closeAllMenus();
+      document.body.addEventListener('htmx:afterSwap', (event) => {
+        if (event.target && event.target.id === 'ip-table-body') {
+          bindRowActions(event.target);
+          closeAllMenus();
+        }
       });
     }
 
-    window.addEventListener('resize', () => {
-      closeAllMenus();
-    });
-
-    const openButtons = document.querySelectorAll('[data-delete-dialog-id]');
-    openButtons.forEach((button) => {
-      button.addEventListener('click', () => {
-        const dialog = document.getElementById(button.dataset.deleteDialogId);
-        if (dialog && typeof dialog.showModal === 'function') {
-          dialog.showModal();
-        }
-      });
-    });
-
-    const closeButtons = document.querySelectorAll('[data-close-delete-dialog]');
-    closeButtons.forEach((button) => {
-      button.addEventListener('click', () => {
-        const dialog = button.closest('dialog');
-        if (dialog) {
-          dialog.close();
-        }
-      });
-    });
+    bindRowActions();
   })();
 </script>
 {% endblock %}
