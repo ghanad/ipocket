@@ -16,6 +16,8 @@
         <tr>
           <th>Host name</th>
           <th>Vendor</th>
+          <th>OS IPs</th>
+          <th>BMC IPs</th>
           <th>Linked IPs</th>
           <th>Actions</th>
         </tr>
@@ -26,6 +28,8 @@
         <tr>
           <td><a href="/ui/hosts/{{ host.id }}">{{ host.name }}</a></td>
           <td>{{ host.vendor or "" }}</td>
+          <td>{{ host.os_ips or "" }}</td>
+          <td>{{ host.bmc_ips or "" }}</td>
           <td>{{ host.ip_count }}</td>
           <td class="asset-actions-cell">
             <div class="row-actions-menu" data-row-actions>
@@ -66,7 +70,7 @@
           </td>
         </tr>
         <tr id="host-edit-row-{{ host.id }}" style="display: none;">
-          <td colspan="4">
+          <td colspan="6">
             <form class="form-grid" method="post" action="/ui/hosts/{{ host.id }}/edit">
               <label class="field">
                 <span>Name</span>
@@ -94,7 +98,7 @@
         </tr>
         {% endfor %}
         {% else %}
-        <tr><td colspan="4" class="empty-state">No hosts found.</td></tr>
+        <tr><td colspan="6" class="empty-state">No hosts found.</td></tr>
         {% endif %}
       </tbody>
     </table>

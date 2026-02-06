@@ -23,6 +23,7 @@ Hosts can be linked to a vendor from the shared **Vendors** catalog.
 
 - Hosts list supports inline edit for name, vendor, and notes.
 - Hosts list uses the same three-dot actions menu pattern for edit/delete to keep the table compact.
+- Hosts list shows linked OS and BMC IP addresses alongside the total linked IP count.
 - Host deletion from UI is a two-step safety flow: open delete page, then type exact host name to confirm permanent deletion.
 
 ## Vendors
