@@ -4,11 +4,13 @@ import os
 import sqlite3
 from typing import Literal, Optional
 
-from fastapi import APIRouter, Depends, Header, HTTPException, Query, status
+from fastapi import APIRouter, Depends, File, Header, HTTPException, Query, UploadFile, status
 from fastapi.responses import JSONResponse, Response
 from pydantic import BaseModel, Field, field_validator
 
 from app import auth, build_info, repository
+from app.imports import BundleImporter, CsvImporter, run_import
+from app.imports.models import ImportApplyResult, ImportSummary
 from app.dependencies import get_connection
 from app.models import Host, IPAsset, IPAssetType, UserRole
 from app.utils import normalize_hex_color, validate_ip_address
@@ -139,6 +141,23 @@ def _metrics_payload(metrics: dict[str, int]) -> str:
         ]
     )
 
+
+def _summary_payload(summary: ImportSummary) -> dict[str, dict[str, int]]:
+    return {
+        "vendors": summary.vendors.__dict__,
+        "projects": summary.projects.__dict__,
+        "hosts": summary.hosts.__dict__,
+        "ip_assets": summary.ip_assets.__dict__,
+        "total": summary.total().__dict__,
+    }
+
+
+def _import_result_payload(result: ImportApplyResult) -> dict[str, object]:
+    return {
+        "summary": _summary_payload(result.summary),
+        "errors": [issue.__dict__ for issue in result.errors],
+        "warnings": [issue.__dict__ for issue in result.warnings],
+    }
 
 
 def _normalize_asset_type_value(value: str) -> IPAssetType:
@@ -346,6 +365,38 @@ def archive_ip_asset(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
     repository.archive_ip_asset(connection, ip_address)
     return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@router.post("/import/bundle")
+async def import_bundle_json(
+    dry_run: bool = Query(default=False, alias="dry_run"),
+    file: UploadFile = File(...),
+    connection=Depends(get_connection),
+    user=Depends(get_current_user),
+):
+    if not dry_run and user.role not in (UserRole.EDITOR, UserRole.ADMIN):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN)
+    payload = await file.read()
+    result = run_import(connection, BundleImporter(), {"bundle": payload}, dry_run=dry_run)
+    return _import_result_payload(result)
+
+
+@router.post("/import/csv")
+async def import_csv_files(
+    dry_run: bool = Query(default=False, alias="dry_run"),
+    hosts_file: UploadFile = File(..., alias="hosts"),
+    ip_assets_file: UploadFile = File(..., alias="ip_assets"),
+    connection=Depends(get_connection),
+    user=Depends(get_current_user),
+):
+    if not dry_run and user.role not in (UserRole.EDITOR, UserRole.ADMIN):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN)
+    inputs = {
+        "hosts": await hosts_file.read(),
+        "ip_assets": await ip_assets_file.read(),
+    }
+    result = run_import(connection, CsvImporter(), inputs, dry_run=dry_run)
+    return _import_result_payload(result)
 
 
 @router.post("/projects")

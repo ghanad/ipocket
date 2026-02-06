@@ -445,6 +445,14 @@ def archive_ip_asset(connection: sqlite3.Connection, ip_address: str) -> None:
     connection.commit()
 
 
+def set_ip_asset_archived(connection: sqlite3.Connection, ip_address: str, archived: bool) -> None:
+    connection.execute(
+        "UPDATE ip_assets SET archived = ?, updated_at = CURRENT_TIMESTAMP WHERE ip_address = ?",
+        (1 if archived else 0, ip_address),
+    )
+    connection.commit()
+
+
 def delete_ip_asset(connection: sqlite3.Connection, ip_address: str) -> bool:
     cursor = connection.execute("DELETE FROM ip_assets WHERE ip_address = ?", (ip_address,))
     connection.commit()

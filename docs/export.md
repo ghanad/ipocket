@@ -1,6 +1,6 @@
-# Export & Import Compatibility
+# Export Compatibility
 
-ipocket supports exporting data for round-trip import later (import not yet implemented). Export endpoints are authenticated and default to excluding archived IP assets.
+ipocket supports exporting data for round-trip import. Export endpoints are authenticated and default to excluding archived IP assets. See `/docs/export-import.md` for import details.
 
 ## Endpoints
 

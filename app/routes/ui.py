@@ -17,6 +17,8 @@ from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse, Resp
 
 from app import auth, build_info, exports, repository
 from app.dependencies import get_connection
+from app.imports import BundleImporter, CsvImporter, run_import
+from app.imports.models import ImportApplyResult, ImportSummary
 from app.models import IPAsset, IPAssetType, UserRole
 from app.utils import DEFAULT_PROJECT_COLOR, normalize_hex_color, validate_ip_address
 
@@ -270,6 +272,11 @@ async def _parse_form_data(request: Request) -> dict:
     return {key: values[0] for key, values in parsed.items()}
 
 
+async def _parse_multipart_form(request: Request) -> dict:
+    form = await request.form()
+    return dict(form)
+
+
 @router.get("/", response_class=HTMLResponse)
 def ui_home(request: Request):
     return RedirectResponse(url="/ui/ip-assets")
@@ -298,6 +305,121 @@ def ui_export(
         "export.html",
         {"title": "ipocket - Export"},
         active_nav="export",
+    )
+
+
+def _summary_payload(summary: ImportSummary) -> dict[str, dict[str, int]]:
+    return {
+        "vendors": summary.vendors.__dict__,
+        "projects": summary.projects.__dict__,
+        "hosts": summary.hosts.__dict__,
+        "ip_assets": summary.ip_assets.__dict__,
+        "total": summary.total().__dict__,
+    }
+
+
+def _import_result_payload(result: ImportApplyResult) -> dict[str, object]:
+    return {
+        "summary": _summary_payload(result.summary),
+        "errors": [issue.__dict__ for issue in result.errors],
+        "warnings": [issue.__dict__ for issue in result.warnings],
+    }
+
+
+@router.get("/ui/import", response_class=HTMLResponse)
+def ui_import(
+    request: Request,
+    _user=Depends(get_current_ui_user),
+) -> HTMLResponse:
+    return _render_template(
+        request,
+        "import.html",
+        {"title": "ipocket - Import", "bundle_result": None, "csv_result": None, "errors": []},
+        active_nav="import",
+    )
+
+
+@router.post("/ui/import/bundle", response_class=HTMLResponse)
+async def ui_import_bundle(
+    request: Request,
+    connection=Depends(get_connection),
+    user=Depends(get_current_ui_user),
+) -> HTMLResponse:
+    form_data = await _parse_multipart_form(request)
+    mode = form_data.get("mode", "dry-run")
+    dry_run = mode != "apply"
+    if not dry_run and user.role not in (UserRole.EDITOR, UserRole.ADMIN):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN)
+    upload = form_data.get("bundle_file")
+    if upload is None:
+        return _render_template(
+            request,
+            "import.html",
+            {
+                "title": "ipocket - Import",
+                "bundle_result": None,
+                "csv_result": None,
+                "errors": ["bundle.json file is required."],
+            },
+            active_nav="import",
+            status_code=status.HTTP_400_BAD_REQUEST,
+        )
+    payload = await upload.read()
+    result = run_import(connection, BundleImporter(), {"bundle": payload}, dry_run=dry_run)
+    return _render_template(
+        request,
+        "import.html",
+        {
+            "title": "ipocket - Import",
+            "bundle_result": _import_result_payload(result),
+            "csv_result": None,
+            "errors": [],
+        },
+        active_nav="import",
+    )
+
+
+@router.post("/ui/import/csv", response_class=HTMLResponse)
+async def ui_import_csv(
+    request: Request,
+    connection=Depends(get_connection),
+    user=Depends(get_current_ui_user),
+) -> HTMLResponse:
+    form_data = await _parse_multipart_form(request)
+    mode = form_data.get("mode", "dry-run")
+    dry_run = mode != "apply"
+    if not dry_run and user.role not in (UserRole.EDITOR, UserRole.ADMIN):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN)
+    hosts_file = form_data.get("hosts_file")
+    ip_assets_file = form_data.get("ip_assets_file")
+    if hosts_file is None or ip_assets_file is None:
+        return _render_template(
+            request,
+            "import.html",
+            {
+                "title": "ipocket - Import",
+                "bundle_result": None,
+                "csv_result": None,
+                "errors": ["hosts.csv and ip-assets.csv files are required."],
+            },
+            active_nav="import",
+            status_code=status.HTTP_400_BAD_REQUEST,
+        )
+    inputs = {
+        "hosts": await hosts_file.read(),
+        "ip_assets": await ip_assets_file.read(),
+    }
+    result = run_import(connection, CsvImporter(), inputs, dry_run=dry_run)
+    return _render_template(
+        request,
+        "import.html",
+        {
+            "title": "ipocket - Import",
+            "bundle_result": None,
+            "csv_result": _import_result_payload(result),
+            "errors": [],
+        },
+        active_nav="import",
     )
 
 
