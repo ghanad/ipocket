@@ -370,24 +370,27 @@ def ui_import(
     return _render_template(
         request,
         "import.html",
-        {"title": "ipocket - Import", "bundle_result": None, "csv_result": None, "errors": []},
+        {
+            "title": "ipocket - Import",
+            "bundle_result": None,
+            "csv_result": None,
+            "nmap_result": None,
+            "errors": [],
+            "nmap_errors": [],
+        },
         active_nav="import",
     )
 
 
 @router.get("/ui/import-nmap", response_class=HTMLResponse)
 def ui_import_nmap(
-    request: Request,
+    _request: Request,
     _user=Depends(get_current_ui_user),
 ) -> HTMLResponse:
-    return _render_template(
-        request,
-        "import_nmap.html",
-        {"title": "ipocket - Nmap Import", "result": None, "errors": []},
-        active_nav="import-nmap",
-    )
+    return RedirectResponse(url="/ui/import", status_code=302)
 
 
+@router.post("/ui/import/nmap", response_class=HTMLResponse)
 @router.post("/ui/import-nmap", response_class=HTMLResponse)
 async def ui_import_nmap_submit(
     request: Request,
@@ -402,38 +405,47 @@ async def ui_import_nmap_submit(
     if upload is None:
         return _render_template(
             request,
-            "import_nmap.html",
+            "import.html",
             {
-                "title": "ipocket - Nmap Import",
-                "result": None,
-                "errors": ["Nmap XML file is required."],
+                "title": "ipocket - Import",
+                "bundle_result": None,
+                "csv_result": None,
+                "nmap_result": None,
+                "errors": [],
+                "nmap_errors": ["Nmap XML file is required."],
             },
-            active_nav="import-nmap",
+            active_nav="import",
             status_code=status.HTTP_400_BAD_REQUEST,
         )
     payload = await upload.read()
     if not payload:
         return _render_template(
             request,
-            "import_nmap.html",
+            "import.html",
             {
-                "title": "ipocket - Nmap Import",
-                "result": None,
-                "errors": ["Nmap XML file is empty."],
+                "title": "ipocket - Import",
+                "bundle_result": None,
+                "csv_result": None,
+                "nmap_result": None,
+                "errors": [],
+                "nmap_errors": ["Nmap XML file is empty."],
             },
-            active_nav="import-nmap",
+            active_nav="import",
             status_code=status.HTTP_400_BAD_REQUEST,
         )
     result = import_nmap_xml(connection, payload, dry_run=dry_run, current_user=user)
     return _render_template(
         request,
-        "import_nmap.html",
+        "import.html",
         {
-            "title": "ipocket - Nmap Import",
-            "result": _nmap_result_payload(result),
+            "title": "ipocket - Import",
+            "bundle_result": None,
+            "csv_result": None,
+            "nmap_result": _nmap_result_payload(result),
             "errors": [],
+            "nmap_errors": [],
         },
-        active_nav="import-nmap",
+        active_nav="import",
     )
 
 
@@ -452,16 +464,18 @@ async def ui_import_bundle(
     if upload is None:
         return _render_template(
             request,
-            "import.html",
-            {
-                "title": "ipocket - Import",
-                "bundle_result": None,
-                "csv_result": None,
-                "errors": ["bundle.json file is required."],
-            },
-            active_nav="import",
-            status_code=status.HTTP_400_BAD_REQUEST,
-        )
+        "import.html",
+        {
+            "title": "ipocket - Import",
+            "bundle_result": None,
+            "csv_result": None,
+            "nmap_result": None,
+            "errors": ["bundle.json file is required."],
+            "nmap_errors": [],
+        },
+        active_nav="import",
+        status_code=status.HTTP_400_BAD_REQUEST,
+    )
     payload = await upload.read()
     result = run_import(connection, BundleImporter(), {"bundle": payload}, dry_run=dry_run)
     return _render_template(
@@ -471,7 +485,9 @@ async def ui_import_bundle(
             "title": "ipocket - Import",
             "bundle_result": _import_result_payload(result),
             "csv_result": None,
+            "nmap_result": None,
             "errors": [],
+            "nmap_errors": [],
         },
         active_nav="import",
     )
@@ -493,16 +509,18 @@ async def ui_import_csv(
     if hosts_file is None and ip_assets_file is None:
         return _render_template(
             request,
-            "import.html",
-            {
-                "title": "ipocket - Import",
-                "bundle_result": None,
-                "csv_result": None,
-                "errors": ["Upload at least one CSV file (hosts.csv or ip-assets.csv)."],
-            },
-            active_nav="import",
-            status_code=status.HTTP_400_BAD_REQUEST,
-        )
+        "import.html",
+        {
+            "title": "ipocket - Import",
+            "bundle_result": None,
+            "csv_result": None,
+            "nmap_result": None,
+            "errors": ["Upload at least one CSV file (hosts.csv or ip-assets.csv)."],
+            "nmap_errors": [],
+        },
+        active_nav="import",
+        status_code=status.HTTP_400_BAD_REQUEST,
+    )
     inputs: dict[str, bytes] = {}
     if hosts_file is not None:
         hosts_payload = await hosts_file.read()
@@ -515,16 +533,18 @@ async def ui_import_csv(
     if not inputs:
         return _render_template(
             request,
-            "import.html",
-            {
-                "title": "ipocket - Import",
-                "bundle_result": None,
-                "csv_result": None,
-                "errors": ["Upload at least one non-empty CSV file (hosts.csv or ip-assets.csv)."],
-            },
-            active_nav="import",
-            status_code=status.HTTP_400_BAD_REQUEST,
-        )
+        "import.html",
+        {
+            "title": "ipocket - Import",
+            "bundle_result": None,
+            "csv_result": None,
+            "nmap_result": None,
+            "errors": ["Upload at least one non-empty CSV file (hosts.csv or ip-assets.csv)."],
+            "nmap_errors": [],
+        },
+        active_nav="import",
+        status_code=status.HTTP_400_BAD_REQUEST,
+    )
     result = run_import(connection, CsvImporter(), inputs, dry_run=dry_run)
     return _render_template(
         request,
@@ -533,7 +553,9 @@ async def ui_import_csv(
             "title": "ipocket - Import",
             "bundle_result": None,
             "csv_result": _import_result_payload(result),
+            "nmap_result": None,
             "errors": [],
+            "nmap_errors": [],
         },
         active_nav="import",
     )
