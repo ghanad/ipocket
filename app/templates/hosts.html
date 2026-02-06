@@ -20,7 +20,7 @@
     <summary class="card-header collapsible-summary">
       <div>
         <h2>Search Hosts</h2>
-        <p class="subtitle">Filter by host name, vendor, notes, or linked IPs.</p>
+        <p class="subtitle">Filter by host name, vendor, project, notes, or linked IPs.</p>
       </div>
       <span class="collapsible-indicator" aria-hidden="true">▸</span>
     </summary>
@@ -32,7 +32,7 @@
           type="text"
           name="q"
           value="{{ filters.q }}"
-          placeholder="Name, vendor, notes, or IP"
+          placeholder="Name, vendor, project, notes, or IP"
         />
       </label>
       <div class="form-actions">
@@ -84,6 +84,7 @@
         <tr>
           <th>Host name</th>
           <th>Vendor</th>
+          <th>Project</th>
           <th>OS IPs</th>
           <th>BMC IPs</th>
           <th>Linked IPs</th>
@@ -96,6 +97,17 @@
         <tr>
           <td><a href="/ui/hosts/{{ host.id }}">{{ host.name }}</a></td>
           <td>{{ host.vendor or "" }}</td>
+          <td>
+            {% if host.project_count == 0 %}
+            <span class="tag tag-warning">Unassigned</span>
+            {% elif host.project_count > 1 %}
+            <span class="tag tag-warning">Multiple</span>
+            {% else %}
+            <span class="tag tag-project" style="--project-color: {{ host.project_color or '#94a3b8' }}">
+              {{ host.project_name }}
+            </span>
+            {% endif %}
+          </td>
           <td>{{ host.os_ips or "" }}</td>
           <td>{{ host.bmc_ips or "" }}</td>
           <td>{{ host.ip_count }}</td>
@@ -138,7 +150,7 @@
           </td>
         </tr>
         <tr id="host-edit-row-{{ host.id }}" style="display: none;">
-          <td colspan="6">
+          <td colspan="7">
             <form class="form-grid" method="post" action="/ui/hosts/{{ host.id }}/edit">
               <label class="field">
                 <span>Name</span>
@@ -166,7 +178,7 @@
         </tr>
         {% endfor %}
         {% else %}
-        <tr><td colspan="6" class="empty-state">No hosts found.</td></tr>
+        <tr><td colspan="7" class="empty-state">No hosts found.</td></tr>
         {% endif %}
       </tbody>
     </table>
