@@ -24,6 +24,7 @@ from app.repository import (
     list_audit_logs,
     list_hosts,
     list_hosts_with_ip_counts,
+    list_host_pair_ips_for_hosts,
     list_active_ip_assets_paginated,
     count_active_ip_assets,
     create_tag,
@@ -411,6 +412,44 @@ def test_list_hosts_with_ip_counts_includes_os_and_bmc_ips(tmp_path) -> None:
     assert hosts[0]["project_count"] == 1
     assert hosts[0]["project_name"] == "Edge"
     assert hosts[0]["project_color"] == "#1d4ed8"
+
+
+def test_list_host_pair_ips_for_hosts_maps_os_and_bmc(tmp_path) -> None:
+    connection = _setup_connection(tmp_path)
+    host = create_host(connection, name="edge-01")
+    other_host = create_host(connection, name="edge-02")
+    create_ip_asset(
+        connection,
+        ip_address="10.50.0.10",
+        asset_type=IPAssetType.OS,
+        host_id=host.id,
+    )
+    create_ip_asset(
+        connection,
+        ip_address="10.50.0.11",
+        asset_type=IPAssetType.BMC,
+        host_id=host.id,
+    )
+    archived_asset = create_ip_asset(
+        connection,
+        ip_address="10.50.0.12",
+        asset_type=IPAssetType.BMC,
+        host_id=host.id,
+    )
+    archive_ip_asset(connection, archived_asset.ip_address)
+    create_ip_asset(
+        connection,
+        ip_address="10.50.0.20",
+        asset_type=IPAssetType.OS,
+        host_id=other_host.id,
+    )
+
+    pairs = list_host_pair_ips_for_hosts(connection, [host.id, other_host.id])
+
+    assert pairs[host.id]["OS"] == ["10.50.0.10"]
+    assert pairs[host.id]["BMC"] == ["10.50.0.11"]
+    assert pairs[other_host.id]["OS"] == ["10.50.0.20"]
+    assert pairs[other_host.id]["BMC"] == []
 
 
 def test_audit_logs_record_ip_asset_changes(tmp_path) -> None:

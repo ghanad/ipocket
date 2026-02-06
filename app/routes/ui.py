@@ -284,8 +284,10 @@ def _build_asset_view_models(
     project_lookup: dict[int, dict[str, Optional[str]]],
     host_lookup: dict[int, str],
     tag_lookup: dict[int, list[dict[str, str]]],
+    host_pair_lookup: Optional[dict[int, dict[str, list[str]]]] = None,
 ) -> list[dict]:
     view_models = []
+    host_pair_lookup = host_pair_lookup or {}
     for asset in assets:
         project = project_lookup.get(asset.project_id) if asset.project_id else None
         project_name = project.get("name") if project else ""
@@ -293,6 +295,11 @@ def _build_asset_view_models(
         project_unassigned = not project_name
         host_name = host_lookup.get(asset.host_id) if asset.host_id else ""
         tags = tag_lookup.get(asset.id, [])
+        host_pair = ""
+        if asset.host_id and asset.asset_type in (IPAssetType.OS, IPAssetType.BMC):
+            pair_type = IPAssetType.BMC.value if asset.asset_type == IPAssetType.OS else IPAssetType.OS.value
+            pair_ips = host_pair_lookup.get(asset.host_id, {}).get(pair_type, [])
+            host_pair = ", ".join(pair_ips)
         view_models.append(
             {
                 "id": asset.id,
@@ -303,6 +310,7 @@ def _build_asset_view_models(
                 "notes": asset.notes or "",
                 "host_name": host_name,
                 "tags": tags,
+                "host_pair": host_pair,
                 "unassigned": _is_unassigned(asset.project_id),
                 "project_unassigned": project_unassigned,
             }
@@ -1822,7 +1830,17 @@ def ui_list_ip_assets(
     project_lookup = {project.id: {"name": project.name, "color": project.color} for project in projects}
     host_lookup = {host.id: host.name for host in repository.list_hosts(connection)}
     tag_lookup = repository.list_tag_details_for_ip_assets(connection, [asset.id for asset in assets])
-    view_models = _build_asset_view_models(assets, project_lookup, host_lookup, tag_lookup)
+    host_pair_lookup = repository.list_host_pair_ips_for_hosts(
+        connection,
+        [asset.host_id for asset in assets if asset.host_id],
+    )
+    view_models = _build_asset_view_models(
+        assets,
+        project_lookup,
+        host_lookup,
+        tag_lookup,
+        host_pair_lookup,
+    )
 
     is_htmx = request.headers.get("HX-Request") is not None
     template_name = "partials/ip_assets_table.html" if is_htmx else "ip_assets_list.html"
