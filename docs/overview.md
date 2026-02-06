@@ -12,6 +12,7 @@ ipocket is a lightweight IP inventory app to track addresses and their project a
 - Export data as CSV, JSON, or bundle (JSON/ZIP) for round-trip workflows.
 - Prometheus metrics on `/metrics`
 - Prometheus SD endpoint on `/sd/node` with project grouping
+- Database schema managed through Alembic migrations
 
 ## Note
 Owner support has been removed in development phase, so assignment is now project-only.
