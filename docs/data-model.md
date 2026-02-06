@@ -30,3 +30,8 @@
 
 ## Vendor
 - `name` (TEXT, unique)
+
+
+## Host deletion rule
+- Host permanent delete is allowed only when no IP assets are linked to it.
+- UI delete requires typing the exact host name as confirmation (two-step flow).

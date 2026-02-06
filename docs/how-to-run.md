@@ -128,7 +128,9 @@ curl -s -X DELETE http://127.0.0.1:8000/ip-assets/10.0.0.50 \
   -H "Authorization: Bearer <token>"
 ```
 
-UI safety flow: deleting from UI requires opening the delete confirmation page and typing the exact IP address in a textbox before the permanent delete is accepted.
+UI safety flow: deleting an IP from UI requires opening the delete confirmation page and typing the exact IP address in a textbox before the permanent delete is accepted.
+
+Host UI safety flow: deleting a Host from UI requires opening the host delete confirmation page and typing the exact host name; deletion is blocked when IPs are still linked to that host.
 
 ## Run tests
 ```bash

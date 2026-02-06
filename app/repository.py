@@ -161,6 +161,20 @@ def update_host(connection: sqlite3.Connection, host_id: int, name: Optional[str
     return get_host_by_id(connection, host_id)
 
 
+def delete_host(connection: sqlite3.Connection, host_id: int) -> bool:
+    linked_count_row = connection.execute(
+        "SELECT COUNT(*) AS linked_count FROM ip_assets WHERE host_id = ?",
+        (host_id,),
+    ).fetchone()
+    linked_count = int(linked_count_row["linked_count"] or 0) if linked_count_row else 0
+    if linked_count > 0:
+        raise sqlite3.IntegrityError("Host has linked IP assets.")
+
+    cursor = connection.execute("DELETE FROM hosts WHERE id = ?", (host_id,))
+    connection.commit()
+    return cursor.rowcount > 0
+
+
 
 def create_vendor(connection: sqlite3.Connection, name: str) -> Vendor:
     cursor = connection.execute("INSERT INTO vendors (name) VALUES (?)", (name,))
