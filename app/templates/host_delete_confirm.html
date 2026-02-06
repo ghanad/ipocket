@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="page-header">
+  <h1>Confirm Host Delete</h1>
+  <p class="subtitle">This action permanently removes the host and cannot be undone.</p>
+</section>
+
+<section class="card">
+  <p><strong>Host:</strong> <span class="mono">{{ host.name }}</span></p>
+  <p><strong>Linked IPs:</strong> {{ linked_count }}</p>
+  <p><strong>Instruction:</strong> To confirm permanent deletion, type the exact host name in the box below.</p>
+
+  {% if errors %}
+  <div class="alert alert-error">
+    {% for error in errors %}
+    <p class="alert-title">{{ error }}</p>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  <form method="post" action="/ui/hosts/{{ host.id }}/delete">
+    <label class="field">
+      <span>Type <span class="mono">{{ host.name }}</span> to confirm</span>
+      <input class="input" type="text" name="confirm_name" value="{{ confirm_value }}" required autocomplete="off" />
+    </label>
+    <div style="display:flex; gap:0.75rem; margin-top:1rem;">
+      <button class="btn btn-outline" type="submit">Delete permanently</button>
+      <a class="btn btn-secondary" href="/ui/hosts">Cancel</a>
+    </div>
+  </form>
+</section>
+{% endblock %}

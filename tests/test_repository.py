@@ -1,5 +1,7 @@
 import sqlite3
 
+import pytest
+
 from app.db import init_db
 from app.models import IPAssetType
 from app.repository import (
@@ -10,6 +12,7 @@ from app.repository import (
     get_host_by_name,
     get_ip_asset_by_ip,
     delete_ip_asset,
+    delete_host,
     get_ip_asset_metrics,
     list_hosts,
 )
@@ -131,5 +134,32 @@ def test_delete_ip_asset_returns_false_for_unknown_ip(tmp_path) -> None:
     connection = _setup_connection(tmp_path)
 
     deleted = delete_ip_asset(connection, "10.0.2.99")
+
+    assert deleted is False
+
+
+def test_delete_host_removes_record_when_unlinked(tmp_path) -> None:
+    connection = _setup_connection(tmp_path)
+    host = create_host(connection, name="host-delete-1")
+
+    deleted = delete_host(connection, host.id)
+
+    assert deleted is True
+    assert get_host_by_name(connection, "host-delete-1") is None
+
+
+def test_delete_host_raises_for_linked_ip_assets(tmp_path) -> None:
+    connection = _setup_connection(tmp_path)
+    host = create_host(connection, name="host-delete-2")
+    create_ip_asset(connection, ip_address="10.0.3.10", asset_type=IPAssetType.OS, host_id=host.id)
+
+    with pytest.raises(sqlite3.IntegrityError):
+        delete_host(connection, host.id)
+
+
+def test_delete_host_returns_false_for_unknown_host(tmp_path) -> None:
+    connection = _setup_connection(tmp_path)
+
+    deleted = delete_host(connection, 9999)
 
     assert deleted is False

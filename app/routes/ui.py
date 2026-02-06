@@ -676,6 +676,88 @@ def ui_host_detail(
         active_nav="hosts",
     )
 
+
+
+@router.get("/ui/hosts/{host_id}/delete", response_class=HTMLResponse)
+def ui_delete_host_confirm(
+    request: Request,
+    host_id: int,
+    connection=Depends(get_connection),
+    _user=Depends(require_ui_editor),
+):
+    host = repository.get_host_by_id(connection, host_id)
+    if host is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
+
+    linked = repository.get_host_linked_assets_grouped(connection, host_id)
+    linked_count = len(linked["os"]) + len(linked["bmc"]) + len(linked["other"])
+    return _render_template(
+        request,
+        "host_delete_confirm.html",
+        {
+            "title": "ipocket - Confirm Host Delete",
+            "host": host,
+            "linked_count": linked_count,
+            "errors": [],
+            "confirm_value": "",
+        },
+        active_nav="hosts",
+    )
+
+
+@router.post("/ui/hosts/{host_id}/delete", response_class=HTMLResponse)
+async def ui_delete_host(
+    request: Request,
+    host_id: int,
+    connection=Depends(get_connection),
+    _user=Depends(require_ui_editor),
+):
+    host = repository.get_host_by_id(connection, host_id)
+    if host is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
+
+    linked = repository.get_host_linked_assets_grouped(connection, host_id)
+    linked_count = len(linked["os"]) + len(linked["bmc"]) + len(linked["other"])
+
+    form_data = await _parse_form_data(request)
+    confirm_name = (form_data.get("confirm_name") or "").strip()
+    if confirm_name != host.name:
+        return _render_template(
+            request,
+            "host_delete_confirm.html",
+            {
+                "title": "ipocket - Confirm Host Delete",
+                "host": host,
+                "linked_count": linked_count,
+                "errors": ["برای حذف کامل، نام Host را دقیقاً وارد کنید."],
+                "confirm_value": confirm_name,
+            },
+            status_code=400,
+            active_nav="hosts",
+        )
+
+    try:
+        deleted = repository.delete_host(connection, host_id)
+    except sqlite3.IntegrityError:
+        return _render_template(
+            request,
+            "host_delete_confirm.html",
+            {
+                "title": "ipocket - Confirm Host Delete",
+                "host": host,
+                "linked_count": linked_count,
+                "errors": ["این Host هنوز IP لینک‌شده دارد و قابل حذف نیست."],
+                "confirm_value": confirm_name,
+            },
+            status_code=409,
+            active_nav="hosts",
+        )
+
+    if not deleted:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
+
+    return RedirectResponse(url="/ui/hosts", status_code=303)
+
 @router.get("/ui/ip-assets", response_class=HTMLResponse)
 def ui_list_ip_assets(
     request: Request,

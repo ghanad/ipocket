@@ -217,3 +217,88 @@ def test_ui_delete_ip_asset_with_confirmation_text(client) -> None:
         connection.close()
 
     assert deleted is None
+
+
+def test_ui_delete_host_requires_confirmation_text(client) -> None:
+    import os
+    from app import db, repository
+
+    connection = db.connect(os.environ["IPAM_DB_PATH"])
+    try:
+        db.init_db(connection)
+        host = repository.create_host(connection, name="node-delete-01", notes="temp")
+    finally:
+        connection.close()
+
+    app.dependency_overrides[ui.require_ui_editor] = lambda: User(1, "editor", "x", UserRole.EDITOR, True)
+    try:
+        form_response = client.get(f"/ui/hosts/{host.id}/delete")
+        response = client.post(
+            f"/ui/hosts/{host.id}/delete",
+            data={"confirm_name": "wrong-name"},
+            follow_redirects=False,
+        )
+    finally:
+        app.dependency_overrides.pop(ui.require_ui_editor, None)
+
+    assert form_response.status_code == 200
+    assert response.status_code == 400
+    assert "برای حذف کامل" in response.text
+
+
+def test_ui_delete_host_with_confirmation_text(client) -> None:
+    import os
+    from app import db, repository
+
+    connection = db.connect(os.environ["IPAM_DB_PATH"])
+    try:
+        db.init_db(connection)
+        host = repository.create_host(connection, name="node-delete-02", notes="temp")
+    finally:
+        connection.close()
+
+    app.dependency_overrides[ui.require_ui_editor] = lambda: User(1, "editor", "x", UserRole.EDITOR, True)
+    try:
+        response = client.post(
+            f"/ui/hosts/{host.id}/delete",
+            data={"confirm_name": "node-delete-02"},
+            follow_redirects=False,
+        )
+    finally:
+        app.dependency_overrides.pop(ui.require_ui_editor, None)
+
+    assert response.status_code == 303
+
+    connection = db.connect(os.environ["IPAM_DB_PATH"])
+    try:
+        deleted = repository.get_host_by_id(connection, host.id)
+    finally:
+        connection.close()
+
+    assert deleted is None
+
+
+def test_ui_delete_host_rejects_when_linked_ips_exist(client) -> None:
+    import os
+    from app import db, repository
+
+    connection = db.connect(os.environ["IPAM_DB_PATH"])
+    try:
+        db.init_db(connection)
+        host = repository.create_host(connection, name="node-delete-03", notes="temp")
+        repository.create_ip_asset(connection, ip_address="10.20.0.31", asset_type=IPAssetType.OS, host_id=host.id)
+    finally:
+        connection.close()
+
+    app.dependency_overrides[ui.require_ui_editor] = lambda: User(1, "editor", "x", UserRole.EDITOR, True)
+    try:
+        response = client.post(
+            f"/ui/hosts/{host.id}/delete",
+            data={"confirm_name": "node-delete-03"},
+            follow_redirects=False,
+        )
+    finally:
+        app.dependency_overrides.pop(ui.require_ui_editor, None)
+
+    assert response.status_code == 409
+    assert "قابل حذف نیست" in response.text
