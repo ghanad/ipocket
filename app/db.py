@@ -86,6 +86,20 @@ def _apply_legacy_migrations(connection: sqlite3.Connection) -> None:
             """
         )
 
+    if not _has_table(connection, "ip_ranges"):
+        connection.execute(
+            """
+            CREATE TABLE IF NOT EXISTS ip_ranges (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                name TEXT NOT NULL,
+                cidr TEXT NOT NULL UNIQUE,
+                notes TEXT,
+                created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+            )
+            """
+        )
+
     if _has_table(connection, "ip_assets"):
         ip_asset_columns = {
             row["name"] for row in connection.execute("PRAGMA table_info(ip_assets)").fetchall()

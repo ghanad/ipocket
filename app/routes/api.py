@@ -13,7 +13,7 @@ from app.imports import BundleImporter, CsvImporter, run_import
 from app.imports.models import ImportApplyResult, ImportSummary
 from app.dependencies import get_connection
 from app.models import Host, IPAsset, IPAssetType, UserRole
-from app.utils import normalize_hex_color, validate_ip_address
+from app.utils import normalize_cidr, normalize_hex_color, validate_ip_address
 
 router = APIRouter()
 
@@ -105,6 +105,17 @@ class VendorCreate(BaseModel):
 
 class VendorUpdate(BaseModel):
     name: str
+
+
+class IPRangeCreate(BaseModel):
+    name: str
+    cidr: str
+    notes: Optional[str] = None
+
+    @field_validator("cidr")
+    @classmethod
+    def normalize_cidr_value(cls, value: str) -> str:
+        return normalize_cidr(value)
 
 
 def _host_payload(host: Host) -> dict:
@@ -457,6 +468,44 @@ def update_project(
         "name": project.name,
         "description": project.description,
         "color": project.color,
+    }
+
+
+@router.get("/ranges")
+def list_ranges(connection=Depends(get_connection)):
+    ranges = repository.list_ip_ranges(connection)
+    return [
+        {
+            "id": ip_range.id,
+            "name": ip_range.name,
+            "cidr": ip_range.cidr,
+            "notes": ip_range.notes,
+            "created_at": ip_range.created_at,
+            "updated_at": ip_range.updated_at,
+        }
+        for ip_range in ranges
+    ]
+
+
+@router.post("/ranges")
+def create_range(
+    payload: IPRangeCreate,
+    connection=Depends(get_connection),
+    _user=Depends(require_editor),
+):
+    ip_range = repository.create_ip_range(
+        connection,
+        name=payload.name,
+        cidr=payload.cidr,
+        notes=payload.notes,
+    )
+    return {
+        "id": ip_range.id,
+        "name": ip_range.name,
+        "cidr": ip_range.cidr,
+        "notes": ip_range.notes,
+        "created_at": ip_range.created_at,
+        "updated_at": ip_range.updated_at,
     }
 
 

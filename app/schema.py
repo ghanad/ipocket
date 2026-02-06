@@ -68,6 +68,17 @@ class IPAsset(Base):
     )
 
 
+class IPRange(Base):
+    __tablename__ = "ip_ranges"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    name = Column(Text, nullable=False)
+    cidr = Column(Text, nullable=False, unique=True)
+    notes = Column(Text)
+    created_at = Column(Text, nullable=False, server_default=text("CURRENT_TIMESTAMP"))
+    updated_at = Column(Text, nullable=False, server_default=text("CURRENT_TIMESTAMP"))
+
+
 class AuditLog(Base):
     __tablename__ = "audit_logs"
 

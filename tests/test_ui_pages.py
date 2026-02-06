@@ -61,6 +61,31 @@ def test_management_page_shows_summary_counts(client) -> None:
     assert 'data-testid="stat-projects">1<' in response.text
 
 
+def test_ranges_page_renders_utilization_report(client) -> None:
+    import os
+    from app import db, repository
+
+    connection = db.connect(os.environ["IPAM_DB_PATH"])
+    try:
+        db.init_db(connection)
+        repository.create_ip_range(connection, name="Corp LAN", cidr="192.168.10.0/24")
+        repository.create_ip_asset(connection, ip_address="192.168.10.10", asset_type=IPAssetType.VM)
+        repository.create_ip_asset(connection, ip_address="192.168.10.11", asset_type=IPAssetType.VM)
+        archived_asset = repository.create_ip_asset(connection, ip_address="192.168.10.12", asset_type=IPAssetType.OS)
+        repository.archive_ip_asset(connection, archived_asset.ip_address)
+    finally:
+        connection.close()
+
+    response = client.get("/ui/ranges")
+
+    assert response.status_code == 200
+    assert "Subnet Utilization" in response.text
+    assert "192.168.10.0/24" in response.text
+    assert "254</td>" in response.text
+    assert "2</td>" in response.text
+    assert "252</td>" in response.text
+
+
 def test_import_page_includes_sample_csv_links(client) -> None:
     app.dependency_overrides[ui.get_current_ui_user] = lambda: User(1, "viewer", "x", UserRole.VIEWER, True)
     try:

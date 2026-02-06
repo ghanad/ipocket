@@ -147,3 +147,25 @@ def test_editor_can_create_update_and_delete(client) -> None:
         "/ip-assets/10.0.0.32", headers=_auth_header(token)
     )
     assert delete_response.status_code == 204
+
+
+def test_range_create_permissions(client) -> None:
+    test_client, db_path = client
+    _create_user(db_path, "viewer", "viewer-pass", UserRole.VIEWER)
+    _create_user(db_path, "editor", "editor-pass", UserRole.EDITOR)
+
+    viewer_token = _login(test_client, "viewer", "viewer-pass")
+    response = test_client.post(
+        "/ranges",
+        headers=_auth_header(viewer_token),
+        json={"name": "Corp", "cidr": "192.168.10.0/24"},
+    )
+    assert response.status_code == 403
+
+    editor_token = _login(test_client, "editor", "editor-pass")
+    editor_response = test_client.post(
+        "/ranges",
+        headers=_auth_header(editor_token),
+        json={"name": "Corp", "cidr": "192.168.10.0/24"},
+    )
+    assert editor_response.status_code == 200
