@@ -71,6 +71,9 @@ def test_import_page_includes_sample_csv_links(client) -> None:
     assert response.status_code == 200
     assert "/static/samples/hosts.csv" in response.text
     assert "/static/samples/ip-assets.csv" in response.text
+    assert "Run Nmap" in response.text
+    assert "nmap -sn -oX ipocket.xml" in response.text
+    assert "nmap -sn -PS80,443 -oX ipocket.xml" in response.text
 
 
 def test_sample_csv_files_are_available(client) -> None:
