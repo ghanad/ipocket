@@ -1,0 +1,108 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="page-header">
+  <div>
+    <p class="eyebrow">Import</p>
+    <h1>Upload Nmap XML</h1>
+    <p class="subtitle">Discover reachable IPs from an Nmap XML export (no scheduling, no inference).</p>
+  </div>
+</section>
+
+{% if errors and errors|length > 0 %}
+<section class="card">
+  <div class="card-body">
+    <p class="alert">{{ errors | join(', ') }}</p>
+  </div>
+</section>
+{% endif %}
+
+<section class="card">
+  <div class="card-header">
+    <div>
+      <h2>Run Nmap</h2>
+      <p class="subtitle">Use one of the following commands and upload the resulting XML.</p>
+    </div>
+  </div>
+  <div class="card-body">
+    <div class="stack">
+      <div>
+        <p class="label">Basic</p>
+        <code>nmap -sn -oX ipocket.xml &lt;CIDR&gt;</code>
+      </div>
+      <div>
+        <p class="label">Optional (probe common ports)</p>
+        <code>nmap -sn -PS80,443 -oX ipocket.xml &lt;CIDR&gt;</code>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="card">
+  <div class="card-header">
+    <div>
+      <h2>Upload XML</h2>
+      <p class="subtitle">Viewer role can only dry-run. Editors/Admins can apply.</p>
+    </div>
+  </div>
+  <div class="card-body">
+    <form class="form-grid" method="post" action="/ui/import-nmap" enctype="multipart/form-data">
+      <label class="field">
+        <span>Nmap XML file</span>
+        <input class="input" type="file" name="nmap_file" accept=".xml,application/xml,text/xml" />
+      </label>
+      <label class="field">
+        <span>Dry-run</span>
+        <input type="checkbox" name="dry_run" />
+      </label>
+      <div class="form-actions">
+        <button class="btn btn-primary" type="submit">Submit</button>
+      </div>
+    </form>
+
+    {% if result %}
+    <div class="import-results">
+      <h3>Summary</h3>
+      <ul>
+        <li>Discovered up hosts: {{ result.discovered_up_hosts }}</li>
+        <li>New IPs created: {{ result.new_ips_created }}</li>
+        <li>Existing IPs seen: {{ result.existing_ips_seen }}</li>
+      </ul>
+      {% if result.errors and result.errors|length > 0 %}
+      <div class="import-errors">
+        <h4>Errors</h4>
+        <ul>
+          {% for error in result.errors %}
+          <li>{{ error }}</li>
+          {% endfor %}
+        </ul>
+      </div>
+      {% endif %}
+    </div>
+    {% endif %}
+  </div>
+</section>
+
+{% if result and result.new_assets and result.new_assets|length > 0 %}
+<section class="card table-card">
+  <div class="table-wrapper">
+    <table class="table">
+      <thead>
+        <tr>
+          <th>New IP assets created</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for asset in result.new_assets %}
+        <tr>
+          <td>
+            <a class="link" href="/ui/ip-assets/{{ asset.id }}">{{ asset.ip_address }}</a>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+{% endif %}
+{% endblock %}
