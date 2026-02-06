@@ -174,9 +174,11 @@
                 <button class="btn btn-secondary" type="button" onclick="toggleHostEdit({{ host.id }})">Cancel</button>
               </div>
             </form>
-            <form class="form-grid form-grid-two" method="post" action="/ui/hosts/{{ host.id }}/os-ip">
+            <div class="host-quick-add">
+              <p class="host-quick-add-title">Quick add OS IP</p>
+              <form class="form-grid host-quick-add-form" method="post" action="/ui/hosts/{{ host.id }}/os-ip">
               <label class="field">
-                <span>Quick add OS IP</span>
+                <span>OS IP address</span>
                 <input class="input" type="text" name="ip_address" placeholder="e.g. 10.10.0.10" required />
               </label>
               <label class="field">
@@ -186,7 +188,8 @@
               <div class="form-actions">
                 <button class="btn btn-secondary" type="submit">Add OS IP</button>
               </div>
-            </form>
+              </form>
+            </div>
           </td>
         </tr>
         {% endfor %}

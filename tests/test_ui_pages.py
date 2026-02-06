@@ -517,6 +517,7 @@ def test_hosts_list_includes_quick_add_os_ip_form(client) -> None:
     assert response.status_code == 200
     assert f'action="/ui/hosts/{host.id}/os-ip"' in response.text
     assert 'name="ip_address"' in response.text
+    assert "host-quick-add-form" in response.text
 
 
 def test_hosts_add_form_above_table_and_compact(client) -> None:

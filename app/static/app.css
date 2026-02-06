@@ -466,6 +466,31 @@ p {
   font-size: 13px;
 }
 
+.host-quick-add {
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid var(--color-border);
+}
+
+.host-quick-add-title {
+  margin: 0 0 8px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.host-quick-add-form {
+  grid-template-columns: 2fr 2fr auto;
+  align-items: end;
+}
+
+.host-quick-add-form .form-actions {
+  justify-content: flex-start;
+  margin: 0;
+}
+
 .collapsible-card > summary {
   list-style: none;
   cursor: pointer;
