@@ -585,7 +585,7 @@ p {
   line-height: 1;
 }
 
-.row-actions-menu[open] .row-actions-trigger,
+.row-actions-menu.is-open .row-actions-trigger,
 .row-actions-trigger:hover,
 .row-actions-trigger:focus-visible {
   color: var(--color-primary);
