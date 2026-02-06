@@ -8,6 +8,7 @@ from app.imports.models import (
     ImportSummary,
 )
 from app.models import IPAssetType
+from app.utils import normalize_tag_names
 
 
 def apply_bundle(connection, bundle: ImportBundle, dry_run: bool = False) -> ImportApplyResult:
@@ -202,11 +203,16 @@ def _upsert_ip_assets(
                 project_id=project_id,
                 host_id=host_id,
                 notes=asset.notes,
+                tags=asset.tags,
             )
             if asset.archived is True:
                 repository.set_ip_asset_archived(connection, created.ip_address, archived=True)
             continue
 
+        existing_tags = repository.list_tags_for_ip_assets(connection, [existing.id]).get(existing.id, [])
+        target_tags = (
+            normalize_tag_names(asset.tags) if asset.tags is not None else existing_tags
+        )
         target_notes = asset.notes if asset.notes is not None else existing.notes
         target_project_id = project_id if asset.project_name is not None else existing.project_id
         target_host_id = host_id if asset.host_name is not None else existing.host_id
@@ -218,6 +224,7 @@ def _upsert_ip_assets(
             and target_host_id == existing.host_id
             and asset_type == existing.asset_type
             and bool(target_archived) == bool(existing.archived)
+            and target_tags == existing_tags
         ):
             summary.ip_assets.would_skip += 1
             continue
@@ -233,6 +240,7 @@ def _upsert_ip_assets(
             project_id=project_id,
             host_id=host_id,
             notes=asset.notes,
+            tags=asset.tags,
         )
         if asset.archived is not None:
             repository.set_ip_asset_archived(connection, ip_address, archived=asset.archived)

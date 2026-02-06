@@ -1,0 +1,93 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="page-header">
+  <div>
+    <p class="eyebrow">Library</p>
+    <h1>Tags</h1>
+    <p class="subtitle">Create tags first, then assign them to IP assets.</p>
+  </div>
+</section>
+
+<section class="card">
+  <div class="card-header">
+    <div>
+      <h2>Create tag</h2>
+      <p class="subtitle">Add tags with a color for quick visual grouping.</p>
+    </div>
+  </div>
+  {% if errors %}
+  <div class="alert alert-error">
+    <p class="alert-title">Fix the following:</p>
+    <ul>
+      {% for error in errors %}
+      <li>{{ error }}</li>
+      {% endfor %}
+    </ul>
+  </div>
+  {% endif %}
+  <form method="post" action="/ui/tags" class="form-grid form-grid-two">
+    <label class="field">
+      <span>Name</span>
+      <input class="input" type="text" name="name" value="{{ form_state.name }}" required />
+    </label>
+    <label class="field">
+      <span>Color</span>
+      <input class="input input-color" type="color" name="color" value="{{ form_state.color }}" />
+    </label>
+    <div class="form-actions">
+      <button class="btn btn-primary" type="submit">Create tag</button>
+    </div>
+  </form>
+</section>
+
+<section class="card table-card">
+  <div class="card-header">
+    <div>
+      <h2>Existing tags</h2>
+      <p class="subtitle">Edit, recolor, or remove tags as needed.</p>
+    </div>
+  </div>
+  <div class="table-wrapper">
+    <table class="table">
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Color</th>
+          <th>Preview</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% if tags %}
+        {% for tag in tags %}
+        <tr>
+          <td>
+            <input class="input" type="text" name="name" value="{{ tag.name }}" form="edit-tag-{{ tag.id }}" required />
+          </td>
+          <td>
+            <input class="input input-color" type="color" name="color" value="{{ tag.color }}" form="edit-tag-{{ tag.id }}" />
+          </td>
+          <td>
+            <span class="tag tag-color" style="--tag-color: {{ tag.color }}">{{ tag.name }}</span>
+          </td>
+          <td class="table-actions">
+            <form id="edit-tag-{{ tag.id }}" method="post" action="/ui/tags/{{ tag.id }}/edit" class="inline-edit-form">
+              <button class="btn btn-secondary" type="submit">Save</button>
+            </form>
+            <form method="post" action="/ui/tags/{{ tag.id }}/delete">
+              <button class="btn btn-danger btn-small" type="submit">Delete</button>
+            </form>
+          </td>
+        </tr>
+        {% endfor %}
+        {% else %}
+        <tr>
+          <td colspan="4" class="empty-state">No tags yet.</td>
+        </tr>
+        {% endif %}
+      </tbody>
+    </table>
+  </div>
+</section>
+{% endblock %}

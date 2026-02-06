@@ -39,6 +39,7 @@ class ImportIPAsset:
     host_name: Optional[str] = None
     notes: Optional[str] = None
     archived: Optional[bool] = None
+    tags: Optional[list[str]] = None
     source: Optional[ImportSource] = None
 
 

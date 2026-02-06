@@ -289,13 +289,14 @@ def test_round_trip_bundle_import(tmp_path) -> None:
         vendor = repository.create_vendor(source_connection, "HPE")
         project = repository.create_project(source_connection, "Core", "Core project", "#1d4ed8")
         host = repository.create_host(source_connection, "node-03", "notes", vendor.name)
-        repository.create_ip_asset(
+        asset = repository.create_ip_asset(
             source_connection,
             ip_address="10.0.0.30",
             asset_type=IPAssetType.VM,
             project_id=project.id,
             host_id=host.id,
             notes="primary",
+            tags=["prod", "edge"],
         )
         bundle = exports.export_bundle(source_connection)
     finally:
@@ -314,6 +315,9 @@ def test_round_trip_bundle_import(tmp_path) -> None:
         assert len(repository.list_projects(target_connection)) == 1
         assert len(repository.list_hosts(target_connection)) == 1
         assert len(repository.list_vendors(target_connection)) == 1
-        assert repository.get_ip_asset_by_ip(target_connection, "10.0.0.30") is not None
+        imported = repository.get_ip_asset_by_ip(target_connection, "10.0.0.30")
+        assert imported is not None
+        tag_map = repository.list_tags_for_ip_assets(target_connection, [imported.id])
+        assert tag_map[imported.id] == ["edge", "prod"]
     finally:
         target_connection.close()

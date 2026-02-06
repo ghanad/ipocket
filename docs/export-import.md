@@ -46,6 +46,7 @@ Dry-run runs validation and returns a summary without writing to the database. A
         "type": "VM",
         "project_name": "Core",
         "host_name": "node-01",
+        "tags": ["prod", "edge"],
         "notes": "",
         "archived": false
       }
@@ -76,8 +77,11 @@ Columns:
 - `type` (required: `OS`, `BMC`, `VM`, `VIP`, `OTHER`)
 - `project_name`
 - `host_name`
+- `tags` (comma-separated tag names)
 - `notes`
 - `archived`
+
+Tag values are normalized (trimmed + lowercased). Allowed characters are letters, digits, dashes, and underscores.
 
 ## Dry-run behavior
 

@@ -12,6 +12,15 @@
     {% endif %}
   </td>
   <td class="muted">{{ asset.type }}</td>
+  <td>
+    {% if asset.tags %}
+      {% for tag in asset.tags %}
+      <span class="tag tag-color" style="--tag-color: {{ tag.color }}">{{ tag.name }}</span>
+      {% endfor %}
+    {% else %}
+    <span class="muted">—</span>
+    {% endif %}
+  </td>
   <td class="muted">{{ asset.notes }}</td>
   <td class="asset-actions-cell">
     <div class="row-actions-menu" data-row-actions>
@@ -68,6 +77,6 @@
 {% endfor %}
 {% else %}
 <tr>
-  <td colspan="7" class="empty-state">No IP assets found.</td>
+  <td colspan="6" class="empty-state">No IP assets found.</td>
 </tr>
 {% endif %}

@@ -71,6 +71,7 @@ def _seed_export_data(db_path) -> None:
             project_id=project.id,
             host_id=host.id,
             notes="active asset",
+            tags=["prod", "edge"],
         )
         repository.create_ip_asset(
             connection,
@@ -101,6 +102,7 @@ def test_export_content_types_and_archived_filter(client) -> None:
     assert response.headers["content-type"].startswith("text/csv")
     ip_rows = _parse_csv_rows(response.text)
     assert {row["ip_address"] for row in ip_rows} == {"10.0.0.10"}
+    assert ip_rows[0]["tags"] == "edge, prod"
 
     response = test_client.get(
         "/export/ip-assets.csv?include_archived=1",
@@ -149,6 +151,7 @@ def test_bundle_json_schema(client) -> None:
     assert payload["app"] == "ipocket"
     data = payload["data"]
     assert set(data.keys()) == {"vendors", "projects", "hosts", "ip_assets"}
+    assert data["ip_assets"][0]["tags"] == ["edge", "prod"]
 
 
 def test_ui_export_page_has_bundle_link(client) -> None:

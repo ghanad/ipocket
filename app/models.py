@@ -50,6 +50,13 @@ class Vendor:
 
 
 @dataclass
+class Tag:
+    id: int
+    name: str
+    color: str
+
+
+@dataclass
 class User:
     id: int
     username: str

@@ -10,6 +10,16 @@
 <section class="card">
   <p><strong>Project:</strong> {% if asset.project_unassigned %}Unassigned{% else %}{{ asset.project_name }}{% endif %}</p>
   <p><strong>Type:</strong> {{ asset.type }}</p>
+  <p>
+    <strong>Tags:</strong>
+    {% if asset.tags %}
+      {% for tag in asset.tags %}
+      <span class="tag tag-color" style="--tag-color: {{ tag.color }}">{{ tag.name }}</span>
+      {% endfor %}
+    {% else %}
+      None
+    {% endif %}
+  </p>
   <p><strong>Notes:</strong> {{ asset.notes }}</p>
 </section>
 <section class="card">

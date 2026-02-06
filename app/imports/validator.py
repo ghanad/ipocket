@@ -6,7 +6,7 @@ from typing import Optional
 from app import repository
 from app.imports.models import ImportBundle, ImportIssue, ImportValidationResult
 from app.models import IPAssetType
-from app.utils import normalize_hex_color
+from app.utils import normalize_hex_color, normalize_tag_name
 
 
 def validate_bundle(connection, bundle: ImportBundle) -> ImportValidationResult:
@@ -68,6 +68,12 @@ def validate_bundle(connection, bundle: ImportBundle) -> ImportValidationResult:
                 result.errors.append(
                     _issue(_with_field(asset.source, "host_name"), "Host does not exist.")
                 )
+        if asset.tags is not None:
+            for tag in asset.tags:
+                try:
+                    normalize_tag_name(tag)
+                except ValueError as exc:
+                    result.errors.append(_issue(_with_field(asset.source, "tags"), str(exc)))
 
     return result
 

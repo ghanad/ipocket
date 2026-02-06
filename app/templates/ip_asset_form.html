@@ -55,6 +55,16 @@
       </select>
     </label>
     <label class="field field-span">
+      <span>Tags</span>
+      <input
+        class="input"
+        type="text"
+        name="tags"
+        value="{{ asset.tags }}"
+        placeholder="prod, edge-router"
+      />
+    </label>
+    <label class="field field-span">
       <span>Notes</span>
       <textarea class="textarea" name="notes" rows="4">{{ asset.notes }}</textarea>
     </label>
