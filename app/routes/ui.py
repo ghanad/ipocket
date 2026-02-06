@@ -1787,6 +1787,78 @@ async def ui_edit_host(
     return RedirectResponse(url="/ui/hosts", status_code=303)
 
 
+@router.post("/ui/hosts/{host_id}/os-ip", response_class=HTMLResponse)
+async def ui_add_host_os_ip(
+    host_id: int,
+    request: Request,
+    connection=Depends(get_connection),
+    user=Depends(require_ui_editor),
+) -> HTMLResponse:
+    form_data = await _parse_form_data(request)
+    ip_address = (form_data.get("ip_address") or "").strip()
+    notes = _parse_optional_str(form_data.get("notes"))
+
+    errors = []
+    host = repository.get_host_by_id(connection, host_id)
+    if host is None:
+        errors.append("Host does not exist.")
+    if not ip_address:
+        errors.append("IP address is required.")
+    if ip_address:
+        try:
+            validate_ip_address(ip_address)
+        except HTTPException as exc:
+            errors.append(exc.detail)
+
+    if errors:
+        return _render_template(
+            request,
+            "hosts.html",
+            {
+                "title": "ipocket - Hosts",
+                "errors": errors,
+                "hosts": repository.list_hosts_with_ip_counts(connection),
+                "vendors": list(repository.list_vendors(connection)),
+                "form_state": {"name": "", "notes": "", "vendor_id": ""},
+                "filters": {"q": ""},
+                "show_search": False,
+                "show_add_host": False,
+            },
+            status_code=400,
+            active_nav="hosts",
+        )
+
+    try:
+        repository.create_ip_asset(
+            connection,
+            ip_address=ip_address,
+            asset_type=IPAssetType.OS,
+            host_id=host_id,
+            notes=notes,
+            auto_host_for_bmc=_is_auto_host_for_bmc_enabled(),
+            current_user=user,
+        )
+    except sqlite3.IntegrityError:
+        return _render_template(
+            request,
+            "hosts.html",
+            {
+                "title": "ipocket - Hosts",
+                "errors": ["IP address already exists."],
+                "hosts": repository.list_hosts_with_ip_counts(connection),
+                "vendors": list(repository.list_vendors(connection)),
+                "form_state": {"name": "", "notes": "", "vendor_id": ""},
+                "filters": {"q": ""},
+                "show_search": False,
+                "show_add_host": False,
+            },
+            status_code=409,
+            active_nav="hosts",
+        )
+
+    return RedirectResponse(url="/ui/hosts", status_code=303)
+
+
 @router.get("/ui/hosts/{host_id}", response_class=HTMLResponse)
 def ui_host_detail(
     request: Request,
