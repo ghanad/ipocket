@@ -79,6 +79,21 @@
       </select>
     </label>
     <label class="field">
+      <span>Status</span>
+      <select
+        class="select"
+        name="archived-only"
+        hx-get="/ui/ip-assets"
+        hx-trigger="change"
+        hx-target="#ip-table-container"
+        hx-push-url="true"
+        hx-include="closest form"
+      >
+        <option value="false"{% if not filters.archived_only %} selected{% endif %}>Active only</option>
+        <option value="true"{% if filters.archived_only %} selected{% endif %}>Archived only</option>
+      </select>
+    </label>
+    <label class="field">
       <span>Per page</span>
       <select
         class="select"

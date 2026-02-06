@@ -531,9 +531,16 @@ def get_ip_asset_by_id(connection: sqlite3.Connection, asset_id: int) -> Optiona
     return _row_to_ip_asset(row) if row else None
 
 
-def list_active_ip_assets(connection: sqlite3.Connection, project_id: Optional[int] = None, asset_type: Optional[IPAssetType] = None, unassigned_only: bool = False) -> Iterable[IPAsset]:
-    query = "SELECT * FROM ip_assets WHERE archived = 0"
+def list_active_ip_assets(
+    connection: sqlite3.Connection,
+    project_id: Optional[int] = None,
+    asset_type: Optional[IPAssetType] = None,
+    unassigned_only: bool = False,
+    archived_only: bool = False,
+) -> Iterable[IPAsset]:
+    query = "SELECT * FROM ip_assets WHERE archived = ?"
     params: list[object] = []
+    params.append(1 if archived_only else 0)
     if project_id is not None:
         query += " AND project_id = ?"
         params.append(project_id)
@@ -553,9 +560,11 @@ def count_active_ip_assets(
     asset_type: Optional[IPAssetType] = None,
     unassigned_only: bool = False,
     query_text: Optional[str] = None,
+    archived_only: bool = False,
 ) -> int:
-    query = "SELECT COUNT(*) FROM ip_assets WHERE archived = 0"
+    query = "SELECT COUNT(*) FROM ip_assets WHERE archived = ?"
     params: list[object] = []
+    params.append(1 if archived_only else 0)
     if project_id is not None:
         query += " AND project_id = ?"
         params.append(project_id)
@@ -579,9 +588,11 @@ def list_active_ip_assets_paginated(
     query_text: Optional[str] = None,
     limit: int = 20,
     offset: int = 0,
+    archived_only: bool = False,
 ) -> list[IPAsset]:
-    query = "SELECT * FROM ip_assets WHERE archived = 0"
+    query = "SELECT * FROM ip_assets WHERE archived = ?"
     params: list[object] = []
+    params.append(1 if archived_only else 0)
     if project_id is not None:
         query += " AND project_id = ?"
         params.append(project_id)
