@@ -145,3 +145,11 @@ Host UI safety flow: deleting a Host from UI requires opening the host delete co
 ```bash
 pytest
 ```
+
+## CI (minimum tests)
+The GitHub Actions workflow runs a lightweight smoke test on each pull request
+and push to `main` by executing:
+
+```bash
+pytest tests/test_health_and_metrics.py
+```

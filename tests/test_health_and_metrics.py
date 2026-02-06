@@ -26,3 +26,4 @@ def test_health_and_metrics_endpoints() -> None:
         assert "ipam_ip_total" in metrics
         assert "ipam_ip_archived_total" in metrics
         assert "ipam_ip_unassigned_project_total" in metrics
+        assert "ipam_ip_unassigned_both_total" in metrics
