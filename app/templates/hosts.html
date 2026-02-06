@@ -151,54 +151,51 @@
         </tr>
         <tr id="host-edit-row-{{ host.id }}" style="display: none;">
           <td colspan="7">
-            <div class="host-edit-sections">
-              <div class="host-edit-section">
-                <p class="host-edit-section-title">Host details</p>
-                <form class="form-grid" method="post" action="/ui/hosts/{{ host.id }}/edit">
-                  <label class="field">
-                    <span>Name</span>
-                    <input class="input" type="text" name="name" value="{{ host.name }}" required />
-                  </label>
-                  <label class="field">
-                    <span>Vendor</span>
-                    <select class="select" name="vendor_id">
-                      <option value="">UNASSIGNED</option>
-                      {% for vendor in vendors %}
-                      <option value="{{ vendor.id }}"{% if host.vendor and vendor.name == host.vendor %} selected{% endif %}>{{ vendor.name }}</option>
-                      {% endfor %}
-                    </select>
-                  </label>
-                  <label class="field">
-                    <span>Notes</span>
-                    <textarea class="textarea" name="notes" rows="2">{{ host.notes or "" }}</textarea>
-                  </label>
-                  <div class="form-actions">
-                    <button class="btn btn-primary" type="submit">Save</button>
-                    <button class="btn btn-secondary" type="button" onclick="toggleHostEdit({{ host.id }})">Cancel</button>
-                  </div>
-                </form>
+            <form class="form-grid" method="post" action="/ui/hosts/{{ host.id }}/edit">
+              <label class="field">
+                <span>Name</span>
+                <input class="input" type="text" name="name" value="{{ host.name }}" required />
+              </label>
+              <label class="field">
+                <span>Vendor</span>
+                <select class="select" name="vendor_id">
+                  <option value="">UNASSIGNED</option>
+                  {% for vendor in vendors %}
+                  <option value="{{ vendor.id }}"{% if host.vendor and vendor.name == host.vendor %} selected{% endif %}>{{ vendor.name }}</option>
+                  {% endfor %}
+                </select>
+              </label>
+              <label class="field">
+                <span>Notes</span>
+                <textarea class="textarea" name="notes" rows="2">{{ host.notes or "" }}</textarea>
+              </label>
+              <div class="form-actions">
+                <button class="btn btn-primary" type="submit">Save</button>
+                <button class="btn btn-secondary" type="button" onclick="toggleHostEdit({{ host.id }})">Cancel</button>
               </div>
-              {% if not host.os_ips %}
-              <div class="host-edit-section host-quick-add">
-                <p class="host-edit-section-title">Quick add OS IP</p>
-                <form class="form-grid host-quick-add-form" method="post" action="/ui/hosts/{{ host.id }}/os-ip">
-                  <label class="field">
-                    <span>OS IP address</span>
-                    <input class="input" type="text" name="ip_address" placeholder="e.g. 10.10.0.10" required />
-                  </label>
-                  <label class="field">
-                    <span>Notes (optional)</span>
-                    <input class="input" type="text" name="notes" />
-                  </label>
-                  <div class="form-actions">
-                    <button class="btn btn-secondary" type="submit">Add OS IP</button>
-                  </div>
-                </form>
-              </div>
-              {% endif %}
-            </div>
+            </form>
           </td>
         </tr>
+        {% if not host.os_ips %}
+        <tr id="host-os-row-{{ host.id }}" class="host-quick-add-row" style="display: none;">
+          <td colspan="7">
+            <p class="host-quick-add-title">Quick add OS IP</p>
+            <form class="form-grid host-quick-add-form" method="post" action="/ui/hosts/{{ host.id }}/os-ip">
+              <label class="field">
+                <span>OS IP address</span>
+                <input class="input" type="text" name="ip_address" placeholder="e.g. 10.10.0.10" required />
+              </label>
+              <label class="field">
+                <span>Notes (optional)</span>
+                <input class="input" type="text" name="notes" />
+              </label>
+              <div class="form-actions">
+                <button class="btn btn-secondary" type="submit">Add OS IP</button>
+              </div>
+            </form>
+          </td>
+        </tr>
+        {% endif %}
         {% endfor %}
         {% else %}
         <tr><td colspan="7" class="empty-state">No hosts found.</td></tr>
@@ -211,8 +208,13 @@
 <script>
 function toggleHostEdit(hostId) {
   const row = document.getElementById(`host-edit-row-${hostId}`);
+  const osRow = document.getElementById(`host-os-row-${hostId}`);
   if (!row) return;
-  row.style.display = row.style.display === "none" ? "table-row" : "none";
+  const nextState = row.style.display === "none" ? "table-row" : "none";
+  row.style.display = nextState;
+  if (osRow) {
+    osRow.style.display = nextState;
+  }
 }
 
 (() => {
