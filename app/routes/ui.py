@@ -1185,21 +1185,30 @@ def ui_list_ip_assets(
     host_lookup = {host.id: host.name for host in repository.list_hosts(connection)}
     view_models = _build_asset_view_models(assets, project_lookup, host_lookup)
 
+    is_htmx = request.headers.get("HX-Request") is not None
+    template_name = "partials/ip_table_rows.html" if is_htmx else "ip_assets_list.html"
+    context = {
+        "title": "ipocket - IP Assets",
+        "assets": view_models,
+    }
+    if not is_htmx:
+        context.update(
+            {
+                "projects": projects,
+                "types": [asset.value for asset in IPAssetType],
+                "filters": {
+                    "q": q or "",
+                    "project_id": parsed_project_id,
+                    "type": asset_type_enum.value if asset_type_enum else "",
+                    "unassigned_only": unassigned_only,
+                },
+            }
+        )
+
     return _render_template(
         request,
-        "ip_assets_list.html",
-        {
-            "title": "ipocket - IP Assets",
-            "assets": view_models,
-            "projects": projects,
-            "types": [asset.value for asset in IPAssetType],
-            "filters": {
-                "q": q or "",
-                "project_id": parsed_project_id,
-                "type": asset_type_enum.value if asset_type_enum else "",
-                "unassigned_only": unassigned_only,
-            },
-        },
+        template_name,
+        context,
         active_nav="ip-assets",
     )
 

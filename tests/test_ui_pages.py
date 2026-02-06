@@ -53,6 +53,26 @@ def test_ip_assets_list_uses_overflow_actions_menu_with_delete_dialog(client) ->
     assert "positionMenuPanel" in response.text
 
 
+def test_ip_assets_list_htmx_response_renders_rows_only(client) -> None:
+    import os
+    from app import db, repository
+
+    connection = db.connect(os.environ["IPAM_DB_PATH"])
+    try:
+        db.init_db(connection)
+        asset = repository.create_ip_asset(connection, ip_address="10.30.0.12", asset_type=IPAssetType.VM)
+    finally:
+        connection.close()
+
+    response = client.get("/ui/ip-assets", headers={"HX-Request": "true"})
+
+    assert response.status_code == 200
+    assert f"/ui/ip-assets/{asset.id}" in response.text
+    assert 'data-row-actions' in response.text
+    assert "<table" not in response.text
+    assert "Apply filters" not in response.text
+
+
 def test_ip_assets_list_renders_project_color_tag(client) -> None:
     import os
     from app import db, repository
