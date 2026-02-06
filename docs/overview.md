@@ -16,6 +16,7 @@ ipocket is a lightweight IP inventory app to track addresses and their project a
 - Management overview dashboard with quick totals for IPs, hosts, vendors, and projects, with cards linking to the relevant detail lists.
 - CIDR-based subnet utilization report on the Management overview page that shows used vs. free IPs per range.
 - IP ranges page supports editing and deleting saved CIDR ranges for cleanup, with a confirmation step that requires typing the exact range name.
+- Range addresses view includes tag badges for used IPs to keep ownership context visible in subnet drill-downs.
 - Export data as CSV, JSON, or bundle (JSON/ZIP) for round-trip workflows.
 - Import data from bundle.json or CSV with dry-run support and upserts.
 - Upload Nmap XML from the Import page to discover reachable IPs and add them as `OTHER` assets, with inline example commands.
