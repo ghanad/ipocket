@@ -3,12 +3,14 @@ import sqlite3
 import pytest
 
 from app.db import init_db
-from app.models import IPAssetType
+from app.models import IPAssetType, UserRole
 from app.repository import (
     archive_ip_asset,
     create_host,
     create_ip_asset,
     create_project,
+    create_user,
+    get_audit_logs_for_ip,
     get_host_by_name,
     get_ip_asset_by_ip,
     delete_ip_asset,
@@ -16,6 +18,7 @@ from app.repository import (
     get_ip_asset_metrics,
     list_hosts,
     list_hosts_with_ip_counts,
+    update_ip_asset,
     update_project,
 )
 
@@ -189,3 +192,34 @@ def test_list_hosts_with_ip_counts_includes_os_and_bmc_ips(tmp_path) -> None:
     assert len(hosts) == 1
     assert hosts[0]["os_ips"] == "10.20.0.10, 10.20.0.11"
     assert hosts[0]["bmc_ips"] == "10.20.0.20"
+
+
+def test_audit_logs_record_ip_asset_changes(tmp_path) -> None:
+    connection = _setup_connection(tmp_path)
+    user = create_user(connection, username="auditor", hashed_password="x", role=UserRole.ADMIN)
+    project = create_project(connection, name="Core")
+    host = create_host(connection, name="node-01")
+
+    asset = create_ip_asset(
+        connection,
+        ip_address="10.10.10.10",
+        asset_type=IPAssetType.VM,
+        current_user=user,
+    )
+    update_ip_asset(
+        connection,
+        ip_address="10.10.10.10",
+        project_id=project.id,
+        host_id=host.id,
+        notes="updated",
+        current_user=user,
+    )
+    delete_ip_asset(connection, "10.10.10.10", current_user=user)
+
+    logs = get_audit_logs_for_ip(connection, asset.id)
+
+    assert [log.action for log in logs] == ["DELETE", "UPDATE", "CREATE"]
+    assert all(log.username == "auditor" for log in logs)
+    assert any("project: Unassigned -> Core" in (log.changes or "") for log in logs)
+    assert any("host: Unassigned -> node-01" in (log.changes or "") for log in logs)
+    assert any("notes:" in (log.changes or "") for log in logs)

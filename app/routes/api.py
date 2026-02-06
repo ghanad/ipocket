@@ -273,6 +273,7 @@ def create_ip_asset(
             notes=payload.notes,
             host_id=payload.host_id,
             auto_host_for_bmc=_is_auto_host_for_bmc_enabled(),
+            current_user=_user,
         )
     except sqlite3.IntegrityError as exc:
         raise HTTPException(
@@ -328,6 +329,7 @@ def update_ip_asset(
         project_id=payload.project_id,
         notes=payload.notes,
         host_id=payload.host_id,
+        current_user=_user,
     )
     if updated is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
@@ -342,7 +344,7 @@ def delete_ip_asset(
     connection=Depends(get_connection),
     _user=Depends(require_editor),
 ):
-    deleted = repository.delete_ip_asset(connection, ip_address)
+    deleted = repository.delete_ip_asset(connection, ip_address, current_user=_user)
     if not deleted:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
     return Response(status_code=status.HTTP_204_NO_CONTENT)

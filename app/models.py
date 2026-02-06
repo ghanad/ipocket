@@ -69,3 +69,16 @@ class IPAsset:
     archived: bool
     created_at: str
     updated_at: str
+
+
+@dataclass
+class AuditLog:
+    id: int
+    user_id: Optional[int]
+    username: Optional[str]
+    target_type: str
+    target_id: int
+    target_label: str
+    action: str
+    changes: Optional[str]
+    created_at: str

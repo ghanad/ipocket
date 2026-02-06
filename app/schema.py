@@ -66,3 +66,17 @@ class IPAsset(Base):
     __table_args__ = (
         CheckConstraint("type IN ('VM', 'OS', 'BMC', 'VIP', 'OTHER')", name="ck_ip_assets_type"),
     )
+
+
+class AuditLog(Base):
+    __tablename__ = "audit_logs"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=True)
+    username = Column(Text, nullable=True)
+    target_type = Column(Text, nullable=False)
+    target_id = Column(Integer, nullable=False)
+    target_label = Column(Text, nullable=False)
+    action = Column(Text, nullable=False)
+    changes = Column(Text)
+    created_at = Column(Text, nullable=False, server_default=text("CURRENT_TIMESTAMP"))

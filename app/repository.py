@@ -3,7 +3,7 @@ from __future__ import annotations
 import sqlite3
 from typing import Iterable, Optional
 
-from app.models import Host, IPAsset, IPAssetType, Project, User, UserRole, Vendor
+from app.models import AuditLog, Host, IPAsset, IPAssetType, Project, User, UserRole, Vendor
 from app.utils import DEFAULT_PROJECT_COLOR
 
 
@@ -46,6 +46,103 @@ def _row_to_ip_asset(row: sqlite3.Row) -> IPAsset:
         created_at=row["created_at"],
         updated_at=row["updated_at"],
     )
+
+
+def _row_to_audit_log(row: sqlite3.Row) -> AuditLog:
+    return AuditLog(
+        id=row["id"],
+        user_id=row["user_id"],
+        username=row["username"],
+        target_type=row["target_type"],
+        target_id=row["target_id"],
+        target_label=row["target_label"],
+        action=row["action"],
+        changes=row["changes"],
+        created_at=row["created_at"],
+    )
+
+
+def create_audit_log(
+    connection: sqlite3.Connection,
+    user: Optional[User],
+    action: str,
+    target_type: str,
+    target_id: int,
+    target_label: str,
+    changes: Optional[str] = None,
+) -> None:
+    connection.execute(
+        """
+        INSERT INTO audit_logs (
+            user_id,
+            username,
+            target_type,
+            target_id,
+            target_label,
+            action,
+            changes
+        )
+        VALUES (?, ?, ?, ?, ?, ?, ?)
+        """,
+        (
+            user.id if user else None,
+            user.username if user else None,
+            target_type,
+            target_id,
+            target_label,
+            action,
+            changes,
+        ),
+    )
+
+
+def get_audit_logs_for_ip(connection: sqlite3.Connection, ip_asset_id: int) -> list[AuditLog]:
+    rows = connection.execute(
+        """
+        SELECT *
+        FROM audit_logs
+        WHERE target_type = 'IP_ASSET'
+          AND target_id = ?
+        ORDER BY created_at DESC, id DESC
+        """,
+        (ip_asset_id,),
+    ).fetchall()
+    return [_row_to_audit_log(row) for row in rows]
+
+
+def _project_label(connection: sqlite3.Connection, project_id: Optional[int]) -> str:
+    if project_id is None:
+        return "Unassigned"
+    project = connection.execute("SELECT name FROM projects WHERE id = ?", (project_id,)).fetchone()
+    if project is None:
+        return f"Unknown ({project_id})"
+    return project["name"]
+
+
+def _host_label(connection: sqlite3.Connection, host_id: Optional[int]) -> str:
+    if host_id is None:
+        return "Unassigned"
+    host = connection.execute("SELECT name FROM hosts WHERE id = ?", (host_id,)).fetchone()
+    if host is None:
+        return f"Unknown ({host_id})"
+    return host["name"]
+
+
+def _summarize_ip_asset_changes(connection: sqlite3.Connection, existing: IPAsset, updated: IPAsset) -> str:
+    changes: list[str] = []
+    if existing.asset_type != updated.asset_type:
+        changes.append(f"type: {existing.asset_type.value} -> {updated.asset_type.value}")
+    if existing.project_id != updated.project_id:
+        changes.append(
+            f"project: {_project_label(connection, existing.project_id)} -> {_project_label(connection, updated.project_id)}"
+        )
+    if existing.host_id != updated.host_id:
+        changes.append(
+            f"host: {_host_label(connection, existing.host_id)} -> {_host_label(connection, updated.host_id)}"
+        )
+    if (existing.notes or "") != (updated.notes or ""):
+        changes.append(f"notes: {existing.notes or ''} -> {updated.notes or ''}")
+    return "; ".join(changes) if changes else "No changes recorded."
 
 
 def create_project(
@@ -271,6 +368,7 @@ def create_ip_asset(
     host_id: Optional[int] = None,
     notes: Optional[str] = None,
     auto_host_for_bmc: bool = False,
+    current_user: Optional[User] = None,
 ) -> IPAsset:
     resolved_host_id = host_id
     with connection:
@@ -286,6 +384,18 @@ def create_ip_asset(
         cursor = connection.execute(
             "INSERT INTO ip_assets (ip_address, type, project_id, host_id, notes) VALUES (?, ?, ?, ?, ?)",
             (ip_address, asset_type.value, project_id, resolved_host_id, notes),
+        )
+        create_audit_log(
+            connection,
+            user=current_user,
+            action="CREATE",
+            target_type="IP_ASSET",
+            target_id=cursor.lastrowid,
+            target_label=ip_address,
+            changes=(
+                "Created IP asset "
+                f"(type={asset_type.value}, project_id={project_id}, host_id={resolved_host_id}, notes={notes or ''})"
+            ),
         )
     row = connection.execute("SELECT * FROM ip_assets WHERE id = ?", (cursor.lastrowid,)).fetchone()
     if row is None:
@@ -455,22 +565,57 @@ def set_ip_asset_archived(connection: sqlite3.Connection, ip_address: str, archi
     connection.commit()
 
 
-def delete_ip_asset(connection: sqlite3.Connection, ip_address: str) -> bool:
-    cursor = connection.execute("DELETE FROM ip_assets WHERE ip_address = ?", (ip_address,))
-    connection.commit()
+def delete_ip_asset(connection: sqlite3.Connection, ip_address: str, current_user: Optional[User] = None) -> bool:
+    asset = get_ip_asset_by_ip(connection, ip_address)
+    if asset is None:
+        return False
+    with connection:
+        cursor = connection.execute("DELETE FROM ip_assets WHERE ip_address = ?", (ip_address,))
+        if cursor.rowcount > 0:
+            create_audit_log(
+                connection,
+                user=current_user,
+                action="DELETE",
+                target_type="IP_ASSET",
+                target_id=asset.id,
+                target_label=asset.ip_address,
+                changes="Deleted IP asset.",
+            )
     return cursor.rowcount > 0
 
 
-def update_ip_asset(connection: sqlite3.Connection, ip_address: str, asset_type: Optional[IPAssetType] = None, project_id: Optional[int] = None, host_id: Optional[int] = None, notes: Optional[str] = None) -> Optional[IPAsset]:
-    connection.execute(
-        """
-        UPDATE ip_assets
-        SET type = COALESCE(?, type),
-            project_id = COALESCE(?, project_id), host_id = COALESCE(?, host_id), notes = COALESCE(?, notes),
-            updated_at = CURRENT_TIMESTAMP
-        WHERE ip_address = ?
-        """,
-        (asset_type.value if asset_type else None, project_id, host_id, notes, ip_address),
-    )
-    connection.commit()
-    return get_ip_asset_by_ip(connection, ip_address)
+def update_ip_asset(
+    connection: sqlite3.Connection,
+    ip_address: str,
+    asset_type: Optional[IPAssetType] = None,
+    project_id: Optional[int] = None,
+    host_id: Optional[int] = None,
+    notes: Optional[str] = None,
+    current_user: Optional[User] = None,
+) -> Optional[IPAsset]:
+    existing = get_ip_asset_by_ip(connection, ip_address)
+    if existing is None:
+        return None
+    with connection:
+        connection.execute(
+            """
+            UPDATE ip_assets
+            SET type = COALESCE(?, type),
+                project_id = COALESCE(?, project_id), host_id = COALESCE(?, host_id), notes = COALESCE(?, notes),
+                updated_at = CURRENT_TIMESTAMP
+            WHERE ip_address = ?
+            """,
+            (asset_type.value if asset_type else None, project_id, host_id, notes, ip_address),
+        )
+        updated = get_ip_asset_by_ip(connection, ip_address)
+        if updated is not None:
+            create_audit_log(
+                connection,
+                user=current_user,
+                action="UPDATE",
+                target_type="IP_ASSET",
+                target_id=updated.id,
+                target_label=updated.ip_address,
+                changes=_summarize_ip_asset_changes(connection, existing, updated),
+            )
+    return updated
