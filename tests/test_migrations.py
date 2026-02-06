@@ -20,6 +20,8 @@ def test_init_db_runs_alembic_migrations(tmp_path) -> None:
         assert "hosts" in tables
         assert "audit_logs" in tables
         assert "ip_ranges" in tables
+        assert "tags" in tables
+        assert "ip_asset_tags" in tables
     finally:
         connection.close()
 

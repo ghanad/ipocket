@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from sqlalchemy import CheckConstraint, Column, ForeignKey, Integer, Text
+from sqlalchemy import CheckConstraint, Column, ForeignKey, Integer, Text, UniqueConstraint
 from sqlalchemy.orm import declarative_base
 from sqlalchemy.sql import text
 
@@ -37,6 +37,26 @@ class Vendor(Base):
     name = Column(Text, nullable=False, unique=True)
     created_at = Column(Text, nullable=False, server_default=text("CURRENT_TIMESTAMP"))
     updated_at = Column(Text, nullable=False, server_default=text("CURRENT_TIMESTAMP"))
+
+
+class Tag(Base):
+    __tablename__ = "tags"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    name = Column(Text, nullable=False, unique=True)
+    created_at = Column(Text, nullable=False, server_default=text("CURRENT_TIMESTAMP"))
+    updated_at = Column(Text, nullable=False, server_default=text("CURRENT_TIMESTAMP"))
+
+
+class IPAssetTag(Base):
+    __tablename__ = "ip_asset_tags"
+
+    ip_asset_id = Column(Integer, ForeignKey("ip_assets.id", ondelete="CASCADE"), primary_key=True)
+    tag_id = Column(Integer, ForeignKey("tags.id", ondelete="CASCADE"), primary_key=True)
+
+    __table_args__ = (
+        UniqueConstraint("ip_asset_id", "tag_id", name="uq_ip_asset_tags_asset_tag"),
+    )
 
 
 class Host(Base):

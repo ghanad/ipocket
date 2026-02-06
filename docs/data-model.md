@@ -7,6 +7,7 @@
 - `host_id` (optional)
 - `notes` (optional)
 - `archived` (soft delete)
+- tags (many-to-many via `ip_asset_tags`)
 - timestamps (`created_at`, `updated_at`)
 
 ## Project
@@ -19,6 +20,20 @@
 - `cidr` (IPv4 CIDR, unique)
 - `notes` (optional)
 - timestamps (`created_at`, `updated_at`)
+
+
+## Tag
+- `name` (unique, required)
+- timestamps (`created_at`, `updated_at`)
+
+Tag names are normalized by trimming whitespace and lowercasing. Allowed characters are letters, digits, dashes, and
+underscores (`^[a-z0-9_-]+$`).
+
+
+## IPAssetTag
+- `ip_asset_id` (FK to `ip_assets.id`)
+- `tag_id` (FK to `tags.id`)
+- unique (`ip_asset_id`, `tag_id`)
 
 
 ## BMC auto-host linkage

@@ -14,6 +14,7 @@ from app.imports.models import (
     ImportSource,
     ImportVendor,
 )
+from app.utils import split_tag_string
 
 
 class Importer(Protocol):
@@ -119,6 +120,7 @@ def _parse_ip_assets(section: object, base_path: str) -> list[ImportIPAsset]:
                 host_name=_normalize_optional_str(entry.get("host_name")),
                 notes=_normalize_optional_str(entry.get("notes")),
                 archived=_normalize_optional_bool(entry.get("archived")),
+                tags=_parse_tags(entry.get("tags")),
                 source=ImportSource(f"{base_path}[{index}]"),
             )
         )
@@ -160,6 +162,7 @@ def _parse_ip_assets_csv(data: bytes, filename: str) -> list[ImportIPAsset]:
         {"ip_address", "type", "project_name", "host_name", "notes", "archived"},
         filename,
     )
+    has_tags = "tags" in fieldnames
     assets: list[ImportIPAsset] = []
     for row, line_number in rows:
         assets.append(
@@ -170,6 +173,7 @@ def _parse_ip_assets_csv(data: bytes, filename: str) -> list[ImportIPAsset]:
                 host_name=_normalize_optional_str(row.get("host_name")),
                 notes=_normalize_optional_str(row.get("notes")),
                 archived=_normalize_optional_bool(row.get("archived")),
+                tags=_parse_tags(row.get("tags")) if has_tags else None,
                 source=ImportSource(f"{filename}:line {line_number}"),
             )
         )
@@ -205,6 +209,16 @@ def _normalize_optional_str(value: object) -> Optional[str]:
         stripped = value.strip()
         return stripped if stripped else None
     return str(value).strip() or None
+
+
+def _parse_tags(value: object) -> Optional[list[str]]:
+    if value is None:
+        return None
+    if isinstance(value, list):
+        return [str(item).strip() for item in value if str(item).strip()]
+    if isinstance(value, str):
+        return split_tag_string(value)
+    return split_tag_string(str(value))
 
 
 def _normalize_optional_bool(value: object) -> Optional[bool]:

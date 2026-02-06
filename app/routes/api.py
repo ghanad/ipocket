@@ -13,7 +13,7 @@ from app.imports import BundleImporter, CsvImporter, run_import
 from app.imports.models import ImportApplyResult, ImportSummary
 from app.dependencies import get_connection
 from app.models import Host, IPAsset, IPAssetType, UserRole
-from app.utils import normalize_cidr, normalize_hex_color, validate_ip_address
+from app.utils import normalize_cidr, normalize_hex_color, normalize_tag_names, split_tag_string, validate_ip_address
 
 router = APIRouter()
 
@@ -38,11 +38,30 @@ class IPAssetCreate(BaseModel):
     project_id: Optional[int] = None
     notes: Optional[str] = None
     host_id: Optional[int] = None
+    tags: Optional[list[str]] = None
 
     @field_validator("asset_type", mode="before")
     @classmethod
     def normalize_asset_type(cls, value):
         return IPAssetType.normalize(value)
+
+    @field_validator("tags", mode="before")
+    @classmethod
+    def parse_tags(cls, value):
+        if value is None:
+            return None
+        if isinstance(value, str):
+            return split_tag_string(value)
+        if isinstance(value, list):
+            return value
+        raise ValueError("Tags must be a list or comma-separated string.")
+
+    @field_validator("tags")
+    @classmethod
+    def normalize_tags(cls, value):
+        if value is None:
+            return None
+        return normalize_tag_names([str(item) for item in value])
 
 
 class IPAssetUpdate(BaseModel):
@@ -50,6 +69,7 @@ class IPAssetUpdate(BaseModel):
     project_id: Optional[int] = None
     notes: Optional[str] = None
     host_id: Optional[int] = None
+    tags: Optional[list[str]] = None
 
     @field_validator("asset_type", mode="before")
     @classmethod
@@ -57,6 +77,24 @@ class IPAssetUpdate(BaseModel):
         if value is None:
             return None
         return IPAssetType.normalize(value)
+
+    @field_validator("tags", mode="before")
+    @classmethod
+    def parse_tags(cls, value):
+        if value is None:
+            return None
+        if isinstance(value, str):
+            return split_tag_string(value)
+        if isinstance(value, list):
+            return value
+        raise ValueError("Tags must be a list or comma-separated string.")
+
+    @field_validator("tags")
+    @classmethod
+    def normalize_tags(cls, value):
+        if value is None:
+            return None
+        return normalize_tag_names([str(item) for item in value])
 
 
 class ProjectCreate(BaseModel):
@@ -122,7 +160,7 @@ def _host_payload(host: Host) -> dict:
     return {"id": host.id, "name": host.name, "notes": host.notes, "vendor": host.vendor}
 
 
-def _asset_payload(asset: IPAsset) -> dict:
+def _asset_payload(asset: IPAsset, tags: Optional[list[str]] = None) -> dict:
     return {
         "id": asset.id,
         "ip_address": asset.ip_address,
@@ -133,6 +171,7 @@ def _asset_payload(asset: IPAsset) -> dict:
         "archived": asset.archived,
         "created_at": asset.created_at,
         "updated_at": asset.updated_at,
+        "tags": tags or [],
     }
 
 
@@ -283,6 +322,7 @@ def create_ip_asset(
             project_id=payload.project_id,
             notes=payload.notes,
             host_id=payload.host_id,
+            tags=payload.tags,
             auto_host_for_bmc=_is_auto_host_for_bmc_enabled(),
             current_user=_user,
         )
@@ -291,7 +331,8 @@ def create_ip_asset(
             status_code=status.HTTP_409_CONFLICT,
             detail="IP address already exists.",
         ) from exc
-    return _asset_payload(asset)
+    tag_map = repository.list_tags_for_ip_assets(connection, [asset.id])
+    return _asset_payload(asset, tags=tag_map.get(asset.id, []))
 
 
 @router.get("/ip-assets")
@@ -310,7 +351,8 @@ def list_ip_assets(
         asset_type=normalized_asset_type,
         unassigned_only=unassigned_only,
     )
-    return [_asset_payload(asset) for asset in assets]
+    tag_map = repository.list_tags_for_ip_assets(connection, [asset.id for asset in assets])
+    return [_asset_payload(asset, tags=tag_map.get(asset.id, [])) for asset in assets]
 
 
 @router.get("/ip-assets/{ip_address}")
@@ -321,7 +363,8 @@ def get_ip_asset(
     asset = repository.get_ip_asset_by_ip(connection, ip_address)
     if asset is None or asset.archived:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
-    return _asset_payload(asset)
+    tag_map = repository.list_tags_for_ip_assets(connection, [asset.id])
+    return _asset_payload(asset, tags=tag_map.get(asset.id, []))
 
 
 @router.patch("/ip-assets/{ip_address}")
@@ -340,11 +383,13 @@ def update_ip_asset(
         project_id=payload.project_id,
         notes=payload.notes,
         host_id=payload.host_id,
+        tags=payload.tags,
         current_user=_user,
     )
     if updated is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
-    return _asset_payload(updated)
+    tag_map = repository.list_tags_for_ip_assets(connection, [updated.id])
+    return _asset_payload(updated, tags=tag_map.get(updated.id, []))
 
 
 

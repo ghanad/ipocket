@@ -22,7 +22,14 @@ from app.imports import BundleImporter, CsvImporter, run_import
 from app.imports.nmap import NmapImportResult, import_nmap_xml
 from app.imports.models import ImportApplyResult, ImportSummary
 from app.models import IPAsset, IPAssetType, UserRole
-from app.utils import DEFAULT_PROJECT_COLOR, normalize_cidr, normalize_hex_color, validate_ip_address
+from app.utils import (
+    DEFAULT_PROJECT_COLOR,
+    normalize_cidr,
+    normalize_hex_color,
+    normalize_tag_names,
+    split_tag_string,
+    validate_ip_address,
+)
 
 router = APIRouter()
 
@@ -237,6 +244,17 @@ def _build_csv_content(headers: list[str], rows: list[dict[str, object]]) -> str
     return buffer.getvalue()
 
 
+def _format_ip_asset_csv_rows(rows: list[dict[str, object]]) -> list[dict[str, object]]:
+    formatted: list[dict[str, object]] = []
+    for row in rows:
+        updated = dict(row)
+        tags = updated.get("tags")
+        if isinstance(tags, list):
+            updated["tags"] = ", ".join(tags)
+        formatted.append(updated)
+    return formatted
+
+
 def _csv_response(filename: str, headers: list[str], rows: list[dict[str, object]]) -> Response:
     response = Response(content=_build_csv_content(headers, rows), media_type="text/csv")
     response.headers["Content-Disposition"] = f'attachment; filename="{filename}"'
@@ -263,6 +281,7 @@ def _build_asset_view_models(
     assets: list[IPAsset],
     project_lookup: dict[int, dict[str, Optional[str]]],
     host_lookup: dict[int, str],
+    tag_lookup: dict[int, list[str]],
 ) -> list[dict]:
     view_models = []
     for asset in assets:
@@ -271,6 +290,7 @@ def _build_asset_view_models(
         project_color = project.get("color") if project else None
         project_unassigned = not project_name
         host_name = host_lookup.get(asset.host_id) if asset.host_id else ""
+        tags = tag_lookup.get(asset.id, [])
         view_models.append(
             {
                 "id": asset.id,
@@ -280,6 +300,7 @@ def _build_asset_view_models(
                 "project_color": project_color,
                 "notes": asset.notes or "",
                 "host_name": host_name,
+                "tags": tags,
                 "unassigned": _is_unassigned(asset.project_id),
                 "project_unassigned": project_unassigned,
             }
@@ -592,12 +613,13 @@ def export_ip_assets_csv(
         "type",
         "project_name",
         "host_name",
+        "tags",
         "notes",
         "archived",
         "created_at",
         "updated_at",
     ]
-    return _csv_response("ip-assets.csv", headers, export_rows)
+    return _csv_response("ip-assets.csv", headers, _format_ip_asset_csv_rows(export_rows))
 
 
 @router.get("/export/ip-assets.json")
@@ -741,12 +763,13 @@ def export_bundle_zip(
                 "type",
                 "project_name",
                 "host_name",
+                "tags",
                 "notes",
                 "archived",
                 "created_at",
                 "updated_at",
             ],
-            ip_assets,
+            _format_ip_asset_csv_rows(ip_assets),
         ),
         "projects.csv": _build_csv_content(["name", "description", "color"], projects),
         "hosts.csv": _build_csv_content(["name", "notes", "vendor_name"], hosts),
@@ -1491,7 +1514,8 @@ def ui_list_ip_assets(
     projects = list(repository.list_projects(connection))
     project_lookup = {project.id: {"name": project.name, "color": project.color} for project in projects}
     host_lookup = {host.id: host.name for host in repository.list_hosts(connection)}
-    view_models = _build_asset_view_models(assets, project_lookup, host_lookup)
+    tag_lookup = repository.list_tags_for_ip_assets(connection, [asset.id for asset in assets])
+    view_models = _build_asset_view_models(assets, project_lookup, host_lookup, tag_lookup)
 
     is_htmx = request.headers.get("HX-Request") is not None
     template_name = "partials/ip_assets_table.html" if is_htmx else "ip_assets_list.html"
@@ -1586,7 +1610,8 @@ def ui_needs_assignment(
     projects = list(repository.list_projects(connection))
     project_lookup = {project.id: {"name": project.name, "color": project.color} for project in projects}
     host_lookup = {host.id: host.name for host in repository.list_hosts(connection)}
-    view_models = _build_asset_view_models(assets, project_lookup, host_lookup)
+    tag_lookup = repository.list_tags_for_ip_assets(connection, [asset.id for asset in assets])
+    view_models = _build_asset_view_models(assets, project_lookup, host_lookup, tag_lookup)
     form_state = {
         "ip_address": view_models[0]["ip_address"] if view_models else "",
         "project_id": None,
@@ -1639,7 +1664,8 @@ async def ui_needs_assignment_assign(
         projects = list(repository.list_projects(connection))
         project_lookup = {project.id: {"name": project.name, "color": project.color} for project in projects}
         host_lookup = {host.id: host.name for host in repository.list_hosts(connection)}
-        view_models = _build_asset_view_models(assets, project_lookup, host_lookup)
+        tag_lookup = repository.list_tags_for_ip_assets(connection, [asset.id for asset in assets])
+        view_models = _build_asset_view_models(assets, project_lookup, host_lookup, tag_lookup)
         return _render_template(
             request,
             "needs_assignment.html",
@@ -1689,6 +1715,7 @@ def ui_add_ip_form(
                 "project_id": "",
                 "host_id": "",
                 "notes": "",
+                "tags": "",
             },
             "projects": projects,
             "hosts": hosts,
@@ -1714,6 +1741,7 @@ async def ui_add_ip_submit(
     project_id = _parse_optional_int(form_data.get("project_id"))
     host_id = _parse_optional_int(form_data.get("host_id"))
     notes = _parse_optional_str(form_data.get("notes"))
+    tags_raw = form_data.get("tags") or ""
 
     errors = []
     if not ip_address:
@@ -1733,6 +1761,11 @@ async def ui_add_ip_submit(
             validate_ip_address(ip_address)
         except HTTPException as exc:
             errors.append(exc.detail)
+    try:
+        tags = normalize_tag_names(split_tag_string(tags_raw)) if tags_raw else []
+    except ValueError as exc:
+        tags = []
+        errors.append(str(exc))
 
     if errors:
         projects = list(repository.list_projects(connection))
@@ -1749,6 +1782,7 @@ async def ui_add_ip_submit(
                     "project_id": project_id or "",
                     "host_id": host_id or "",
                     "notes": notes or "",
+                    "tags": tags_raw,
                 },
                 "projects": projects,
                 "hosts": hosts,
@@ -1770,6 +1804,7 @@ async def ui_add_ip_submit(
             project_id=project_id,
             host_id=host_id,
             notes=notes,
+            tags=tags,
             auto_host_for_bmc=_is_auto_host_for_bmc_enabled(),
             current_user=user,
         )
@@ -1789,6 +1824,7 @@ async def ui_add_ip_submit(
                     "project_id": project_id or "",
                     "host_id": host_id or "",
                     "notes": notes or "",
+                    "tags": tags_raw,
                 },
                 "projects": projects,
                 "hosts": hosts,
@@ -1819,7 +1855,8 @@ def ui_ip_asset_detail(
         for project in repository.list_projects(connection)
     }
     host_lookup = {host.id: host.name for host in repository.list_hosts(connection)}
-    view_model = _build_asset_view_models([asset], project_lookup, host_lookup)[0]
+    tag_lookup = repository.list_tags_for_ip_assets(connection, [asset.id])
+    view_model = _build_asset_view_models([asset], project_lookup, host_lookup, tag_lookup)[0]
     audit_logs = repository.get_audit_logs_for_ip(connection, asset.id)
     audit_log_rows = [
         {
@@ -1850,6 +1887,8 @@ def ui_edit_ip_form(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
     projects = list(repository.list_projects(connection))
     hosts = list(repository.list_hosts(connection))
+    tag_lookup = repository.list_tags_for_ip_assets(connection, [asset.id])
+    tags_value = ", ".join(tag_lookup.get(asset.id, []))
     return _render_template(
         request,
         "ip_asset_form.html",
@@ -1862,6 +1901,7 @@ def ui_edit_ip_form(
                 "project_id": asset.project_id or "",
                 "host_id": asset.host_id or "",
                 "notes": asset.notes or "",
+                "tags": tags_value,
             },
             "projects": projects,
             "hosts": hosts,
@@ -1891,6 +1931,7 @@ async def ui_edit_ip_submit(
     project_id = _parse_optional_int(form_data.get("project_id"))
     host_id = _parse_optional_int(form_data.get("host_id"))
     notes = _parse_optional_str(form_data.get("notes"))
+    tags_raw = form_data.get("tags") or ""
 
     errors = []
     normalized_asset_type = None
@@ -1902,6 +1943,11 @@ async def ui_edit_ip_submit(
         errors.append("Asset type is required.")
     if host_id is not None and repository.get_host_by_id(connection, host_id) is None:
         errors.append("Selected host does not exist.")
+    try:
+        tags = normalize_tag_names(split_tag_string(tags_raw)) if tags_raw else []
+    except ValueError as exc:
+        tags = []
+        errors.append(str(exc))
 
     if errors:
         projects = list(repository.list_projects(connection))
@@ -1918,6 +1964,7 @@ async def ui_edit_ip_submit(
                     "project_id": project_id or "",
                     "host_id": host_id or "",
                     "notes": notes or "",
+                    "tags": tags_raw,
                 },
                 "projects": projects,
                 "hosts": hosts,
@@ -1938,6 +1985,7 @@ async def ui_edit_ip_submit(
         project_id=project_id,
         host_id=host_id,
         notes=notes,
+        tags=tags,
         current_user=user,
     )
     return RedirectResponse(url=f"/ui/ip-assets/{asset.id}", status_code=303)

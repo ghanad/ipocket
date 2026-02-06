@@ -25,10 +25,12 @@ from app.repository import (
     list_hosts_with_ip_counts,
     list_active_ip_assets_paginated,
     count_active_ip_assets,
+    list_tags_for_ip_assets,
     get_ip_range_address_breakdown,
     update_ip_asset,
     update_project,
 )
+from app.utils import normalize_tag_name
 
 
 def _setup_connection(tmp_path) -> sqlite3.Connection:
@@ -69,6 +71,28 @@ def test_get_ip_asset_metrics_counts(tmp_path) -> None:
     assert metrics["total"] == 4
     assert metrics["archived_total"] == 1
     assert metrics["unassigned_project_total"] == 2
+
+
+def test_create_and_update_ip_asset_tags(tmp_path) -> None:
+    connection = _setup_connection(tmp_path)
+    asset = create_ip_asset(
+        connection,
+        ip_address="10.20.0.10",
+        asset_type=IPAssetType.VM,
+        tags=["Prod", "edge"],
+    )
+    tag_map = list_tags_for_ip_assets(connection, [asset.id])
+    assert tag_map[asset.id] == ["edge", "prod"]
+
+    update_ip_asset(connection, ip_address=asset.ip_address, tags=["core"])
+    updated_tags = list_tags_for_ip_assets(connection, [asset.id])
+    assert updated_tags[asset.id] == ["core"]
+
+
+def test_tag_normalization_rules() -> None:
+    assert normalize_tag_name(" Prod ") == "prod"
+    with pytest.raises(ValueError):
+        normalize_tag_name("bad tag")
 
 
 def test_get_management_summary_counts(tmp_path) -> None:

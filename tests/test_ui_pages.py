@@ -71,8 +71,8 @@ def test_management_page_shows_summary_counts(client) -> None:
     assert "Subnet Utilization" in response.text
     assert "192.168.10.0/24" in response.text
     assert "254</td>" in response.text
-    assert "2</td>" in response.text
-    assert "252</td>" in response.text
+    assert 'addresses#used">2</a>' in response.text
+    assert 'addresses#free">252</a>' in response.text
 
 
 def test_ranges_page_renders_add_form_and_saved_ranges(client) -> None:
@@ -116,7 +116,36 @@ def test_sample_csv_files_are_available(client) -> None:
     assert hosts_response.status_code == 200
     assert assets_response.status_code == 200
     assert "name,notes,vendor_name" in hosts_response.text
-    assert "ip_address,type,project_name,host_name,notes,archived" in assets_response.text
+    assert "ip_address,type,project_name,host_name,tags,notes,archived" in assets_response.text
+
+
+def test_ip_asset_form_includes_tags_field_and_prefill(client) -> None:
+    import os
+    from app import db, repository
+
+    connection = db.connect(os.environ["IPAM_DB_PATH"])
+    try:
+        db.init_db(connection)
+        asset = repository.create_ip_asset(
+            connection,
+            ip_address="10.70.0.10",
+            asset_type=IPAssetType.VM,
+            tags=["Prod", "edge"],
+        )
+    finally:
+        connection.close()
+
+    app.dependency_overrides[ui.require_ui_editor] = lambda: User(1, "editor", "x", UserRole.EDITOR, True)
+    try:
+        create_response = client.get("/ui/ip-assets/new")
+        edit_response = client.get(f"/ui/ip-assets/{asset.id}/edit")
+    finally:
+        app.dependency_overrides.pop(ui.require_ui_editor, None)
+
+    assert create_response.status_code == 200
+    assert edit_response.status_code == 200
+    assert 'name="tags"' in create_response.text
+    assert 'value="edge, prod"' in edit_response.text
 
 
 def test_ip_assets_list_uses_overflow_actions_menu_with_delete_dialog(client) -> None:
