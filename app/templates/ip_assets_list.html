@@ -70,9 +70,41 @@
           </td>
           <td class="muted">{{ asset.type }}</td>
           <td class="muted">{{ asset.notes }}</td>
-          <td>
-            <a class="link" href="/ui/ip-assets/{{ asset.id }}/edit">Edit</a>
-            <a class="link" href="/ui/ip-assets/{{ asset.id }}/delete">Delete</a>
+          <td class="asset-actions-cell">
+            <details class="row-actions-menu">
+              <summary class="row-actions-trigger" aria-label="Open actions for {{ asset.ip_address }}">
+                <span aria-hidden="true">⋮</span>
+              </summary>
+              <div class="row-actions-panel" role="menu" aria-label="Actions for {{ asset.ip_address }}">
+                <a class="row-action-item" role="menuitem" href="/ui/ip-assets/{{ asset.id }}/edit">
+                  <span aria-hidden="true">✏️</span>
+                  <span>Edit</span>
+                </a>
+                <button
+                  class="row-action-item row-action-item-danger"
+                  type="button"
+                  role="menuitem"
+                  data-delete-dialog-id="delete-ip-{{ asset.id }}"
+                >
+                  <span aria-hidden="true">🗑️</span>
+                  <span>Delete</span>
+                </button>
+              </div>
+            </details>
+
+            <dialog class="delete-confirm-dialog" id="delete-ip-{{ asset.id }}">
+              <form method="dialog" class="delete-confirm-dialog-card">
+                <h2>Delete IP asset?</h2>
+                <p>
+                  <strong>{{ asset.ip_address }}</strong> will be removed permanently. You can review details on the
+                  confirmation page before deletion.
+                </p>
+                <div class="delete-confirm-dialog-actions">
+                  <button type="button" class="btn btn-secondary" data-close-delete-dialog>Cancel</button>
+                  <a class="btn btn-danger" href="/ui/ip-assets/{{ asset.id }}/delete">Continue to delete</a>
+                </div>
+              </form>
+            </dialog>
           </td>
         </tr>
         {% endfor %}
@@ -85,4 +117,28 @@
     </table>
   </div>
 </section>
+
+<script>
+  (() => {
+    const openButtons = document.querySelectorAll('[data-delete-dialog-id]');
+    openButtons.forEach((button) => {
+      button.addEventListener('click', () => {
+        const dialog = document.getElementById(button.dataset.deleteDialogId);
+        if (dialog && typeof dialog.showModal === 'function') {
+          dialog.showModal();
+        }
+      });
+    });
+
+    const closeButtons = document.querySelectorAll('[data-close-delete-dialog]');
+    closeButtons.forEach((button) => {
+      button.addEventListener('click', () => {
+        const dialog = button.closest('dialog');
+        if (dialog) {
+          dialog.close();
+        }
+      });
+    });
+  })();
+</script>
 {% endblock %}
