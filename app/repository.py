@@ -372,6 +372,33 @@ def list_hosts_with_ip_counts(connection: sqlite3.Connection) -> list[dict[str, 
             hosts.notes AS notes,
             vendors.name AS vendor,
             (
+                SELECT COUNT(DISTINCT ip_assets.project_id)
+                FROM ip_assets
+                WHERE ip_assets.host_id = hosts.id
+                  AND ip_assets.archived = 0
+                  AND ip_assets.project_id IS NOT NULL
+            ) AS project_count,
+            (
+                SELECT projects.name
+                FROM ip_assets
+                JOIN projects ON projects.id = ip_assets.project_id
+                WHERE ip_assets.host_id = hosts.id
+                  AND ip_assets.archived = 0
+                  AND ip_assets.project_id IS NOT NULL
+                ORDER BY projects.name
+                LIMIT 1
+            ) AS project_name,
+            (
+                SELECT projects.color
+                FROM ip_assets
+                JOIN projects ON projects.id = ip_assets.project_id
+                WHERE ip_assets.host_id = hosts.id
+                  AND ip_assets.archived = 0
+                  AND ip_assets.project_id IS NOT NULL
+                ORDER BY projects.name
+                LIMIT 1
+            ) AS project_color,
+            (
                 SELECT COUNT(*)
                 FROM ip_assets
                 WHERE ip_assets.host_id = hosts.id
@@ -410,6 +437,9 @@ def list_hosts_with_ip_counts(connection: sqlite3.Connection) -> list[dict[str, 
             "name": row["name"],
             "notes": row["notes"],
             "vendor": row["vendor"],
+            "project_count": int(row["project_count"] or 0),
+            "project_name": row["project_name"] or "",
+            "project_color": row["project_color"] or "",
             "ip_count": int(row["ip_count"] or 0),
             "os_ips": row["os_ips"] or "",
             "bmc_ips": row["bmc_ips"] or "",

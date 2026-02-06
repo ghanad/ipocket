@@ -278,9 +278,28 @@ def test_count_ip_assets_with_archived_only_filter(tmp_path) -> None:
 def test_list_hosts_with_ip_counts_includes_os_and_bmc_ips(tmp_path) -> None:
     connection = _setup_connection(tmp_path)
     host = create_host(connection, name="host-ips")
-    create_ip_asset(connection, ip_address="10.20.0.10", asset_type=IPAssetType.OS, host_id=host.id)
-    create_ip_asset(connection, ip_address="10.20.0.11", asset_type=IPAssetType.OS, host_id=host.id)
-    create_ip_asset(connection, ip_address="10.20.0.20", asset_type=IPAssetType.BMC, host_id=host.id)
+    project = create_project(connection, name="Edge", color="#1d4ed8")
+    create_ip_asset(
+        connection,
+        ip_address="10.20.0.10",
+        asset_type=IPAssetType.OS,
+        host_id=host.id,
+        project_id=project.id,
+    )
+    create_ip_asset(
+        connection,
+        ip_address="10.20.0.11",
+        asset_type=IPAssetType.OS,
+        host_id=host.id,
+        project_id=project.id,
+    )
+    create_ip_asset(
+        connection,
+        ip_address="10.20.0.20",
+        asset_type=IPAssetType.BMC,
+        host_id=host.id,
+        project_id=project.id,
+    )
     create_ip_asset(connection, ip_address="10.20.0.30", asset_type=IPAssetType.VM, host_id=host.id)
 
     hosts = list_hosts_with_ip_counts(connection)
@@ -288,6 +307,9 @@ def test_list_hosts_with_ip_counts_includes_os_and_bmc_ips(tmp_path) -> None:
     assert len(hosts) == 1
     assert hosts[0]["os_ips"] == "10.20.0.10, 10.20.0.11"
     assert hosts[0]["bmc_ips"] == "10.20.0.20"
+    assert hosts[0]["project_count"] == 1
+    assert hosts[0]["project_name"] == "Edge"
+    assert hosts[0]["project_color"] == "#1d4ed8"
 
 
 def test_audit_logs_record_ip_asset_changes(tmp_path) -> None:

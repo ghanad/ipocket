@@ -1136,6 +1136,7 @@ def ui_list_hosts(
             if q_lower in (host["name"] or "").lower()
             or q_lower in (host["notes"] or "").lower()
             or q_lower in (host["vendor"] or "").lower()
+            or q_lower in (host["project_name"] or "").lower()
             or q_lower in (host["os_ips"] or "").lower()
             or q_lower in (host["bmc_ips"] or "").lower()
         ]

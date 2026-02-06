@@ -191,6 +191,33 @@ def test_ip_assets_list_renders_project_color_tag(client) -> None:
     assert "project-color-dot" not in response.text
 
 
+def test_hosts_list_renders_project_color_tag(client) -> None:
+    import os
+    from app import db, repository
+
+    connection = db.connect(os.environ["IPAM_DB_PATH"])
+    try:
+        db.init_db(connection)
+        project = repository.create_project(connection, name="Core", color="#2563eb")
+        host = repository.create_host(connection, name="host-01")
+        repository.create_ip_asset(
+            connection,
+            ip_address="10.40.0.10",
+            asset_type=IPAssetType.OS,
+            project_id=project.id,
+            host_id=host.id,
+        )
+    finally:
+        connection.close()
+
+    response = client.get("/ui/hosts")
+
+    assert response.status_code == 200
+    assert 'class="tag tag-project"' in response.text
+    assert "--project-color: #2563eb" in response.text
+    assert "Core" in response.text
+
+
 def test_ip_assets_list_search_trims_whitespace(client) -> None:
     import os
     from app import db, repository
