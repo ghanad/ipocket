@@ -92,6 +92,7 @@ def test_ranges_page_renders_add_form_and_saved_ranges(client) -> None:
     assert "Add IP Range" in response.text
     assert "192.168.10.0/24" in response.text
     assert "Saved ranges" in response.text
+    assert "data-row-actions" in response.text
 
 
 def test_ranges_edit_and_delete_flow(client) -> None:
