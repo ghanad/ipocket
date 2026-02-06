@@ -12,6 +12,7 @@ ipocket is a lightweight IP inventory app to track addresses and their project a
 - IP list UI uses a compact three-dot actions menu per row to reduce clutter and separate safe actions from destructive actions.
 - Deleting an IP from the list is now two-step: open row actions, confirm intent in a warning dialog, then complete deletion on the existing confirmation page (type exact IP).
 - Management overview dashboard with quick totals for IPs, hosts, vendors, and projects.
+- CIDR-based subnet utilization report on the Management overview page that shows used vs. free IPs per range.
 - Export data as CSV, JSON, or bundle (JSON/ZIP) for round-trip workflows.
 - Import data from bundle.json or CSV with dry-run support and upserts.
 - Upload Nmap XML from the Import page to discover reachable IPs and add them as `OTHER` assets, with inline example commands.

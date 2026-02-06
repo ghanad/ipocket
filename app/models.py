@@ -82,3 +82,13 @@ class AuditLog:
     action: str
     changes: Optional[str]
     created_at: str
+
+
+@dataclass
+class IPRange:
+    id: int
+    name: str
+    cidr: str
+    notes: Optional[str]
+    created_at: str
+    updated_at: str

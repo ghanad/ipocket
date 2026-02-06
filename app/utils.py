@@ -15,6 +15,23 @@ def validate_ip_address(value: str) -> None:
         ) from exc
 
 
+def normalize_cidr(value: str) -> str:
+    try:
+        network = ipaddress.ip_network(value, strict=False)
+    except ValueError as exc:
+        raise ValueError("CIDR must be a valid IPv4 network.") from exc
+    if network.version != 4:
+        raise ValueError("CIDR must be a valid IPv4 network.")
+    return network.with_prefixlen
+
+
+def parse_ipv4_network(value: str) -> ipaddress.IPv4Network:
+    network = ipaddress.ip_network(value, strict=False)
+    if network.version != 4:
+        raise ValueError("CIDR must be a valid IPv4 network.")
+    return network
+
+
 DEFAULT_PROJECT_COLOR = "#94a3b8"
 
 _HEX_COLOR_PATTERN = re.compile(r"^#[0-9a-fA-F]{6}$")

@@ -1,10 +1,11 @@
 from __future__ import annotations
 
+import ipaddress
 import sqlite3
 from typing import Iterable, Optional
 
-from app.models import AuditLog, Host, IPAsset, IPAssetType, Project, User, UserRole, Vendor
-from app.utils import DEFAULT_PROJECT_COLOR
+from app.models import AuditLog, Host, IPAsset, IPAssetType, IPRange, Project, User, UserRole, Vendor
+from app.utils import DEFAULT_PROJECT_COLOR, normalize_cidr, parse_ipv4_network
 
 
 def _row_to_project(row: sqlite3.Row) -> Project:
@@ -59,6 +60,17 @@ def _row_to_audit_log(row: sqlite3.Row) -> AuditLog:
         action=row["action"],
         changes=row["changes"],
         created_at=row["created_at"],
+    )
+
+
+def _row_to_ip_range(row: sqlite3.Row) -> IPRange:
+    return IPRange(
+        id=row["id"],
+        name=row["name"],
+        cidr=row["cidr"],
+        notes=row["notes"],
+        created_at=row["created_at"],
+        updated_at=row["updated_at"],
     )
 
 
@@ -203,6 +215,75 @@ def update_project(
 def list_projects(connection: sqlite3.Connection) -> Iterable[Project]:
     rows = connection.execute("SELECT id, name, description, color FROM projects ORDER BY name").fetchall()
     return [_row_to_project(row) for row in rows]
+
+
+def create_ip_range(
+    connection: sqlite3.Connection,
+    name: str,
+    cidr: str,
+    notes: Optional[str] = None,
+) -> IPRange:
+    normalized_cidr = normalize_cidr(cidr)
+    cursor = connection.execute(
+        "INSERT INTO ip_ranges (name, cidr, notes) VALUES (?, ?, ?)",
+        (name, normalized_cidr, notes),
+    )
+    connection.commit()
+    row = connection.execute("SELECT * FROM ip_ranges WHERE id = ?", (cursor.lastrowid,)).fetchone()
+    if row is None:
+        raise RuntimeError("Failed to fetch newly created IP range.")
+    return _row_to_ip_range(row)
+
+
+def list_ip_ranges(connection: sqlite3.Connection) -> Iterable[IPRange]:
+    rows = connection.execute("SELECT * FROM ip_ranges ORDER BY name").fetchall()
+    return [_row_to_ip_range(row) for row in rows]
+
+
+def _total_usable_addresses(network: ipaddress.IPv4Network) -> int:
+    if network.prefixlen == 32:
+        return 1
+    if network.prefixlen == 31:
+        return 2
+    return max(int(network.num_addresses) - 2, 0)
+
+
+def get_ip_range_utilization(connection: sqlite3.Connection) -> list[dict[str, object]]:
+    ranges = list(list_ip_ranges(connection))
+    rows = connection.execute(
+        "SELECT DISTINCT ip_address FROM ip_assets WHERE archived = 0"
+    ).fetchall()
+    ip_addresses: set[ipaddress.IPv4Address] = set()
+    for row in rows:
+        try:
+            ip_value = ipaddress.ip_address(row["ip_address"])
+        except ValueError:
+            continue
+        if ip_value.version == 4:
+            ip_addresses.add(ip_value)
+
+    utilization: list[dict[str, object]] = []
+    for ip_range in ranges:
+        network = parse_ipv4_network(ip_range.cidr)
+        total = int(network.num_addresses)
+        total_usable = _total_usable_addresses(network)
+        used = sum(1 for ip_value in ip_addresses if ip_value in network)
+        free = max(total_usable - used, 0)
+        utilization_percent = (used / total_usable * 100.0) if total_usable else 0.0
+        utilization.append(
+            {
+                "id": ip_range.id,
+                "name": ip_range.name,
+                "cidr": ip_range.cidr,
+                "notes": ip_range.notes,
+                "total": total,
+                "total_usable": total_usable,
+                "used": used,
+                "free": free,
+                "utilization_percent": utilization_percent,
+            }
+        )
+    return utilization
 
 
 def create_user(connection: sqlite3.Connection, username: str, hashed_password: str, role: UserRole, is_active: bool = True) -> User:

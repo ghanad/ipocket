@@ -22,7 +22,7 @@ from app.imports import BundleImporter, CsvImporter, run_import
 from app.imports.nmap import NmapImportResult, import_nmap_xml
 from app.imports.models import ImportApplyResult, ImportSummary
 from app.models import IPAsset, IPAssetType, UserRole
-from app.utils import DEFAULT_PROJECT_COLOR, normalize_hex_color, validate_ip_address
+from app.utils import DEFAULT_PROJECT_COLOR, normalize_cidr, normalize_hex_color, validate_ip_address
 
 router = APIRouter()
 
@@ -90,6 +90,15 @@ def _render_fallback_template(
         for key in ("active_ip_total", "archived_ip_total", "host_total", "vendor_total", "project_total"):
             if key in summary:
                 lines.append(str(summary[key]))
+        for report in payload.get("utilization") or []:
+            used = report.get("used") if isinstance(report, dict) else None
+            if used is not None:
+                lines.append(str(used))
+    if template_name == "ranges.html":
+        for ip_range in payload.get("ranges") or []:
+            cidr = getattr(ip_range, "cidr", None)
+            if cidr:
+                lines.append(str(cidr))
     for error in payload.get("errors") or []:
         lines.append(str(error))
     if template_name == "login.html":
@@ -313,10 +322,11 @@ def ui_management(
     connection=Depends(get_connection),
 ) -> HTMLResponse:
     summary = repository.get_management_summary(connection)
+    utilization = repository.get_ip_range_utilization(connection)
     return _render_template(
         request,
         "management.html",
-        {"title": "ipocket - Management Overview", "summary": summary},
+        {"title": "ipocket - Management Overview", "summary": summary, "utilization": utilization},
         active_nav="management",
     )
 
@@ -941,6 +951,80 @@ async def ui_create_project(
         )
 
     return RedirectResponse(url="/ui/projects", status_code=303)
+
+
+@router.get("/ui/ranges", response_class=HTMLResponse)
+def ui_list_ranges(request: Request, connection=Depends(get_connection)) -> HTMLResponse:
+    ranges = list(repository.list_ip_ranges(connection))
+    return _render_template(
+        request,
+        "ranges.html",
+        {
+            "title": "ipocket - IP Ranges",
+            "ranges": ranges,
+            "errors": [],
+            "form_state": {"name": "", "cidr": "", "notes": ""},
+        },
+        active_nav="ranges",
+    )
+
+
+@router.post("/ui/ranges", response_class=HTMLResponse)
+async def ui_create_range(
+    request: Request,
+    connection=Depends(get_connection),
+    _user=Depends(require_ui_editor),
+) -> HTMLResponse:
+    form_data = await _parse_form_data(request)
+    name = (form_data.get("name") or "").strip()
+    cidr = (form_data.get("cidr") or "").strip()
+    notes = _parse_optional_str(form_data.get("notes"))
+
+    errors = []
+    normalized_cidr = None
+    if not name:
+        errors.append("Range name is required.")
+    if not cidr:
+        errors.append("CIDR is required.")
+    if cidr:
+        try:
+            normalized_cidr = normalize_cidr(cidr)
+        except ValueError:
+            errors.append("CIDR must be a valid IPv4 network (example: 192.168.10.0/24).")
+
+    if errors:
+        ranges = list(repository.list_ip_ranges(connection))
+        return _render_template(
+            request,
+            "ranges.html",
+            {
+                "title": "ipocket - IP Ranges",
+                "ranges": ranges,
+                "errors": errors,
+                "form_state": {"name": name, "cidr": cidr, "notes": notes or ""},
+            },
+            status_code=400,
+            active_nav="ranges",
+        )
+
+    try:
+        repository.create_ip_range(connection, name=name, cidr=normalized_cidr or cidr, notes=notes)
+    except sqlite3.IntegrityError:
+        ranges = list(repository.list_ip_ranges(connection))
+        return _render_template(
+            request,
+            "ranges.html",
+            {
+                "title": "ipocket - IP Ranges",
+                "ranges": ranges,
+                "errors": ["CIDR already exists."],
+                "form_state": {"name": name, "cidr": cidr, "notes": notes or ""},
+            },
+            status_code=409,
+            active_nav="ranges",
+        )
+
+    return RedirectResponse(url="/ui/ranges", status_code=303)
 
 
 @router.get("/ui/vendors", response_class=HTMLResponse)

@@ -14,6 +14,12 @@
 - `description` (optional)
 - `color` (hex color, default `#94a3b8`)
 
+## IPRange
+- `name` (range label)
+- `cidr` (IPv4 CIDR, unique)
+- `notes` (optional)
+- timestamps (`created_at`, `updated_at`)
+
 
 ## BMC auto-host linkage
 - On create (both REST API and UI form), when an IPAsset has `type=BMC` and `host_id` is omitted/null, ipocket auto-links it to a Host named exactly `server_{ip_address}`.

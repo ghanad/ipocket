@@ -8,6 +8,7 @@ from app.repository import (
     archive_ip_asset,
     create_host,
     create_ip_asset,
+    create_ip_range,
     create_project,
     create_user,
     create_vendor,
@@ -15,6 +16,7 @@ from app.repository import (
     get_host_by_name,
     get_ip_asset_by_ip,
     get_management_summary,
+    get_ip_range_utilization,
     delete_ip_asset,
     delete_host,
     get_ip_asset_metrics,
@@ -94,6 +96,50 @@ def test_update_project_color(tmp_path) -> None:
 
     assert updated is not None
     assert updated.color == "#112233"
+
+
+def test_create_ip_range_valid_and_invalid(tmp_path) -> None:
+    connection = _setup_connection(tmp_path)
+
+    ip_range = create_ip_range(connection, name="Corp LAN", cidr="192.168.10.0/24", notes="main")
+
+    assert ip_range.cidr == "192.168.10.0/24"
+    assert ip_range.name == "Corp LAN"
+
+    with pytest.raises(ValueError):
+        create_ip_range(connection, name="Bad range", cidr="192.168.10.999/24")
+
+
+def test_ip_range_utilization_counts(tmp_path) -> None:
+    connection = _setup_connection(tmp_path)
+    create_ip_range(connection, name="Corp LAN", cidr="192.168.10.0/24")
+    create_ip_range(connection, name="Point-to-point", cidr="10.0.0.0/31")
+    create_ip_range(connection, name="Loopback", cidr="10.0.0.5/32")
+
+    create_ip_asset(connection, ip_address="192.168.10.10", asset_type=IPAssetType.VM)
+    archived_asset = create_ip_asset(connection, ip_address="192.168.10.11", asset_type=IPAssetType.OS)
+    archive_ip_asset(connection, archived_asset.ip_address)
+    create_ip_asset(connection, ip_address="192.168.11.1", asset_type=IPAssetType.VM)
+    create_ip_asset(connection, ip_address="10.0.0.0", asset_type=IPAssetType.VM)
+    create_ip_asset(connection, ip_address="10.0.0.1", asset_type=IPAssetType.OS)
+    create_ip_asset(connection, ip_address="10.0.0.5", asset_type=IPAssetType.VIP)
+
+    utilization = {row["cidr"]: row for row in get_ip_range_utilization(connection)}
+
+    corp = utilization["192.168.10.0/24"]
+    assert corp["total_usable"] == 254
+    assert corp["used"] == 1
+    assert corp["free"] == 253
+
+    p2p = utilization["10.0.0.0/31"]
+    assert p2p["total_usable"] == 2
+    assert p2p["used"] == 2
+    assert p2p["free"] == 0
+
+    loopback = utilization["10.0.0.5/32"]
+    assert loopback["total_usable"] == 1
+    assert loopback["used"] == 1
+    assert loopback["free"] == 0
 
 
 def test_create_bmc_without_host_creates_server_host_and_links_asset(tmp_path) -> None:
