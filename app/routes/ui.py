@@ -405,9 +405,26 @@ async def ui_import_csv(
         )
     inputs: dict[str, bytes] = {}
     if hosts_file is not None:
-        inputs["hosts"] = await hosts_file.read()
+        hosts_payload = await hosts_file.read()
+        if hosts_payload:
+            inputs["hosts"] = hosts_payload
     if ip_assets_file is not None:
-        inputs["ip_assets"] = await ip_assets_file.read()
+        ip_assets_payload = await ip_assets_file.read()
+        if ip_assets_payload:
+            inputs["ip_assets"] = ip_assets_payload
+    if not inputs:
+        return _render_template(
+            request,
+            "import.html",
+            {
+                "title": "ipocket - Import",
+                "bundle_result": None,
+                "csv_result": None,
+                "errors": ["Upload at least one non-empty CSV file (hosts.csv or ip-assets.csv)."],
+            },
+            active_nav="import",
+            status_code=status.HTTP_400_BAD_REQUEST,
+        )
     result = run_import(connection, CsvImporter(), inputs, dry_run=dry_run)
     return _render_template(
         request,

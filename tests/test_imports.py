@@ -213,6 +213,26 @@ def test_csv_dry_run_single_file_imports(client) -> None:
     assert assets_summary["hosts"]["would_create"] == 0
 
 
+def test_csv_ignores_empty_optional_file(client) -> None:
+    test_client, db_path = client
+    _create_user(db_path, "viewer", "viewer-pass", UserRole.VIEWER)
+
+    viewer_token = _login(test_client, "viewer", "viewer-pass")
+    ip_assets_csv = "ip_address,type,project_name,host_name,notes,archived\n10.0.0.40,VM,Solo,,edge,false\n"
+    response = test_client.post(
+        "/import/csv?dry_run=1",
+        headers=_auth_headers(viewer_token),
+        files={
+            "hosts": ("hosts.csv", "", "text/csv"),
+            "ip_assets": ("ip-assets.csv", ip_assets_csv, "text/csv"),
+        },
+    )
+    assert response.status_code == 200
+    summary = response.json()["summary"]
+    assert summary["ip_assets"]["would_create"] == 1
+    assert summary["hosts"]["would_create"] == 0
+
+
 def test_validation_errors(client) -> None:
     test_client, db_path = client
     _create_user(db_path, "viewer", "viewer-pass", UserRole.VIEWER)
