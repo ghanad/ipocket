@@ -956,12 +956,14 @@ async def ui_create_project(
 @router.get("/ui/ranges", response_class=HTMLResponse)
 def ui_list_ranges(request: Request, connection=Depends(get_connection)) -> HTMLResponse:
     ranges = list(repository.list_ip_ranges(connection))
+    utilization = repository.get_ip_range_utilization(connection)
     return _render_template(
         request,
         "ranges.html",
         {
             "title": "ipocket - IP Ranges",
             "ranges": ranges,
+            "utilization": utilization,
             "errors": [],
             "form_state": {"name": "", "cidr": "", "notes": ""},
         },
@@ -994,12 +996,14 @@ async def ui_create_range(
 
     if errors:
         ranges = list(repository.list_ip_ranges(connection))
+        utilization = repository.get_ip_range_utilization(connection)
         return _render_template(
             request,
             "ranges.html",
             {
                 "title": "ipocket - IP Ranges",
                 "ranges": ranges,
+                "utilization": utilization,
                 "errors": errors,
                 "form_state": {"name": name, "cidr": cidr, "notes": notes or ""},
             },
@@ -1011,12 +1015,14 @@ async def ui_create_range(
         repository.create_ip_range(connection, name=name, cidr=normalized_cidr or cidr, notes=notes)
     except sqlite3.IntegrityError:
         ranges = list(repository.list_ip_ranges(connection))
+        utilization = repository.get_ip_range_utilization(connection)
         return _render_template(
             request,
             "ranges.html",
             {
                 "title": "ipocket - IP Ranges",
                 "ranges": ranges,
+                "utilization": utilization,
                 "errors": ["CIDR already exists."],
                 "form_state": {"name": name, "cidr": cidr, "notes": notes or ""},
             },
@@ -1025,6 +1031,41 @@ async def ui_create_range(
         )
 
     return RedirectResponse(url="/ui/ranges", status_code=303)
+
+
+@router.get("/ui/ranges/{range_id}/addresses", response_class=HTMLResponse)
+def ui_range_addresses(
+    request: Request,
+    range_id: int,
+    connection=Depends(get_connection),
+) -> HTMLResponse:
+    breakdown = repository.get_ip_range_address_breakdown(connection, range_id)
+    if breakdown is None:
+        raise HTTPException(status_code=404, detail="IP range not found.")
+
+    used_addresses = breakdown["used_addresses"]
+    free_addresses = breakdown["free_addresses"]
+    display_limit = 512
+
+    return _render_template(
+        request,
+        "range_addresses.html",
+        {
+            "title": "ipocket - Range Addresses",
+            "ip_range": breakdown["ip_range"],
+            "used": used_addresses,
+            "free": free_addresses,
+            "used_total": breakdown["used"],
+            "free_total": breakdown["free"],
+            "total_usable": breakdown["total_usable"],
+            "display_limit": display_limit,
+            "used_display": used_addresses[:display_limit],
+            "free_display": free_addresses[:display_limit],
+            "used_overflow": len(used_addresses) > display_limit,
+            "free_overflow": len(free_addresses) > display_limit,
+        },
+        active_nav="ranges",
+    )
 
 
 @router.get("/ui/vendors", response_class=HTMLResponse)

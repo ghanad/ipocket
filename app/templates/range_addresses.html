@@ -1,0 +1,89 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="page-header">
+  <div>
+    <h1>{{ ip_range.name }}</h1>
+    <p class="subtitle">CIDR {{ ip_range.cidr }} • {{ used_total }} used • {{ free_total }} free</p>
+  </div>
+  <div class="page-actions">
+    <a class="btn btn-secondary" href="/ui/ranges">Back to ranges</a>
+  </div>
+</section>
+
+<section class="card">
+  <div class="card-header">
+    <div>
+      <h2>Range details</h2>
+      <p class="subtitle">Usable total: {{ total_usable }} (excludes network/broadcast for /30 and larger ranges).</p>
+    </div>
+  </div>
+  <div class="card-body">
+    <p class="muted">Click the Used or Free counts on the utilization tables to return here.</p>
+  </div>
+</section>
+
+<section class="card table-card" id="used">
+  <div class="card-header card-header-padded">
+    <div>
+      <h2>Used addresses</h2>
+      <p class="subtitle">{{ used_total }} IPs in this range.</p>
+    </div>
+  </div>
+  <div class="table-wrapper">
+    <table class="table">
+      <thead>
+        <tr>
+          <th>IP address</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for ip_address in used_display %}
+        <tr>
+          <td class="mono">{{ ip_address }}</td>
+        </tr>
+        {% else %}
+        <tr>
+          <td class="empty-state">No used addresses recorded.</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% if used_overflow %}
+  <p class="table-footer muted">Showing first {{ display_limit }} of {{ used_total }} used addresses.</p>
+  {% endif %}
+</section>
+
+<section class="card table-card" id="free">
+  <div class="card-header card-header-padded">
+    <div>
+      <h2>Free addresses</h2>
+      <p class="subtitle">{{ free_total }} usable IPs available.</p>
+    </div>
+  </div>
+  <div class="table-wrapper">
+    <table class="table">
+      <thead>
+        <tr>
+          <th>IP address</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for ip_address in free_display %}
+        <tr>
+          <td class="mono">{{ ip_address }}</td>
+        </tr>
+        {% else %}
+        <tr>
+          <td class="empty-state">No free addresses available.</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% if free_overflow %}
+  <p class="table-footer muted">Showing first {{ display_limit }} of {{ free_total }} free addresses.</p>
+  {% endif %}
+</section>
+{% endblock %}

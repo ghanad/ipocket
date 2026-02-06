@@ -60,8 +60,8 @@
           <td>{{ row.name }}</td>
           <td>{{ row.cidr }}</td>
           <td>{{ row.total_usable }}</td>
-          <td>{{ row.used }}</td>
-          <td>{{ row.free }}</td>
+          <td><a class="link" href="/ui/ranges/{{ row.id }}/addresses#used">{{ row.used }}</a></td>
+          <td><a class="link" href="/ui/ranges/{{ row.id }}/addresses#free">{{ row.free }}</a></td>
           <td>{{ "%.1f"|format(row.utilization_percent) }}%</td>
         </tr>
         {% else %}

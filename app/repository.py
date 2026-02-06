@@ -240,6 +240,13 @@ def list_ip_ranges(connection: sqlite3.Connection) -> Iterable[IPRange]:
     return [_row_to_ip_range(row) for row in rows]
 
 
+def get_ip_range_by_id(connection: sqlite3.Connection, range_id: int) -> IPRange | None:
+    row = connection.execute("SELECT * FROM ip_ranges WHERE id = ?", (range_id,)).fetchone()
+    if row is None:
+        return None
+    return _row_to_ip_range(row)
+
+
 def _total_usable_addresses(network: ipaddress.IPv4Network) -> int:
     if network.prefixlen == 32:
         return 1
@@ -284,6 +291,41 @@ def get_ip_range_utilization(connection: sqlite3.Connection) -> list[dict[str, o
             }
         )
     return utilization
+
+
+def get_ip_range_address_breakdown(
+    connection: sqlite3.Connection,
+    range_id: int,
+) -> dict[str, object] | None:
+    ip_range = get_ip_range_by_id(connection, range_id)
+    if ip_range is None:
+        return None
+
+    network = parse_ipv4_network(ip_range.cidr)
+    rows = connection.execute(
+        "SELECT DISTINCT ip_address FROM ip_assets WHERE archived = 0"
+    ).fetchall()
+    used_addresses: set[ipaddress.IPv4Address] = set()
+    for row in rows:
+        try:
+            ip_value = ipaddress.ip_address(row["ip_address"])
+        except ValueError:
+            continue
+        if ip_value.version == 4 and ip_value in network:
+            used_addresses.add(ip_value)
+
+    used_sorted = sorted(used_addresses, key=int)
+    usable_addresses = list(network.hosts())
+    free_addresses = [ip_value for ip_value in usable_addresses if ip_value not in used_addresses]
+
+    return {
+        "ip_range": ip_range,
+        "used_addresses": [str(ip_value) for ip_value in used_sorted],
+        "free_addresses": [str(ip_value) for ip_value in free_addresses],
+        "used": len(used_sorted),
+        "free": len(free_addresses),
+        "total_usable": len(usable_addresses),
+    }
 
 
 def create_user(connection: sqlite3.Connection, username: str, hashed_password: str, role: UserRole, is_active: bool = True) -> User:
