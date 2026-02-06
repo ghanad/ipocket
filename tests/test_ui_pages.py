@@ -128,8 +128,6 @@ def test_ui_create_bmc_passes_auto_host_flag_enabled(client, monkeypatch) -> Non
         return IPAsset(
             id=1,
             ip_address=kwargs["ip_address"],
-            subnet=kwargs.get("subnet") or "",
-            gateway=kwargs.get("gateway") or "",
             asset_type=kwargs["asset_type"],
             project_id=kwargs.get("project_id"),
             host_id=kwargs.get("host_id"),
@@ -165,8 +163,6 @@ def test_ui_create_bmc_passes_auto_host_flag_disabled(client, monkeypatch) -> No
         return IPAsset(
             id=2,
             ip_address=kwargs["ip_address"],
-            subnet=kwargs.get("subnet") or "",
-            gateway=kwargs.get("gateway") or "",
             asset_type=kwargs["asset_type"],
             project_id=kwargs.get("project_id"),
             host_id=kwargs.get("host_id"),

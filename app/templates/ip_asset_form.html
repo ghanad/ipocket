@@ -5,7 +5,7 @@
   <div>
     <p class="eyebrow">{% if mode == 'create' %}Create{% else %}Edit{% endif %} IP</p>
     <h1>{% if mode == 'create' %}Add IP asset{% else %}Edit IP asset{% endif %}</h1>
-    <p class="subtitle">Provide addressing, project assignment, and metadata.</p>
+    <p class="subtitle">Provide project assignment and metadata.</p>
   </div>
   <div class="header-actions">
     <a class="btn btn-secondary" href="/ui/ip-assets">Back to list</a>
@@ -27,14 +27,6 @@
     <label class="field">
       <span>IP address</span>
       <input class="input" type="text" name="ip_address" value="{{ asset.ip_address }}"{% if mode == 'edit' %} readonly{% endif %} />
-    </label>
-    <label class="field">
-      <span>Subnet</span>
-      <input class="input" type="text" name="subnet" value="{{ asset.subnet }}" />
-    </label>
-    <label class="field">
-      <span>Gateway</span>
-      <input class="input" type="text" name="gateway" value="{{ asset.gateway }}" />
     </label>
     <label class="field">
       <span>Type</span>

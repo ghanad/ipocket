@@ -252,8 +252,6 @@ def _build_asset_view_models(
             {
                 "id": asset.id,
                 "ip_address": asset.ip_address,
-                "subnet": asset.subnet,
-                "gateway": asset.gateway,
                 "type": asset.asset_type.value,
                 "project_name": project_name,
                 "project_color": project_color,
@@ -441,8 +439,6 @@ def export_ip_assets_csv(
     )
     headers = [
         "ip_address",
-        "subnet",
-        "gateway",
         "type",
         "project_name",
         "host_name",
@@ -592,8 +588,6 @@ def export_bundle_zip(
         "ip-assets.csv": _build_csv_content(
             [
                 "ip_address",
-                "subnet",
-                "gateway",
                 "type",
                 "project_name",
                 "host_name",
@@ -1321,8 +1315,6 @@ def ui_add_ip_form(
             "asset": {
                 "id": None,
                 "ip_address": "",
-                "subnet": "",
-                "gateway": "",
                 "type": IPAssetType.VM.value,
                 "project_id": "",
                 "host_id": "",
@@ -1348,8 +1340,6 @@ async def ui_add_ip_submit(
 ):
     form_data = await _parse_form_data(request)
     ip_address = form_data.get("ip_address")
-    subnet = (form_data.get("subnet") or "").strip()
-    gateway = (form_data.get("gateway") or "").strip()
     asset_type = form_data.get("type")
     project_id = _parse_optional_int(form_data.get("project_id"))
     host_id = _parse_optional_int(form_data.get("host_id"))
@@ -1385,8 +1375,6 @@ async def ui_add_ip_submit(
                 "asset": {
                     "id": None,
                     "ip_address": ip_address or "",
-                    "subnet": subnet or "",
-                    "gateway": gateway or "",
                     "type": asset_type or "",
                     "project_id": project_id or "",
                     "host_id": host_id or "",
@@ -1408,8 +1396,6 @@ async def ui_add_ip_submit(
         asset = repository.create_ip_asset(
             connection,
             ip_address=ip_address,
-            subnet=subnet,
-            gateway=gateway,
             asset_type=normalized_asset_type,
             project_id=project_id,
             host_id=host_id,
@@ -1428,8 +1414,6 @@ async def ui_add_ip_submit(
                 "asset": {
                     "id": None,
                     "ip_address": ip_address or "",
-                    "subnet": subnet or "",
-                    "gateway": gateway or "",
                     "type": asset_type or "",
                     "project_id": project_id or "",
                     "host_id": host_id or "",
@@ -1493,8 +1477,6 @@ def ui_edit_ip_form(
             "asset": {
                 "id": asset.id,
                 "ip_address": asset.ip_address,
-                "subnet": asset.subnet,
-                "gateway": asset.gateway,
                 "type": asset.asset_type.value,
                 "project_id": asset.project_id or "",
                 "host_id": asset.host_id or "",
@@ -1524,8 +1506,6 @@ async def ui_edit_ip_submit(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
 
     form_data = await _parse_form_data(request)
-    subnet = (form_data.get("subnet") or "").strip()
-    gateway = (form_data.get("gateway") or "").strip()
     asset_type = form_data.get("type")
     project_id = _parse_optional_int(form_data.get("project_id"))
     host_id = _parse_optional_int(form_data.get("host_id"))
@@ -1553,8 +1533,6 @@ async def ui_edit_ip_submit(
                 "asset": {
                     "id": asset.id,
                     "ip_address": asset.ip_address,
-                    "subnet": subnet or "",
-                    "gateway": gateway or "",
                     "type": asset_type or "",
                     "project_id": project_id or "",
                     "host_id": host_id or "",
@@ -1575,8 +1553,6 @@ async def ui_edit_ip_submit(
     repository.update_ip_asset(
         connection,
         ip_address=asset.ip_address,
-        subnet=subnet,
-        gateway=gateway,
         asset_type=normalized_asset_type,
         project_id=project_id,
         host_id=host_id,

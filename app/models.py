@@ -62,8 +62,6 @@ class User:
 class IPAsset:
     id: int
     ip_address: str
-    subnet: str
-    gateway: str
     asset_type: IPAssetType
     project_id: Optional[int]
     host_id: Optional[int]

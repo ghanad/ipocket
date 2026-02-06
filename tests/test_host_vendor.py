@@ -167,8 +167,6 @@ def test_init_db_migrates_host_vendor_text_to_vendor_catalog(tmp_path) -> None:
             CREATE TABLE ip_assets (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 ip_address TEXT NOT NULL UNIQUE,
-                subnet TEXT NOT NULL,
-                gateway TEXT NOT NULL,
                 type TEXT NOT NULL CHECK (type IN ('VM', 'OS', 'BMC', 'VIP', 'OTHER')),
                 project_id INTEGER,
                 notes TEXT,

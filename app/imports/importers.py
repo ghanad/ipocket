@@ -114,8 +114,6 @@ def _parse_ip_assets(section: object, base_path: str) -> list[ImportIPAsset]:
         assets.append(
             ImportIPAsset(
                 ip_address=str(entry.get("ip_address") or ""),
-                subnet=_normalize_optional_str(entry.get("subnet")),
-                gateway=_normalize_optional_str(entry.get("gateway")),
                 asset_type=str(entry.get("type") or ""),
                 project_name=_normalize_optional_str(entry.get("project_name")),
                 host_name=_normalize_optional_str(entry.get("host_name")),
@@ -159,7 +157,7 @@ def _parse_ip_assets_csv(data: bytes, filename: str) -> list[ImportIPAsset]:
     rows, fieldnames = _read_csv(data)
     _require_columns(
         fieldnames,
-        {"ip_address", "subnet", "gateway", "type", "project_name", "host_name", "notes", "archived"},
+        {"ip_address", "type", "project_name", "host_name", "notes", "archived"},
         filename,
     )
     assets: list[ImportIPAsset] = []
@@ -167,8 +165,6 @@ def _parse_ip_assets_csv(data: bytes, filename: str) -> list[ImportIPAsset]:
         assets.append(
             ImportIPAsset(
                 ip_address=str(row.get("ip_address") or ""),
-                subnet=_normalize_optional_str(row.get("subnet")),
-                gateway=_normalize_optional_str(row.get("gateway")),
                 asset_type=str(row.get("type") or ""),
                 project_name=_normalize_optional_str(row.get("project_name")),
                 host_name=_normalize_optional_str(row.get("host_name")),

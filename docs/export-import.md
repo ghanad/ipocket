@@ -39,8 +39,6 @@ Dry-run runs validation and returns a summary without writing to the database. A
     "ip_assets": [
       {
         "ip_address": "10.0.0.10",
-        "subnet": "10.0.0.0/24",
-        "gateway": "10.0.0.1",
         "type": "VM",
         "project_name": "Core",
         "host_name": "node-01",
@@ -71,8 +69,6 @@ Columns:
 Columns:
 
 - `ip_address` (required)
-- `subnet`
-- `gateway`
 - `type` (required: `OS`, `BMC`, `VM`, `VIP`, `OTHER`)
 - `project_name`
 - `host_name`

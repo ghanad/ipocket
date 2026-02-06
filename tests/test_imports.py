@@ -57,8 +57,6 @@ def _bundle_payload() -> dict:
             "ip_assets": [
                 {
                     "ip_address": "10.0.0.10",
-                    "subnet": "10.0.0.0/24",
-                    "gateway": "10.0.0.1",
                     "type": "VM",
                     "project_name": "Core",
                     "host_name": "node-01",
@@ -140,7 +138,7 @@ def test_csv_dry_run_and_apply(client) -> None:
     _create_user(db_path, "editor", "editor-pass", UserRole.EDITOR)
 
     hosts_csv = "name,notes,vendor_name\nnode-02,worker,Dell\n"
-    ip_assets_csv = "ip_address,subnet,gateway,type,project_name,host_name,notes,archived\n10.0.0.20,10.0.0.0/24,10.0.0.1,OS,Core,node-02,os,false\n"
+    ip_assets_csv = "ip_address,type,project_name,host_name,notes,archived\n10.0.0.20,OS,Core,node-02,os,false\n"
 
     viewer_token = _login(test_client, "viewer", "viewer-pass")
     dry_run_response = test_client.post(
@@ -244,8 +242,6 @@ def test_round_trip_bundle_import() -> None:
             source_connection,
             ip_address="10.0.0.30",
             asset_type=IPAssetType.VM,
-            subnet="10.0.0.0/24",
-            gateway="10.0.0.1",
             project_id=project.id,
             host_id=host.id,
             notes="primary",
