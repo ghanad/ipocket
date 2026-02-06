@@ -34,4 +34,43 @@
     <p class="stat-helper">Active assignments</p>
   </article>
 </section>
+
+<section class="card table-card">
+  <div class="card-header">
+    <div>
+      <h2>Subnet Utilization</h2>
+      <p class="subtitle">Track used vs. free IPs in each defined range.</p>
+    </div>
+  </div>
+  <div class="table-wrapper">
+    <table class="table">
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>CIDR</th>
+          <th>Total usable</th>
+          <th>Used</th>
+          <th>Free</th>
+          <th>Utilization</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in utilization %}
+        <tr>
+          <td>{{ row.name }}</td>
+          <td>{{ row.cidr }}</td>
+          <td>{{ row.total_usable }}</td>
+          <td>{{ row.used }}</td>
+          <td>{{ row.free }}</td>
+          <td>{{ "%.1f"|format(row.utilization_percent) }}%</td>
+        </tr>
+        {% else %}
+        <tr>
+          <td colspan="6" class="empty-state">No ranges yet. Add ranges to see utilization.</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
 {% endblock %}

@@ -19,62 +19,29 @@
 {% endif %}
 
 <section class="card">
-  <header class="card-header">
-    <h2>Add IP Range</h2>
-  </header>
-  <form method="post" action="/ui/ranges" class="form-grid">
-    <label class="form-field">
+  <div class="card-header">
+    <div>
+      <h2>Add IP Range</h2>
+      <p class="subtitle">Use CIDR notation to group ranges for reporting.</p>
+    </div>
+  </div>
+  <form method="post" action="/ui/ranges" class="form-grid form-grid-two">
+    <label class="field">
       <span>Name</span>
-      <input type="text" name="name" value="{{ form_state.name }}" required />
+      <input class="input" type="text" name="name" value="{{ form_state.name }}" required />
     </label>
-    <label class="form-field">
+    <label class="field">
       <span>CIDR</span>
-      <input type="text" name="cidr" value="{{ form_state.cidr }}" placeholder="192.168.10.0/24" required />
+      <input class="input" type="text" name="cidr" value="{{ form_state.cidr }}" placeholder="192.168.10.0/24" required />
     </label>
-    <label class="form-field form-field-full">
+    <label class="field field-span">
       <span>Notes</span>
-      <textarea name="notes" rows="2">{{ form_state.notes }}</textarea>
+      <textarea class="textarea" name="notes" rows="2">{{ form_state.notes }}</textarea>
     </label>
-    <div class="form-actions">
-      <button type="submit" class="button button-primary">Save range</button>
+    <div class="form-actions field-span">
+      <button class="btn btn-primary" type="submit">Save range</button>
     </div>
   </form>
-</section>
-
-<section class="card">
-  <header class="card-header">
-    <h2>Subnet Utilization</h2>
-  </header>
-  <div class="table-wrapper">
-    <table class="table">
-      <thead>
-        <tr>
-          <th>Name</th>
-          <th>CIDR</th>
-          <th>Total usable</th>
-          <th>Used</th>
-          <th>Free</th>
-          <th>Utilization</th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for row in utilization %}
-        <tr>
-          <td>{{ row.name }}</td>
-          <td>{{ row.cidr }}</td>
-          <td>{{ row.total_usable }}</td>
-          <td>{{ row.used }}</td>
-          <td>{{ row.free }}</td>
-          <td>{{ "%.1f"|format(row.utilization_percent) }}%</td>
-        </tr>
-        {% else %}
-        <tr>
-          <td colspan="6" class="empty-state">No ranges yet. Add one above to see utilization.</td>
-        </tr>
-        {% endfor %}
-      </tbody>
-    </table>
-  </div>
 </section>
 
 <section class="card">

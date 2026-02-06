@@ -90,15 +90,15 @@ def _render_fallback_template(
         for key in ("active_ip_total", "archived_ip_total", "host_total", "vendor_total", "project_total"):
             if key in summary:
                 lines.append(str(summary[key]))
+        for report in payload.get("utilization") or []:
+            used = report.get("used") if isinstance(report, dict) else None
+            if used is not None:
+                lines.append(str(used))
     if template_name == "ranges.html":
         for ip_range in payload.get("ranges") or []:
             cidr = getattr(ip_range, "cidr", None)
             if cidr:
                 lines.append(str(cidr))
-        for report in payload.get("utilization") or []:
-            used = report.get("used") if isinstance(report, dict) else None
-            if used is not None:
-                lines.append(str(used))
     for error in payload.get("errors") or []:
         lines.append(str(error))
     if template_name == "login.html":
@@ -322,10 +322,11 @@ def ui_management(
     connection=Depends(get_connection),
 ) -> HTMLResponse:
     summary = repository.get_management_summary(connection)
+    utilization = repository.get_ip_range_utilization(connection)
     return _render_template(
         request,
         "management.html",
-        {"title": "ipocket - Management Overview", "summary": summary},
+        {"title": "ipocket - Management Overview", "summary": summary, "utilization": utilization},
         active_nav="management",
     )
 
@@ -933,14 +934,12 @@ async def ui_create_project(
 @router.get("/ui/ranges", response_class=HTMLResponse)
 def ui_list_ranges(request: Request, connection=Depends(get_connection)) -> HTMLResponse:
     ranges = list(repository.list_ip_ranges(connection))
-    utilization = repository.get_ip_range_utilization(connection)
     return _render_template(
         request,
         "ranges.html",
         {
             "title": "ipocket - IP Ranges",
             "ranges": ranges,
-            "utilization": utilization,
             "errors": [],
             "form_state": {"name": "", "cidr": "", "notes": ""},
         },
@@ -973,14 +972,12 @@ async def ui_create_range(
 
     if errors:
         ranges = list(repository.list_ip_ranges(connection))
-        utilization = repository.get_ip_range_utilization(connection)
         return _render_template(
             request,
             "ranges.html",
             {
                 "title": "ipocket - IP Ranges",
                 "ranges": ranges,
-                "utilization": utilization,
                 "errors": errors,
                 "form_state": {"name": name, "cidr": cidr, "notes": notes or ""},
             },
@@ -992,14 +989,12 @@ async def ui_create_range(
         repository.create_ip_range(connection, name=name, cidr=normalized_cidr or cidr, notes=notes)
     except sqlite3.IntegrityError:
         ranges = list(repository.list_ip_ranges(connection))
-        utilization = repository.get_ip_range_utilization(connection)
         return _render_template(
             request,
             "ranges.html",
             {
                 "title": "ipocket - IP Ranges",
                 "ranges": ranges,
-                "utilization": utilization,
                 "errors": ["CIDR already exists."],
                 "form_state": {"name": name, "cidr": cidr, "notes": notes or ""},
             },

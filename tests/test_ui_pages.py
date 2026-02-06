@@ -47,6 +47,9 @@ def test_management_page_shows_summary_counts(client) -> None:
             connection, ip_address="10.50.0.11", asset_type=IPAssetType.OS
         )
         repository.archive_ip_asset(connection, archived_asset.ip_address)
+        repository.create_ip_range(connection, name="Corp LAN", cidr="192.168.10.0/24")
+        repository.create_ip_asset(connection, ip_address="192.168.10.10", asset_type=IPAssetType.VM)
+        repository.create_ip_asset(connection, ip_address="192.168.10.11", asset_type=IPAssetType.VM)
     finally:
         connection.close()
 
@@ -54,14 +57,19 @@ def test_management_page_shows_summary_counts(client) -> None:
 
     assert response.status_code == 200
     assert "Management Overview" in response.text
-    assert 'data-testid="stat-active-ips">1<' in response.text
+    assert 'data-testid="stat-active-ips">3<' in response.text
     assert 'data-testid="stat-archived-ips">1<' in response.text
     assert 'data-testid="stat-hosts">1<' in response.text
     assert 'data-testid="stat-vendors">1<' in response.text
     assert 'data-testid="stat-projects">1<' in response.text
+    assert "Subnet Utilization" in response.text
+    assert "192.168.10.0/24" in response.text
+    assert "254</td>" in response.text
+    assert "2</td>" in response.text
+    assert "252</td>" in response.text
 
 
-def test_ranges_page_renders_utilization_report(client) -> None:
+def test_ranges_page_renders_add_form_and_saved_ranges(client) -> None:
     import os
     from app import db, repository
 
@@ -69,21 +77,15 @@ def test_ranges_page_renders_utilization_report(client) -> None:
     try:
         db.init_db(connection)
         repository.create_ip_range(connection, name="Corp LAN", cidr="192.168.10.0/24")
-        repository.create_ip_asset(connection, ip_address="192.168.10.10", asset_type=IPAssetType.VM)
-        repository.create_ip_asset(connection, ip_address="192.168.10.11", asset_type=IPAssetType.VM)
-        archived_asset = repository.create_ip_asset(connection, ip_address="192.168.10.12", asset_type=IPAssetType.OS)
-        repository.archive_ip_asset(connection, archived_asset.ip_address)
     finally:
         connection.close()
 
     response = client.get("/ui/ranges")
 
     assert response.status_code == 200
-    assert "Subnet Utilization" in response.text
+    assert "Add IP Range" in response.text
     assert "192.168.10.0/24" in response.text
-    assert "254</td>" in response.text
-    assert "2</td>" in response.text
-    assert "252</td>" in response.text
+    assert "Saved ranges" in response.text
 
 
 def test_import_page_includes_sample_csv_links(client) -> None:
