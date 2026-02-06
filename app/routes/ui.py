@@ -18,6 +18,7 @@ from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse, Resp
 from app import auth, build_info, exports, repository
 from app.dependencies import get_connection
 from app.imports import BundleImporter, CsvImporter, run_import
+from app.imports.nmap import NmapImportResult, import_nmap_xml
 from app.imports.models import ImportApplyResult, ImportSummary
 from app.models import IPAsset, IPAssetType, UserRole
 from app.utils import DEFAULT_PROJECT_COLOR, normalize_hex_color, validate_ip_address
@@ -343,6 +344,16 @@ def _import_result_payload(result: ImportApplyResult) -> dict[str, object]:
     }
 
 
+def _nmap_result_payload(result: NmapImportResult) -> dict[str, object]:
+    return {
+        "discovered_up_hosts": result.discovered_up_hosts,
+        "new_ips_created": result.new_ips_created,
+        "existing_ips_seen": result.existing_ips_seen,
+        "errors": result.errors,
+        "new_assets": [asset.__dict__ for asset in result.new_assets],
+    }
+
+
 @router.get("/ui/import", response_class=HTMLResponse)
 def ui_import(
     request: Request,
@@ -353,6 +364,68 @@ def ui_import(
         "import.html",
         {"title": "ipocket - Import", "bundle_result": None, "csv_result": None, "errors": []},
         active_nav="import",
+    )
+
+
+@router.get("/ui/import-nmap", response_class=HTMLResponse)
+def ui_import_nmap(
+    request: Request,
+    _user=Depends(get_current_ui_user),
+) -> HTMLResponse:
+    return _render_template(
+        request,
+        "import_nmap.html",
+        {"title": "ipocket - Nmap Import", "result": None, "errors": []},
+        active_nav="import-nmap",
+    )
+
+
+@router.post("/ui/import-nmap", response_class=HTMLResponse)
+async def ui_import_nmap_submit(
+    request: Request,
+    connection=Depends(get_connection),
+    user=Depends(get_current_ui_user),
+) -> HTMLResponse:
+    form_data = await _parse_multipart_form(request)
+    dry_run = bool(form_data.get("dry_run"))
+    if not dry_run and user.role not in (UserRole.EDITOR, UserRole.ADMIN):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN)
+    upload = form_data.get("nmap_file")
+    if upload is None:
+        return _render_template(
+            request,
+            "import_nmap.html",
+            {
+                "title": "ipocket - Nmap Import",
+                "result": None,
+                "errors": ["Nmap XML file is required."],
+            },
+            active_nav="import-nmap",
+            status_code=status.HTTP_400_BAD_REQUEST,
+        )
+    payload = await upload.read()
+    if not payload:
+        return _render_template(
+            request,
+            "import_nmap.html",
+            {
+                "title": "ipocket - Nmap Import",
+                "result": None,
+                "errors": ["Nmap XML file is empty."],
+            },
+            active_nav="import-nmap",
+            status_code=status.HTTP_400_BAD_REQUEST,
+        )
+    result = import_nmap_xml(connection, payload, dry_run=dry_run, current_user=user)
+    return _render_template(
+        request,
+        "import_nmap.html",
+        {
+            "title": "ipocket - Nmap Import",
+            "result": _nmap_result_payload(result),
+            "errors": [],
+        },
+        active_nav="import-nmap",
     )
 
 
