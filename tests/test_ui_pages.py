@@ -71,8 +71,8 @@ def test_management_page_shows_summary_counts(client) -> None:
     assert "Subnet Utilization" in response.text
     assert "192.168.10.0/24" in response.text
     assert "254</td>" in response.text
-    assert "2</td>" in response.text
-    assert "252</td>" in response.text
+    assert ">2</a>" in response.text
+    assert ">252</a>" in response.text
 
 
 def test_ranges_page_renders_add_form_and_saved_ranges(client) -> None:
@@ -92,6 +92,45 @@ def test_ranges_page_renders_add_form_and_saved_ranges(client) -> None:
     assert "Add IP Range" in response.text
     assert "192.168.10.0/24" in response.text
     assert "Saved ranges" in response.text
+
+
+def test_ranges_edit_and_delete_flow(client) -> None:
+    import os
+    from app import db, repository
+
+    connection = db.connect(os.environ["IPAM_DB_PATH"])
+    try:
+        db.init_db(connection)
+        ip_range = repository.create_ip_range(connection, name="Corp LAN", cidr="192.168.10.0/24")
+    finally:
+        connection.close()
+
+    app.dependency_overrides[ui.get_current_ui_user] = lambda: User(1, "editor", "x", UserRole.EDITOR, True)
+    try:
+        edit_response = client.get(f"/ui/ranges/{ip_range.id}/edit")
+        assert edit_response.status_code == 200
+        assert "Edit IP Range" in edit_response.text
+
+        update_response = client.post(
+            f"/ui/ranges/{ip_range.id}/edit",
+            data={"name": "Corporate LAN", "cidr": "192.168.20.0/24", "notes": "updated"},
+            follow_redirects=False,
+        )
+        assert update_response.status_code == 303
+
+        delete_response = client.post(
+            f"/ui/ranges/{ip_range.id}/delete",
+            follow_redirects=False,
+        )
+        assert delete_response.status_code == 303
+    finally:
+        app.dependency_overrides.pop(ui.get_current_ui_user, None)
+
+    connection = db.connect(os.environ["IPAM_DB_PATH"])
+    try:
+        assert repository.get_ip_range_by_id(connection, ip_range.id) is None
+    finally:
+        connection.close()
 
 
 def test_import_page_includes_sample_csv_links(client) -> None:

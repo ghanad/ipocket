@@ -18,6 +18,7 @@ from app.repository import (
     get_management_summary,
     get_ip_range_utilization,
     delete_ip_asset,
+    delete_ip_range,
     delete_host,
     get_ip_asset_metrics,
     list_audit_logs,
@@ -26,7 +27,9 @@ from app.repository import (
     list_active_ip_assets_paginated,
     count_active_ip_assets,
     get_ip_range_address_breakdown,
+    get_ip_range_by_id,
     update_ip_asset,
+    update_ip_range,
     update_project,
 )
 
@@ -109,6 +112,32 @@ def test_create_ip_range_valid_and_invalid(tmp_path) -> None:
 
     with pytest.raises(ValueError):
         create_ip_range(connection, name="Bad range", cidr="192.168.10.999/24")
+
+
+def test_update_and_delete_ip_range(tmp_path) -> None:
+    connection = _setup_connection(tmp_path)
+
+    ip_range = create_ip_range(connection, name="Corp LAN", cidr="192.168.10.0/24", notes="main")
+
+    updated = update_ip_range(
+        connection,
+        ip_range.id,
+        name="Corporate LAN",
+        cidr="192.168.20.0/24",
+        notes="updated",
+    )
+
+    assert updated is not None
+    assert updated.name == "Corporate LAN"
+    assert updated.cidr == "192.168.20.0/24"
+    assert updated.notes == "updated"
+
+    fetched = get_ip_range_by_id(connection, ip_range.id)
+    assert fetched is not None
+    assert fetched.name == "Corporate LAN"
+
+    assert delete_ip_range(connection, ip_range.id) is True
+    assert get_ip_range_by_id(connection, ip_range.id) is None
 
 
 def test_ip_range_utilization_counts(tmp_path) -> None:

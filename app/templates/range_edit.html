@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="page-header">
+  <div>
+    <h1>Edit IP Range</h1>
+    <p class="page-subtitle">Update the CIDR definition and notes for this range.</p>
+  </div>
+  <a class="btn btn-secondary" href="/ui/ranges">Back to ranges</a>
+</section>
+
+{% if errors %}
+  <div class="alert alert-error">
+    <ul>
+      {% for error in errors %}
+      <li>{{ error }}</li>
+      {% endfor %}
+    </ul>
+  </div>
+{% endif %}
+
+<section class="card">
+  <div class="card-header">
+    <div>
+      <h2>{{ ip_range.name }}</h2>
+      <p class="subtitle">Last updated: {{ ip_range.updated_at }}</p>
+    </div>
+  </div>
+  <form method="post" action="/ui/ranges/{{ ip_range.id }}/edit" class="form-grid form-grid-two">
+    <label class="field">
+      <span>Name</span>
+      <input class="input" type="text" name="name" value="{{ form_state.name }}" required />
+    </label>
+    <label class="field">
+      <span>CIDR</span>
+      <input class="input" type="text" name="cidr" value="{{ form_state.cidr }}" placeholder="192.168.10.0/24" required />
+    </label>
+    <label class="field field-span">
+      <span>Notes</span>
+      <textarea class="textarea" name="notes" rows="3">{{ form_state.notes }}</textarea>
+    </label>
+    <div class="form-actions field-span">
+      <button class="btn btn-primary" type="submit">Save changes</button>
+    </div>
+  </form>
+</section>
+{% endblock %}
