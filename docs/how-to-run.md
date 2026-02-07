@@ -75,10 +75,20 @@ Defaults for the bootstrap admin user are:
 - `ADMIN_BOOTSTRAP_PASSWORD=admin-pass`
 
 ## Offline environments
-The UI ships with bundled JavaScript helpers and relies on local/system fonts,
-so it can render without downloading assets from public CDNs. This keeps the
-interface functional in air-gapped deployments while preserving the same
-layout and interactions as connected environments.
+Docker deployments default to local/static assets (CSS + JS like htmx) so the UI
+renders without downloading from public CDNs. Non-Docker runs will load the
+Inter font from Google Fonts and htmx from a CDN by default. To force local
+assets in any environment, set:
+
+```
+IPOCKET_DOCKER_ASSETS=1
+```
+
+To explicitly allow remote font loading (even in Docker), set:
+
+```
+IPOCKET_DOCKER_ASSETS=0
+```
 
 ### Version metadata (recommended for deployments)
 ipocket reads version info from environment variables and includes them in the

@@ -17,6 +17,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse, Response
 
 from app import auth, build_info, exports, repository
+from app.environment import use_local_assets
 from app.dependencies import get_connection
 from app.imports import BundleImporter, CsvImporter, run_import
 from app.imports.nmap import NmapImportResult, import_nmap_xml
@@ -56,6 +57,7 @@ def _render_template(
         "request": request,
         "show_nav": show_nav,
         "active_nav": active_nav,
+        "use_local_assets": use_local_assets(),
         "build_info": build_info.get_display_build_info() if _is_authenticated_request(request) else None,
         **context,
     }
@@ -71,10 +73,24 @@ def _render_template(
 def _render_fallback_template(
     template_name: str, payload: dict, status_code: int = 200
 ) -> HTMLResponse:
-    lines = [
-        '<link rel="stylesheet" href="/static/app.css" />',
-        str(payload.get("title", "ipocket")),
-    ]
+    lines = []
+    if not payload.get("use_local_assets", True):
+        lines.extend(
+            [
+                '<link rel="preconnect" href="https://fonts.googleapis.com" />',
+                '<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />',
+                (
+                    '<link rel="stylesheet" '
+                    'href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" />'
+                ),
+            ]
+        )
+    lines.append('<link rel="stylesheet" href="/static/app.css" />')
+    if payload.get("use_local_assets", True):
+        lines.append('<script src="/static/vendor/htmx.min.js" defer></script>')
+    else:
+        lines.append('<script src="https://unpkg.com/htmx.org@1.9.12" defer></script>')
+    lines.append(str(payload.get("title", "ipocket")))
     assets = payload.get("assets") or []
     for asset in assets:
         ip_address = asset.get("ip_address")
