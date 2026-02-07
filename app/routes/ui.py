@@ -53,12 +53,14 @@ def _render_template(
     active_nav: str = "",
 ) -> HTMLResponse:
     templates = request.app.state.templates
+    is_authenticated = _is_authenticated_request(request)
     payload = {
         "request": request,
         "show_nav": show_nav,
         "active_nav": active_nav,
         "use_local_assets": use_local_assets(),
-        "build_info": build_info.get_display_build_info() if _is_authenticated_request(request) else None,
+        "is_authenticated": is_authenticated,
+        "build_info": build_info.get_display_build_info() if is_authenticated else None,
         **context,
     }
     if templates is None:

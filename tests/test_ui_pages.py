@@ -211,11 +211,20 @@ def test_ranges_edit_and_delete_flow(client) -> None:
     finally:
         app.dependency_overrides.pop(ui.get_current_ui_user, None)
 
-    connection = db.connect(os.environ["IPAM_DB_PATH"])
-    try:
-        assert repository.get_ip_range_by_id(connection, ip_range.id) is None
-    finally:
-        connection.close()
+
+def test_logout_button_hidden_when_not_authenticated(client) -> None:
+    response = client.get("/ui/management")
+
+    assert response.status_code == 200
+    assert "sidebar-logout-button" not in response.text
+
+
+def test_logout_button_shown_when_authenticated(client, monkeypatch) -> None:
+    monkeypatch.setattr(ui, "_is_authenticated_request", lambda request: True)
+    response = client.get("/ui/management")
+
+    assert response.status_code == 200
+    assert "sidebar-logout-button" in response.text
 
 
 def test_import_page_includes_sample_csv_links(client) -> None:

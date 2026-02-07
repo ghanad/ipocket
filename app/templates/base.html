@@ -41,12 +41,14 @@
       <a class="nav-link{% if active_nav == 'import' %} nav-link-active{% endif %}" href="/ui/import">Import</a>
     </nav>
     <div class="sidebar-footer">
+      {% if is_authenticated %}
       <div class="sidebar-account">
         <p class="sidebar-section-title">Account</p>
         <form method="post" action="/ui/logout">
           <button type="submit" class="nav-link sidebar-logout-button">Logout</button>
         </form>
       </div>
+      {% endif %}
       <p class="sidebar-note">Internal use only</p>
       {% if build_info %}
       <p class="sidebar-note">ipocket v{{ build_info.version }} ({{ build_info.commit }}) • built {{ build_info.build_time }} · <a href="/ui/about">About</a></p>
