@@ -74,6 +74,12 @@ Defaults for the bootstrap admin user are:
 - `ADMIN_BOOTSTRAP_USERNAME=admin`
 - `ADMIN_BOOTSTRAP_PASSWORD=admin-pass`
 
+## Offline environments
+The UI ships with bundled JavaScript helpers and relies on local/system fonts,
+so it can render without downloading assets from public CDNs. This keeps the
+interface functional in air-gapped deployments while preserving the same
+layout and interactions as connected environments.
+
 ### Version metadata (recommended for deployments)
 ipocket reads version info from environment variables and includes them in the
 `/health` response and the authenticated UI footer (`ipocket v{version} ({commit}) • built {build_time}`).
