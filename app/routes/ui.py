@@ -2441,6 +2441,7 @@ async def ui_edit_ip_submit(
         notes=notes,
         tags=tags,
         current_user=user,
+        notes_provided=True,
     )
     return RedirectResponse(url=f"/ui/ip-assets/{asset.id}", status_code=303)
 
