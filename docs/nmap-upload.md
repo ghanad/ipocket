@@ -33,6 +33,7 @@ nmap -sn -PS80,443 -oX ipocket.xml <CIDR>
   - `VM` for virtualization vendors (e.g., VMware, Microsoft, Xen, VirtualBox, QEMU/KVM, Citrix).
   - `OS` for common server hardware vendors (e.g., Dell, Hewlett Packard/HPE, Supermicro, Lenovo, IBM).
   - Otherwise defaults to `OTHER`.
+- Writes import diagnostics to the application logs (counts, parse errors, and empty scans).
 
 ## What ipocket does not do
 

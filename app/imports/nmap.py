@@ -3,11 +3,14 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 import ipaddress
+import logging
 from typing import Optional
 import xml.etree.ElementTree as ET
 
 from app import repository
 from app.models import IPAssetType, User
+
+logger = logging.getLogger()
 
 
 class NmapParseError(Exception):
@@ -138,7 +141,17 @@ def import_nmap_xml(
             errors=[str(exc)],
         )
 
+    logger.info(
+        "Nmap import parsed %s up hosts with %s parse errors.",
+        len(parse_result.hosts),
+        len(parse_result.errors),
+    )
+    if parse_result.errors:
+        logger.warning("Nmap import parse errors: %s", "; ".join(parse_result.errors))
+
     unique_hosts = _unique_hosts(parse_result.hosts)
+    if not unique_hosts:
+        logger.warning("Nmap import found no up hosts to import.")
     timestamp = (now or datetime.now(timezone.utc)).isoformat(timespec="seconds")
     note = f"Discovered via nmap upload at {timestamp}"
 
