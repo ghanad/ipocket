@@ -60,7 +60,7 @@ underscores (`^[a-z0-9_-]+$`).
 - `target_id` (INTEGER)
 - `target_label` (TEXT, ex: IP address)
 - `action` (TEXT, `CREATE`, `UPDATE`, `DELETE`)
-- `changes` (TEXT summary of changes)
+- `changes` (TEXT summary of changes; no-op updates are skipped)
 - `created_at` (TEXT timestamp)
 
 

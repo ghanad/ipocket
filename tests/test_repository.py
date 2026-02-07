@@ -526,6 +526,66 @@ def test_update_ip_asset_clears_notes_and_logs_change(tmp_path) -> None:
     assert "notes: initial note -> " in (logs[0].changes or "")
 
 
+def test_update_ip_asset_no_changes_skips_audit_log(tmp_path) -> None:
+    connection = _setup_connection(tmp_path)
+    user = create_user(connection, username="auditor", hashed_password="x", role=UserRole.ADMIN)
+    project = create_project(connection, name="Core")
+    host = create_host(connection, name="node-01")
+
+    asset = create_ip_asset(
+        connection,
+        ip_address="10.10.40.10",
+        asset_type=IPAssetType.VM,
+        project_id=project.id,
+        host_id=host.id,
+        notes="steady",
+        tags=["core", "edge"],
+        current_user=user,
+    )
+
+    updated = update_ip_asset(
+        connection,
+        ip_address=asset.ip_address,
+        asset_type=asset.asset_type,
+        project_id=project.id,
+        host_id=host.id,
+        notes="steady",
+        tags=["core", "edge"],
+        current_user=user,
+        notes_provided=True,
+    )
+
+    assert updated is not None
+    logs = get_audit_logs_for_ip(connection, asset.id)
+    assert len(logs) == 1
+    assert logs[0].action == "CREATE"
+
+
+def test_update_ip_asset_tag_change_logs_update(tmp_path) -> None:
+    connection = _setup_connection(tmp_path)
+    user = create_user(connection, username="auditor", hashed_password="x", role=UserRole.ADMIN)
+
+    asset = create_ip_asset(
+        connection,
+        ip_address="10.10.50.10",
+        asset_type=IPAssetType.VM,
+        tags=["core"],
+        current_user=user,
+    )
+
+    updated = update_ip_asset(
+        connection,
+        ip_address=asset.ip_address,
+        tags=["core", "edge"],
+        current_user=user,
+    )
+
+    assert updated is not None
+    logs = get_audit_logs_for_ip(connection, asset.id)
+    assert logs[0].action == "UPDATE"
+    assert "tags: core -> core, edge" in (logs[0].changes or "")
+
+
 def test_list_audit_logs_returns_recent_ip_entries(tmp_path) -> None:
     connection = _setup_connection(tmp_path)
     user = create_user(connection, username="auditor", hashed_password="x", role=UserRole.ADMIN)
