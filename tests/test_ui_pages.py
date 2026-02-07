@@ -156,6 +156,7 @@ def test_range_addresses_quick_add_creates_asset(client) -> None:
         app.dependency_overrides.pop(ui.require_ui_editor, None)
 
     assert response.status_code == 303
+    assert response.headers["location"].endswith(f"/ui/ranges/{ip_range.id}/addresses#ip-10-60-0-2")
 
     connection = db.connect(os.environ["IPAM_DB_PATH"])
     try:
