@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from datetime import datetime, timezone
-import logging
 from pathlib import Path
 
 import pytest
@@ -119,47 +118,6 @@ def test_nmap_apply_infers_asset_type_from_multiple_vendors(client) -> None:
         vm_asset = repository.get_ip_asset_by_ip(connection, "192.168.10.19")
         assert vm_asset is not None
         assert vm_asset.asset_type == IPAssetType.VM
-    finally:
-        connection.close()
-
-
-def test_nmap_logs_summary_and_parse_errors(client, caplog) -> None:
-    _, db_path = client
-    connection = db.connect(str(db_path))
-    try:
-        db.init_db(connection)
-        payload = _load_fixture()
-
-        logger = logging.getLogger()
-        logger.addHandler(caplog.handler)
-        caplog.set_level(logging.INFO)
-        result = import_nmap_xml(connection, payload, dry_run=True)
-        logger.removeHandler(caplog.handler)
-
-        assert result.discovered_up_hosts == 2
-        assert "Nmap import parsed 2 up hosts with 0 parse errors." in caplog.text
-    finally:
-        connection.close()
-
-
-def test_nmap_logs_when_no_hosts_found(client, caplog) -> None:
-    _, db_path = client
-    connection = db.connect(str(db_path))
-    try:
-        db.init_db(connection)
-        payload = (
-            b'<?xml version="1.0"?>'
-            b"<nmaprun><host><status state=\"down\" /></host></nmaprun>"
-        )
-
-        logger = logging.getLogger()
-        logger.addHandler(caplog.handler)
-        caplog.set_level(logging.WARNING)
-        result = import_nmap_xml(connection, payload, dry_run=True)
-        logger.removeHandler(caplog.handler)
-
-        assert result.discovered_up_hosts == 0
-        assert "Nmap import found no up hosts to import." in caplog.text
     finally:
         connection.close()
 

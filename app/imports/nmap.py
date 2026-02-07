@@ -10,7 +10,7 @@ import xml.etree.ElementTree as ET
 from app import repository
 from app.models import IPAssetType, User
 
-logger = logging.getLogger()
+logger = logging.getLogger(__name__)
 
 
 class NmapParseError(Exception):
