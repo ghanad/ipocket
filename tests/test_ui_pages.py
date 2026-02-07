@@ -349,6 +349,65 @@ def test_ip_assets_list_htmx_response_renders_table_partial(client) -> None:
     assert "Apply filters" not in response.text
 
 
+def test_ip_assets_bulk_edit_updates_selected_assets(client) -> None:
+    import os
+    from app import db, repository
+
+    connection = db.connect(os.environ["IPAM_DB_PATH"])
+    try:
+        db.init_db(connection)
+        user = repository.create_user(connection, username="editor", hashed_password="x", role=UserRole.EDITOR)
+        project = repository.create_project(connection, name="Core")
+        asset_one = repository.create_ip_asset(
+            connection,
+            ip_address="10.70.0.10",
+            asset_type=IPAssetType.VM,
+            tags=["prod"],
+        )
+        asset_two = repository.create_ip_asset(
+            connection,
+            ip_address="10.70.0.11",
+            asset_type=IPAssetType.OS,
+        )
+    finally:
+        connection.close()
+
+    app.dependency_overrides[ui.require_ui_editor] = lambda: user
+    try:
+        response = client.post(
+            "/ui/ip-assets/bulk-edit",
+            data=[
+                ("asset_ids", str(asset_one.id)),
+                ("asset_ids", str(asset_two.id)),
+                ("type", "VIP"),
+                ("project_id", str(project.id)),
+                ("tags", "edge, core"),
+                ("return_to", "/ui/ip-assets"),
+            ],
+            follow_redirects=False,
+        )
+    finally:
+        app.dependency_overrides.pop(ui.require_ui_editor, None)
+
+    assert response.status_code == 303
+
+    connection = db.connect(os.environ["IPAM_DB_PATH"])
+    try:
+        updated_one = repository.get_ip_asset_by_ip(connection, "10.70.0.10")
+        updated_two = repository.get_ip_asset_by_ip(connection, "10.70.0.11")
+        assert updated_one is not None
+        assert updated_two is not None
+        assert updated_one.asset_type == IPAssetType.VIP
+        assert updated_two.asset_type == IPAssetType.VIP
+        assert updated_one.project_id == project.id
+        assert updated_two.project_id == project.id
+        tag_map = repository.list_tags_for_ip_assets(connection, [asset_one.id, asset_two.id])
+        assert tag_map[asset_one.id] == ["core", "edge", "prod"]
+        assert tag_map[asset_two.id] == ["core", "edge"]
+    finally:
+        connection.close()
+
+
 def test_ip_assets_list_renders_project_color_tag(client) -> None:
     import os
     from app import db, repository

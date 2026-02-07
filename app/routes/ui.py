@@ -11,7 +11,7 @@ import secrets
 import sqlite3
 import zipfile
 from typing import Optional
-from urllib.parse import parse_qs, urlencode
+from urllib.parse import parse_qs, urlencode, urlparse, urlunparse
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse, Response
@@ -68,6 +68,14 @@ def _render_template(
     return templates.TemplateResponse(
         template_name, payload, status_code=status_code
     )
+
+
+def _append_query_param(url: str, key: str, value: str) -> str:
+    parsed = urlparse(url)
+    query = parse_qs(parsed.query)
+    query[key] = [value]
+    updated_query = urlencode(query, doseq=True)
+    return urlunparse(parsed._replace(query=updated_query))
 
 
 def _render_fallback_template(
@@ -1917,6 +1925,8 @@ def ui_list_ip_assets(
     asset_type: Optional[str] = Query(default=None, alias="type"),
     unassigned_only: bool = Query(default=False, alias="unassigned-only"),
     archived_only: bool = Query(default=False, alias="archived-only"),
+    bulk_error: Optional[str] = Query(default=None, alias="bulk-error"),
+    bulk_success: Optional[str] = Query(default=None, alias="bulk-success"),
     page: Optional[str] = None,
     per_page: Optional[str] = Query(default=None, alias="per-page"),
     connection=Depends(get_connection),
@@ -1987,9 +1997,17 @@ def ui_list_ip_assets(
     if archived_only:
         pagination_params["archived-only"] = "true"
     base_query = urlencode(pagination_params)
+    return_to = request.url.path
+    if request.url.query:
+        return_to = f"{return_to}?{request.url.query}"
     context = {
         "title": "ipocket - IP Assets",
         "assets": view_models,
+        "projects": projects,
+        "types": [asset.value for asset in IPAssetType],
+        "bulk_error": bulk_error,
+        "bulk_success": bulk_success,
+        "return_to": return_to,
         "pagination": {
             "page": page_value,
             "per_page": per_page_value,
@@ -2005,8 +2023,6 @@ def ui_list_ip_assets(
     if not is_htmx:
         context.update(
             {
-                "projects": projects,
-                "types": [asset.value for asset in IPAssetType],
                 "filters": {
                     "q": q or "",
                     "project_id": parsed_project_id,
@@ -2024,6 +2040,82 @@ def ui_list_ip_assets(
         template_name,
         context,
         active_nav="ip-assets",
+    )
+
+
+@router.post("/ui/ip-assets/bulk-edit", response_class=HTMLResponse)
+async def ui_bulk_edit_ip_assets(
+    request: Request,
+    connection=Depends(get_connection),
+    user=Depends(require_ui_editor),
+):
+    form = await request.form()
+    asset_ids_raw = form.getlist("asset_ids")
+    return_to = form.get("return_to") or "/ui/ip-assets"
+    errors: list[str] = []
+    asset_ids: list[int] = []
+    for asset_id in asset_ids_raw:
+        try:
+            asset_ids.append(int(asset_id))
+        except (TypeError, ValueError):
+            errors.append("Select valid IP assets.")
+            break
+    if not asset_ids:
+        errors.append("Select at least one IP asset.")
+
+    asset_type_raw = (form.get("type") or "").strip()
+    asset_type_enum: Optional[IPAssetType] = None
+    if asset_type_raw:
+        try:
+            asset_type_enum = _normalize_asset_type(asset_type_raw)
+        except ValueError:
+            errors.append("Select a valid type.")
+
+    project_selection = (form.get("project_id") or "").strip()
+    set_project_id = False
+    project_id_value: Optional[int] = None
+    if project_selection:
+        set_project_id = True
+        if project_selection == "unassigned":
+            project_id_value = None
+        else:
+            project_id_value = _parse_optional_int(project_selection)
+            if project_id_value is None:
+                errors.append("Select a valid project.")
+            elif repository.get_project_by_id(connection, project_id_value) is None:
+                errors.append("Selected project does not exist.")
+
+    tags_raw = (form.get("tags") or "").strip()
+    tags_to_add: list[str] = []
+    if tags_raw:
+        try:
+            tags_to_add = normalize_tag_names(split_tag_string(tags_raw))
+        except ValueError as exc:
+            errors.append(str(exc))
+
+    if not asset_type_enum and not set_project_id and not tags_to_add:
+        errors.append("Choose at least one bulk update action.")
+
+    if errors:
+        message = errors[0]
+        return RedirectResponse(
+            url=_append_query_param(return_to, "bulk-error", message),
+            status_code=303,
+        )
+
+    updated_assets = repository.bulk_update_ip_assets(
+        connection,
+        asset_ids,
+        asset_type=asset_type_enum,
+        project_id=project_id_value,
+        set_project_id=set_project_id,
+        tags_to_add=tags_to_add,
+        current_user=user,
+    )
+    success_message = f"Updated {len(updated_assets)} IP assets."
+    return RedirectResponse(
+        url=_append_query_param(return_to, "bulk-success", success_message),
+        status_code=303,
     )
 
 

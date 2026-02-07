@@ -27,6 +27,7 @@ from app.repository import (
     list_host_pair_ips_for_hosts,
     list_active_ip_assets_paginated,
     count_active_ip_assets,
+    bulk_update_ip_assets,
     create_tag,
     delete_tag,
     list_tags_for_ip_assets,
@@ -95,6 +96,45 @@ def test_create_and_update_ip_asset_tags(tmp_path) -> None:
     update_ip_asset(connection, ip_address=asset.ip_address, tags=["core"])
     updated_tags = list_tags_for_ip_assets(connection, [asset.id])
     assert updated_tags[asset.id] == ["core"]
+
+
+def test_bulk_update_ip_assets_assigns_type_project_and_tags(tmp_path) -> None:
+    connection = _setup_connection(tmp_path)
+    project = create_project(connection, name="Apps")
+    asset_one = create_ip_asset(
+        connection,
+        ip_address="10.30.0.10",
+        asset_type=IPAssetType.VM,
+        tags=["prod"],
+    )
+    asset_two = create_ip_asset(
+        connection,
+        ip_address="10.30.0.11",
+        asset_type=IPAssetType.OS,
+    )
+
+    updated_assets = bulk_update_ip_assets(
+        connection,
+        [asset_one.id, asset_two.id],
+        asset_type=IPAssetType.VIP,
+        project_id=project.id,
+        set_project_id=True,
+        tags_to_add=["edge", "core"],
+    )
+
+    assert len(updated_assets) == 2
+    updated_one = get_ip_asset_by_ip(connection, "10.30.0.10")
+    updated_two = get_ip_asset_by_ip(connection, "10.30.0.11")
+    assert updated_one is not None
+    assert updated_two is not None
+    assert updated_one.asset_type == IPAssetType.VIP
+    assert updated_two.asset_type == IPAssetType.VIP
+    assert updated_one.project_id == project.id
+    assert updated_two.project_id == project.id
+
+    tag_map = list_tags_for_ip_assets(connection, [asset_one.id, asset_two.id])
+    assert tag_map[asset_one.id] == ["core", "edge", "prod"]
+    assert tag_map[asset_two.id] == ["core", "edge"]
 
 
 def test_tag_normalization_rules() -> None:
