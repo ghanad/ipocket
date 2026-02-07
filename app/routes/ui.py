@@ -1528,7 +1528,11 @@ async def ui_range_quick_add_address(
             active_nav="ranges",
         )
 
-    return RedirectResponse(url=f"/ui/ranges/{range_id}/addresses", status_code=303)
+    ip_anchor = (ip_address or "").replace(".", "-").replace(":", "-")
+    return RedirectResponse(
+        url=f"/ui/ranges/{range_id}/addresses#ip-{ip_anchor}",
+        status_code=303,
+    )
 
 
 @router.get("/ui/vendors", response_class=HTMLResponse)
