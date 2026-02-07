@@ -58,6 +58,22 @@ docker run --rm -p 8000:8000 -v "$(pwd)/data:/data" ipocket:latest
 The container runs `alembic upgrade head` on startup and stores the SQLite
 database at `/data/ipocket.db`.
 
+## Run with Docker Compose
+The provided `docker-compose.yml` mounts the SQLite database directory outside
+the container and sets bootstrap admin credentials.
+
+```bash
+mkdir -p data
+docker compose up --build
+```
+
+The app will persist data in `./data/ipocket.db` and is available at
+http://127.0.0.1:8000.
+
+Defaults for the bootstrap admin user are:
+- `ADMIN_BOOTSTRAP_USERNAME=admin`
+- `ADMIN_BOOTSTRAP_PASSWORD=admin-pass`
+
 ### Version metadata (recommended for deployments)
 ipocket reads version info from environment variables and includes them in the
 `/health` response and the authenticated UI footer (`ipocket v{version} ({commit}) • built {build_time}`).

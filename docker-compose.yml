@@ -1,0 +1,13 @@
+version: "3.9"
+
+services:
+  ipocket:
+    build: .
+    ports:
+      - "8000:8000"
+    environment:
+      IPAM_DB_PATH: /data/ipocket.db
+      ADMIN_BOOTSTRAP_USERNAME: admin
+      ADMIN_BOOTSTRAP_PASSWORD: admin-pass
+    volumes:
+      - ./data:/data
