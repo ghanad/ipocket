@@ -14,6 +14,9 @@ def test_ui_assets_are_local() -> None:
     css = (repo_root / "app/static/app.css").read_text(encoding="utf-8")
     assert "fonts.googleapis.com" not in css
     assert "font-family: \"Inter\"" in css
+    assert "height: 100vh" in css
+    assert "position: sticky" in css
+    assert "overflow-y: auto" in css
 
 
 def test_use_local_assets_env_override(monkeypatch) -> None:
