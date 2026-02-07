@@ -34,7 +34,8 @@ def test_parse_nmap_xml_extracts_up_hosts() -> None:
     result = parse_nmap_xml(payload)
 
     assert result.errors == []
-    assert result.ip_addresses == ["10.0.0.10", "10.0.0.12"]
+    assert [host.ip_address for host in result.hosts] == ["10.0.0.10", "10.0.0.12"]
+    assert [host.vendor for host in result.hosts] == [None, None]
 
 
 def test_nmap_dry_run_does_not_create(client) -> None:
@@ -72,6 +73,51 @@ def test_nmap_apply_creates_new_other_assets(client) -> None:
         for asset in assets:
             assert asset.asset_type == IPAssetType.OTHER
             assert asset.notes == expected_note
+    finally:
+        connection.close()
+
+
+def test_nmap_apply_infers_asset_type_from_vendor(client) -> None:
+    _, db_path = client
+    connection = db.connect(str(db_path))
+    try:
+        db.init_db(connection)
+        fixture_path = Path(__file__).parent / "fixtures" / "nmap-vendor.xml"
+        payload = fixture_path.read_bytes()
+
+        result = import_nmap_xml(connection, payload, dry_run=False)
+
+        assert result.new_ips_created == 2
+        vm_asset = repository.get_ip_asset_by_ip(connection, "192.168.10.10")
+        assert vm_asset is not None
+        assert vm_asset.asset_type == IPAssetType.VM
+        physical_asset = repository.get_ip_asset_by_ip(connection, "192.168.10.11")
+        assert physical_asset is not None
+        assert physical_asset.asset_type == IPAssetType.OS
+    finally:
+        connection.close()
+
+
+def test_nmap_apply_infers_asset_type_from_multiple_vendors(client) -> None:
+    _, db_path = client
+    connection = db.connect(str(db_path))
+    try:
+        db.init_db(connection)
+        fixture_path = Path(__file__).parent / "fixtures" / "nmap-vendor-mix.xml"
+        payload = fixture_path.read_bytes()
+
+        result = import_nmap_xml(connection, payload, dry_run=False)
+
+        assert result.new_ips_created == 3
+        supermicro_asset = repository.get_ip_asset_by_ip(connection, "192.168.10.12")
+        assert supermicro_asset is not None
+        assert supermicro_asset.asset_type == IPAssetType.OS
+        hpe_asset = repository.get_ip_asset_by_ip(connection, "192.168.10.18")
+        assert hpe_asset is not None
+        assert hpe_asset.asset_type == IPAssetType.OS
+        vm_asset = repository.get_ip_asset_by_ip(connection, "192.168.10.19")
+        assert vm_asset is not None
+        assert vm_asset.asset_type == IPAssetType.VM
     finally:
         connection.close()
 

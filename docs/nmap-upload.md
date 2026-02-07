@@ -28,10 +28,14 @@ nmap -sn -PS80,443 -oX ipocket.xml <CIDR>
 
 - Parses only Nmap XML.
 - Imports IPv4 addresses for hosts marked `up`.
-- Creates missing IP assets as type `OTHER` with a discovery note.
+- Creates missing IP assets with a discovery note.
+- If a MAC address vendor is present, ipocket tries to infer the asset type:
+  - `VM` for virtualization vendors (e.g., VMware, Microsoft, Xen, VirtualBox, QEMU/KVM, Citrix).
+  - `OS` for common server hardware vendors (e.g., Dell, Hewlett Packard/HPE, Supermicro, Lenovo, IBM).
+  - Otherwise defaults to `OTHER`.
 
 ## What ipocket does not do
 
 - Run Nmap or schedule scans.
-- Infer project, owner, host, or type from the scan.
+- Infer project, owner, or host from the scan.
 - Update existing IP asset fields when an IP is already present.
