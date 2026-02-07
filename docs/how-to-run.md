@@ -168,3 +168,12 @@ and push to `main` by executing:
 ```bash
 pytest tests/test_health_and_metrics.py
 ```
+
+## Docker Hub release automation
+When a Git tag that starts with `v` is pushed (for example, `v0.2.0`), the CI
+workflow builds the Docker image and pushes it to Docker Hub as both the version
+tag and `latest`.
+
+Required GitHub secrets:
+- `DOCKERHUB_USERNAME`
+- `DOCKERHUB_TOKEN`
