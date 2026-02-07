@@ -5,7 +5,7 @@
 - `project_id` (optional)
 - `type` (`VM`, `OS`, `BMC`, `VIP`, `OTHER`)
 - `host_id` (optional)
-- `notes` (optional)
+- `notes` (optional; clearing the field removes the stored note and is recorded in the audit log)
 - `archived` (soft delete)
 - tags (many-to-many via `ip_asset_tags`)
 - timestamps (`created_at`, `updated_at`)

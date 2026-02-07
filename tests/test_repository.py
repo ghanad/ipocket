@@ -500,6 +500,32 @@ def test_audit_logs_record_ip_asset_changes(tmp_path) -> None:
     assert any("notes:" in (log.changes or "") for log in logs)
 
 
+def test_update_ip_asset_clears_notes_and_logs_change(tmp_path) -> None:
+    connection = _setup_connection(tmp_path)
+    user = create_user(connection, username="auditor", hashed_password="x", role=UserRole.ADMIN)
+    asset = create_ip_asset(
+        connection,
+        ip_address="10.10.30.10",
+        asset_type=IPAssetType.VM,
+        notes="initial note",
+        current_user=user,
+    )
+
+    updated = update_ip_asset(
+        connection,
+        ip_address=asset.ip_address,
+        notes=None,
+        current_user=user,
+        notes_provided=True,
+    )
+
+    assert updated is not None
+    assert updated.notes is None
+    logs = get_audit_logs_for_ip(connection, asset.id)
+    assert logs[0].action == "UPDATE"
+    assert "notes: initial note -> " in (logs[0].changes or "")
+
+
 def test_list_audit_logs_returns_recent_ip_entries(tmp_path) -> None:
     connection = _setup_connection(tmp_path)
     user = create_user(connection, username="auditor", hashed_password="x", role=UserRole.ADMIN)

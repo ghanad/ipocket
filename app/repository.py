@@ -1097,20 +1097,32 @@ def update_ip_asset(
     notes: Optional[str] = None,
     tags: Optional[list[str]] = None,
     current_user: Optional[User] = None,
+    notes_provided: bool = False,
 ) -> Optional[IPAsset]:
     existing = get_ip_asset_by_ip(connection, ip_address)
     if existing is None:
         return None
+    notes_should_update = notes_provided or notes is not None
+    normalized_notes = notes if notes is not None and notes.strip() else None if notes_should_update else None
     with connection:
         connection.execute(
             """
             UPDATE ip_assets
             SET type = COALESCE(?, type),
-                project_id = COALESCE(?, project_id), host_id = COALESCE(?, host_id), notes = COALESCE(?, notes),
+                project_id = COALESCE(?, project_id),
+                host_id = COALESCE(?, host_id),
+                notes = CASE WHEN ? THEN ? ELSE notes END,
                 updated_at = CURRENT_TIMESTAMP
             WHERE ip_address = ?
             """,
-            (asset_type.value if asset_type else None, project_id, host_id, notes, ip_address),
+            (
+                asset_type.value if asset_type else None,
+                project_id,
+                host_id,
+                notes_should_update,
+                normalized_notes,
+                ip_address,
+            ),
         )
         updated = get_ip_asset_by_ip(connection, ip_address)
         if updated is not None:
