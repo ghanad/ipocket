@@ -471,35 +471,6 @@ p {
   align-items: center;
 }
 
-.range-allocate-form {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 8px;
-}
-
-.range-allocate-controls {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 8px;
-}
-
-.range-allocate-label {
-  font-size: 13px;
-  color: var(--color-muted);
-  font-weight: 600;
-}
-
-.range-allocate-suffix {
-  font-size: 13px;
-  color: var(--color-muted);
-}
-
-.range-allocate-empty {
-  font-size: 12px;
-}
-
 .input-small,
 .select-small {
   padding: 6px 10px;

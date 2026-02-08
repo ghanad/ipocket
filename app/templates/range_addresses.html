@@ -40,29 +40,6 @@
       <h2>Addresses in this range</h2>
       <p class="subtitle">Used: {{ used_total }} • Free: {{ free_total }}</p>
     </div>
-    <form class="range-allocate-form" method="post" action="/ui/ranges/{{ ip_range.id }}/addresses/allocate-next">
-      <div class="range-allocate-controls">
-        <span class="range-allocate-label">Allocate next</span>
-        <label class="visually-hidden" for="allocate-next-count">Allocate next free addresses</label>
-        <input id="allocate-next-count" class="input input-small" type="number" name="count" min="1" value="1" />
-        <span class="range-allocate-suffix">free</span>
-        <select class="select select-small" name="type" aria-label="Asset type">
-          {% for asset_type in types %}
-          <option value="{{ asset_type }}"{% if asset_type == "VM" %} selected{% endif %}>{{ asset_type }}</option>
-          {% endfor %}
-        </select>
-        <select class="select select-small" name="project_id" aria-label="Project">
-          <option value="">No project</option>
-          {% for project in projects %}
-          <option value="{{ project.id }}">{{ project.name }}</option>
-          {% endfor %}
-        </select>
-        <button class="btn btn-primary btn-small" type="submit" {% if free_total == 0 %}disabled{% endif %}>Allocate</button>
-      </div>
-      {% if free_total == 0 %}
-      <span class="range-allocate-empty muted">No free addresses available.</span>
-      {% endif %}
-    </form>
   </div>
   <div class="table-wrapper">
     <table class="table">
