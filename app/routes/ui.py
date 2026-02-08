@@ -2804,6 +2804,35 @@ def ui_edit_ip_form(
     )
 
 
+@router.post("/ui/ip-assets/{asset_id}/auto-host", response_class=JSONResponse)
+def ui_create_auto_host(
+    asset_id: int,
+    connection=Depends(get_connection),
+    user=Depends(require_ui_editor),
+) -> JSONResponse:
+    asset = repository.get_ip_asset_by_id(connection, asset_id)
+    if asset is None or asset.archived:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
+    if asset.asset_type != IPAssetType.BMC:
+        return JSONResponse({"error": "Auto-host creation is only available for BMC assets."}, status_code=400)
+    if asset.host_id is not None:
+        return JSONResponse({"error": "This IP is already assigned to a host."}, status_code=409)
+
+    host_name = f"server_{asset.ip_address}"
+    host = repository.get_host_by_name(connection, host_name)
+    if host is None:
+        host = repository.create_host(connection, name=host_name, notes=None, vendor=None)
+
+    repository.update_ip_asset(
+        connection,
+        ip_address=asset.ip_address,
+        host_id=host.id,
+        current_user=user,
+    )
+
+    return JSONResponse({"host_id": host.id, "host_name": host.name})
+
+
 @router.post("/ui/ip-assets/{asset_id}/edit", response_class=HTMLResponse)
 async def ui_edit_ip_submit(
     request: Request,

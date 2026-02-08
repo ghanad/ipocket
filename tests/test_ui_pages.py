@@ -169,6 +169,44 @@ def test_range_addresses_quick_add_creates_asset(client) -> None:
         connection.close()
 
 
+def test_ip_assets_drawer_auto_host_creates_and_assigns(client) -> None:
+    import os
+    from app import db, repository
+
+    connection = db.connect(os.environ["IPAM_DB_PATH"])
+    try:
+        db.init_db(connection)
+        user = repository.create_user(connection, username="editor", hashed_password="x", role=UserRole.EDITOR)
+        asset = repository.create_ip_asset(
+            connection,
+            ip_address="10.70.0.5",
+            asset_type=IPAssetType.BMC,
+        )
+    finally:
+        connection.close()
+
+    app.dependency_overrides[ui.require_ui_editor] = lambda: user
+    try:
+        response = client.post(f"/ui/ip-assets/{asset.id}/auto-host")
+    finally:
+        app.dependency_overrides.pop(ui.require_ui_editor, None)
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["host_name"] == "server_10.70.0.5"
+
+    connection = db.connect(os.environ["IPAM_DB_PATH"])
+    try:
+        updated = repository.get_ip_asset_by_ip(connection, "10.70.0.5")
+        assert updated is not None
+        assert updated.host_id == payload["host_id"]
+        host = repository.get_host_by_id(connection, payload["host_id"])
+        assert host is not None
+        assert host.name == "server_10.70.0.5"
+    finally:
+        connection.close()
+
+
 def test_ranges_edit_and_delete_flow(client) -> None:
     import os
     from app import db, repository
