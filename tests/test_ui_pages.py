@@ -130,6 +130,8 @@ def test_range_addresses_page_shows_tags(client) -> None:
     assert "core" in response.text
     assert "tag-color" in response.text
     assert "10.40.0.11" in response.text
+    assert "Add…" in response.text
+    assert "Allocate next" not in response.text
 
 
 def test_range_addresses_quick_add_creates_asset(client) -> None:
