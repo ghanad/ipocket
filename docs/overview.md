@@ -39,6 +39,7 @@ Owner support has been removed in development phase, so assignment is now projec
 Hosts can be linked to a vendor from the shared **Vendors** catalog.
 
 - Hosts list supports inline edit for name, vendor, and notes.
+- Host add/edit forms include inline OS and BMC IP address inputs so linked addresses can be captured during host creation or updates.
 - Hosts list uses the same three-dot actions menu pattern for edit/delete to keep the table compact.
 - Hosts list shows linked OS and BMC IP addresses alongside the total linked IP count.
 - Hosts list displays a project badge (with project color) based on linked IP assignments; multiple linked projects show a warning badge.

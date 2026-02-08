@@ -793,6 +793,88 @@ def test_ui_edit_host_updates_name_vendor_and_notes(client) -> None:
     assert updated_host.vendor == "HP"
 
 
+def test_ui_create_host_with_os_and_bmc_ips(client) -> None:
+    import os
+    from app import db, repository
+
+    connection = db.connect(os.environ["IPAM_DB_PATH"])
+    try:
+        db.init_db(connection)
+    finally:
+        connection.close()
+
+    app.dependency_overrides[ui.require_ui_editor] = lambda: User(1, "editor", "x", UserRole.EDITOR, True)
+    try:
+        response = client.post(
+            "/ui/hosts",
+            data={
+                "name": "edge-02",
+                "notes": "new host",
+                "os_ips": "10.10.0.10, 10.10.0.11",
+                "bmc_ips": "10.10.0.20",
+            },
+            follow_redirects=False,
+        )
+    finally:
+        app.dependency_overrides.pop(ui.require_ui_editor, None)
+
+    assert response.status_code == 303
+
+    connection = db.connect(os.environ["IPAM_DB_PATH"])
+    try:
+        host = repository.get_host_by_name(connection, "edge-02")
+        os_asset = repository.get_ip_asset_by_ip(connection, "10.10.0.10")
+        bmc_asset = repository.get_ip_asset_by_ip(connection, "10.10.0.20")
+    finally:
+        connection.close()
+
+    assert host is not None
+    assert os_asset is not None
+    assert bmc_asset is not None
+    assert os_asset.asset_type == IPAssetType.OS
+    assert bmc_asset.asset_type == IPAssetType.BMC
+    assert os_asset.host_id == host.id
+    assert bmc_asset.host_id == host.id
+
+
+def test_ui_edit_host_adds_os_and_bmc_ips(client) -> None:
+    import os
+    from app import db, repository
+
+    connection = db.connect(os.environ["IPAM_DB_PATH"])
+    try:
+        db.init_db(connection)
+        host = repository.create_host(connection, name="edge-03")
+    finally:
+        connection.close()
+
+    app.dependency_overrides[ui.require_ui_editor] = lambda: User(1, "editor", "x", UserRole.EDITOR, True)
+    try:
+        response = client.post(
+            f"/ui/hosts/{host.id}/edit",
+            data={"name": "edge-03", "notes": "", "os_ips": "10.10.1.10", "bmc_ips": "10.10.1.20"},
+            follow_redirects=False,
+        )
+    finally:
+        app.dependency_overrides.pop(ui.require_ui_editor, None)
+
+    assert response.status_code == 303
+
+    connection = db.connect(os.environ["IPAM_DB_PATH"])
+    try:
+        os_asset = repository.get_ip_asset_by_ip(connection, "10.10.1.10")
+        bmc_asset = repository.get_ip_asset_by_ip(connection, "10.10.1.20")
+    finally:
+        connection.close()
+
+    assert os_asset is not None
+    assert bmc_asset is not None
+    assert os_asset.asset_type == IPAssetType.OS
+    assert bmc_asset.asset_type == IPAssetType.BMC
+    assert os_asset.host_id == host.id
+    assert bmc_asset.host_id == host.id
+
+
 def test_ui_edit_host_requires_name(client) -> None:
     import os
     from app import db, repository
