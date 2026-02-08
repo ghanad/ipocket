@@ -170,6 +170,15 @@
             {% endfor %}
           </select>
         </label>
+        <div class="ip-drawer-auto-host" data-ip-auto-host>
+          <button class="btn btn-outline btn-small" type="button" data-ip-auto-host-button>
+            Create host
+          </button>
+          <p class="ip-drawer-helper" data-ip-auto-host-hint>
+            Creates and assigns a host named <span class="mono" data-ip-auto-host-name>server_IP</span>.
+          </p>
+          <p class="ip-drawer-helper ip-drawer-helper-error" data-ip-auto-host-status></p>
+        </div>
       </section>
       <section class="ip-drawer-section">
         <h3>Notes & tags</h3>
@@ -324,6 +333,28 @@
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
+  .ip-drawer-auto-host {
+    display: none;
+    margin-top: 10px;
+    gap: 6px;
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .ip-drawer-auto-host.is-visible {
+    display: flex;
+  }
+
+  .ip-drawer-helper {
+    margin: 0;
+    font-size: 12px;
+    color: #64748b;
+  }
+
+  .ip-drawer-helper-error {
+    color: #dc2626;
+  }
+
   .ip-drawer-footer {
     padding: 16px 24px;
     border-top: 1px solid #e2e8f0;
@@ -369,12 +400,19 @@
     const projectPill = document.querySelector('[data-ip-drawer-project]');
     const hostPill = document.querySelector('[data-ip-drawer-host]');
     const dirtyStatus = document.querySelector('[data-ip-drawer-dirty]');
+    const autoHostWrapper = document.querySelector('[data-ip-auto-host]');
+    const autoHostButton = document.querySelector('[data-ip-auto-host-button]');
+    const autoHostName = document.querySelector('[data-ip-auto-host-name]');
+    const autoHostStatus = document.querySelector('[data-ip-auto-host-status]');
     const inputs = form ? form.querySelectorAll('[data-ip-input]') : [];
     const hostField = form ? form.querySelector('[data-ip-host-field]') : null;
     let initialValues = {};
+    let currentAsset = null;
     let isOpen = false;
 
     const shouldShowHostField = (typeValue) => ['OS', 'BMC'].includes((typeValue || '').toUpperCase());
+    const shouldShowAutoHost = (typeValue, hostValue) =>
+      (typeValue || '').toUpperCase() === 'BMC' && !(hostValue || '').trim();
 
     const updateHostVisibility = () => {
       if (!hostField || !form) {
@@ -389,6 +427,22 @@
         if (hostSelect) {
           hostSelect.value = '';
         }
+      }
+      updateAutoHostVisibility();
+    };
+
+    const updateAutoHostVisibility = () => {
+      if (!autoHostWrapper || !form) {
+        return;
+      }
+      const typeInput = form.querySelector('[data-ip-input="type"]');
+      const hostSelect = form.querySelector('[data-ip-input="host_id"]');
+      const typeValue = typeInput ? typeInput.value : '';
+      const hostValue = hostSelect ? hostSelect.value : '';
+      const showAutoHost = shouldShowAutoHost(typeValue, hostValue);
+      autoHostWrapper.classList.toggle('is-visible', showAutoHost);
+      if (autoHostStatus) {
+        autoHostStatus.textContent = '';
       }
     };
 
@@ -408,6 +462,7 @@
       if (!overlay || !drawer || !form || !drawerSubtitle || !projectPill || !hostPill) {
         return;
       }
+      currentAsset = assetData;
       inputs.forEach((input) => {
         const key = input.dataset.ipInput;
         input.value = assetData[key] || '';
@@ -429,6 +484,15 @@
       overlay.classList.add('is-open');
       drawer.classList.add('is-open');
       isOpen = true;
+      if (autoHostName) {
+        autoHostName.textContent = `server_${assetData.ip_address || 'IP'}`;
+      }
+      if (autoHostButton) {
+        autoHostButton.disabled = false;
+      }
+      if (autoHostStatus) {
+        autoHostStatus.textContent = '';
+      }
     };
 
     const closeDrawer = () => {
@@ -556,6 +620,56 @@
       updateCount();
     };
 
+    const createAutoHost = async () => {
+      if (!currentAsset || !form || !autoHostButton) {
+        return;
+      }
+      autoHostButton.disabled = true;
+      if (autoHostStatus) {
+        autoHostStatus.textContent = '';
+      }
+      try {
+        const response = await fetch(`/ui/ip-assets/${currentAsset.id}/auto-host`, {
+          method: 'POST',
+          headers: {
+            Accept: 'application/json',
+          },
+        });
+        let payload = {};
+        try {
+          payload = await response.json();
+        } catch (error) {
+          payload = {};
+        }
+        if (!response.ok) {
+          throw new Error(payload.error || 'Unable to create host.');
+        }
+        const hostSelect = form.querySelector('[data-ip-input="host_id"]');
+        if (hostSelect) {
+          const hostId = String(payload.host_id);
+          let option = Array.from(hostSelect.options).find((entry) => entry.value === hostId);
+          if (!option) {
+            option = document.createElement('option');
+            option.value = hostId;
+            option.textContent = payload.host_name || `Host ${hostId}`;
+            hostSelect.appendChild(option);
+          }
+          hostSelect.value = hostId;
+        }
+        if (hostPill) {
+          hostPill.textContent = `Host: ${payload.host_name || '—'}`;
+        }
+        updateSaveState();
+        updateAutoHostVisibility();
+      } catch (error) {
+        if (autoHostStatus) {
+          autoHostStatus.textContent = error.message;
+        }
+      } finally {
+        autoHostButton.disabled = false;
+      }
+    };
+
     if (!window[GLOBAL_FLAG]) {
       window[GLOBAL_FLAG] = true;
       if (typeof window !== 'undefined' && window.sessionStorage) {
@@ -584,9 +698,15 @@
           if (input.dataset.ipInput === 'type') {
             updateHostVisibility();
           }
+          if (input.dataset.ipInput === 'host_id') {
+            updateAutoHostVisibility();
+          }
           updateSaveState();
         });
       });
+      if (autoHostButton) {
+        autoHostButton.addEventListener('click', createAutoHost);
+      }
       updateHostVisibility();
       if (form && window.sessionStorage) {
         form.addEventListener('submit', () => {
