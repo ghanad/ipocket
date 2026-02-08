@@ -656,6 +656,7 @@ def test_hosts_list_uses_edit_drawer_actions(client) -> None:
     assert response.status_code == 200
     assert f'data-host-edit="{host.id}"' in response.text
     assert f'data-host-name="{host.name}"' in response.text
+    assert 'data-host-project-count="0"' in response.text
     assert f'/ui/hosts/{host.id}/delete' in response.text
     assert "data-host-drawer" in response.text
     assert "Save changes" in response.text

@@ -145,9 +145,12 @@
                 data-host-edit="{{ host.id }}"
                 data-host-name="{{ host.name }}"
                 data-host-vendor-id="{{ vendor_match.id }}"
+                data-host-project-name="{{ host.project_name or '' }}"
+                data-host-project-count="{{ host.project_count }}"
                 data-host-os-ips="{{ host.os_ips or "" }}"
                 data-host-bmc-ips="{{ host.bmc_ips or "" }}"
                 data-host-notes="{{ host.notes or "" }}"
+                data-host-status="{{ 'Assigned' if host.ip_count > 0 else 'Free' }}"
               >
                 Edit
               </button>
@@ -176,42 +179,69 @@
         ✕
       </button>
     </div>
+    <div class="host-drawer-meta">
+      <span class="host-drawer-pill" data-host-drawer-project>Project: Unassigned</span>
+      <span class="host-drawer-pill host-drawer-pill-success" data-host-drawer-status>Status: Free</span>
+    </div>
   </div>
   <div class="host-drawer-body">
     <form class="host-drawer-form" method="post" data-host-edit-form id="host-edit-form">
-      <label class="field">
-        <span>Name</span>
-        <input class="input" type="text" name="name" required data-host-input="name" />
-        <span class="host-drawer-error" data-host-error="name" role="alert"></span>
-      </label>
-      <label class="field">
-        <span>Vendor</span>
-        <select class="select" name="vendor_id" data-host-input="vendor_id">
-          <option value="">UNASSIGNED</option>
-          {% for vendor in vendors %}
-          <option value="{{ vendor.id }}">{{ vendor.name }}</option>
-          {% endfor %}
-        </select>
-      </label>
-      <label class="field">
-        <span>OS IP</span>
-        <input class="input" type="text" name="os_ips" placeholder="e.g. 192.168.10.200" data-host-input="os_ips" />
-        <span class="host-drawer-error" data-host-error="os_ips" role="alert"></span>
-      </label>
-      <label class="field">
-        <span>BMC IP</span>
-        <input class="input" type="text" name="bmc_ips" placeholder="e.g. 192.168.20.10" data-host-input="bmc_ips" />
-        <span class="host-drawer-error" data-host-error="bmc_ips" role="alert"></span>
-      </label>
-      <label class="field field-span">
-        <span>Notes</span>
-        <textarea class="textarea" name="notes" rows="3" data-host-input="notes"></textarea>
-      </label>
+      <section class="host-drawer-section">
+        <h3>Basic</h3>
+        <label class="field">
+          <span>Name</span>
+          <input class="input" type="text" name="name" required data-host-input="name" />
+          <span class="host-drawer-error" data-host-error="name" role="alert"></span>
+        </label>
+        <div class="host-drawer-row host-drawer-row-two">
+          <label class="field">
+            <span>Vendor</span>
+            <select class="select" name="vendor_id" data-host-input="vendor_id">
+              <option value="">UNASSIGNED</option>
+              {% for vendor in vendors %}
+              <option value="{{ vendor.id }}">{{ vendor.name }}</option>
+              {% endfor %}
+            </select>
+          </label>
+          <label class="field">
+            <span>Project</span>
+            <select class="select" data-host-project-select disabled>
+              <option value="">Unassigned</option>
+            </select>
+          </label>
+        </div>
+      </section>
+      <section class="host-drawer-section">
+        <h3>IP Configuration</h3>
+        <div class="host-drawer-row host-drawer-row-two">
+          <label class="field">
+            <span>OS IP</span>
+            <input class="input" type="text" name="os_ips" placeholder="e.g. 192.168.10.200" data-host-input="os_ips" />
+            <span class="host-drawer-error" data-host-error="os_ips" role="alert"></span>
+          </label>
+          <label class="field">
+            <span>BMC IP (Out-of-band)</span>
+            <input class="input" type="text" name="bmc_ips" placeholder="e.g. 192.168.20.10" data-host-input="bmc_ips" />
+            <span class="host-drawer-error" data-host-error="bmc_ips" role="alert"></span>
+          </label>
+        </div>
+        <p class="host-drawer-help">Both fields are single-value based on your product assumptions.</p>
+      </section>
+      <section class="host-drawer-section">
+        <h3>Notes</h3>
+        <label class="field">
+          <span>Notes</span>
+          <textarea class="textarea" name="notes" rows="3" data-host-input="notes"></textarea>
+        </label>
+      </section>
     </form>
   </div>
   <div class="host-drawer-footer">
-    <button class="btn btn-secondary" type="button" data-host-drawer-cancel>Cancel</button>
-    <button class="btn btn-primary" type="submit" form="host-edit-form" data-host-drawer-save disabled>Save changes</button>
+    <span class="host-drawer-footer-status" data-host-drawer-dirty>No changes</span>
+    <div class="host-drawer-footer-actions">
+      <button class="btn btn-secondary" type="button" data-host-drawer-cancel>Cancel</button>
+      <button class="btn btn-primary" type="submit" form="host-edit-form" data-host-drawer-save disabled>Save changes</button>
+    </div>
   </div>
 </aside>
 
@@ -277,6 +307,31 @@
     word-break: break-word;
   }
 
+  .host-drawer-meta {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-top: 12px;
+  }
+
+  .host-drawer-pill {
+    display: inline-flex;
+    align-items: center;
+    padding: 6px 12px;
+    border-radius: 999px;
+    border: 1px solid var(--color-border);
+    background: #f8fafc;
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--color-text);
+  }
+
+  .host-drawer-pill-success {
+    border-color: #86efac;
+    background: #dcfce7;
+    color: #166534;
+  }
+
   .host-drawer-close {
     border: 1px solid var(--color-border);
     background: #fff;
@@ -299,16 +354,56 @@
     gap: 16px;
   }
 
+  .host-drawer-section {
+    border: 1px solid var(--color-border);
+    border-radius: 16px;
+    padding: 16px;
+    background: #fff;
+  }
+
+  .host-drawer-section h3 {
+    font-size: 14px;
+    margin-bottom: 12px;
+  }
+
+  .host-drawer-row {
+    display: grid;
+    gap: 12px;
+  }
+
+  .host-drawer-row-two {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .host-drawer-help {
+    margin: 8px 0 0;
+    font-size: 12px;
+    color: var(--color-muted);
+  }
+
   .host-drawer-footer {
     position: sticky;
     bottom: 0;
     padding: 12px 20px;
     display: flex;
-    justify-content: flex-end;
+    justify-content: space-between;
+    align-items: center;
     gap: 12px;
     background: rgba(255, 255, 255, 0.95);
     border-top: 1px solid var(--color-border);
     backdrop-filter: blur(6px);
+  }
+
+  .host-drawer-footer-status {
+    color: var(--color-muted);
+    font-size: 12px;
+    font-weight: 600;
+  }
+
+  .host-drawer-footer-actions {
+    display: flex;
+    gap: 12px;
+    align-items: center;
   }
 
   .host-drawer-error {
@@ -317,6 +412,17 @@
     font-size: 12px;
     font-weight: 600;
     min-height: 16px;
+  }
+
+  @media (max-width: 600px) {
+    .host-drawer-row-two {
+      grid-template-columns: 1fr;
+    }
+
+    .host-drawer-footer {
+      flex-direction: column;
+      align-items: flex-end;
+    }
   }
 </style>
 
@@ -329,12 +435,28 @@
   const cancelButton = document.querySelector("[data-host-drawer-cancel]");
   const saveButton = document.querySelector("[data-host-drawer-save]");
   const form = document.querySelector("[data-host-edit-form]");
+  const projectPill = document.querySelector("[data-host-drawer-project]");
+  const statusPill = document.querySelector("[data-host-drawer-status]");
+  const projectSelect = document.querySelector("[data-host-project-select]");
+  const dirtyStatus = document.querySelector("[data-host-drawer-dirty]");
   const inputs = form ? form.querySelectorAll("[data-host-input]") : [];
   const errorMessages = form ? form.querySelectorAll("[data-host-error]") : [];
   let initialValues = {};
   let isOpen = false;
 
-  if (!overlay || !drawer || !form || !drawerSubtitle || !closeButton || !cancelButton || !saveButton) {
+  if (
+    !overlay ||
+    !drawer ||
+    !form ||
+    !drawerSubtitle ||
+    !closeButton ||
+    !cancelButton ||
+    !saveButton ||
+    !projectPill ||
+    !statusPill ||
+    !projectSelect ||
+    !dirtyStatus
+  ) {
     return;
   }
 
@@ -406,6 +528,7 @@
     const dirty = isDirty();
     const valid = validate();
     saveButton.disabled = !(dirty && valid);
+    dirtyStatus.textContent = dirty ? "Unsaved changes" : "No changes";
   };
 
   const openDrawer = (hostData) => {
@@ -416,6 +539,14 @@
     });
     form.action = `/ui/hosts/${hostData.id}/edit`;
     drawerSubtitle.textContent = hostData.name || "—";
+    projectPill.textContent = `Project: ${hostData.project_label || "Unassigned"}`;
+    statusPill.textContent = `Status: ${hostData.status || "Free"}`;
+    projectSelect.innerHTML = "";
+    const projectOption = document.createElement("option");
+    projectOption.value = hostData.project_label || "";
+    projectOption.textContent = hostData.project_label || "Unassigned";
+    projectOption.selected = true;
+    projectSelect.appendChild(projectOption);
     initialValues = {
       name: hostData.name || "",
       vendor_id: hostData.vendor_id || "",
@@ -451,9 +582,20 @@
         id: button.dataset.hostEdit,
         name: button.dataset.hostName || "",
         vendor_id: button.dataset.hostVendorId || "",
+        project_label: (() => {
+          const count = Number.parseInt(button.dataset.hostProjectCount || "0", 10);
+          if (Number.isNaN(count) || count === 0) {
+            return "Unassigned";
+          }
+          if (count > 1) {
+            return "Multiple";
+          }
+          return button.dataset.hostProjectName || "Unassigned";
+        })(),
         os_ips: button.dataset.hostOsIps || "",
         bmc_ips: button.dataset.hostBmcIps || "",
         notes: button.dataset.hostNotes || "",
+        status: button.dataset.hostStatus || "Free",
       };
       openDrawer(hostData);
     });
