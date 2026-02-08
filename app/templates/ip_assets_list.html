@@ -116,89 +116,369 @@
   {% include "partials/ip_assets_table.html" %}
 </div>
 
+<div class="ip-drawer-overlay" data-ip-drawer-overlay aria-hidden="true"></div>
+<aside class="ip-drawer" data-ip-drawer role="dialog" aria-modal="true" aria-label="Edit IP asset">
+  <div class="ip-drawer-header">
+    <div class="ip-drawer-header-row">
+      <div>
+        <h2 class="ip-drawer-title">Edit IP asset</h2>
+        <p class="ip-drawer-subtitle" data-ip-drawer-subtitle>—</p>
+      </div>
+      <button class="ip-drawer-close" type="button" aria-label="Close edit drawer" data-ip-drawer-close>
+        ✕
+      </button>
+    </div>
+    <div class="ip-drawer-meta">
+      <span class="ip-drawer-pill" data-ip-drawer-project>Project: Unassigned</span>
+      <span class="ip-drawer-pill ip-drawer-pill-muted" data-ip-drawer-host>Host: —</span>
+    </div>
+  </div>
+  <div class="ip-drawer-body">
+    <form class="ip-drawer-form" method="post" data-ip-edit-form id="ip-edit-form">
+      <input type="hidden" name="return_to" value="{{ return_to }}">
+      <section class="ip-drawer-section">
+        <h3>Assignment</h3>
+        <label class="field">
+          <span>IP address</span>
+          <input class="input" type="text" name="ip_address" readonly data-ip-input="ip_address" />
+        </label>
+        <div class="ip-drawer-row ip-drawer-row-two">
+          <label class="field">
+            <span>Type</span>
+            <select class="select" name="type" data-ip-input="type">
+              {% for asset_type in types %}
+              <option value="{{ asset_type }}">{{ asset_type }}</option>
+              {% endfor %}
+            </select>
+          </label>
+          <label class="field">
+            <span>Project</span>
+            <select class="select" name="project_id" data-ip-input="project_id">
+              <option value="">Unassigned</option>
+              {% for project in projects %}
+              <option value="{{ project.id }}">{{ project.name }}</option>
+              {% endfor %}
+            </select>
+          </label>
+        </div>
+        <label class="field" data-ip-host-field>
+          <span>Host</span>
+          <select class="select" name="host_id" data-ip-input="host_id">
+            <option value="">Unassigned</option>
+            {% for host in hosts %}
+            <option value="{{ host.id }}">{{ host.name }}</option>
+            {% endfor %}
+          </select>
+        </label>
+      </section>
+      <section class="ip-drawer-section">
+        <h3>Notes & tags</h3>
+        <label class="field">
+          <span>Tags</span>
+          <input class="input" type="text" name="tags" placeholder="comma,separated" data-ip-input="tags" />
+        </label>
+        <label class="field">
+          <span>Notes</span>
+          <textarea class="textarea" name="notes" rows="3" data-ip-input="notes"></textarea>
+        </label>
+      </section>
+    </form>
+  </div>
+  <div class="ip-drawer-footer">
+    <span class="ip-drawer-footer-status" data-ip-drawer-dirty>No changes</span>
+    <div class="ip-drawer-footer-actions">
+      <button class="btn btn-secondary" type="button" data-ip-drawer-cancel>Cancel</button>
+      <button class="btn btn-primary" type="submit" form="ip-edit-form" data-ip-drawer-save disabled>
+        Save changes
+      </button>
+    </div>
+  </div>
+</aside>
+
+<style>
+  .ip-asset-actions {
+    display: inline-flex;
+    gap: 8px;
+    flex-wrap: nowrap;
+    align-items: center;
+  }
+
+  .ip-drawer-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(15, 23, 42, 0.45);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s ease;
+    z-index: 40;
+  }
+
+  .ip-drawer-overlay.is-open {
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  .ip-drawer {
+    position: fixed;
+    top: 0;
+    right: 0;
+    height: 100%;
+    width: min(480px, 100%);
+    background: #fff;
+    box-shadow: -24px 0 48px rgba(15, 23, 42, 0.16);
+    transform: translateX(100%);
+    transition: transform 0.24s ease;
+    z-index: 50;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .ip-drawer.is-open {
+    transform: translateX(0);
+  }
+
+  .ip-drawer-header {
+    padding: 20px 24px 12px;
+    border-bottom: 1px solid #e2e8f0;
+  }
+
+  .ip-drawer-header-row {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    align-items: center;
+  }
+
+  .ip-drawer-title {
+    margin: 0;
+    font-size: 20px;
+  }
+
+  .ip-drawer-subtitle {
+    margin: 4px 0 0;
+    color: #64748b;
+  }
+
+  .ip-drawer-meta {
+    margin-top: 12px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .ip-drawer-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 10px;
+    border-radius: 999px;
+    background: #f1f5f9;
+    color: #0f172a;
+    font-size: 12px;
+    font-weight: 600;
+  }
+
+  .ip-drawer-pill-muted {
+    background: #e2e8f0;
+  }
+
+  .ip-drawer-close {
+    border: none;
+    background: none;
+    font-size: 18px;
+    cursor: pointer;
+  }
+
+  .ip-drawer-body {
+    flex: 1;
+    overflow-y: auto;
+    padding: 16px 24px;
+  }
+
+  .ip-drawer-form {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+  }
+
+  .ip-drawer-section {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .ip-drawer-section h3 {
+    margin: 0;
+    font-size: 14px;
+    color: #475569;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+  }
+
+  .ip-drawer-row {
+    display: grid;
+    gap: 12px;
+  }
+
+  .ip-drawer-row-two {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .ip-drawer-footer {
+    padding: 16px 24px;
+    border-top: 1px solid #e2e8f0;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .ip-drawer-footer-status {
+    color: #64748b;
+    font-size: 13px;
+  }
+
+  .ip-drawer-footer-actions {
+    display: flex;
+    gap: 12px;
+  }
+
+  @media (max-width: 600px) {
+    .ip-drawer-row-two {
+      grid-template-columns: 1fr;
+    }
+
+    .ip-drawer-footer {
+      flex-direction: column;
+      align-items: flex-end;
+    }
+  }
+</style>
+
 <script>
   (() => {
-    const POSITION_MARGIN = 12;
-    const GLOBAL_FLAG = 'ipocketRowActionsInitialized';
+    const GLOBAL_FLAG = 'ipocketIpAssetsInitialized';
+    const SCROLL_KEY = 'ipocket.ip-assets.scrollY';
+    const overlay = document.querySelector('[data-ip-drawer-overlay]');
+    const drawer = document.querySelector('[data-ip-drawer]');
+    const drawerSubtitle = document.querySelector('[data-ip-drawer-subtitle]');
+    const closeButton = document.querySelector('[data-ip-drawer-close]');
+    const cancelButton = document.querySelector('[data-ip-drawer-cancel]');
+    const saveButton = document.querySelector('[data-ip-drawer-save]');
+    const form = document.querySelector('[data-ip-edit-form]');
+    const projectPill = document.querySelector('[data-ip-drawer-project]');
+    const hostPill = document.querySelector('[data-ip-drawer-host]');
+    const dirtyStatus = document.querySelector('[data-ip-drawer-dirty]');
+    const inputs = form ? form.querySelectorAll('[data-ip-input]') : [];
+    const hostField = form ? form.querySelector('[data-ip-host-field]') : null;
+    let initialValues = {};
+    let isOpen = false;
 
-    const positionMenuPanel = (toggle, panel) => {
-      const triggerRect = toggle.getBoundingClientRect();
-      panel.style.position = 'fixed';
-      panel.style.top = '0';
-      panel.style.left = '0';
-      panel.style.right = 'auto';
-      panel.style.bottom = 'auto';
-      panel.style.visibility = 'hidden';
-      panel.hidden = false;
+    const shouldShowHostField = (typeValue) => ['OS', 'BMC'].includes((typeValue || '').toUpperCase());
 
-      const panelRect = panel.getBoundingClientRect();
-      let top = triggerRect.bottom + 6;
-      let left = triggerRect.right - panelRect.width;
-
-      if (left < POSITION_MARGIN) {
-        left = POSITION_MARGIN;
+    const updateHostVisibility = () => {
+      if (!hostField || !form) {
+        return;
       }
-
-      if (left + panelRect.width > window.innerWidth - POSITION_MARGIN) {
-        left = Math.max(POSITION_MARGIN, window.innerWidth - panelRect.width - POSITION_MARGIN);
+      const typeInput = form.querySelector('[data-ip-input="type"]');
+      const typeValue = typeInput ? typeInput.value : '';
+      const showHost = shouldShowHostField(typeValue);
+      hostField.style.display = showHost ? '' : 'none';
+      if (!showHost) {
+        const hostSelect = form.querySelector('[data-ip-input="host_id"]');
+        if (hostSelect) {
+          hostSelect.value = '';
+        }
       }
-
-      if (top + panelRect.height > window.innerHeight - POSITION_MARGIN) {
-        top = triggerRect.top - panelRect.height - 6;
-      }
-
-      if (top < POSITION_MARGIN) {
-        top = POSITION_MARGIN;
-      }
-
-      panel.style.top = `${top}px`;
-      panel.style.left = `${left}px`;
-      panel.style.visibility = 'visible';
     };
 
-    const closeAllMenus = () => {
-      const actionMenus = document.querySelectorAll('[data-row-actions]');
-      actionMenus.forEach((menu) => {
-        const toggle = menu.querySelector('[data-row-actions-toggle]');
-        const panel = menu.querySelector('[data-row-actions-panel]');
-        if (toggle && panel) {
-          toggle.setAttribute('aria-expanded', 'false');
-          panel.hidden = true;
-          panel.style.visibility = '';
-          menu.classList.remove('is-open');
+    const updateSaveState = () => {
+      if (!dirtyStatus || !saveButton) {
+        return;
+      }
+      const dirty = Array.from(inputs).some((input) => {
+        const key = input.dataset.ipInput;
+        return (input.value || '').trim() !== (initialValues[key] || '');
+      });
+      saveButton.disabled = !dirty;
+      dirtyStatus.textContent = dirty ? 'Unsaved changes' : 'No changes';
+    };
+
+    const openDrawer = (assetData) => {
+      if (!overlay || !drawer || !form || !drawerSubtitle || !projectPill || !hostPill) {
+        return;
+      }
+      inputs.forEach((input) => {
+        const key = input.dataset.ipInput;
+        input.value = assetData[key] || '';
+      });
+      form.action = `/ui/ip-assets/${assetData.id}/edit`;
+      drawerSubtitle.textContent = assetData.ip_address || '—';
+      projectPill.textContent = `Project: ${assetData.project_label || 'Unassigned'}`;
+      hostPill.textContent = `Host: ${assetData.host_label || '—'}`;
+      updateHostVisibility();
+      initialValues = {
+        ip_address: assetData.ip_address || '',
+        type: assetData.type || '',
+        project_id: assetData.project_id || '',
+        host_id: assetData.host_id || '',
+        tags: assetData.tags || '',
+        notes: assetData.notes || '',
+      };
+      updateSaveState();
+      overlay.classList.add('is-open');
+      drawer.classList.add('is-open');
+      isOpen = true;
+    };
+
+    const closeDrawer = () => {
+      if (!overlay || !drawer) {
+        return;
+      }
+      overlay.classList.remove('is-open');
+      drawer.classList.remove('is-open');
+      isOpen = false;
+    };
+
+    const confirmClose = () => {
+      const dirty = Array.from(inputs).some((input) => {
+        const key = input.dataset.ipInput;
+        return (input.value || '').trim() !== (initialValues[key] || '');
+      });
+      if (!dirty) {
+        closeDrawer();
+        return;
+      }
+      if (window.confirm('Discard changes?')) {
+        closeDrawer();
+      }
+    };
+
+    const bindEditButtons = (root = document) => {
+      const editButtons = root.querySelectorAll('[data-ip-edit]');
+      editButtons.forEach((button) => {
+        if (button.dataset.ipEditBound) {
+          return;
         }
+        button.dataset.ipEditBound = 'true';
+        button.addEventListener('click', () => {
+          const assetData = {
+            id: button.dataset.ipEdit,
+            ip_address: button.dataset.ipAddress || '',
+            type: button.dataset.ipType || '',
+            project_id: button.dataset.ipProjectId || '',
+            project_label: button.dataset.ipProjectName || 'Unassigned',
+            host_id: button.dataset.ipHostId || '',
+            host_label: button.dataset.ipHostName || '—',
+            notes: button.dataset.ipNotes || '',
+            tags: button.dataset.ipTags || '',
+          };
+          openDrawer(assetData);
+        });
       });
     };
 
-    const bindRowActions = (root = document) => {
-      const actionMenus = root.querySelectorAll('[data-row-actions]');
-      actionMenus.forEach((menu) => {
-        if (menu.dataset.rowActionsBound) {
-          return;
-        }
-        const toggle = menu.querySelector('[data-row-actions-toggle]');
-        const panel = menu.querySelector('[data-row-actions-panel]');
-        if (!toggle || !panel) {
-          return;
-        }
-        menu.dataset.rowActionsBound = 'true';
-
-        toggle.addEventListener('click', (event) => {
-          event.stopPropagation();
-          const isOpen = toggle.getAttribute('aria-expanded') === 'true';
-          closeAllMenus();
-          if (!isOpen) {
-            toggle.setAttribute('aria-expanded', 'true');
-            positionMenuPanel(toggle, panel);
-            menu.classList.add('is-open');
-          }
-        });
-
-        panel.addEventListener('click', (event) => {
-          event.stopPropagation();
-        });
-      });
-
+    const bindDeleteDialogs = (root = document) => {
       const openButtons = root.querySelectorAll('[data-delete-dialog-id]');
       openButtons.forEach((button) => {
         if (button.dataset.deleteDialogBound) {
@@ -278,45 +558,52 @@
 
     if (!window[GLOBAL_FLAG]) {
       window[GLOBAL_FLAG] = true;
-      document.addEventListener('click', () => {
-        closeAllMenus();
-      });
-
+      if (typeof window !== 'undefined' && window.sessionStorage) {
+        const storedScroll = window.sessionStorage.getItem(SCROLL_KEY);
+        if (storedScroll) {
+          window.scrollTo(0, Number.parseInt(storedScroll, 10) || 0);
+          window.sessionStorage.removeItem(SCROLL_KEY);
+        }
+      }
+      if (closeButton) {
+        closeButton.addEventListener('click', confirmClose);
+      }
+      if (cancelButton) {
+        cancelButton.addEventListener('click', confirmClose);
+      }
+      if (overlay) {
+        overlay.addEventListener('click', confirmClose);
+      }
       document.addEventListener('keydown', (event) => {
-        if (event.key === 'Escape') {
-          closeAllMenus();
+        if (event.key === 'Escape' && isOpen) {
+          confirmClose();
         }
       });
-
-      window.addEventListener(
-        'scroll',
-        () => {
-          closeAllMenus();
-        },
-        true,
-      );
-
-      const tableWrapper = document.querySelector('.table-wrapper');
-      if (tableWrapper) {
-        tableWrapper.addEventListener('scroll', () => {
-          closeAllMenus();
+      inputs.forEach((input) => {
+        input.addEventListener('input', () => {
+          if (input.dataset.ipInput === 'type') {
+            updateHostVisibility();
+          }
+          updateSaveState();
+        });
+      });
+      updateHostVisibility();
+      if (form && window.sessionStorage) {
+        form.addEventListener('submit', () => {
+          window.sessionStorage.setItem(SCROLL_KEY, String(window.scrollY || 0));
         });
       }
-
-      window.addEventListener('resize', () => {
-        closeAllMenus();
-      });
-
       document.body.addEventListener('htmx:afterSwap', (event) => {
         if (event.target && event.target.id === 'ip-table-container') {
-          bindRowActions(event.target);
+          bindEditButtons(event.target);
+          bindDeleteDialogs(event.target);
           bindBulkEdit(event.target);
-          closeAllMenus();
         }
       });
     }
 
-    bindRowActions();
+    bindEditButtons();
+    bindDeleteDialogs();
     bindBulkEdit();
   })();
 </script>

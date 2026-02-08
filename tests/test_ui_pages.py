@@ -368,32 +368,46 @@ def test_tags_page_renders_and_allows_edit_delete(client) -> None:
     assert "positionMenuPanel" in response.text
 
 
-def test_ip_assets_list_uses_overflow_actions_menu_with_delete_dialog(client) -> None:
+def test_ip_assets_list_uses_edit_drawer_actions_with_delete_dialog(client) -> None:
     import os
     from app import db, repository
 
     connection = db.connect(os.environ["IPAM_DB_PATH"])
     try:
         db.init_db(connection)
-        asset = repository.create_ip_asset(connection, ip_address="10.30.0.10", asset_type=IPAssetType.VM)
+        project = repository.create_project(connection, name="Core")
+        host = repository.create_host(connection, name="edge-01")
+        asset = repository.create_ip_asset(
+            connection,
+            ip_address="10.30.0.10",
+            asset_type=IPAssetType.VM,
+            project_id=project.id,
+            host_id=host.id,
+            tags=["edge"],
+            notes="Primary",
+        )
     finally:
         connection.close()
 
     response = client.get("/ui/ip-assets")
 
     assert response.status_code == 200
-    assert 'data-row-actions' in response.text
-    assert 'data-row-actions-toggle' in response.text
-    assert 'data-row-actions-panel' in response.text
-    assert 'class="row-actions-icon"' in response.text
     assert "bulk-edit-controls-hidden" in response.text
-    assert f'aria-controls="row-actions-{asset.id}"' in response.text
+    assert f'data-ip-edit="{asset.id}"' in response.text
+    assert 'data-ip-address="10.30.0.10"' in response.text
+    assert 'data-ip-type="VM"' in response.text
+    assert f'data-ip-project-id="{project.id}"' in response.text
+    assert f'data-ip-host-id="{host.id}"' in response.text
+    assert 'data-ip-tags="edge"' in response.text
+    assert 'data-ip-notes="Primary"' in response.text
     assert f'data-delete-dialog-id="delete-ip-{asset.id}"' in response.text
     assert f'id="delete-ip-{asset.id}"' in response.text
     assert "Delete IP asset?" in response.text
     assert "Continue to delete" in response.text
-    assert "window.addEventListener" in response.text
-    assert "positionMenuPanel" in response.text
+    assert "data-ip-drawer" in response.text
+    assert "Save changes" in response.text
+    assert "ipocket.ip-assets.scrollY" in response.text
+    assert "data-ip-host-field" in response.text
 
 
 def test_ip_assets_list_htmx_response_renders_table_partial(client) -> None:
@@ -411,7 +425,7 @@ def test_ip_assets_list_htmx_response_renders_table_partial(client) -> None:
 
     assert response.status_code == 200
     assert f"/ui/ip-assets/{asset.id}" in response.text
-    assert 'data-row-actions' in response.text
+    assert 'data-ip-edit' in response.text
     assert "<table" in response.text
     assert "Apply filters" not in response.text
 
@@ -477,6 +491,43 @@ def test_ip_assets_bulk_edit_updates_selected_assets(client) -> None:
         assert tag_map[asset_two.id] == ["core", "edge"]
     finally:
         connection.close()
+
+
+def test_ip_assets_edit_returns_to_list_when_return_to_set(client) -> None:
+    import os
+    from app import db, repository
+
+    connection = db.connect(os.environ["IPAM_DB_PATH"])
+    try:
+        db.init_db(connection)
+        user = repository.create_user(connection, username="editor", hashed_password="x", role=UserRole.EDITOR)
+        asset = repository.create_ip_asset(
+            connection,
+            ip_address="10.90.0.10",
+            asset_type=IPAssetType.VM,
+        )
+    finally:
+        connection.close()
+
+    app.dependency_overrides[ui.require_ui_editor] = lambda: user
+    try:
+        response = client.post(
+            f"/ui/ip-assets/{asset.id}/edit",
+            data={
+                "type": "VIP",
+                "project_id": "",
+                "host_id": "",
+                "tags": "",
+                "notes": "",
+                "return_to": "/ui/ip-assets?archived-only=false",
+            },
+            follow_redirects=False,
+        )
+    finally:
+        app.dependency_overrides.pop(ui.require_ui_editor, None)
+
+    assert response.status_code == 303
+    assert response.headers["location"] == "/ui/ip-assets?archived-only=false"
 
 
 def test_ip_assets_bulk_edit_shows_error_toast_for_missing_selection(client) -> None:
