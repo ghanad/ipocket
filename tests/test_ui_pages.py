@@ -406,6 +406,7 @@ def test_ip_assets_list_uses_edit_drawer_actions_with_delete_dialog(client) -> N
     assert "Continue to delete" in response.text
     assert "data-ip-drawer" in response.text
     assert "Save changes" in response.text
+    assert "ipocket.ip-assets.scrollY" in response.text
 
 
 def test_ip_assets_list_htmx_response_renders_table_partial(client) -> None:

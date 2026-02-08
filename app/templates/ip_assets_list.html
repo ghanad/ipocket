@@ -358,6 +358,7 @@
 <script>
   (() => {
     const GLOBAL_FLAG = 'ipocketIpAssetsInitialized';
+    const SCROLL_KEY = 'ipocket.ip-assets.scrollY';
     const overlay = document.querySelector('[data-ip-drawer-overlay]');
     const drawer = document.querySelector('[data-ip-drawer]');
     const drawerSubtitle = document.querySelector('[data-ip-drawer-subtitle]');
@@ -537,6 +538,13 @@
 
     if (!window[GLOBAL_FLAG]) {
       window[GLOBAL_FLAG] = true;
+      if (typeof window !== 'undefined' && window.sessionStorage) {
+        const storedScroll = window.sessionStorage.getItem(SCROLL_KEY);
+        if (storedScroll) {
+          window.scrollTo(0, Number.parseInt(storedScroll, 10) || 0);
+          window.sessionStorage.removeItem(SCROLL_KEY);
+        }
+      }
       if (closeButton) {
         closeButton.addEventListener('click', confirmClose);
       }
@@ -556,6 +564,11 @@
           updateSaveState();
         });
       });
+      if (form && window.sessionStorage) {
+        form.addEventListener('submit', () => {
+          window.sessionStorage.setItem(SCROLL_KEY, String(window.scrollY || 0));
+        });
+      }
       document.body.addEventListener('htmx:afterSwap', (event) => {
         if (event.target && event.target.id === 'ip-table-container') {
           bindEditButtons(event.target);
