@@ -1994,6 +1994,7 @@ async def ui_edit_host(
             {
                 "title": "ipocket - Hosts",
                 "errors": ["Host name is required."],
+                "toast_messages": [{"type": "error", "message": "Host name is required."}],
                 "hosts": repository.list_hosts_with_ip_counts(connection),
                 "vendors": list(repository.list_vendors(connection)),
                 "form_state": {"name": "", "notes": "", "vendor_id": ""},
@@ -2013,6 +2014,7 @@ async def ui_edit_host(
             {
                 "title": "ipocket - Hosts",
                 "errors": ["Selected vendor does not exist."],
+                "toast_messages": [{"type": "error", "message": "Selected vendor does not exist."}],
                 "hosts": repository.list_hosts_with_ip_counts(connection),
                 "vendors": list(repository.list_vendors(connection)),
                 "form_state": {"name": "", "notes": "", "vendor_id": ""},
@@ -2026,12 +2028,14 @@ async def ui_edit_host(
 
     inline_errors, inline_assets = _collect_inline_ip_errors(connection, host_id, os_ips, bmc_ips)
     if inline_errors:
+        toast_messages = [{"type": "error", "message": error} for error in inline_errors]
         return _render_template(
             request,
             "hosts.html",
             {
                 "title": "ipocket - Hosts",
                 "errors": inline_errors,
+                "toast_messages": toast_messages,
                 "hosts": repository.list_hosts_with_ip_counts(connection),
                 "vendors": list(repository.list_vendors(connection)),
                 "form_state": {"name": "", "notes": "", "vendor_id": "", "os_ips": "", "bmc_ips": ""},
@@ -2068,6 +2072,7 @@ async def ui_edit_host(
             {
                 "title": "ipocket - Hosts",
                 "errors": ["Host name already exists."],
+                "toast_messages": [{"type": "error", "message": "Host name already exists."}],
                 "hosts": repository.list_hosts_with_ip_counts(connection),
                 "vendors": list(repository.list_vendors(connection)),
                 "form_state": {"name": "", "notes": "", "vendor_id": ""},
@@ -2082,7 +2087,13 @@ async def ui_edit_host(
     if updated is None:
         return Response(status_code=404)
 
-    return RedirectResponse(url="/ui/hosts", status_code=303)
+    return _redirect_with_flash(
+        request,
+        "/ui/hosts",
+        "Host updated.",
+        message_type="success",
+        status_code=303,
+    )
 
 
 @router.get("/ui/hosts/{host_id}", response_class=HTMLResponse)

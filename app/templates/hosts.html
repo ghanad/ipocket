@@ -132,76 +132,27 @@
           <td>{{ host.bmc_ips or "" }}</td>
           <td>{{ host.ip_count }}</td>
           <td class="asset-actions-cell">
-            <div class="row-actions-menu" data-row-actions>
+            {% set vendor_match = namespace(id="") %}
+            {% for vendor in vendors %}
+            {% if host.vendor and vendor.name == host.vendor %}
+            {% set vendor_match.id = vendor.id %}
+            {% endif %}
+            {% endfor %}
+            <div class="table-actions">
               <button
-                class="row-actions-trigger"
+                class="btn btn-secondary btn-small"
                 type="button"
-                aria-label="Open actions for {{ host.name }}"
-                aria-expanded="false"
-                aria-haspopup="true"
-                aria-controls="row-actions-host-{{ host.id }}"
-                data-row-actions-toggle
+                data-host-edit="{{ host.id }}"
+                data-host-name="{{ host.name }}"
+                data-host-vendor-id="{{ vendor_match.id }}"
+                data-host-os-ips="{{ host.os_ips or "" }}"
+                data-host-bmc-ips="{{ host.bmc_ips or "" }}"
+                data-host-notes="{{ host.notes or "" }}"
               >
-                <span class="row-actions-icon" aria-hidden="true">⋮</span>
+                Edit
               </button>
-              <div
-                class="row-actions-panel"
-                id="row-actions-host-{{ host.id }}"
-                role="menu"
-                aria-label="Actions for {{ host.name }}"
-                data-row-actions-panel
-                hidden
-              >
-                <button
-                  class="row-action-item"
-                  type="button"
-                  role="menuitem"
-                  data-host-edit-toggle="{{ host.id }}"
-                >
-                  <span aria-hidden="true">✏️</span>
-                  <span>Edit</span>
-                </button>
-                <a class="row-action-item row-action-item-danger" role="menuitem" href="/ui/hosts/{{ host.id }}/delete">
-                  <span aria-hidden="true">🗑️</span>
-                  <span>Delete</span>
-                </a>
-              </div>
+              <a class="btn btn-danger btn-small" href="/ui/hosts/{{ host.id }}/delete">Delete</a>
             </div>
-          </td>
-        </tr>
-        <tr id="host-edit-row-{{ host.id }}" style="display: none;">
-          <td colspan="7">
-            <form class="form-grid" method="post" action="/ui/hosts/{{ host.id }}/edit">
-              <label class="field">
-                <span>Name</span>
-                <input class="input" type="text" name="name" value="{{ host.name }}" required />
-              </label>
-              <label class="field">
-                <span>Vendor</span>
-                <select class="select" name="vendor_id">
-                  <option value="">UNASSIGNED</option>
-                  {% for vendor in vendors %}
-                  <option value="{{ vendor.id }}"{% if host.vendor and vendor.name == host.vendor %} selected{% endif %}>{{ vendor.name }}</option>
-                  {% endfor %}
-                </select>
-              </label>
-              <label class="field">
-                <span>OS IPs</span>
-                <input class="input" type="text" name="os_ips" placeholder="Add OS IPs" />
-              </label>
-              <label class="field">
-                <span>BMC IPs</span>
-                <input class="input" type="text" name="bmc_ips" placeholder="Add BMC IPs" />
-              </label>
-              <label class="field">
-                <span>Notes</span>
-                <textarea class="textarea" name="notes" rows="2">{{ host.notes or "" }}</textarea>
-              </label>
-              <div class="form-actions">
-                <button class="btn btn-primary" type="submit">Save</button>
-                <button class="btn btn-secondary" type="button" onclick="toggleHostEdit({{ host.id }})">Cancel</button>
-              </div>
-            </form>
           </td>
         </tr>
         {% endfor %}
@@ -213,123 +164,322 @@
   </div>
 </section>
 
-<script>
-function toggleHostEdit(hostId) {
-  const row = document.getElementById(`host-edit-row-${hostId}`);
-  if (!row) return;
-  row.style.display = row.style.display === "none" ? "table-row" : "none";
-}
+<div class="host-drawer-overlay" data-host-drawer-overlay aria-hidden="true"></div>
+<aside class="host-drawer" data-host-drawer role="dialog" aria-modal="true" aria-label="Edit Host">
+  <div class="host-drawer-header">
+    <div class="host-drawer-header-row">
+      <div>
+        <h2 class="host-drawer-title">Edit Host</h2>
+        <p class="host-drawer-subtitle" data-host-drawer-subtitle>—</p>
+      </div>
+      <button class="host-drawer-close" type="button" aria-label="Close edit drawer" data-host-drawer-close>
+        ✕
+      </button>
+    </div>
+  </div>
+  <div class="host-drawer-body">
+    <form class="host-drawer-form" method="post" data-host-edit-form id="host-edit-form">
+      <label class="field">
+        <span>Name</span>
+        <input class="input" type="text" name="name" required data-host-input="name" />
+        <span class="host-drawer-error" data-host-error="name" role="alert"></span>
+      </label>
+      <label class="field">
+        <span>Vendor</span>
+        <select class="select" name="vendor_id" data-host-input="vendor_id">
+          <option value="">UNASSIGNED</option>
+          {% for vendor in vendors %}
+          <option value="{{ vendor.id }}">{{ vendor.name }}</option>
+          {% endfor %}
+        </select>
+      </label>
+      <label class="field">
+        <span>OS IP</span>
+        <input class="input" type="text" name="os_ips" placeholder="e.g. 192.168.10.200" data-host-input="os_ips" />
+        <span class="host-drawer-error" data-host-error="os_ips" role="alert"></span>
+      </label>
+      <label class="field">
+        <span>BMC IP</span>
+        <input class="input" type="text" name="bmc_ips" placeholder="e.g. 192.168.20.10" data-host-input="bmc_ips" />
+        <span class="host-drawer-error" data-host-error="bmc_ips" role="alert"></span>
+      </label>
+      <label class="field field-span">
+        <span>Notes</span>
+        <textarea class="textarea" name="notes" rows="3" data-host-input="notes"></textarea>
+      </label>
+    </form>
+  </div>
+  <div class="host-drawer-footer">
+    <button class="btn btn-secondary" type="button" data-host-drawer-cancel>Cancel</button>
+    <button class="btn btn-primary" type="submit" form="host-edit-form" data-host-drawer-save disabled>Save changes</button>
+  </div>
+</aside>
 
-(() => {
-  const actionMenus = document.querySelectorAll("[data-row-actions]");
-  const POSITION_MARGIN = 12;
-
-  const positionMenuPanel = (toggle, panel) => {
-    const triggerRect = toggle.getBoundingClientRect();
-    panel.style.position = "fixed";
-    panel.style.top = "0";
-    panel.style.left = "0";
-    panel.style.right = "auto";
-    panel.style.bottom = "auto";
-    panel.style.visibility = "hidden";
-    panel.hidden = false;
-
-    const panelRect = panel.getBoundingClientRect();
-    let top = triggerRect.bottom + 6;
-    let left = triggerRect.right - panelRect.width;
-
-    if (left < POSITION_MARGIN) {
-      left = POSITION_MARGIN;
-    }
-
-    if (left + panelRect.width > window.innerWidth - POSITION_MARGIN) {
-      left = Math.max(POSITION_MARGIN, window.innerWidth - panelRect.width - POSITION_MARGIN);
-    }
-
-    if (top + panelRect.height > window.innerHeight - POSITION_MARGIN) {
-      top = triggerRect.top - panelRect.height - 6;
-    }
-
-    if (top < POSITION_MARGIN) {
-      top = POSITION_MARGIN;
-    }
-
-    panel.style.top = `${top}px`;
-    panel.style.left = `${left}px`;
-    panel.style.visibility = "visible";
-  };
-
-  const closeAllMenus = () => {
-    actionMenus.forEach((menu) => {
-      const toggle = menu.querySelector("[data-row-actions-toggle]");
-      const panel = menu.querySelector("[data-row-actions-panel]");
-      if (toggle && panel) {
-        toggle.setAttribute("aria-expanded", "false");
-        panel.hidden = true;
-        panel.style.visibility = "";
-        menu.classList.remove("is-open");
-      }
-    });
-  };
-
-  actionMenus.forEach((menu) => {
-    const toggle = menu.querySelector("[data-row-actions-toggle]");
-    const panel = menu.querySelector("[data-row-actions-panel]");
-    if (!toggle || !panel) {
-      return;
-    }
-
-    toggle.addEventListener("click", (event) => {
-      event.stopPropagation();
-      const isOpen = toggle.getAttribute("aria-expanded") === "true";
-      closeAllMenus();
-      if (!isOpen) {
-        toggle.setAttribute("aria-expanded", "true");
-        positionMenuPanel(toggle, panel);
-        menu.classList.add("is-open");
-      }
-    });
-
-    panel.addEventListener("click", (event) => {
-      event.stopPropagation();
-    });
-  });
-
-  document.addEventListener("click", () => {
-    closeAllMenus();
-  });
-
-  document.addEventListener("keydown", (event) => {
-    if (event.key === "Escape") {
-      closeAllMenus();
-    }
-  });
-
-  window.addEventListener(
-    "scroll",
-    () => {
-      closeAllMenus();
-    },
-    true,
-  );
-
-  const tableWrapper = document.querySelector(".table-wrapper");
-  if (tableWrapper) {
-    tableWrapper.addEventListener("scroll", () => {
-      closeAllMenus();
-    });
+<style>
+  .host-drawer-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(15, 23, 42, 0.45);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s ease;
+    z-index: 40;
   }
 
-  window.addEventListener("resize", () => {
-    closeAllMenus();
+  .host-drawer-overlay.is-open {
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  .host-drawer {
+    position: fixed;
+    top: 0;
+    right: 0;
+    height: 100vh;
+    width: min(520px, 92vw);
+    background: var(--color-surface);
+    border-left: 1px solid var(--color-border);
+    box-shadow: 0 18px 32px rgba(15, 23, 42, 0.18);
+    transform: translateX(105%);
+    transition: transform 0.25s ease;
+    display: flex;
+    flex-direction: column;
+    z-index: 50;
+  }
+
+  .host-drawer.is-open {
+    transform: translateX(0);
+  }
+
+  .host-drawer-header {
+    padding: 18px 20px 12px;
+    border-bottom: 1px solid var(--color-border);
+    background: #fbfdff;
+  }
+
+  .host-drawer-header-row {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 16px;
+  }
+
+  .host-drawer-title {
+    font-size: 18px;
+    margin: 0;
+    word-break: break-word;
+  }
+
+  .host-drawer-subtitle {
+    margin: 4px 0 0;
+    font-size: 13px;
+    color: var(--color-muted);
+    word-break: break-word;
+  }
+
+  .host-drawer-close {
+    border: 1px solid var(--color-border);
+    background: #fff;
+    border-radius: 10px;
+    width: 36px;
+    height: 36px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+  }
+
+  .host-drawer-body {
+    padding: 18px 20px 120px;
+    overflow-y: auto;
+  }
+
+  .host-drawer-form {
+    display: grid;
+    gap: 16px;
+  }
+
+  .host-drawer-footer {
+    position: sticky;
+    bottom: 0;
+    padding: 12px 20px;
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+    background: rgba(255, 255, 255, 0.95);
+    border-top: 1px solid var(--color-border);
+    backdrop-filter: blur(6px);
+  }
+
+  .host-drawer-error {
+    display: none;
+    color: var(--color-danger);
+    font-size: 12px;
+    font-weight: 600;
+    min-height: 16px;
+  }
+</style>
+
+<script>
+(() => {
+  const overlay = document.querySelector("[data-host-drawer-overlay]");
+  const drawer = document.querySelector("[data-host-drawer]");
+  const drawerSubtitle = document.querySelector("[data-host-drawer-subtitle]");
+  const closeButton = document.querySelector("[data-host-drawer-close]");
+  const cancelButton = document.querySelector("[data-host-drawer-cancel]");
+  const saveButton = document.querySelector("[data-host-drawer-save]");
+  const form = document.querySelector("[data-host-edit-form]");
+  const inputs = form ? form.querySelectorAll("[data-host-input]") : [];
+  const errorMessages = form ? form.querySelectorAll("[data-host-error]") : [];
+  let initialValues = {};
+  let isOpen = false;
+
+  if (!overlay || !drawer || !form || !drawerSubtitle || !closeButton || !cancelButton || !saveButton) {
+    return;
+  }
+
+  const isValidIPv4 = (value) => {
+    if (!value) return true;
+    const trimmed = value.trim();
+    const regex = /^(25[0-5]|2[0-4]\d|1\d{2}|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d{2}|[1-9]?\d)){3}$/;
+    return regex.test(trimmed);
+  };
+
+  const setError = (field, message) => {
+    const error = form.querySelector(`[data-host-error="${field}"]`);
+    if (!error) return;
+    if (message) {
+      error.textContent = message;
+      error.style.display = "block";
+    } else {
+      error.textContent = "";
+      error.style.display = "none";
+    }
+  };
+
+  const clearErrors = () => {
+    errorMessages.forEach((error) => {
+      error.textContent = "";
+      error.style.display = "none";
+    });
+  };
+
+  const normalizeValue = (value) => value.trim();
+
+  const isDirty = () =>
+    Array.from(inputs).some((input) => {
+      const key = input.dataset.hostInput;
+      return normalizeValue(input.value) !== (initialValues[key] || "");
+    });
+
+  const validate = () => {
+    let valid = true;
+    const nameInput = form.querySelector('[data-host-input="name"]');
+    const osInput = form.querySelector('[data-host-input="os_ips"]');
+    const bmcInput = form.querySelector('[data-host-input="bmc_ips"]');
+
+    if (nameInput && !nameInput.value.trim()) {
+      setError("name", "Host name is required.");
+      valid = false;
+    } else {
+      setError("name", "");
+    }
+
+    if (osInput && osInput.value.trim() && !isValidIPv4(osInput.value)) {
+      setError("os_ips", "Enter a valid IPv4 address.");
+      valid = false;
+    } else {
+      setError("os_ips", "");
+    }
+
+    if (bmcInput && bmcInput.value.trim() && !isValidIPv4(bmcInput.value)) {
+      setError("bmc_ips", "Enter a valid IPv4 address.");
+      valid = false;
+    } else {
+      setError("bmc_ips", "");
+    }
+
+    return valid;
+  };
+
+  const updateSaveState = () => {
+    const dirty = isDirty();
+    const valid = validate();
+    saveButton.disabled = !(dirty && valid);
+  };
+
+  const openDrawer = (hostData) => {
+    clearErrors();
+    inputs.forEach((input) => {
+      const key = input.dataset.hostInput;
+      input.value = hostData[key] || "";
+    });
+    form.action = `/ui/hosts/${hostData.id}/edit`;
+    drawerSubtitle.textContent = hostData.name || "—";
+    initialValues = {
+      name: hostData.name || "",
+      vendor_id: hostData.vendor_id || "",
+      os_ips: hostData.os_ips || "",
+      bmc_ips: hostData.bmc_ips || "",
+      notes: hostData.notes || "",
+    };
+    updateSaveState();
+    overlay.classList.add("is-open");
+    drawer.classList.add("is-open");
+    isOpen = true;
+  };
+
+  const closeDrawer = () => {
+    overlay.classList.remove("is-open");
+    drawer.classList.remove("is-open");
+    isOpen = false;
+  };
+
+  const confirmClose = () => {
+    if (!isDirty()) {
+      closeDrawer();
+      return;
+    }
+    if (window.confirm("Discard changes?")) {
+      closeDrawer();
+    }
+  };
+
+  document.querySelectorAll("[data-host-edit]").forEach((button) => {
+    button.addEventListener("click", () => {
+      const hostData = {
+        id: button.dataset.hostEdit,
+        name: button.dataset.hostName || "",
+        vendor_id: button.dataset.hostVendorId || "",
+        os_ips: button.dataset.hostOsIps || "",
+        bmc_ips: button.dataset.hostBmcIps || "",
+        notes: button.dataset.hostNotes || "",
+      };
+      openDrawer(hostData);
+    });
   });
 
-  const editButtons = document.querySelectorAll("[data-host-edit-toggle]");
-  editButtons.forEach((button) => {
-    button.addEventListener("click", () => {
-      toggleHostEdit(Number(button.dataset.hostEditToggle));
-      closeAllMenus();
+  closeButton.addEventListener("click", confirmClose);
+  cancelButton.addEventListener("click", confirmClose);
+  overlay.addEventListener("click", confirmClose);
+
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape" && isOpen) {
+      confirmClose();
+    }
+  });
+
+  inputs.forEach((input) => {
+    input.addEventListener("input", () => {
+      updateSaveState();
     });
+  });
+
+  form.addEventListener("submit", (event) => {
+    if (!validate()) {
+      event.preventDefault();
+      updateSaveState();
+    }
   });
 })();
 </script>
