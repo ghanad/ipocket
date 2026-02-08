@@ -5,8 +5,9 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
 from app.routes import api, ui
-from app.startup import init_database
+from app.startup import configure_logging, init_database
 
+configure_logging()
 app = FastAPI()
 app.mount("/static", StaticFiles(directory="app/static"), name="static")
 try:

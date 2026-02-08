@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<nmaprun>
+  <host>
+    <status state="up" reason="arp-response" />
+    <address addr="192.168.10.12" addrtype="ipv4" />
+    <address addr="AC:1F:6B:CC:AD:5C" addrtype="mac" vendor="Super Micro Computer" />
+  </host>
+  <host>
+    <status state="up" reason="arp-response" />
+    <address addr="192.168.10.18" addrtype="ipv4" />
+    <address addr="2C:44:FD:96:9E:00" addrtype="mac" vendor="Hewlett Packard" />
+  </host>
+  <host>
+    <status state="up" reason="arp-response" />
+    <address addr="192.168.10.19" addrtype="ipv4" />
+    <address addr="00:50:56:92:06:2F" addrtype="mac" vendor="VMware" />
+  </host>
+</nmaprun>
