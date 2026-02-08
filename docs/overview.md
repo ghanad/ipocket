@@ -38,7 +38,7 @@ Owner support has been removed in development phase, so assignment is now projec
 
 Hosts can be linked to a vendor from the shared **Vendors** catalog.
 
-- Hosts list uses a right-side edit drawer for name, vendor, notes, single-value OS/BMC IP updates, and read-only project/status context (with inline IPv4 validation).
+- Hosts list uses a right-side edit drawer for name, vendor, notes, single-value OS/BMC IP updates, and project/status context (with inline IPv4 validation); changing project updates linked IP assignments.
 - Host add form still supports inline OS and BMC IP address inputs so linked addresses can be captured during host creation.
 - Hosts list shows side-by-side Edit/Delete actions in the Actions column for quick access.
 - Hosts list shows linked OS and BMC IP addresses alongside the total linked IP count.

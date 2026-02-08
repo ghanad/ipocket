@@ -205,8 +205,11 @@
           </label>
           <label class="field">
             <span>Project</span>
-            <select class="select" data-host-project-select disabled>
+            <select class="select" name="project_id" data-host-input="project_id" data-host-project-select>
               <option value="">Unassigned</option>
+              {% for project in projects %}
+              <option value="{{ project.id }}" data-project-name="{{ project.name }}">{{ project.name }}</option>
+              {% endfor %}
             </select>
           </label>
         </div>
@@ -541,15 +544,22 @@
     drawerSubtitle.textContent = hostData.name || "—";
     projectPill.textContent = `Project: ${hostData.project_label || "Unassigned"}`;
     statusPill.textContent = `Status: ${hostData.status || "Free"}`;
-    projectSelect.innerHTML = "";
-    const projectOption = document.createElement("option");
-    projectOption.value = hostData.project_label || "";
-    projectOption.textContent = hostData.project_label || "Unassigned";
-    projectOption.selected = true;
-    projectSelect.appendChild(projectOption);
+    const defaultOption = projectSelect.querySelector('option[value=""]');
+    if (defaultOption) {
+      defaultOption.textContent = hostData.project_label || "Unassigned";
+    }
+    if (hostData.project_label && hostData.project_label !== "Unassigned" && hostData.project_label !== "Multiple") {
+      const match = Array.from(projectSelect.options).find(
+        (option) => option.dataset.projectName === hostData.project_label,
+      );
+      projectSelect.value = match ? match.value : "";
+    } else {
+      projectSelect.value = "";
+    }
     initialValues = {
       name: hostData.name || "",
       vendor_id: hostData.vendor_id || "",
+      project_id: projectSelect.value || "",
       os_ips: hostData.os_ips || "",
       bmc_ips: hostData.bmc_ips || "",
       notes: hostData.notes || "",

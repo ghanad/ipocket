@@ -657,6 +657,7 @@ def test_hosts_list_uses_edit_drawer_actions(client) -> None:
     assert f'data-host-edit="{host.id}"' in response.text
     assert f'data-host-name="{host.name}"' in response.text
     assert 'data-host-project-count="0"' in response.text
+    assert 'name="project_id"' in response.text
     assert f'/ui/hosts/{host.id}/delete' in response.text
     assert "data-host-drawer" in response.text
     assert "Save changes" in response.text
@@ -692,6 +693,48 @@ def test_hosts_list_search_trims_whitespace(client) -> None:
     assert response.status_code == 200
     assert "edge-01" in response.text
     assert "core-02" not in response.text
+
+
+def test_hosts_edit_updates_project_assignments(client) -> None:
+    import os
+    from app import db, repository
+
+    connection = db.connect(os.environ["IPAM_DB_PATH"])
+    try:
+        db.init_db(connection)
+        project = repository.create_project(connection, name="Core")
+        host = repository.create_host(connection, name="edge-01")
+        repository.create_ip_asset(
+            connection,
+            ip_address="10.20.0.10",
+            asset_type=IPAssetType.OS,
+            host_id=host.id,
+        )
+    finally:
+        connection.close()
+
+    from app.models import User
+    from app.routes import ui
+
+    app.dependency_overrides[ui.require_ui_editor] = lambda: User(1, "editor", "x", UserRole.EDITOR, True)
+    try:
+        response = client.post(
+            f"/ui/hosts/{host.id}/edit",
+            data={"name": "edge-01", "project_id": str(project.id)},
+            follow_redirects=False,
+        )
+    finally:
+        app.dependency_overrides.pop(ui.require_ui_editor, None)
+
+    assert response.status_code == 303
+
+    connection = db.connect(os.environ["IPAM_DB_PATH"])
+    try:
+        asset = repository.get_ip_asset_by_ip(connection, "10.20.0.10")
+        assert asset is not None
+        assert asset.project_id == project.id
+    finally:
+        connection.close()
 
 
 def test_audit_log_page_lists_ip_entries(client) -> None:
