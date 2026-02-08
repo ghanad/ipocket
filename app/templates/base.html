@@ -17,6 +17,21 @@
   <title>{{ title }}</title>
 </head>
 <body>
+  <div
+    class="toast-container"
+    data-toast-container
+    data-timeout="4000"
+    role="region"
+    aria-live="polite"
+    aria-label="Notifications"
+  >
+    {% for toast in toast_messages %}
+    <div class="toast toast-{{ toast.type }}" data-timeout="4000">
+      <span class="toast-message">{{ toast.message }}</span>
+      <button class="toast-close" type="button" aria-label="Dismiss notification">&times;</button>
+    </div>
+    {% endfor %}
+  </div>
 {% if show_nav %}
 <div class="app-shell">
   <aside class="sidebar">
@@ -72,5 +87,6 @@
   </div>
 </div>
 {% endif %}
+<script src="/static/toast.js" defer></script>
 </body>
 </html>
