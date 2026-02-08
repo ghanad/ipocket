@@ -66,6 +66,26 @@
           {% endfor %}
         </select>
       </label>
+      <label class="field">
+        <span>OS IPs</span>
+        <input
+          class="input"
+          type="text"
+          name="os_ips"
+          value="{{ form_state.os_ips }}"
+          placeholder="10.0.0.10, 10.0.0.11"
+        />
+      </label>
+      <label class="field">
+        <span>BMC IPs</span>
+        <input
+          class="input"
+          type="text"
+          name="bmc_ips"
+          value="{{ form_state.bmc_ips }}"
+          placeholder="10.0.0.20, 10.0.0.21"
+        />
+      </label>
       <label class="field field-span">
         <span>Notes</span>
         <textarea class="textarea" name="notes" rows="2">{{ form_state.notes }}</textarea>
@@ -164,6 +184,14 @@
                   <option value="{{ vendor.id }}"{% if host.vendor and vendor.name == host.vendor %} selected{% endif %}>{{ vendor.name }}</option>
                   {% endfor %}
                 </select>
+              </label>
+              <label class="field">
+                <span>OS IPs</span>
+                <input class="input" type="text" name="os_ips" placeholder="Add OS IPs" />
+              </label>
+              <label class="field">
+                <span>BMC IPs</span>
+                <input class="input" type="text" name="bmc_ips" placeholder="Add BMC IPs" />
               </label>
               <label class="field">
                 <span>Notes</span>

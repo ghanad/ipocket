@@ -9,6 +9,7 @@ import io
 import json
 import math
 import os
+import re
 import secrets
 import sqlite3
 import zipfile
@@ -334,6 +335,56 @@ def _parse_positive_int_query(value: Optional[str], default: int) -> int:
     if parsed is None or parsed <= 0:
         return default
     return parsed
+
+
+def _parse_inline_ip_list(value: Optional[str]) -> list[str]:
+    normalized = _parse_optional_str(value)
+    if normalized is None:
+        return []
+    parts = re.split(r"[,\s]+", normalized)
+    seen: set[str] = set()
+    entries: list[str] = []
+    for part in parts:
+        candidate = part.strip()
+        if not candidate or candidate in seen:
+            continue
+        seen.add(candidate)
+        entries.append(candidate)
+    return entries
+
+
+def _collect_inline_ip_errors(
+    connection: sqlite3.Connection,
+    host_id: Optional[int],
+    os_ips: list[str],
+    bmc_ips: list[str],
+) -> tuple[list[str], list[tuple[str, IPAssetType]]]:
+    errors: list[str] = []
+    to_create: list[tuple[str, IPAssetType]] = []
+    conflict_ips = set(os_ips) & set(bmc_ips)
+    if conflict_ips:
+        for ip in sorted(conflict_ips):
+            errors.append(f"IP address appears in both OS and BMC fields: {ip}.")
+    os_queue = [ip for ip in os_ips if ip not in conflict_ips]
+    bmc_queue = [ip for ip in bmc_ips if ip not in conflict_ips]
+    for ip_address, asset_type in [
+        *[(ip, IPAssetType.OS) for ip in os_queue],
+        *[(ip, IPAssetType.BMC) for ip in bmc_queue],
+    ]:
+        try:
+            validate_ip_address(ip_address)
+        except HTTPException as exc:
+            errors.append(f"{exc.detail} ({ip_address})")
+            continue
+        existing = repository.get_ip_asset_by_ip(connection, ip_address)
+        if existing is not None:
+            if host_id is not None and existing.host_id == host_id and existing.asset_type == asset_type:
+                continue
+            errors.append(f"IP address already exists: {ip_address}.")
+            continue
+        to_create.append((ip_address, asset_type))
+    deduped_errors = list(dict.fromkeys(errors))
+    return deduped_errors, to_create
 
 
 def _normalize_project_color(value: Optional[str]) -> Optional[str]:
@@ -1816,7 +1867,7 @@ def ui_list_hosts(
             "hosts": hosts,
             "errors": [],
             "vendors": list(repository.list_vendors(connection)),
-            "form_state": {"name": "", "notes": "", "vendor_id": ""},
+            "form_state": {"name": "", "notes": "", "vendor_id": "", "os_ips": "", "bmc_ips": ""},
             "filters": {"q": q_value},
             "show_search": bool(q_value),
             "show_add_host": False,
@@ -1835,10 +1886,16 @@ async def ui_create_host(
     name = (form_data.get("name") or "").strip()
     notes = _parse_optional_str(form_data.get("notes"))
     vendor_id = _parse_optional_int(form_data.get("vendor_id"))
+    os_ips_raw = form_data.get("os_ips")
+    bmc_ips_raw = form_data.get("bmc_ips")
+    os_ips = _parse_inline_ip_list(os_ips_raw)
+    bmc_ips = _parse_inline_ip_list(bmc_ips_raw)
 
     errors = []
     if not name:
         errors.append("Host name is required.")
+    inline_errors, inline_assets = _collect_inline_ip_errors(connection, None, os_ips, bmc_ips)
+    errors.extend(inline_errors)
 
     if errors:
         hosts = repository.list_hosts_with_ip_counts(connection)
@@ -1850,7 +1907,13 @@ async def ui_create_host(
                 "errors": errors,
                 "hosts": hosts,
                 "vendors": list(repository.list_vendors(connection)),
-                "form_state": {"name": name, "notes": notes or "", "vendor_id": str(vendor_id or "")},
+                "form_state": {
+                    "name": name,
+                    "notes": notes or "",
+                    "vendor_id": str(vendor_id or ""),
+                    "os_ips": os_ips_raw or "",
+                    "bmc_ips": bmc_ips_raw or "",
+                },
                 "filters": {"q": ""},
                 "show_search": False,
                 "show_add_host": True,
@@ -1863,7 +1926,17 @@ async def ui_create_host(
         vendor = repository.get_vendor_by_id(connection, vendor_id) if vendor_id is not None else None
         if vendor_id is not None and vendor is None:
             raise sqlite3.IntegrityError("Selected vendor does not exist.")
-        repository.create_host(connection, name=name, notes=notes, vendor=vendor.name if vendor else None)
+        host = repository.create_host(connection, name=name, notes=notes, vendor=vendor.name if vendor else None)
+        for ip_address, asset_type in inline_assets:
+            repository.create_ip_asset(
+                connection,
+                ip_address=ip_address,
+                asset_type=asset_type,
+                host_id=host.id,
+                notes=None,
+                tags=[],
+                auto_host_for_bmc=_is_auto_host_for_bmc_enabled(),
+            )
     except sqlite3.IntegrityError:
         hosts = repository.list_hosts_with_ip_counts(connection)
         return _render_template(
@@ -1874,7 +1947,13 @@ async def ui_create_host(
                 "errors": ["Host name already exists."],
                 "hosts": hosts,
                 "vendors": list(repository.list_vendors(connection)),
-                "form_state": {"name": name, "notes": notes or "", "vendor_id": str(vendor_id or "")},
+                "form_state": {
+                    "name": name,
+                    "notes": notes or "",
+                    "vendor_id": str(vendor_id or ""),
+                    "os_ips": os_ips_raw or "",
+                    "bmc_ips": bmc_ips_raw or "",
+                },
                 "filters": {"q": ""},
                 "show_search": False,
                 "show_add_host": True,
@@ -1903,6 +1982,10 @@ async def ui_edit_host(
     name = (form_data.get("name") or "").strip()
     notes = _parse_optional_str(form_data.get("notes"))
     vendor_id = _parse_optional_int(form_data.get("vendor_id"))
+    os_ips_raw = form_data.get("os_ips")
+    bmc_ips_raw = form_data.get("bmc_ips")
+    os_ips = _parse_inline_ip_list(os_ips_raw)
+    bmc_ips = _parse_inline_ip_list(bmc_ips_raw)
 
     if not name:
         return _render_template(
@@ -1941,6 +2024,25 @@ async def ui_edit_host(
             active_nav="hosts",
         )
 
+    inline_errors, inline_assets = _collect_inline_ip_errors(connection, host_id, os_ips, bmc_ips)
+    if inline_errors:
+        return _render_template(
+            request,
+            "hosts.html",
+            {
+                "title": "ipocket - Hosts",
+                "errors": inline_errors,
+                "hosts": repository.list_hosts_with_ip_counts(connection),
+                "vendors": list(repository.list_vendors(connection)),
+                "form_state": {"name": "", "notes": "", "vendor_id": "", "os_ips": "", "bmc_ips": ""},
+                "filters": {"q": ""},
+                "show_search": False,
+                "show_add_host": False,
+            },
+            status_code=400,
+            active_nav="hosts",
+        )
+
     try:
         updated = repository.update_host(
             connection,
@@ -1949,6 +2051,16 @@ async def ui_edit_host(
             notes=notes,
             vendor=vendor.name if vendor else None,
         )
+        for ip_address, asset_type in inline_assets:
+            repository.create_ip_asset(
+                connection,
+                ip_address=ip_address,
+                asset_type=asset_type,
+                host_id=host_id,
+                notes=None,
+                tags=[],
+                auto_host_for_bmc=_is_auto_host_for_bmc_enabled(),
+            )
     except sqlite3.IntegrityError:
         return _render_template(
             request,
