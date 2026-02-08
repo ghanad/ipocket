@@ -214,6 +214,40 @@ def test_ranges_edit_and_delete_flow(client) -> None:
         app.dependency_overrides.pop(ui.get_current_ui_user, None)
 
 
+def test_hosts_page_renders_edit_drawer_and_actions(client) -> None:
+    import os
+    from app import db, repository
+
+    connection = db.connect(os.environ["IPAM_DB_PATH"])
+    try:
+        db.init_db(connection)
+        vendor = repository.create_vendor(connection, name="Dell")
+        host = repository.create_host(connection, name="edge-01", vendor=vendor.name, notes="rack-a")
+        repository.create_ip_asset(
+            connection,
+            ip_address="10.50.0.10",
+            asset_type=IPAssetType.OS,
+            host_id=host.id,
+        )
+        repository.create_ip_asset(
+            connection,
+            ip_address="10.50.0.11",
+            asset_type=IPAssetType.BMC,
+            host_id=host.id,
+        )
+    finally:
+        connection.close()
+
+    response = client.get("/ui/hosts")
+
+    assert response.status_code == 200
+    assert 'data-host-edit="' in response.text
+    assert "Edit Host" in response.text
+    assert "Save changes" in response.text
+    assert f'/ui/hosts/{host.id}/delete' in response.text
+    assert "host-edit-row-" not in response.text
+
+
 def test_logout_button_hidden_when_not_authenticated(client) -> None:
     response = client.get("/ui/management")
 
@@ -606,7 +640,7 @@ def test_ip_assets_list_paginates_with_custom_page_size(client) -> None:
     assert "10.50.0.10" in response.text
 
 
-def test_hosts_list_uses_overflow_actions_menu(client) -> None:
+def test_hosts_list_uses_edit_drawer_actions(client) -> None:
     import os
     from app import db, repository
 
@@ -620,13 +654,13 @@ def test_hosts_list_uses_overflow_actions_menu(client) -> None:
     response = client.get("/ui/hosts")
 
     assert response.status_code == 200
-    assert 'data-row-actions' in response.text
-    assert 'data-row-actions-toggle' in response.text
-    assert 'data-row-actions-panel' in response.text
-    assert 'class="row-actions-icon"' in response.text
-    assert f'aria-controls="row-actions-host-{host.id}"' in response.text
-    assert f'data-host-edit-toggle="{host.id}"' in response.text
-    assert "positionMenuPanel" in response.text
+    assert f'data-host-edit="{host.id}"' in response.text
+    assert f'data-host-name="{host.name}"' in response.text
+    assert 'data-host-project-count="0"' in response.text
+    assert 'name="project_id"' in response.text
+    assert f'/ui/hosts/{host.id}/delete' in response.text
+    assert "data-host-drawer" in response.text
+    assert "Save changes" in response.text
 
 
 def test_hosts_add_form_above_table_and_compact(client) -> None:
@@ -659,6 +693,48 @@ def test_hosts_list_search_trims_whitespace(client) -> None:
     assert response.status_code == 200
     assert "edge-01" in response.text
     assert "core-02" not in response.text
+
+
+def test_hosts_edit_updates_project_assignments(client) -> None:
+    import os
+    from app import db, repository
+
+    connection = db.connect(os.environ["IPAM_DB_PATH"])
+    try:
+        db.init_db(connection)
+        project = repository.create_project(connection, name="Core")
+        host = repository.create_host(connection, name="edge-01")
+        repository.create_ip_asset(
+            connection,
+            ip_address="10.20.0.10",
+            asset_type=IPAssetType.OS,
+            host_id=host.id,
+        )
+    finally:
+        connection.close()
+
+    from app.models import User
+    from app.routes import ui
+
+    app.dependency_overrides[ui.require_ui_editor] = lambda: User(1, "editor", "x", UserRole.EDITOR, True)
+    try:
+        response = client.post(
+            f"/ui/hosts/{host.id}/edit",
+            data={"name": "edge-01", "project_id": str(project.id)},
+            follow_redirects=False,
+        )
+    finally:
+        app.dependency_overrides.pop(ui.require_ui_editor, None)
+
+    assert response.status_code == 303
+
+    connection = db.connect(os.environ["IPAM_DB_PATH"])
+    try:
+        asset = repository.get_ip_asset_by_ip(connection, "10.20.0.10")
+        assert asset is not None
+        assert asset.project_id == project.id
+    finally:
+        connection.close()
 
 
 def test_audit_log_page_lists_ip_entries(client) -> None:

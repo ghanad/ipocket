@@ -1867,6 +1867,7 @@ def ui_list_hosts(
             "hosts": hosts,
             "errors": [],
             "vendors": list(repository.list_vendors(connection)),
+            "projects": list(repository.list_projects(connection)),
             "form_state": {"name": "", "notes": "", "vendor_id": "", "os_ips": "", "bmc_ips": ""},
             "filters": {"q": q_value},
             "show_search": bool(q_value),
@@ -1907,6 +1908,7 @@ async def ui_create_host(
                 "errors": errors,
                 "hosts": hosts,
                 "vendors": list(repository.list_vendors(connection)),
+                "projects": list(repository.list_projects(connection)),
                 "form_state": {
                     "name": name,
                     "notes": notes or "",
@@ -1947,6 +1949,7 @@ async def ui_create_host(
                 "errors": ["Host name already exists."],
                 "hosts": hosts,
                 "vendors": list(repository.list_vendors(connection)),
+                "projects": list(repository.list_projects(connection)),
                 "form_state": {
                     "name": name,
                     "notes": notes or "",
@@ -1984,6 +1987,8 @@ async def ui_edit_host(
     vendor_id = _parse_optional_int(form_data.get("vendor_id"))
     os_ips_raw = form_data.get("os_ips")
     bmc_ips_raw = form_data.get("bmc_ips")
+    project_raw = form_data.get("project_id")
+    project_id = _parse_optional_int(project_raw)
     os_ips = _parse_inline_ip_list(os_ips_raw)
     bmc_ips = _parse_inline_ip_list(bmc_ips_raw)
 
@@ -1994,8 +1999,10 @@ async def ui_edit_host(
             {
                 "title": "ipocket - Hosts",
                 "errors": ["Host name is required."],
+                "toast_messages": [{"type": "error", "message": "Host name is required."}],
                 "hosts": repository.list_hosts_with_ip_counts(connection),
                 "vendors": list(repository.list_vendors(connection)),
+                "projects": list(repository.list_projects(connection)),
                 "form_state": {"name": "", "notes": "", "vendor_id": ""},
                 "filters": {"q": ""},
                 "show_search": False,
@@ -2013,8 +2020,10 @@ async def ui_edit_host(
             {
                 "title": "ipocket - Hosts",
                 "errors": ["Selected vendor does not exist."],
+                "toast_messages": [{"type": "error", "message": "Selected vendor does not exist."}],
                 "hosts": repository.list_hosts_with_ip_counts(connection),
                 "vendors": list(repository.list_vendors(connection)),
+                "projects": list(repository.list_projects(connection)),
                 "form_state": {"name": "", "notes": "", "vendor_id": ""},
                 "filters": {"q": ""},
                 "show_search": False,
@@ -2026,14 +2035,17 @@ async def ui_edit_host(
 
     inline_errors, inline_assets = _collect_inline_ip_errors(connection, host_id, os_ips, bmc_ips)
     if inline_errors:
+        toast_messages = [{"type": "error", "message": error} for error in inline_errors]
         return _render_template(
             request,
             "hosts.html",
             {
                 "title": "ipocket - Hosts",
                 "errors": inline_errors,
+                "toast_messages": toast_messages,
                 "hosts": repository.list_hosts_with_ip_counts(connection),
                 "vendors": list(repository.list_vendors(connection)),
+                "projects": list(repository.list_projects(connection)),
                 "form_state": {"name": "", "notes": "", "vendor_id": "", "os_ips": "", "bmc_ips": ""},
                 "filters": {"q": ""},
                 "show_search": False,
@@ -2051,6 +2063,39 @@ async def ui_edit_host(
             notes=notes,
             vendor=vendor.name if vendor else None,
         )
+        set_project_id = project_raw is not None
+        if set_project_id:
+            projects = repository.list_projects(connection)
+            if project_id is not None and all(project.id != project_id for project in projects):
+                return _render_template(
+                    request,
+                    "hosts.html",
+                    {
+                        "title": "ipocket - Hosts",
+                        "errors": ["Selected project does not exist."],
+                        "toast_messages": [{"type": "error", "message": "Selected project does not exist."}],
+                        "hosts": repository.list_hosts_with_ip_counts(connection),
+                        "vendors": list(repository.list_vendors(connection)),
+                        "projects": list(projects),
+                        "form_state": {"name": "", "notes": "", "vendor_id": ""},
+                        "filters": {"q": ""},
+                        "show_search": False,
+                        "show_add_host": False,
+                    },
+                    status_code=422,
+                    active_nav="hosts",
+                )
+            linked = repository.get_host_linked_assets_grouped(connection, host_id)
+            asset_ids = [asset.id for group in linked.values() for asset in group]
+            if asset_ids:
+                should_update = any(asset.project_id != project_id for group in linked.values() for asset in group)
+                if should_update:
+                    repository.bulk_update_ip_assets(
+                        connection,
+                        asset_ids,
+                        project_id=project_id,
+                        set_project_id=True,
+                    )
         for ip_address, asset_type in inline_assets:
             repository.create_ip_asset(
                 connection,
@@ -2068,8 +2113,10 @@ async def ui_edit_host(
             {
                 "title": "ipocket - Hosts",
                 "errors": ["Host name already exists."],
+                "toast_messages": [{"type": "error", "message": "Host name already exists."}],
                 "hosts": repository.list_hosts_with_ip_counts(connection),
                 "vendors": list(repository.list_vendors(connection)),
+                "projects": list(repository.list_projects(connection)),
                 "form_state": {"name": "", "notes": "", "vendor_id": ""},
                 "filters": {"q": ""},
                 "show_search": False,
@@ -2082,7 +2129,13 @@ async def ui_edit_host(
     if updated is None:
         return Response(status_code=404)
 
-    return RedirectResponse(url="/ui/hosts", status_code=303)
+    return _redirect_with_flash(
+        request,
+        "/ui/hosts",
+        "Host updated.",
+        message_type="success",
+        status_code=303,
+    )
 
 
 @router.get("/ui/hosts/{host_id}", response_class=HTMLResponse)
