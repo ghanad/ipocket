@@ -207,6 +207,35 @@ def test_ip_assets_drawer_auto_host_creates_and_assigns(client) -> None:
         connection.close()
 
 
+def test_ip_assets_drawer_auto_host_rejects_assigned_asset(client) -> None:
+    import os
+    from app import db, repository
+
+    connection = db.connect(os.environ["IPAM_DB_PATH"])
+    try:
+        db.init_db(connection)
+        user = repository.create_user(connection, username="editor", hashed_password="x", role=UserRole.EDITOR)
+        host = repository.create_host(connection, name="edge-02")
+        asset = repository.create_ip_asset(
+            connection,
+            ip_address="10.70.0.6",
+            asset_type=IPAssetType.BMC,
+            host_id=host.id,
+        )
+    finally:
+        connection.close()
+
+    app.dependency_overrides[ui.require_ui_editor] = lambda: user
+    try:
+        response = client.post(f"/ui/ip-assets/{asset.id}/auto-host")
+    finally:
+        app.dependency_overrides.pop(ui.require_ui_editor, None)
+
+    assert response.status_code == 409
+    payload = response.json()
+    assert payload["error"] == "This IP is already assigned to a host."
+
+
 def test_ranges_edit_and_delete_flow(client) -> None:
     import os
     from app import db, repository

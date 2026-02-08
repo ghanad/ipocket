@@ -659,7 +659,6 @@
         if (hostPill) {
           hostPill.textContent = `Host: ${payload.host_name || '—'}`;
         }
-        initialValues.host_id = String(payload.host_id || '');
         updateSaveState();
         updateAutoHostVisibility();
       } catch (error) {
