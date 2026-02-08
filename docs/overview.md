@@ -13,6 +13,7 @@ ipocket is a lightweight IP inventory app to track addresses and their project a
 - IP assets list uses a right-side edit drawer for quick updates without leaving the list view.
 - Saving an IP edit from the drawer returns to the list view instead of navigating to the detail page.
 - After saving in the drawer, the list view restores the prior scroll position.
+- Host assignment in the drawer only appears when the IP type is OS or BMC.
 - IP assets list includes a Host Pair column to show the OS or BMC IP linked to the same host.
 - IP assets list shows inline Edit/Delete actions side-by-side in the Actions column.
 - Deleting an IP from the list is now two-step: open the delete dialog, confirm intent in a warning dialog, then complete deletion on the existing confirmation page (type exact IP).

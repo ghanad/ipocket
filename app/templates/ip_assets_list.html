@@ -161,7 +161,7 @@
             </select>
           </label>
         </div>
-        <label class="field">
+        <label class="field" data-ip-host-field>
           <span>Host</span>
           <select class="select" name="host_id" data-ip-input="host_id">
             <option value="">Unassigned</option>
@@ -370,8 +370,27 @@
     const hostPill = document.querySelector('[data-ip-drawer-host]');
     const dirtyStatus = document.querySelector('[data-ip-drawer-dirty]');
     const inputs = form ? form.querySelectorAll('[data-ip-input]') : [];
+    const hostField = form ? form.querySelector('[data-ip-host-field]') : null;
     let initialValues = {};
     let isOpen = false;
+
+    const shouldShowHostField = (typeValue) => ['OS', 'BMC'].includes((typeValue || '').toUpperCase());
+
+    const updateHostVisibility = () => {
+      if (!hostField || !form) {
+        return;
+      }
+      const typeInput = form.querySelector('[data-ip-input="type"]');
+      const typeValue = typeInput ? typeInput.value : '';
+      const showHost = shouldShowHostField(typeValue);
+      hostField.style.display = showHost ? '' : 'none';
+      if (!showHost) {
+        const hostSelect = form.querySelector('[data-ip-input="host_id"]');
+        if (hostSelect) {
+          hostSelect.value = '';
+        }
+      }
+    };
 
     const updateSaveState = () => {
       if (!dirtyStatus || !saveButton) {
@@ -397,6 +416,7 @@
       drawerSubtitle.textContent = assetData.ip_address || '—';
       projectPill.textContent = `Project: ${assetData.project_label || 'Unassigned'}`;
       hostPill.textContent = `Host: ${assetData.host_label || '—'}`;
+      updateHostVisibility();
       initialValues = {
         ip_address: assetData.ip_address || '',
         type: assetData.type || '',
@@ -561,9 +581,13 @@
       });
       inputs.forEach((input) => {
         input.addEventListener('input', () => {
+          if (input.dataset.ipInput === 'type') {
+            updateHostVisibility();
+          }
           updateSaveState();
         });
       });
+      updateHostVisibility();
       if (form && window.sessionStorage) {
         form.addEventListener('submit', () => {
           window.sessionStorage.setItem(SCROLL_KEY, String(window.scrollY || 0));
