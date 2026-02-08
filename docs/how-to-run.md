@@ -98,6 +98,8 @@ When unset, defaults are shown as `dev/unknown`.
 - `IPOCKET_VERSION` (semantic version, e.g. `0.1.0`)
 - `IPOCKET_COMMIT` (git commit SHA, short ok)
 - `IPOCKET_BUILD_TIME` (ISO timestamp)
+- `IPOCKET_DOCKER_TAG` (optional; if set and running in Docker, replaces `IPOCKET_VERSION` with the image tag)
+- `IPOCKET_DOCKER_RUNTIME` (optional; set to `1`/`true` to force Docker detection for `IPOCKET_DOCKER_TAG`)
 
 Example `docker-compose.yml` snippet:
 
