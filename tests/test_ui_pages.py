@@ -130,6 +130,7 @@ def test_range_addresses_page_shows_tags(client) -> None:
     assert "core" in response.text
     assert "tag-color" in response.text
     assert "10.40.0.11" in response.text
+    assert "Add…" in response.text
 
 
 def test_range_addresses_quick_add_creates_asset(client) -> None:
@@ -163,6 +164,44 @@ def test_range_addresses_quick_add_creates_asset(client) -> None:
         asset = repository.get_ip_asset_by_ip(connection, "10.60.0.2")
         assert asset is not None
         assert asset.project_id == project.id
+    finally:
+        connection.close()
+
+
+def test_range_addresses_allocate_next_free_creates_assets(client) -> None:
+    import os
+    from app import db, repository
+
+    connection = db.connect(os.environ["IPAM_DB_PATH"])
+    try:
+        db.init_db(connection)
+        user = repository.create_user(connection, username="editor", hashed_password="x", role=UserRole.EDITOR)
+        ip_range = repository.create_ip_range(connection, name="Bulk Range", cidr="10.70.0.0/29")
+        project = repository.create_project(connection, name="Bulk")
+    finally:
+        connection.close()
+
+    app.dependency_overrides[ui.require_ui_editor] = lambda: user
+    try:
+        response = client.post(
+            f"/ui/ranges/{ip_range.id}/addresses/allocate-next",
+            data={"count": "2", "type": "VM", "project_id": str(project.id)},
+            follow_redirects=False,
+        )
+    finally:
+        app.dependency_overrides.pop(ui.require_ui_editor, None)
+
+    assert response.status_code == 303
+    assert response.headers["location"].endswith(f"/ui/ranges/{ip_range.id}/addresses#ip-10-70-0-2")
+
+    connection = db.connect(os.environ["IPAM_DB_PATH"])
+    try:
+        asset_one = repository.get_ip_asset_by_ip(connection, "10.70.0.1")
+        asset_two = repository.get_ip_asset_by_ip(connection, "10.70.0.2")
+        assert asset_one is not None
+        assert asset_two is not None
+        assert asset_one.project_id == project.id
+        assert asset_two.project_id == project.id
     finally:
         connection.close()
 
