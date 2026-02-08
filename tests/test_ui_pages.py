@@ -629,6 +629,48 @@ def test_hosts_list_uses_overflow_actions_menu(client) -> None:
     assert "positionMenuPanel" in response.text
 
 
+def test_hosts_list_includes_quick_add_os_ip_form(client) -> None:
+    import os
+    from app import db, repository
+
+    connection = db.connect(os.environ["IPAM_DB_PATH"])
+    try:
+        db.init_db(connection)
+        host = repository.create_host(connection, name="node-quick-01")
+    finally:
+        connection.close()
+
+    response = client.get("/ui/hosts")
+
+    assert response.status_code == 200
+    assert f'action="/ui/hosts/{host.id}/os-ip"' in response.text
+    assert 'name="ip_address"' in response.text
+    assert "host-quick-add-form" in response.text
+
+
+def test_hosts_list_hides_quick_add_when_os_ip_exists(client) -> None:
+    import os
+    from app import db, repository
+
+    connection = db.connect(os.environ["IPAM_DB_PATH"])
+    try:
+        db.init_db(connection)
+        host = repository.create_host(connection, name="node-quick-02")
+        repository.create_ip_asset(
+            connection,
+            ip_address="10.60.0.10",
+            asset_type=IPAssetType.OS,
+            host_id=host.id,
+        )
+    finally:
+        connection.close()
+
+    response = client.get("/ui/hosts")
+
+    assert response.status_code == 200
+    assert f'action="/ui/hosts/{host.id}/os-ip"' not in response.text
+
+
 def test_hosts_add_form_above_table_and_compact(client) -> None:
     response = client.get("/ui/hosts")
 
@@ -791,6 +833,42 @@ def test_ui_edit_host_updates_name_vendor_and_notes(client) -> None:
     assert updated_host.name == "node-01-renamed"
     assert updated_host.notes == "updated notes"
     assert updated_host.vendor == "HP"
+
+
+def test_ui_add_host_os_ip_creates_ip_asset(client) -> None:
+    import os
+    from app import db, repository
+
+    connection = db.connect(os.environ["IPAM_DB_PATH"])
+    try:
+        db.init_db(connection)
+        host = repository.create_host(connection, name="node-quick-02")
+        user = repository.create_user(connection, username="editor", hashed_password="x", role=UserRole.EDITOR)
+    finally:
+        connection.close()
+
+    app.dependency_overrides[ui.require_ui_editor] = lambda: user
+    try:
+        response = client.post(
+            f"/ui/hosts/{host.id}/os-ip",
+            data={"ip_address": "10.50.10.10", "notes": "primary"},
+            follow_redirects=False,
+        )
+    finally:
+        app.dependency_overrides.pop(ui.require_ui_editor, None)
+
+    assert response.status_code == 303
+
+    connection = db.connect(os.environ["IPAM_DB_PATH"])
+    try:
+        created = repository.get_ip_asset_by_ip(connection, "10.50.10.10")
+    finally:
+        connection.close()
+
+    assert created is not None
+    assert created.asset_type == IPAssetType.OS
+    assert created.host_id == host.id
+    assert created.notes == "primary"
 
 
 def test_ui_edit_host_requires_name(client) -> None:

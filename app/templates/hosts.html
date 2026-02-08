@@ -176,6 +176,26 @@
             </form>
           </td>
         </tr>
+        {% if not host.os_ips %}
+        <tr id="host-os-row-{{ host.id }}" class="host-quick-add-row" style="display: none;">
+          <td colspan="7">
+            <p class="host-quick-add-title">Quick add OS IP</p>
+            <form class="form-grid host-quick-add-form" method="post" action="/ui/hosts/{{ host.id }}/os-ip">
+              <label class="field">
+                <span>OS IP address</span>
+                <input class="input" type="text" name="ip_address" placeholder="e.g. 10.10.0.10" required />
+              </label>
+              <label class="field">
+                <span>Notes (optional)</span>
+                <input class="input" type="text" name="notes" />
+              </label>
+              <div class="form-actions">
+                <button class="btn btn-secondary" type="submit">Add OS IP</button>
+              </div>
+            </form>
+          </td>
+        </tr>
+        {% endif %}
         {% endfor %}
         {% else %}
         <tr><td colspan="7" class="empty-state">No hosts found.</td></tr>
@@ -188,8 +208,13 @@
 <script>
 function toggleHostEdit(hostId) {
   const row = document.getElementById(`host-edit-row-${hostId}`);
+  const osRow = document.getElementById(`host-os-row-${hostId}`);
   if (!row) return;
-  row.style.display = row.style.display === "none" ? "table-row" : "none";
+  const nextState = row.style.display === "none" ? "table-row" : "none";
+  row.style.display = nextState;
+  if (osRow) {
+    osRow.style.display = nextState;
+  }
 }
 
 (() => {

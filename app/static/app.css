@@ -580,6 +580,29 @@ p {
   font-size: 13px;
 }
 
+.host-quick-add-form {
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  align-items: end;
+}
+
+.host-quick-add-form .form-actions {
+  justify-content: flex-start;
+  margin: 0;
+}
+
+.host-quick-add-row td {
+  padding-top: 0;
+}
+
+.host-quick-add-title {
+  margin: 0 0 8px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
 .collapsible-card > summary {
   list-style: none;
   cursor: pointer;
