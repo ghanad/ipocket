@@ -477,6 +477,7 @@ def _build_asset_view_models(
         project_unassigned = not project_name
         host_name = host_lookup.get(asset.host_id) if asset.host_id else ""
         tags = tag_lookup.get(asset.id, [])
+        tags_value = ", ".join(tag["name"] for tag in tags)
         host_pair = ""
         if asset.host_id and asset.asset_type in (IPAssetType.OS, IPAssetType.BMC):
             pair_type = IPAssetType.BMC.value if asset.asset_type == IPAssetType.OS else IPAssetType.OS.value
@@ -487,11 +488,14 @@ def _build_asset_view_models(
                 "id": asset.id,
                 "ip_address": asset.ip_address,
                 "type": asset.asset_type.value,
+                "project_id": asset.project_id or "",
                 "project_name": project_name,
                 "project_color": project_color,
+                "host_id": asset.host_id or "",
                 "notes": asset.notes or "",
                 "host_name": host_name,
                 "tags": tags,
+                "tags_value": tags_value,
                 "host_pair": host_pair,
                 "unassigned": _is_unassigned(asset.project_id),
                 "project_unassigned": project_unassigned,
@@ -2294,7 +2298,8 @@ def ui_list_ip_assets(
 
     projects = list(repository.list_projects(connection))
     project_lookup = {project.id: {"name": project.name, "color": project.color} for project in projects}
-    host_lookup = {host.id: host.name for host in repository.list_hosts(connection)}
+    hosts = list(repository.list_hosts(connection))
+    host_lookup = {host.id: host.name for host in hosts}
     tag_lookup = repository.list_tag_details_for_ip_assets(connection, [asset.id for asset in assets])
     host_pair_lookup = repository.list_host_pair_ips_for_hosts(
         connection,
@@ -2336,6 +2341,7 @@ def ui_list_ip_assets(
         "title": "ipocket - IP Assets",
         "assets": view_models,
         "projects": projects,
+        "hosts": hosts,
         "types": [asset.value for asset in IPAssetType],
         "return_to": return_to,
         "toast_messages": toast_messages,

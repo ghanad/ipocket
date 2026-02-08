@@ -33,40 +33,29 @@
   </td>
   <td class="muted">{{ asset.notes }}</td>
   <td class="asset-actions-cell">
-    <div class="row-actions-menu" data-row-actions>
+    <div class="ip-asset-actions">
       <button
-        class="row-actions-trigger"
+        class="btn btn-secondary btn-small"
         type="button"
-        aria-label="Open actions for {{ asset.ip_address }}"
-        aria-expanded="false"
-        aria-haspopup="true"
-        aria-controls="row-actions-{{ asset.id }}"
-        data-row-actions-toggle
+        data-ip-edit="{{ asset.id }}"
+        data-ip-address="{{ asset.ip_address }}"
+        data-ip-type="{{ asset.type }}"
+        data-ip-project-id="{{ asset.project_id }}"
+        data-ip-project-name="{{ asset.project_name }}"
+        data-ip-host-id="{{ asset.host_id }}"
+        data-ip-host-name="{{ asset.host_name }}"
+        data-ip-notes="{{ asset.notes }}"
+        data-ip-tags="{{ asset.tags_value }}"
       >
-        <span class="row-actions-icon" aria-hidden="true">⋮</span>
+        Edit
       </button>
-      <div
-        class="row-actions-panel"
-        id="row-actions-{{ asset.id }}"
-        role="menu"
-        aria-label="Actions for {{ asset.ip_address }}"
-        data-row-actions-panel
-        hidden
+      <button
+        class="btn btn-danger btn-small"
+        type="button"
+        data-delete-dialog-id="delete-ip-{{ asset.id }}"
       >
-        <a class="row-action-item" role="menuitem" href="/ui/ip-assets/{{ asset.id }}/edit">
-          <span aria-hidden="true">✏️</span>
-          <span>Edit</span>
-        </a>
-        <button
-          class="row-action-item row-action-item-danger"
-          type="button"
-          role="menuitem"
-          data-delete-dialog-id="delete-ip-{{ asset.id }}"
-        >
-          <span aria-hidden="true">🗑️</span>
-          <span>Delete</span>
-        </button>
-      </div>
+        Delete
+      </button>
     </div>
 
     <dialog class="delete-confirm-dialog" id="delete-ip-{{ asset.id }}">
