@@ -244,6 +244,24 @@ def test_import_page_includes_sample_csv_links(client) -> None:
     assert "nmap -sn -PS80,443 -oX ipocket.xml" in response.text
 
 
+def test_flash_messages_render_once(client) -> None:
+    payload = [{"type": "success", "message": "Saved successfully."}]
+    encoded = ui._encode_flash_payload(payload)
+    signed = ui._sign_session_value(encoded)
+    response = client.get(
+        "/ui/management",
+        headers={"Cookie": f"{ui.FLASH_COOKIE}={signed}"},
+    )
+
+    assert response.status_code == 200
+    assert "Saved successfully." in response.text
+    assert "toast-container" in response.text
+    assert ui.FLASH_COOKIE in response.headers.get("set-cookie", "")
+
+    followup = client.get("/ui/management")
+    assert "Saved successfully." not in followup.text
+
+
 def test_sample_csv_files_are_available(client) -> None:
     hosts_response = client.get("/static/samples/hosts.csv")
     assets_response = client.get("/static/samples/ip-assets.csv")
