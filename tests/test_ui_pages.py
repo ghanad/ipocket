@@ -421,6 +421,10 @@ def test_ip_assets_bulk_edit_updates_selected_assets(client) -> None:
         app.dependency_overrides.pop(ui.require_ui_editor, None)
 
     assert response.status_code == 303
+    follow_response = client.get(response.headers["location"])
+    assert follow_response.status_code == 200
+    assert "toast-success" in follow_response.text
+    assert "Updated 2 IP assets." in follow_response.text
 
     connection = db.connect(os.environ["IPAM_DB_PATH"])
     try:
@@ -437,6 +441,38 @@ def test_ip_assets_bulk_edit_updates_selected_assets(client) -> None:
         assert tag_map[asset_two.id] == ["core", "edge"]
     finally:
         connection.close()
+
+
+def test_ip_assets_bulk_edit_shows_error_toast_for_missing_selection(client) -> None:
+    import os
+    from app import db, repository
+
+    connection = db.connect(os.environ["IPAM_DB_PATH"])
+    try:
+        db.init_db(connection)
+        user = repository.create_user(connection, username="editor", hashed_password="x", role=UserRole.EDITOR)
+        repository.create_ip_asset(connection, ip_address="10.70.0.12", asset_type=IPAssetType.VM)
+    finally:
+        connection.close()
+
+    app.dependency_overrides[ui.require_ui_editor] = lambda: user
+    try:
+        response = client.post(
+            "/ui/ip-assets/bulk-edit",
+            data=[
+                ("type", "VIP"),
+                ("return_to", "/ui/ip-assets"),
+            ],
+            follow_redirects=False,
+        )
+    finally:
+        app.dependency_overrides.pop(ui.require_ui_editor, None)
+
+    assert response.status_code == 303
+    follow_response = client.get(response.headers["location"])
+    assert follow_response.status_code == 200
+    assert "toast-error" in follow_response.text
+    assert "Select at least one IP asset." in follow_response.text
 
 
 def test_ip_assets_list_renders_project_color_tag(client) -> None:

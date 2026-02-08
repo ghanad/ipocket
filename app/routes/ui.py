@@ -2162,14 +2162,18 @@ def ui_list_ip_assets(
     return_to = request.url.path
     if request.url.query:
         return_to = f"{return_to}?{request.url.query}"
+    toast_messages: list[dict[str, str]] = []
+    if bulk_error:
+        toast_messages.append({"type": "error", "message": bulk_error})
+    if bulk_success:
+        toast_messages.append({"type": "success", "message": bulk_success})
     context = {
         "title": "ipocket - IP Assets",
         "assets": view_models,
         "projects": projects,
         "types": [asset.value for asset in IPAssetType],
-        "bulk_error": bulk_error,
-        "bulk_success": bulk_success,
         "return_to": return_to,
+        "toast_messages": toast_messages,
         "pagination": {
             "page": page_value,
             "per_page": per_page_value,

@@ -12,16 +12,6 @@
     <a class="btn btn-secondary" href="/ui/ip-assets/needs-assignment">Needs Assignment</a>
   </div>
 </section>
-{% if bulk_error %}
-<div class="alert alert-error">
-  {{ bulk_error }}
-</div>
-{% endif %}
-{% if bulk_success %}
-<div class="alert alert-success">
-  {{ bulk_success }}
-</div>
-{% endif %}
 <section class="card filter-card">
   <form class="filters-grid" method="get" action="/ui/ip-assets">
     <label class="field">
