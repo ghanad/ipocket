@@ -385,6 +385,7 @@ def update_ip_asset(
         host_id=payload.host_id,
         tags=payload.tags,
         current_user=_user,
+        notes_provided="notes" in payload.model_fields_set,
     )
     if updated is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)

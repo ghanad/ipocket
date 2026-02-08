@@ -241,6 +241,7 @@ def _upsert_ip_assets(
             host_id=host_id,
             notes=asset.notes,
             tags=asset.tags,
+            notes_provided=True,
         )
         if asset.archived is not None:
             repository.set_ip_asset_archived(connection, ip_address, archived=asset.archived)

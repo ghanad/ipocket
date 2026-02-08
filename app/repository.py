@@ -169,7 +169,14 @@ def _host_label(connection: sqlite3.Connection, host_id: Optional[int]) -> str:
     return host["name"]
 
 
-def _summarize_ip_asset_changes(connection: sqlite3.Connection, existing: IPAsset, updated: IPAsset) -> str:
+def _summarize_ip_asset_changes(
+    connection: sqlite3.Connection,
+    existing: IPAsset,
+    updated: IPAsset,
+    *,
+    tags_before: Optional[list[str]] = None,
+    tags_after: Optional[list[str]] = None,
+) -> str:
     changes: list[str] = []
     if existing.asset_type != updated.asset_type:
         changes.append(f"type: {existing.asset_type.value} -> {updated.asset_type.value}")
@@ -183,6 +190,10 @@ def _summarize_ip_asset_changes(connection: sqlite3.Connection, existing: IPAsse
         )
     if (existing.notes or "") != (updated.notes or ""):
         changes.append(f"notes: {existing.notes or ''} -> {updated.notes or ''}")
+    if tags_before is not None and tags_after is not None and sorted(tags_before) != sorted(tags_after):
+        before_label = ", ".join(tags_before) if tags_before else "none"
+        after_label = ", ".join(tags_after) if tags_after else "none"
+        changes.append(f"tags: {before_label} -> {after_label}")
     return "; ".join(changes) if changes else "No changes recorded."
 
 
@@ -1097,21 +1108,57 @@ def update_ip_asset(
     notes: Optional[str] = None,
     tags: Optional[list[str]] = None,
     current_user: Optional[User] = None,
+    notes_provided: bool = False,
 ) -> Optional[IPAsset]:
     existing = get_ip_asset_by_ip(connection, ip_address)
     if existing is None:
         return None
+    notes_should_update = notes_provided or notes is not None
+    normalized_notes = notes if notes is not None and notes.strip() else None if notes_should_update else None
+    normalized_tags = normalize_tag_names(tags) if tags is not None else None
+    existing_tags: list[str] = []
+    tags_changed = False
+    if normalized_tags is not None:
+        existing_tags = list_tags_for_ip_assets(connection, [existing.id]).get(existing.id, [])
+        tags_changed = sorted(existing_tags) != sorted(normalized_tags)
+    updated_type = asset_type or existing.asset_type
+    updated_project_id = project_id if project_id is not None else existing.project_id
+    updated_host_id = host_id if host_id is not None else existing.host_id
+    updated_notes = normalized_notes if notes_should_update else existing.notes
+    fields_changed = (
+        existing.asset_type != updated_type
+        or existing.project_id != updated_project_id
+        or existing.host_id != updated_host_id
+        or (existing.notes or "") != (updated_notes or "")
+    )
+    if not fields_changed and not tags_changed:
+        return existing
     with connection:
-        connection.execute(
-            """
-            UPDATE ip_assets
-            SET type = COALESCE(?, type),
-                project_id = COALESCE(?, project_id), host_id = COALESCE(?, host_id), notes = COALESCE(?, notes),
-                updated_at = CURRENT_TIMESTAMP
-            WHERE ip_address = ?
-            """,
-            (asset_type.value if asset_type else None, project_id, host_id, notes, ip_address),
-        )
+        if fields_changed:
+            connection.execute(
+                """
+                UPDATE ip_assets
+                SET type = COALESCE(?, type),
+                    project_id = COALESCE(?, project_id),
+                    host_id = COALESCE(?, host_id),
+                    notes = CASE WHEN ? THEN ? ELSE notes END,
+                    updated_at = CURRENT_TIMESTAMP
+                WHERE ip_address = ?
+                """,
+                (
+                    asset_type.value if asset_type else None,
+                    project_id,
+                    host_id,
+                    notes_should_update,
+                    normalized_notes,
+                    ip_address,
+                ),
+            )
+        else:
+            connection.execute(
+                "UPDATE ip_assets SET updated_at = CURRENT_TIMESTAMP WHERE ip_address = ?",
+                (ip_address,),
+            )
         updated = get_ip_asset_by_ip(connection, ip_address)
         if updated is not None:
             create_audit_log(
@@ -1121,8 +1168,14 @@ def update_ip_asset(
                 target_type="IP_ASSET",
                 target_id=updated.id,
                 target_label=updated.ip_address,
-                changes=_summarize_ip_asset_changes(connection, existing, updated),
+                changes=_summarize_ip_asset_changes(
+                    connection,
+                    existing,
+                    updated,
+                    tags_before=existing_tags if normalized_tags is not None else None,
+                    tags_after=normalized_tags,
+                ),
             )
-        if updated is not None and tags is not None:
-            set_ip_asset_tags(connection, updated.id, tags)
+        if updated is not None and tags_changed and normalized_tags is not None:
+            set_ip_asset_tags(connection, updated.id, normalized_tags)
     return updated

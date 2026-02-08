@@ -57,7 +57,7 @@
       </thead>
       <tbody>
         {% for entry in address_display %}
-        <tr>
+        <tr id="ip-{{ entry.ip_address | replace('.', '-') | replace(':', '-') }}">
           <td class="mono">
             {% if entry.asset_id %}
             <a class="link" href="/ui/ip-assets/{{ entry.asset_id }}">{{ entry.ip_address }}</a>

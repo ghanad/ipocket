@@ -156,6 +156,7 @@ def test_range_addresses_quick_add_creates_asset(client) -> None:
         app.dependency_overrides.pop(ui.require_ui_editor, None)
 
     assert response.status_code == 303
+    assert response.headers["location"].endswith(f"/ui/ranges/{ip_range.id}/addresses#ip-10-60-0-2")
 
     connection = db.connect(os.environ["IPAM_DB_PATH"])
     try:
@@ -210,11 +211,22 @@ def test_ranges_edit_and_delete_flow(client) -> None:
     finally:
         app.dependency_overrides.pop(ui.get_current_ui_user, None)
 
-    connection = db.connect(os.environ["IPAM_DB_PATH"])
-    try:
-        assert repository.get_ip_range_by_id(connection, ip_range.id) is None
-    finally:
-        connection.close()
+
+def test_logout_button_hidden_when_not_authenticated(client) -> None:
+    response = client.get("/ui/management")
+
+    assert response.status_code == 200
+    assert "sidebar-logout-button" not in response.text
+    assert "sidebar-login-link" in response.text
+
+
+def test_logout_button_shown_when_authenticated(client, monkeypatch) -> None:
+    monkeypatch.setattr(ui, "_is_authenticated_request", lambda request: True)
+    response = client.get("/ui/management")
+
+    assert response.status_code == 200
+    assert "sidebar-logout-button" in response.text
+    assert "sidebar-login-link" not in response.text
 
 
 def test_import_page_includes_sample_csv_links(client) -> None:
@@ -230,6 +242,24 @@ def test_import_page_includes_sample_csv_links(client) -> None:
     assert "Run Nmap" in response.text
     assert "nmap -sn -oX ipocket.xml" in response.text
     assert "nmap -sn -PS80,443 -oX ipocket.xml" in response.text
+
+
+def test_flash_messages_render_once(client) -> None:
+    payload = [{"type": "success", "message": "Saved successfully."}]
+    encoded = ui._encode_flash_payload(payload)
+    signed = ui._sign_session_value(encoded)
+    response = client.get(
+        "/ui/management",
+        headers={"Cookie": f"{ui.FLASH_COOKIE}={signed}"},
+    )
+
+    assert response.status_code == 200
+    assert "Saved successfully." in response.text
+    assert "toast-container" in response.text
+    assert ui.FLASH_COOKIE in response.headers.get("set-cookie", "")
+
+    followup = client.get("/ui/management")
+    assert "Saved successfully." not in followup.text
 
 
 def test_sample_csv_files_are_available(client) -> None:

@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import base64
+import binascii
 import csv
 import hashlib
 import hmac
@@ -17,6 +19,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse, Response
 
 from app import auth, build_info, exports, repository
+from app.environment import use_local_assets
 from app.dependencies import get_connection
 from app.imports import BundleImporter, CsvImporter, run_import
 from app.imports.nmap import NmapImportResult, import_nmap_xml
@@ -37,6 +40,9 @@ router = APIRouter()
 
 SESSION_COOKIE = "ipocket_session"
 SESSION_SECRET = os.getenv("SESSION_SECRET", "dev-session-secret").encode("utf-8")
+FLASH_COOKIE = "ipocket_flash"
+FLASH_ALLOWED_TYPES = {"success", "info", "error", "warning"}
+FLASH_MAX_MESSAGES = 5
 
 
 def _is_auto_host_for_bmc_enabled() -> bool:
@@ -52,29 +58,55 @@ def _render_template(
     active_nav: str = "",
 ) -> HTMLResponse:
     templates = request.app.state.templates
+    is_authenticated = _is_authenticated_request(request)
+    flash_messages = _load_flash_messages(request)
+    toast_messages = list(flash_messages)
+    extra_toasts = context.pop("toast_messages", None)
+    if extra_toasts:
+        toast_messages.extend(extra_toasts)
     payload = {
         "request": request,
         "show_nav": show_nav,
         "active_nav": active_nav,
-        "build_info": build_info.get_display_build_info() if _is_authenticated_request(request) else None,
+        "use_local_assets": use_local_assets(),
+        "is_authenticated": is_authenticated,
+        "build_info": build_info.get_display_build_info() if is_authenticated else None,
+        "toast_messages": toast_messages,
         **context,
     }
     if templates is None:
         return _render_fallback_template(
             template_name, payload, status_code=status_code
         )
-    return templates.TemplateResponse(
+    response = templates.TemplateResponse(
         template_name, payload, status_code=status_code
     )
+    if flash_messages:
+        response.delete_cookie(FLASH_COOKIE)
+    return response
 
 
 def _render_fallback_template(
     template_name: str, payload: dict, status_code: int = 200
 ) -> HTMLResponse:
-    lines = [
-        '<link rel="stylesheet" href="/static/app.css" />',
-        str(payload.get("title", "ipocket")),
-    ]
+    lines = []
+    if not payload.get("use_local_assets", True):
+        lines.extend(
+            [
+                '<link rel="preconnect" href="https://fonts.googleapis.com" />',
+                '<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />',
+                (
+                    '<link rel="stylesheet" '
+                    'href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" />'
+                ),
+            ]
+        )
+    lines.append('<link rel="stylesheet" href="/static/app.css" />')
+    if payload.get("use_local_assets", True):
+        lines.append('<script src="/static/vendor/htmx.min.js" defer></script>')
+    else:
+        lines.append('<script src="https://unpkg.com/htmx.org@1.9.12" defer></script>')
+    lines.append(str(payload.get("title", "ipocket")))
     assets = payload.get("assets") or []
     for asset in assets:
         ip_address = asset.get("ip_address")
@@ -140,6 +172,97 @@ def _verify_session_value(value: Optional[str]) -> Optional[str]:
     if not secrets.compare_digest(signature, expected):
         return None
     return payload
+
+
+def _normalize_flash_type(value: Optional[str]) -> str:
+    if not value:
+        return "info"
+    normalized = value.strip().lower()
+    if normalized in FLASH_ALLOWED_TYPES:
+        return normalized
+    return "info"
+
+
+def _encode_flash_payload(messages: list[dict[str, str]]) -> str:
+    serialized = json.dumps(messages, separators=(",", ":"))
+    return base64.urlsafe_b64encode(serialized.encode("utf-8")).decode("utf-8")
+
+
+def _decode_flash_payload(payload: str) -> Optional[str]:
+    try:
+        return base64.urlsafe_b64decode(payload.encode("utf-8")).decode("utf-8")
+    except (binascii.Error, UnicodeDecodeError):
+        return None
+
+
+def _load_flash_messages(request: Request) -> list[dict[str, str]]:
+    signed_value = request.cookies.get(FLASH_COOKIE)
+    payload = _verify_session_value(signed_value)
+    if not payload:
+        return []
+    decoded = _decode_flash_payload(payload)
+    if decoded is None:
+        return []
+    try:
+        data = json.loads(decoded)
+    except json.JSONDecodeError:
+        return []
+    if not isinstance(data, list):
+        return []
+    messages: list[dict[str, str]] = []
+    for item in data:
+        if not isinstance(item, dict):
+            continue
+        message = str(item.get("message") or "").strip()
+        if not message:
+            continue
+        messages.append(
+            {
+                "type": _normalize_flash_type(item.get("type")),
+                "message": message,
+            }
+        )
+    return messages[:FLASH_MAX_MESSAGES]
+
+
+def _store_flash_messages(response: Response, messages: list[dict[str, str]]) -> None:
+    if not messages:
+        return
+    payload = _encode_flash_payload(messages[:FLASH_MAX_MESSAGES])
+    response.set_cookie(
+        FLASH_COOKIE,
+        _sign_session_value(payload),
+        httponly=True,
+        samesite="lax",
+    )
+
+
+def _add_flash_message(
+    request: Request,
+    response: Response,
+    message_type: str,
+    message: str,
+) -> None:
+    messages = _load_flash_messages(request)
+    messages.append(
+        {
+            "type": _normalize_flash_type(message_type),
+            "message": message,
+        }
+    )
+    _store_flash_messages(response, messages)
+
+
+def _redirect_with_flash(
+    request: Request,
+    url: str,
+    message: str,
+    message_type: str = "success",
+    status_code: int = 303,
+) -> RedirectResponse:
+    response = RedirectResponse(url=url, status_code=status_code)
+    _add_flash_message(request, response, message_type, message)
+    return response
 
 
 def _is_authenticated_request(request: Request) -> bool:
@@ -475,6 +598,12 @@ async def ui_import_nmap_submit(
             status_code=status.HTTP_400_BAD_REQUEST,
         )
     result = import_nmap_xml(connection, payload, dry_run=dry_run, current_user=user)
+    toast_messages = []
+    if not dry_run:
+        if result.errors:
+            toast_messages.append({"type": "error", "message": "Nmap import completed with errors."})
+        else:
+            toast_messages.append({"type": "success", "message": "Nmap import applied successfully."})
     return _render_template(
         request,
         "import.html",
@@ -485,6 +614,7 @@ async def ui_import_nmap_submit(
             "nmap_result": _nmap_result_payload(result),
             "errors": [],
             "nmap_errors": [],
+            "toast_messages": toast_messages,
         },
         active_nav="import",
     )
@@ -519,6 +649,12 @@ async def ui_import_bundle(
     )
     payload = await upload.read()
     result = run_import(connection, BundleImporter(), {"bundle": payload}, dry_run=dry_run)
+    toast_messages = []
+    if not dry_run:
+        if result.errors:
+            toast_messages.append({"type": "error", "message": "Bundle import completed with errors."})
+        else:
+            toast_messages.append({"type": "success", "message": "Bundle import applied successfully."})
     return _render_template(
         request,
         "import.html",
@@ -529,6 +665,7 @@ async def ui_import_bundle(
             "nmap_result": None,
             "errors": [],
             "nmap_errors": [],
+            "toast_messages": toast_messages,
         },
         active_nav="import",
     )
@@ -587,6 +724,12 @@ async def ui_import_csv(
         status_code=status.HTTP_400_BAD_REQUEST,
     )
     result = run_import(connection, CsvImporter(), inputs, dry_run=dry_run)
+    toast_messages = []
+    if not dry_run:
+        if result.errors:
+            toast_messages.append({"type": "error", "message": "CSV import completed with errors."})
+        else:
+            toast_messages.append({"type": "success", "message": "CSV import applied successfully."})
     return _render_template(
         request,
         "import.html",
@@ -597,6 +740,7 @@ async def ui_import_csv(
             "nmap_result": None,
             "errors": [],
             "nmap_errors": [],
+            "toast_messages": toast_messages,
         },
         active_nav="import",
     )
@@ -825,7 +969,13 @@ async def ui_login_submit(
             show_nav=False,
         )
 
-    response = RedirectResponse(url="/ui/ip-assets", status_code=303)
+    response = _redirect_with_flash(
+        request,
+        "/ui/ip-assets",
+        "Login successful.",
+        message_type="success",
+        status_code=303,
+    )
     response.set_cookie(
         SESSION_COOKIE,
         _sign_session_value(str(user.id)),
@@ -925,7 +1075,13 @@ async def ui_update_project(
     if updated is None:
         return Response(status_code=404)
 
-    return RedirectResponse(url="/ui/projects", status_code=303)
+    return _redirect_with_flash(
+        request,
+        "/ui/projects",
+        "Project updated.",
+        message_type="success",
+        status_code=303,
+    )
 
 
 @router.post("/ui/projects", response_class=HTMLResponse)
@@ -983,7 +1139,13 @@ async def ui_create_project(
             active_nav="projects",
         )
 
-    return RedirectResponse(url="/ui/projects", status_code=303)
+    return _redirect_with_flash(
+        request,
+        "/ui/projects",
+        "Project created.",
+        message_type="success",
+        status_code=303,
+    )
 
 
 @router.get("/ui/tags", response_class=HTMLResponse)
@@ -1512,7 +1674,11 @@ async def ui_range_quick_add_address(
             active_nav="ranges",
         )
 
-    return RedirectResponse(url=f"/ui/ranges/{range_id}/addresses", status_code=303)
+    ip_anchor = (ip_address or "").replace(".", "-").replace(":", "-")
+    return RedirectResponse(
+        url=f"/ui/ranges/{range_id}/addresses#ip-{ip_anchor}",
+        status_code=303,
+    )
 
 
 @router.get("/ui/vendors", response_class=HTMLResponse)
@@ -1563,7 +1729,13 @@ async def ui_create_vendor(request: Request, connection=Depends(get_connection),
             status_code=409,
             active_nav="vendors",
         )
-    return RedirectResponse(url="/ui/vendors", status_code=303)
+    return _redirect_with_flash(
+        request,
+        "/ui/vendors",
+        "Vendor created.",
+        message_type="success",
+        status_code=303,
+    )
 
 
 @router.post("/ui/vendors/{vendor_id}/edit", response_class=HTMLResponse)
@@ -1703,7 +1875,13 @@ async def ui_create_host(
             active_nav="hosts",
         )
 
-    return RedirectResponse(url="/ui/hosts", status_code=303)
+    return _redirect_with_flash(
+        request,
+        "/ui/hosts",
+        "Host created.",
+        message_type="success",
+        status_code=303,
+    )
 
 
 @router.post("/ui/hosts/{host_id}/edit", response_class=HTMLResponse)
@@ -2276,7 +2454,13 @@ async def ui_add_ip_submit(
             active_nav="ip-assets",
         )
 
-    return RedirectResponse(url=f"/ui/ip-assets/{asset.id}", status_code=303)
+    return _redirect_with_flash(
+        request,
+        f"/ui/ip-assets/{asset.id}",
+        "IP asset created.",
+        message_type="success",
+        status_code=303,
+    )
 
 
 @router.get("/ui/ip-assets/{asset_id}", response_class=HTMLResponse)
@@ -2425,6 +2609,7 @@ async def ui_edit_ip_submit(
         notes=notes,
         tags=tags,
         current_user=user,
+        notes_provided=True,
     )
     return RedirectResponse(url=f"/ui/ip-assets/{asset.id}", status_code=303)
 

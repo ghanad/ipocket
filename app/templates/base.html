@@ -3,11 +3,35 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
+  {% if not use_local_assets %}
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" />
+  {% endif %}
   <link rel="stylesheet" href="/static/app.css" />
+  {% if use_local_assets %}
   <script src="/static/vendor/htmx.min.js" defer></script>
+  {% else %}
+  <script src="https://unpkg.com/htmx.org@1.9.12" defer></script>
+  {% endif %}
   <title>{{ title }}</title>
 </head>
 <body>
+  <div
+    class="toast-container"
+    data-toast-container
+    data-timeout="4000"
+    role="region"
+    aria-live="polite"
+    aria-label="Notifications"
+  >
+    {% for toast in toast_messages %}
+    <div class="toast toast-{{ toast.type }}" data-timeout="4000">
+      <span class="toast-message">{{ toast.message }}</span>
+      <button class="toast-close" type="button" aria-label="Dismiss notification">&times;</button>
+    </div>
+    {% endfor %}
+  </div>
 {% if show_nav %}
 <div class="app-shell">
   <aside class="sidebar">
@@ -34,9 +58,13 @@
     <div class="sidebar-footer">
       <div class="sidebar-account">
         <p class="sidebar-section-title">Account</p>
+        {% if is_authenticated %}
         <form method="post" action="/ui/logout">
           <button type="submit" class="nav-link sidebar-logout-button">Logout</button>
         </form>
+        {% else %}
+        <a class="nav-link sidebar-login-link" href="/ui/login">Login</a>
+        {% endif %}
       </div>
       {% if build_info %}
       <p class="sidebar-note">ipocket v{{ build_info.version }} ({{ build_info.commit }}) • built {{ build_info.build_time }} · <a href="/ui/about">About</a></p>
@@ -58,5 +86,6 @@
   </div>
 </div>
 {% endif %}
+<script src="/static/toast.js" defer></script>
 </body>
 </html>
