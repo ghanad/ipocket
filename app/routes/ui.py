@@ -2816,6 +2816,7 @@ async def ui_edit_ip_submit(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
 
     form_data = await _parse_form_data(request)
+    return_to = (form_data.get("return_to") or "").strip()
     asset_type = form_data.get("type")
     project_id = _parse_optional_int(form_data.get("project_id"))
     host_id = _parse_optional_int(form_data.get("host_id"))
@@ -2878,6 +2879,8 @@ async def ui_edit_ip_submit(
         current_user=user,
         notes_provided=True,
     )
+    if return_to.startswith("/"):
+        return RedirectResponse(url=return_to, status_code=303)
     return RedirectResponse(url=f"/ui/ip-assets/{asset.id}", status_code=303)
 
 

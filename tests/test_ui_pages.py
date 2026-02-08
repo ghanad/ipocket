@@ -491,6 +491,43 @@ def test_ip_assets_bulk_edit_updates_selected_assets(client) -> None:
         connection.close()
 
 
+def test_ip_assets_edit_returns_to_list_when_return_to_set(client) -> None:
+    import os
+    from app import db, repository
+
+    connection = db.connect(os.environ["IPAM_DB_PATH"])
+    try:
+        db.init_db(connection)
+        user = repository.create_user(connection, username="editor", hashed_password="x", role=UserRole.EDITOR)
+        asset = repository.create_ip_asset(
+            connection,
+            ip_address="10.90.0.10",
+            asset_type=IPAssetType.VM,
+        )
+    finally:
+        connection.close()
+
+    app.dependency_overrides[ui.require_ui_editor] = lambda: user
+    try:
+        response = client.post(
+            f"/ui/ip-assets/{asset.id}/edit",
+            data={
+                "type": "VIP",
+                "project_id": "",
+                "host_id": "",
+                "tags": "",
+                "notes": "",
+                "return_to": "/ui/ip-assets?archived-only=false",
+            },
+            follow_redirects=False,
+        )
+    finally:
+        app.dependency_overrides.pop(ui.require_ui_editor, None)
+
+    assert response.status_code == 303
+    assert response.headers["location"] == "/ui/ip-assets?archived-only=false"
+
+
 def test_ip_assets_bulk_edit_shows_error_toast_for_missing_selection(client) -> None:
     import os
     from app import db, repository

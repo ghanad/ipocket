@@ -11,6 +11,7 @@ ipocket is a lightweight IP inventory app to track addresses and their project a
 - IP assets list includes an archived-only filter for reviewing soft-deleted records when needed.
 - IP assets list includes pagination with a user-selectable page size (default 20) to keep large inventories manageable.
 - IP assets list uses a right-side edit drawer for quick updates without leaving the list view.
+- Saving an IP edit from the drawer returns to the list view instead of navigating to the detail page.
 - IP assets list includes a Host Pair column to show the OS or BMC IP linked to the same host.
 - IP assets list shows inline Edit/Delete actions side-by-side in the Actions column.
 - Deleting an IP from the list is now two-step: open the delete dialog, confirm intent in a warning dialog, then complete deletion on the existing confirmation page (type exact IP).
