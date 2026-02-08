@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import os
 
+from app.environment import is_docker_runtime
+
 
 def _get_env_value(name: str, default: str) -> str:
     value = os.getenv(name)
@@ -11,9 +13,13 @@ def _get_env_value(name: str, default: str) -> str:
 
 
 def get_build_info() -> dict[str, str]:
+    version = _get_env_value("IPOCKET_VERSION", "dev")
+    docker_tag = os.getenv("IPOCKET_DOCKER_TAG")
+    if docker_tag and is_docker_runtime():
+        version = docker_tag
     return {
         "status": "ok",
-        "version": _get_env_value("IPOCKET_VERSION", "dev"),
+        "version": version,
         "commit": _get_env_value("IPOCKET_COMMIT", "unknown"),
         "build_time": _get_env_value("IPOCKET_BUILD_TIME", "unknown"),
     }

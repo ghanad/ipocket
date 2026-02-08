@@ -11,3 +11,10 @@ def use_local_assets() -> bool:
     if override is not None:
         return override.strip().lower() not in _FALSE_VALUES
     return Path("/.dockerenv").exists()
+
+
+def is_docker_runtime() -> bool:
+    override = os.getenv("IPOCKET_DOCKER_RUNTIME")
+    if override is not None:
+        return override.strip().lower() not in _FALSE_VALUES
+    return Path("/.dockerenv").exists()
