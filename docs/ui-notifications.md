@@ -47,6 +47,7 @@ To trigger a toast on the client (for example, when starting an export), add `da
 - **Use toasts for global feedback** (created/updated/imported/exported, unexpected errors).
 - **Keep inline validation errors** inside forms; do not replace field-level errors with toasts.
 - Prefer `success`/`info` for positive feedback and `error` for failures.
+- Bulk edits on the IP Assets page surface success/error results as toast messages after redirecting back to the list.
 
 ## Defaults
 - Auto-dismiss: ~4 seconds
