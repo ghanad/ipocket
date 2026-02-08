@@ -212,6 +212,11 @@ def create_project(
     return Project(id=cursor.lastrowid, name=name, description=description, color=normalized_color)
 
 
+def get_project_by_id(connection: sqlite3.Connection, project_id: int) -> Optional[Project]:
+    row = connection.execute("SELECT * FROM projects WHERE id = ?", (project_id,)).fetchone()
+    return _row_to_project(row) if row else None
+
+
 def update_project(
     connection: sqlite3.Connection,
     project_id: int,
@@ -861,6 +866,18 @@ def get_ip_asset_by_id(connection: sqlite3.Connection, asset_id: int) -> Optiona
     return _row_to_ip_asset(row) if row else None
 
 
+def list_ip_assets_by_ids(connection: sqlite3.Connection, asset_ids: Iterable[int]) -> list[IPAsset]:
+    asset_ids_list = list(asset_ids)
+    if not asset_ids_list:
+        return []
+    placeholders = ",".join(["?"] * len(asset_ids_list))
+    rows = connection.execute(
+        f"SELECT * FROM ip_assets WHERE id IN ({placeholders}) ORDER BY ip_address",
+        asset_ids_list,
+    ).fetchall()
+    return [_row_to_ip_asset(row) for row in rows]
+
+
 def list_active_ip_assets(
     connection: sqlite3.Connection,
     project_id: Optional[int] = None,
@@ -1179,3 +1196,50 @@ def update_ip_asset(
         if updated is not None and tags_changed and normalized_tags is not None:
             set_ip_asset_tags(connection, updated.id, normalized_tags)
     return updated
+
+
+def bulk_update_ip_assets(
+    connection: sqlite3.Connection,
+    asset_ids: Iterable[int],
+    asset_type: Optional[IPAssetType] = None,
+    project_id: Optional[int] = None,
+    set_project_id: bool = False,
+    tags_to_add: Optional[list[str]] = None,
+    current_user: Optional[User] = None,
+) -> list[IPAsset]:
+    assets = list_ip_assets_by_ids(connection, asset_ids)
+    if not assets:
+        return []
+    normalized_tags = normalize_tag_names(tags_to_add) if tags_to_add else []
+    tag_map = list_tags_for_ip_assets(connection, [asset.id for asset in assets])
+    updated_assets: list[IPAsset] = []
+    with connection:
+        for asset in assets:
+            next_type = asset_type or asset.asset_type
+            next_project_id = project_id if set_project_id else asset.project_id
+            connection.execute(
+                """
+                UPDATE ip_assets
+                SET type = ?, project_id = ?, updated_at = CURRENT_TIMESTAMP
+                WHERE id = ?
+                """,
+                (next_type.value, next_project_id, asset.id),
+            )
+            updated = get_ip_asset_by_id(connection, asset.id)
+            if updated is None:
+                continue
+            create_audit_log(
+                connection,
+                user=current_user,
+                action="UPDATE",
+                target_type="IP_ASSET",
+                target_id=updated.id,
+                target_label=updated.ip_address,
+                changes=_summarize_ip_asset_changes(connection, asset, updated),
+            )
+            if normalized_tags:
+                existing_tags = tag_map.get(asset.id, [])
+                combined_tags = normalize_tag_names(existing_tags + normalized_tags)
+                set_ip_asset_tags(connection, updated.id, combined_tags)
+            updated_assets.append(updated)
+    return updated_assets

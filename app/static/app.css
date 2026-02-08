@@ -331,8 +331,70 @@ p {
   padding: 24px 24px 0;
 }
 
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
 .table-card {
   padding: 0;
+}
+
+.bulk-edit-form {
+  display: flex;
+  flex-direction: column;
+}
+
+.bulk-edit-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--color-border);
+  background: #fff;
+}
+
+.bulk-edit-controls-hidden {
+  display: none;
+}
+
+.bulk-edit-selection {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.bulk-edit-fields {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 12px;
+}
+
+.field-inline {
+  gap: 6px;
+}
+
+.field-inline span {
+  font-size: 10px;
+}
+
+.checkbox {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--color-primary);
 }
 
 .projects-existing-card .card-header,

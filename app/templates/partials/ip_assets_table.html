@@ -1,22 +1,63 @@
 <section class="card table-card">
-  <div class="table-wrapper">
-    <table class="table">
-      <thead>
-        <tr>
-          <th>IP address</th>
-          <th>Project</th>
-          <th>Type</th>
-          <th>Host Pair</th>
-          <th>Tags</th>
-          <th>Notes</th>
-          <th>Actions</th>
-        </tr>
-      </thead>
-      <tbody id="ip-table-body">
-        {% include "partials/ip_table_rows.html" %}
-      </tbody>
-    </table>
-  </div>
+  <form class="bulk-edit-form" method="post" action="/ui/ip-assets/bulk-edit" data-bulk-form>
+    <input type="hidden" name="return_to" value="{{ return_to }}">
+    <div class="bulk-edit-controls bulk-edit-controls-hidden" data-bulk-controls>
+      <div class="bulk-edit-selection">
+        <label class="field field-inline">
+          <input type="checkbox" class="checkbox" data-bulk-select-all aria-label="Select all IP assets">
+          <span>Select all</span>
+        </label>
+        <span class="muted" data-selected-count>0 selected</span>
+      </div>
+      <div class="bulk-edit-fields">
+        <label class="field field-inline">
+          <span class="muted">Type</span>
+          <select class="select" name="type">
+            <option value="">Keep current</option>
+            {% for asset_type in types %}
+            <option value="{{ asset_type }}">{{ asset_type }}</option>
+            {% endfor %}
+          </select>
+        </label>
+        <label class="field field-inline">
+          <span class="muted">Project</span>
+          <select class="select" name="project_id">
+            <option value="">Keep current</option>
+            <option value="unassigned">Unassigned</option>
+            {% for project in projects %}
+            <option value="{{ project.id }}">{{ project.name }}</option>
+            {% endfor %}
+          </select>
+        </label>
+        <label class="field field-inline">
+          <span class="muted">Add tags</span>
+          <input class="input" type="text" name="tags" placeholder="comma,separated">
+        </label>
+        <button class="btn btn-primary btn-small" type="submit" data-bulk-submit disabled>Apply changes</button>
+      </div>
+    </div>
+    <div class="table-wrapper">
+      <table class="table">
+        <thead>
+          <tr>
+            <th>
+              <span class="visually-hidden">Select</span>
+            </th>
+            <th>IP address</th>
+            <th>Project</th>
+            <th>Type</th>
+            <th>Host Pair</th>
+            <th>Tags</th>
+            <th>Notes</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody id="ip-table-body">
+          {% include "partials/ip_table_rows.html" %}
+        </tbody>
+      </table>
+    </div>
+  </form>
   <div class="table-footer">
     <div class="table-meta">
       {% if pagination.total %}

@@ -1,6 +1,9 @@
 {% if assets %}
 {% for asset in assets %}
 <tr>
+  <td>
+    <input class="checkbox" type="checkbox" name="asset_ids" value="{{ asset.id }}" data-bulk-select>
+  </td>
   <td class="mono"><a href="/ui/ip-assets/{{ asset.id }}">{{ asset.ip_address }}</a></td>
   <td>
     {% if asset.project_unassigned %}
@@ -84,6 +87,6 @@
 {% endfor %}
 {% else %}
 <tr>
-  <td colspan="7" class="empty-state">No IP assets found.</td>
+  <td colspan="8" class="empty-state">No IP assets found.</td>
 </tr>
 {% endif %}
