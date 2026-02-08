@@ -1,0 +1,495 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Host Edit Drawer (Single OS/BMC IP) — Standalone Demo</title>
+  <style>
+    :root{
+      --bg:#f6f8fb;
+      --card:#ffffff;
+      --text:#0f172a;
+      --muted:#64748b;
+      --border:#e2e8f0;
+      --blue:#2563eb;
+      --blue-700:#1d4ed8;
+      --red:#ef4444;
+      --shadow: 0 10px 25px rgba(2,6,23,.12);
+      --radius:14px;
+      --font: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial;
+    }
+    *{box-sizing:border-box}
+    body{margin:0;font-family:var(--font);color:var(--text);background:var(--bg)}
+    .app{max-width:1200px;margin:28px auto;padding:0 18px 60px}
+    .topbar{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;margin-bottom:14px}
+    .title{display:flex;flex-direction:column;gap:6px}
+    .title h1{margin:0;font-size:18px;letter-spacing:.2px}
+    .title p{margin:0;font-size:13px;color:var(--muted)}
+    .card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);box-shadow:0 2px 10px rgba(2,6,23,.04);overflow:hidden}
+    table{width:100%;border-collapse:separate;border-spacing:0}
+    thead th{
+      text-align:left;font-size:12px;color:var(--muted);font-weight:700;
+      padding:14px 16px;background:#fbfdff;border-bottom:1px solid var(--border);
+      letter-spacing:.6px;text-transform:uppercase;white-space:nowrap
+    }
+    tbody td{padding:14px 16px;border-bottom:1px solid var(--border);font-size:14px;vertical-align:middle}
+    tbody tr:last-child td{border-bottom:0}
+    .link{color:var(--blue);text-decoration:none;font-weight:650}
+    .pill{
+      display:inline-flex;align-items:center;gap:8px;font-size:12px;padding:6px 10px;border-radius:999px;
+      border:1px solid var(--border);background:#f8fafc;color:#0f172a;font-weight:650
+    }
+    .pill.ok{background:#ecfdf5;border-color:#a7f3d0;color:#065f46}
+    .muted{color:var(--muted)}
+    .num{font-variant-numeric:tabular-nums}
+    .actions{display:flex;justify-content:flex-end}
+    .iconbtn{
+      border:1px solid var(--border);background:#fff;padding:8px 10px;border-radius:12px;cursor:pointer;
+      display:inline-flex;align-items:center;gap:8px;color:#0f172a;font-weight:650;transition:.15s ease
+    }
+    .iconbtn:hover{border-color:#cbd5e1;box-shadow:0 2px 10px rgba(2,6,23,.06)}
+    .dots{font-size:18px;line-height:1}
+
+    /* Drawer */
+    .overlay{position:fixed;inset:0;background:rgba(2,6,23,.42);opacity:0;pointer-events:none;transition:opacity .18s ease}
+    .overlay.open{opacity:1;pointer-events:auto}
+    .drawer{
+      position:fixed;top:0;right:0;height:100vh;width:min(520px,92vw);
+      background:#fff;border-left:1px solid var(--border);box-shadow:var(--shadow);
+      transform:translateX(102%);transition:transform .2s ease;display:flex;flex-direction:column
+    }
+    .drawer.open{transform:translateX(0)}
+    .drawer-header{
+      padding:18px 18px 12px;border-bottom:1px solid var(--border);background:#fbfdff;position:sticky;top:0;z-index:2
+    }
+    .drawer-header-top{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
+    .drawer-title{display:flex;flex-direction:column;gap:6px;min-width:0}
+    .drawer-title h2{margin:0;font-size:16px;letter-spacing:.2px}
+    .drawer-title .subtitle{font-size:13px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .closebtn{
+      border:1px solid var(--border);background:#fff;width:36px;height:36px;border-radius:12px;cursor:pointer;
+      font-size:18px;display:grid;place-items:center;transition:.15s ease;flex:0 0 auto
+    }
+    .closebtn:hover{border-color:#cbd5e1;box-shadow:0 2px 10px rgba(2,6,23,.06)}
+    .meta{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+
+    .drawer-body{padding:16px 18px 120px;overflow:auto}
+    .section{border:1px solid var(--border);border-radius:var(--radius);padding:14px;margin-bottom:12px}
+    .section h3{margin:0 0 12px;font-size:13px;letter-spacing:.3px;color:#0f172a}
+
+    .grid{display:grid;grid-template-columns:1fr;gap:12px}
+    .row2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+    @media (max-width:520px){.row2{grid-template-columns:1fr}}
+
+    label{
+      display:flex;flex-direction:column;gap:6px;font-size:12px;color:var(--muted);
+      font-weight:700;letter-spacing:.4px;text-transform:uppercase
+    }
+    input[type="text"], select, textarea{
+      width:100%;border:1px solid var(--border);border-radius:12px;padding:11px 12px;font-size:14px;outline:none;
+      transition:.15s ease;background:#fff;color:var(--text)
+    }
+    textarea{resize:vertical;min-height:96px}
+    input:focus, select:focus, textarea:focus{border-color:#93c5fd;box-shadow:0 0 0 4px rgba(59,130,246,.12)}
+
+    .help{font-size:12px;color:var(--muted);margin-top:6px;text-transform:none;letter-spacing:0;font-weight:600}
+    .error{margin-top:8px;color:#b91c1c;font-size:12px;font-weight:650}
+
+    .drawer-footer{
+      position:fixed;right:0;bottom:0;width:min(520px,92vw);
+      border-top:1px solid var(--border);background:rgba(255,255,255,.92);backdrop-filter:blur(6px);
+      padding:12px 18px;display:flex;justify-content:space-between;gap:12px;z-index:3
+    }
+    .footer-left{display:flex;align-items:center;gap:10px;color:var(--muted);font-size:12px;font-weight:650}
+    .btnrow{display:flex;gap:10px}
+    .btn{
+      border-radius:12px;padding:10px 12px;border:1px solid var(--border);background:#fff;cursor:pointer;
+      font-weight:750;font-size:14px;transition:.15s ease
+    }
+    .btn:hover{border-color:#cbd5e1;box-shadow:0 2px 10px rgba(2,6,23,.06)}
+    .btn.primary{background:var(--blue);border-color:var(--blue);color:#fff}
+    .btn.primary:hover{background:var(--blue-700);border-color:var(--blue-700)}
+    .btn:disabled{opacity:.55;cursor:not-allowed;box-shadow:none}
+
+    /* Toast */
+    .toastwrap{position:fixed;top:18px;right:18px;display:flex;flex-direction:column;gap:10px;z-index:50;pointer-events:none}
+    .toast{
+      pointer-events:auto;background:#0f172a;color:#fff;padding:12px 14px;border-radius:14px;box-shadow:var(--shadow);
+      display:flex;align-items:flex-start;gap:10px;max-width:340px
+    }
+    .toast .k{font-weight:900}
+    .toast.success{background:#064e3b}
+    .toast.error{background:#7f1d1d}
+  </style>
+</head>
+
+<body>
+  <div class="app">
+    <div class="topbar">
+      <div class="title">
+        <h1>Hosts</h1>
+        <p>Demo: Right drawer edit with single OS IP + single BMC IP.</p>
+      </div>
+    </div>
+
+    <div class="card">
+      <table aria-label="Hosts table">
+        <thead>
+          <tr>
+            <th style="width:28%">Host Name</th>
+            <th style="width:14%">Vendor</th>
+            <th style="width:16%">Project</th>
+            <th style="width:14%">OS IP</th>
+            <th style="width:14%">BMC IP</th>
+            <th style="width:8%">Linked</th>
+            <th style="width:6%; text-align:right;">Actions</th>
+          </tr>
+        </thead>
+        <tbody id="tbody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="toastwrap" id="toastwrap" aria-live="polite" aria-atomic="true"></div>
+
+  <div class="overlay" id="overlay"></div>
+
+  <aside class="drawer" id="drawer" role="dialog" aria-modal="true" aria-label="Edit Host Drawer">
+    <div class="drawer-header">
+      <div class="drawer-header-top">
+        <div class="drawer-title">
+          <h2>Edit Host</h2>
+          <div class="subtitle" id="drawerSubtitle">—</div>
+        </div>
+        <button class="closebtn" id="btnClose" title="Close (Esc)" aria-label="Close">✕</button>
+      </div>
+      <div class="meta" id="drawerMeta"></div>
+    </div>
+
+    <div class="drawer-body">
+      <form id="form" autocomplete="off">
+        <div class="section">
+          <h3>Basic</h3>
+          <div class="grid">
+            <label>
+              Name
+              <input type="text" id="name" />
+              <div class="error" id="nameErr" style="display:none;"></div>
+            </label>
+
+            <div class="row2">
+              <label>
+                Vendor
+                <select id="vendor">
+                  <option value="UNASSIGNED">UNASSIGNED</option>
+                  <option value="DELL">DELL</option>
+                  <option value="HP">HP</option>
+                  <option value="SUPERMICRO">SUPERMICRO</option>
+                </select>
+              </label>
+
+              <label>
+                Project
+                <select id="project">
+                  <option value="Unassigned">Unassigned</option>
+                  <option value="Core">Core</option>
+                  <option value="Edge">Edge</option>
+                  <option value="Lab">Lab</option>
+                </select>
+              </label>
+            </div>
+          </div>
+        </div>
+
+        <div class="section">
+          <h3>IP Configuration</h3>
+
+          <div class="row2">
+            <label>
+              OS IP
+              <input type="text" id="osIp" placeholder="e.g. 192.168.10.200" />
+              <div class="error" id="osErr" style="display:none;"></div>
+            </label>
+
+            <label>
+              BMC IP (Out-of-band)
+              <input type="text" id="bmcIp" placeholder="e.g. 192.168.20.10" />
+              <div class="error" id="bmcErr" style="display:none;"></div>
+            </label>
+          </div>
+
+          <div class="help">Both fields are single-value based on your product assumptions.</div>
+        </div>
+
+        <div class="section">
+          <h3>Notes</h3>
+          <label style="text-transform:none; letter-spacing:0;">
+            <span style="font-size:12px; color:var(--muted); font-weight:800; text-transform:uppercase; letter-spacing:.4px;">Notes</span>
+            <textarea id="notes" placeholder="Optional. Internal notes…"></textarea>
+          </label>
+        </div>
+      </form>
+    </div>
+
+    <div class="drawer-footer">
+      <div class="footer-left" id="dirtyState">No changes</div>
+      <div class="btnrow">
+        <button class="btn" id="btnCancel" type="button">Cancel</button>
+        <button class="btn primary" id="btnSave" type="button" disabled>Save changes</button>
+      </div>
+    </div>
+  </aside>
+
+  <script>
+    // Mock data: single OS IP + single BMC IP
+    const hosts = [
+      { id:"h1", name:"server_192.168.10.200", vendor:"UNASSIGNED", project:"Unassigned", osIp:"192.168.10.200", bmcIp:"192.168.20.10", linked:1, status:"Free", notes:"" },
+      { id:"h2", name:"db-01", vendor:"DELL", project:"Core", osIp:"10.10.0.11", bmcIp:"10.200.0.11", linked:3, status:"Assigned", notes:"Primary DB host" },
+      { id:"h3", name:"edge-node-7", vendor:"SUPERMICRO", project:"Edge", osIp:"172.16.8.7", bmcIp:"", linked:0, status:"Free", notes:"" }
+    ];
+
+    // DOM
+    const tbody = document.getElementById("tbody");
+    const overlay = document.getElementById("overlay");
+    const drawer = document.getElementById("drawer");
+    const btnClose = document.getElementById("btnClose");
+    const btnCancel = document.getElementById("btnCancel");
+    const btnSave = document.getElementById("btnSave");
+    const drawerSubtitle = document.getElementById("drawerSubtitle");
+    const drawerMeta = document.getElementById("drawerMeta");
+    const dirtyState = document.getElementById("dirtyState");
+    const toastwrap = document.getElementById("toastwrap");
+
+    const nameEl = document.getElementById("name");
+    const vendorEl = document.getElementById("vendor");
+    const projectEl = document.getElementById("project");
+    const osIpEl = document.getElementById("osIp");
+    const bmcIpEl = document.getElementById("bmcIp");
+    const notesEl = document.getElementById("notes");
+
+    const nameErr = document.getElementById("nameErr");
+    const osErr = document.getElementById("osErr");
+    const bmcErr = document.getElementById("bmcErr");
+
+    // State
+    let openId = null;
+    let draft = null;
+    let original = null;
+    let isOpen = false;
+
+    // Helpers
+    const clone = (o) => JSON.parse(JSON.stringify(o));
+    const escapeHtml = (str) => String(str)
+      .replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;")
+      .replaceAll('"',"&quot;").replaceAll("'","&#039;");
+
+    function toast(type, title, msg){
+      const el = document.createElement("div");
+      el.className = `toast ${type}`;
+      el.innerHTML = `<div class="k">${escapeHtml(title)}</div><div style="opacity:.92">${escapeHtml(msg)}</div>`;
+      toastwrap.appendChild(el);
+      setTimeout(() => { el.style.opacity="0"; el.style.transform="translateY(-6px)"; el.style.transition="opacity .18s ease, transform .18s ease"; }, 2200);
+      setTimeout(() => el.remove(), 2600);
+    }
+
+    function setOpen(open){
+      isOpen = open;
+      overlay.classList.toggle("open", open);
+      drawer.classList.toggle("open", open);
+      document.body.style.overflow = open ? "hidden" : "";
+    }
+
+    function ipIsValid(ip){
+      const v = ip.trim();
+      if (!v) return true; // allow empty (optional) - you can force required if needed
+      const parts = v.split(".");
+      if (parts.length !== 4) return false;
+      for (const p of parts){
+        if (!/^\d+$/.test(p)) return false;
+        const n = Number(p);
+        if (n < 0 || n > 255) return false;
+      }
+      return true;
+    }
+
+    function setErr(el, msg){
+      if (!msg){ el.style.display="none"; el.textContent=""; }
+      else { el.style.display="block"; el.textContent=msg; }
+    }
+
+    function renderTable(){
+      tbody.innerHTML = "";
+      hosts.forEach(h => {
+        const tr = document.createElement("tr");
+        tr.innerHTML = `
+          <td><a class="link" href="#" onclick="return false;">${escapeHtml(h.name)}</a></td>
+          <td class="muted">${escapeHtml(h.vendor)}</td>
+          <td><span class="pill">${escapeHtml(h.project)}</span></td>
+          <td class="num">${escapeHtml(h.osIp || "—")}</td>
+          <td class="num">${escapeHtml(h.bmcIp || "—")}</td>
+          <td class="num">${h.linked}</td>
+          <td>
+            <div class="actions">
+              <button class="iconbtn" data-edit="${h.id}" title="Edit">
+                <span class="dots">⋮</span><span>Edit</span>
+              </button>
+            </div>
+          </td>
+        `;
+        tbody.appendChild(tr);
+      });
+
+      tbody.querySelectorAll("[data-edit]").forEach(btn => {
+        btn.addEventListener("click", () => openDrawer(btn.getAttribute("data-edit")));
+      });
+    }
+
+    function fillMeta(h){
+      drawerSubtitle.textContent = h.name;
+      drawerMeta.innerHTML = "";
+      const projectPill = document.createElement("span");
+      projectPill.className = "pill";
+      projectPill.textContent = `Project: ${h.project}`;
+      const statusPill = document.createElement("span");
+      statusPill.className = `pill ${h.status === "Free" ? "ok" : ""}`;
+      statusPill.textContent = `Status: ${h.status}`;
+      drawerMeta.appendChild(projectPill);
+      drawerMeta.appendChild(statusPill);
+    }
+
+    function syncDirty(){
+      const dirty = JSON.stringify(draft) !== JSON.stringify(original);
+      btnSave.disabled = !dirty;
+      dirtyState.textContent = dirty ? "Unsaved changes" : "No changes";
+    }
+
+    function openDrawer(id){
+      const h = hosts.find(x => x.id === id);
+      if (!h) return;
+
+      openId = id;
+      original = clone(h);
+      draft = clone(h);
+
+      fillMeta(h);
+
+      nameEl.value = draft.name || "";
+      vendorEl.value = draft.vendor || "UNASSIGNED";
+      projectEl.value = draft.project || "Unassigned";
+      osIpEl.value = draft.osIp || "";
+      bmcIpEl.value = draft.bmcIp || "";
+      notesEl.value = draft.notes || "";
+
+      setErr(nameErr, "");
+      setErr(osErr, "");
+      setErr(bmcErr, "");
+      syncDirty();
+
+      setOpen(true);
+      setTimeout(() => nameEl.focus(), 30);
+    }
+
+    function confirmClose(){
+      const dirty = JSON.stringify(draft) !== JSON.stringify(original);
+      if (!dirty) return true;
+      return confirm("Discard changes?");
+    }
+
+    function closeDrawer(force=false){
+      if (!force && !confirmClose()) return;
+      setOpen(false);
+      openId = null;
+      draft = null;
+      original = null;
+    }
+
+    function validate(){
+      let ok = true;
+
+      const name = nameEl.value.trim();
+      if (!name){
+        setErr(nameErr, "Name is required.");
+        ok = false;
+      } else setErr(nameErr, "");
+
+      const os = osIpEl.value.trim();
+      if (!ipIsValid(os)){
+        setErr(osErr, "Invalid IPv4 address.");
+        ok = false;
+      } else setErr(osErr, "");
+
+      const bmc = bmcIpEl.value.trim();
+      // BMC is exactly one in your assumption — if you want it required:
+      // if (!bmc) { setErr(bmcErr, "BMC IP is required."); ok = false; }
+      if (!ipIsValid(bmc)){
+        setErr(bmcErr, "Invalid IPv4 address.");
+        ok = false;
+      } else setErr(bmcErr, "");
+
+      return ok;
+    }
+
+    function save(){
+      if (!validate()){
+        toast("error", "Error", "Please fix validation errors.");
+        return;
+      }
+
+      // Commit draft from inputs
+      draft.name = nameEl.value.trim();
+      draft.vendor = vendorEl.value;
+      draft.project = projectEl.value;
+      draft.osIp = osIpEl.value.trim();
+      draft.bmcIp = bmcIpEl.value.trim();
+      draft.notes = notesEl.value.trim();
+
+      const idx = hosts.findIndex(x => x.id === openId);
+      if (idx >= 0) hosts[idx] = clone(draft);
+
+      renderTable();
+      toast("success", "Saved", "Host updated successfully.");
+      closeDrawer(true);
+    }
+
+    // Events
+    overlay.addEventListener("click", () => closeDrawer(false));
+    btnClose.addEventListener("click", () => closeDrawer(false));
+    btnCancel.addEventListener("click", () => closeDrawer(false));
+    btnSave.addEventListener("click", save);
+
+    document.addEventListener("keydown", (e) => {
+      if (!isOpen) return;
+      if (e.key === "Escape"){
+        e.preventDefault();
+        closeDrawer(false);
+      }
+      // Ctrl/Cmd + S
+      const isMac = navigator.platform.toUpperCase().includes("MAC");
+      if ((isMac ? e.metaKey : e.ctrlKey) && e.key.toLowerCase() === "s"){
+        e.preventDefault();
+        if (!btnSave.disabled) save();
+      }
+    });
+
+    function onAnyChange(){
+      if (!draft) return;
+      draft.name = nameEl.value;
+      draft.vendor = vendorEl.value;
+      draft.project = projectEl.value;
+      draft.osIp = osIpEl.value;
+      draft.bmcIp = bmcIpEl.value;
+      draft.notes = notesEl.value;
+      syncDirty();
+    }
+
+    [nameEl, vendorEl, projectEl, osIpEl, bmcIpEl, notesEl].forEach(el => {
+      el.addEventListener("input", onAnyChange);
+      el.addEventListener("change", onAnyChange);
+      el.addEventListener("blur", () => validate());
+    });
+
+    // Init
+    renderTable();
+  </script>
+</body>
+</html>
