@@ -359,6 +359,10 @@ p {
   background: #fff;
 }
 
+.bulk-edit-controls-hidden {
+  display: none;
+}
+
 .bulk-edit-selection {
   display: inline-flex;
   align-items: center;

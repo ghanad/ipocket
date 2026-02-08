@@ -320,6 +320,7 @@ def test_ip_assets_list_uses_overflow_actions_menu_with_delete_dialog(client) ->
     assert 'data-row-actions-toggle' in response.text
     assert 'data-row-actions-panel' in response.text
     assert 'class="row-actions-icon"' in response.text
+    assert "bulk-edit-controls-hidden" in response.text
     assert f'aria-controls="row-actions-{asset.id}"' in response.text
     assert f'data-delete-dialog-id="delete-ip-{asset.id}"' in response.text
     assert f'id="delete-ip-{asset.id}"' in response.text

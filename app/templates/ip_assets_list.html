@@ -248,6 +248,7 @@
       const checkboxes = Array.from(bulkForm.querySelectorAll('[data-bulk-select]'));
       const countLabel = bulkForm.querySelector('[data-selected-count]');
       const submitButton = bulkForm.querySelector('[data-bulk-submit]');
+      const bulkControls = bulkForm.querySelector('[data-bulk-controls]');
 
       const updateCount = () => {
         const selectedCount = checkboxes.filter((checkbox) => checkbox.checked).length;
@@ -256,6 +257,9 @@
         }
         if (submitButton) {
           submitButton.disabled = selectedCount === 0;
+        }
+        if (bulkControls) {
+          bulkControls.classList.toggle('bulk-edit-controls-hidden', selectedCount === 0);
         }
         if (selectAll) {
           selectAll.indeterminate = selectedCount > 0 && selectedCount < checkboxes.length;
