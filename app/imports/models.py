@@ -28,6 +28,7 @@ class ImportHost:
     name: str
     notes: Optional[str] = None
     vendor_name: Optional[str] = None
+    project_name: Optional[str] = None
     os_ip: Optional[str] = None
     bmc_ip: Optional[str] = None
     source: Optional[ImportSource] = None

@@ -68,6 +68,7 @@ Columns:
 - `name` (required)
 - `notes`
 - `vendor_name`
+- `project_name` (optional project to assign to `os_ip`/`bmc_ip` assets)
 - `os_ip` (optional OS IP to create an `OS` IP asset linked to the host)
 - `bmc_ip` (optional BMC IP to create a `BMC` IP asset linked to the host)
 

@@ -136,7 +136,7 @@ class CsvImporter:
         ip_assets = _parse_ip_assets_csv(inputs["ip_assets"], "ip-assets.csv") if "ip_assets" in inputs else []
         derived_assets = _derive_ip_assets_from_hosts(hosts)
         vendors = _derive_vendors_from_hosts(hosts)
-        projects = _derive_projects_from_ip_assets(ip_assets)
+        projects = _derive_projects_from_ip_assets([*derived_assets, *ip_assets])
         return ImportBundle(
             vendors=vendors,
             projects=projects,
@@ -155,6 +155,7 @@ def _parse_hosts_csv(data: bytes, filename: str) -> list[ImportHost]:
                 name=str(row.get("name") or ""),
                 notes=_normalize_optional_str(row.get("notes")),
                 vendor_name=_normalize_optional_str(row.get("vendor_name")),
+                project_name=_normalize_optional_str(row.get("project_name")),
                 os_ip=_normalize_optional_str(row.get("os_ip")),
                 bmc_ip=_normalize_optional_str(row.get("bmc_ip")),
                 source=ImportSource(f"{filename}:line {line_number}"),
@@ -222,12 +223,14 @@ def _derive_ip_assets_from_hosts(hosts: list[ImportHost]) -> list[ImportIPAsset]
 
 def _ip_assets_from_host(host: ImportHost, host_name: str) -> list[ImportIPAsset]:
     assets: list[ImportIPAsset] = []
+    project_name = _normalize_optional_str(host.project_name)
     os_ip = _normalize_optional_str(host.os_ip)
     if os_ip:
         assets.append(
             ImportIPAsset(
                 ip_address=os_ip,
                 asset_type="OS",
+                project_name=project_name,
                 host_name=host_name,
                 source=_with_host_field(host.source, "os_ip"),
             )
@@ -238,6 +241,7 @@ def _ip_assets_from_host(host: ImportHost, host_name: str) -> list[ImportIPAsset
             ImportIPAsset(
                 ip_address=bmc_ip,
                 asset_type="BMC",
+                project_name=project_name,
                 host_name=host_name,
                 source=_with_host_field(host.source, "bmc_ip"),
             )

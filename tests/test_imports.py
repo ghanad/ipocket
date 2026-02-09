@@ -218,7 +218,10 @@ def test_csv_import_hosts_with_os_bmc_ips(client) -> None:
     _create_user(db_path, "viewer", "viewer-pass", UserRole.VIEWER)
     _create_user(db_path, "editor", "editor-pass", UserRole.EDITOR)
 
-    hosts_csv = "name,notes,vendor_name,os_ip,bmc_ip\nnode-10,edge,Dell,10.0.0.50,10.0.0.51\n"
+    hosts_csv = (
+        "name,notes,vendor_name,project_name,os_ip,bmc_ip\n"
+        "node-10,edge,Dell,Core,10.0.0.50,10.0.0.51\n"
+    )
 
     viewer_token = _login(test_client, "viewer", "viewer-pass")
     dry_run_response = test_client.post(
@@ -250,6 +253,9 @@ def test_csv_import_hosts_with_os_bmc_ips(client) -> None:
         assert bmc_asset is not None
         assert os_asset.asset_type == IPAssetType.OS
         assert bmc_asset.asset_type == IPAssetType.BMC
+        assert os_asset.project_id is not None
+        assert bmc_asset.project_id is not None
+        assert os_asset.project_id == bmc_asset.project_id
         assert os_asset.host_id == host.id
         assert bmc_asset.host_id == host.id
     finally:

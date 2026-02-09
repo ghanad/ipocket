@@ -1,3 +1,3 @@
-name,notes,vendor_name,os_ip,bmc_ip
-node-01,Rack 1,HPE,10.0.0.11,10.0.0.12
-node-02,Backup node,Dell,10.0.0.21,
+name,notes,vendor_name,project_name,os_ip,bmc_ip
+node-01,Rack 1,HPE,Core,10.0.0.11,10.0.0.12
+node-02,Backup node,Dell,,10.0.0.21,
