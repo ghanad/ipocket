@@ -866,11 +866,14 @@ def test_audit_log_page_lists_ip_entries(client) -> None:
     finally:
         connection.close()
 
-    response = client.get("/ui/audit-log")
-
-    assert response.status_code == 200
-    assert "10.40.0.10" in response.text
-    assert "CREATE" in response.text
+    app.dependency_overrides[ui.get_current_ui_user] = lambda: User(1, "viewer", "x", UserRole.VIEWER, True)
+    try:
+        response = client.get("/ui/audit-log")
+        assert response.status_code == 200
+        assert "10.40.0.10" in response.text
+        assert "CREATE" in response.text
+    finally:
+        app.dependency_overrides.pop(ui.get_current_ui_user, None)
 
 
 def test_audit_log_page_pagination(client) -> None:
@@ -885,18 +888,76 @@ def test_audit_log_page_pagination(client) -> None:
     finally:
         connection.close()
 
-    response = client.get("/ui/audit-log?page=1&per-page=10")
-    assert response.status_code == 200
-    assert "Showing" in response.text
-    assert "Page 1 of" in response.text
+    app.dependency_overrides[ui.get_current_ui_user] = lambda: User(1, "viewer", "x", UserRole.VIEWER, True)
+    try:
+        response = client.get("/ui/audit-log?page=1&per-page=10")
+        assert response.status_code == 200
+        assert "Showing" in response.text
+        assert "Page 1 of" in response.text
 
-    response = client.get("/ui/audit-log?page=2&per-page=10")
-    assert response.status_code == 200
-    assert "Page 2 of" in response.text
+        response = client.get("/ui/audit-log?page=2&per-page=10")
+        assert response.status_code == 200
+        assert "Page 2 of" in response.text
 
-    response = client.get("/ui/audit-log?page=999")
+        response = client.get("/ui/audit-log?page=999")
+        assert response.status_code == 200
+        assert "Page" in response.text
+    finally:
+        app.dependency_overrides.pop(ui.get_current_ui_user, None)
+
+
+def test_audit_log_page_requires_authentication(client) -> None:
+    """Unauthenticated users should be redirected to login page with return URL."""
+    response = client.get("/ui/audit-log", follow_redirects=False)
+    assert response.status_code == 303
+    assert response.headers["Location"] == "/ui/login?return_to=/ui/audit-log"
+
+
+def test_ip_asset_detail_page_requires_authentication(client) -> None:
+    """Unauthenticated users should be redirected to login page for IP asset detail."""
+    import os
+    from app import db, repository
+
+    connection = db.connect(os.environ["IPAM_DB_PATH"])
+    try:
+        db.init_db(connection)
+        asset = repository.create_ip_asset(connection, ip_address="10.50.0.99", asset_type=IPAssetType.VM)
+    finally:
+        connection.close()
+
+    response = client.get(f"/ui/ip-assets/{asset.id}", follow_redirects=False)
+    assert response.status_code == 303
+    assert response.headers["Location"] == f"/ui/login?return_to=/ui/ip-assets/{asset.id}"
+
+
+def test_login_preserves_return_url(client) -> None:
+    """Login page should preserve return_to parameter in the form."""
+    response = client.get("/ui/login?return_to=/ui/audit-log")
     assert response.status_code == 200
-    assert "Page" in response.text
+    assert 'name="return_to"' in response.text
+    assert 'value="/ui/audit-log"' in response.text
+
+
+def test_login_redirects_to_return_url_after_success(client) -> None:
+    """After successful login, user should be redirected to the return URL."""
+    import os
+    from app import db, repository
+    from app.auth import hash_password
+
+    connection = db.connect(os.environ["IPAM_DB_PATH"])
+    try:
+        db.init_db(connection)
+        repository.create_user(connection, "testuser", hash_password("testpass"), UserRole.VIEWER)
+    finally:
+        connection.close()
+
+    response = client.post(
+        "/ui/login",
+        data={"username": "testuser", "password": "testpass", "return_to": "/ui/audit-log"},
+        follow_redirects=False,
+    )
+    assert response.status_code == 303
+    assert response.headers["Location"] == "/ui/audit-log"
 
 
 def test_row_actions_panel_hidden_style_present() -> None:

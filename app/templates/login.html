@@ -14,6 +14,9 @@
     </div>
     {% endif %}
     <form method="post" action="/ui/login" class="login-form">
+      {% if return_to %}
+      <input type="hidden" name="return_to" value="{{ return_to }}" />
+      {% endif %}
       <label class="field">
         <span>Username</span>
         <input class="input" type="text" name="username" placeholder="Enter your username" required />

@@ -32,7 +32,7 @@ ipocket is a lightweight IP inventory app to track addresses and their project a
 - Upload Nmap XML from the Import page to discover reachable IPs and add them as `OTHER` assets, with inline example commands.
 - Prometheus metrics on `/metrics`
 - Prometheus SD endpoint on `/sd/node` with project grouping
-- Audit logging for IP asset create/update/delete actions, surfaced on the IP detail page and a global Audit Log view.
+- Audit logging for IP asset create/update/delete actions, surfaced on the IP detail page and a global Audit Log view (both require authentication).
 - Database schema managed through Alembic migrations
 
 ## Note
