@@ -7,6 +7,9 @@
     <h1>Hosts</h1>
     <p class="subtitle">Track physical hosts and linked OS/BMC addresses.</p>
   </div>
+  <div class="page-header-actions">
+    <button class="btn btn-primary" type="button" data-host-add>New Host</button>
+  </div>
 </section>
 
 {% if errors %}
@@ -38,60 +41,6 @@
       <div class="form-actions">
         <button class="btn btn-primary" type="submit">Apply</button>
         <a class="btn btn-secondary" href="/ui/hosts">Clear</a>
-      </div>
-    </form>
-  </details>
-</section>
-
-<section>
-  <details class="card compact-card collapsible-card host-add-card" id="add-host-card"{% if show_add_host %} open{% endif %}>
-    <summary class="card-header collapsible-summary">
-      <div>
-        <h2>Add Host</h2>
-        <p class="subtitle">Create a new host before assigning IP addresses.</p>
-      </div>
-      <span class="collapsible-indicator" aria-hidden="true">▸</span>
-    </summary>
-    <form class="form-grid form-grid-two" method="post" action="/ui/hosts">
-      <label class="field">
-        <span>Name</span>
-        <input class="input" type="text" name="name" value="{{ form_state.name }}" />
-      </label>
-      <label class="field">
-        <span>Vendor</span>
-        <select class="select" name="vendor_id">
-          <option value="">UNASSIGNED</option>
-          {% for vendor in vendors %}
-          <option value="{{ vendor.id }}"{% if form_state.vendor_id == (vendor.id|string) %} selected{% endif %}>{{ vendor.name }}</option>
-          {% endfor %}
-        </select>
-      </label>
-      <label class="field">
-        <span>OS IPs</span>
-        <input
-          class="input"
-          type="text"
-          name="os_ips"
-          value="{{ form_state.os_ips }}"
-          placeholder="10.0.0.10, 10.0.0.11"
-        />
-      </label>
-      <label class="field">
-        <span>BMC IPs</span>
-        <input
-          class="input"
-          type="text"
-          name="bmc_ips"
-          value="{{ form_state.bmc_ips }}"
-          placeholder="10.0.0.20, 10.0.0.21"
-        />
-      </label>
-      <label class="field field-span">
-        <span>Notes</span>
-        <textarea class="textarea" name="notes" rows="2">{{ form_state.notes }}</textarea>
-      </label>
-      <div class="form-actions field-span">
-        <button class="btn btn-primary" type="submit">Add Host</button>
       </div>
     </form>
   </details>
@@ -168,18 +117,18 @@
 </section>
 
 <div class="host-drawer-overlay" data-host-drawer-overlay aria-hidden="true"></div>
-<aside class="host-drawer" data-host-drawer role="dialog" aria-modal="true" aria-label="Edit Host">
+<aside class="host-drawer" data-host-drawer role="dialog" aria-modal="true" aria-label="Host drawer">
   <div class="host-drawer-header">
     <div class="host-drawer-header-row">
       <div>
-        <h2 class="host-drawer-title">Edit Host</h2>
+        <h2 class="host-drawer-title" data-host-drawer-title>Edit Host</h2>
         <p class="host-drawer-subtitle" data-host-drawer-subtitle>—</p>
       </div>
-      <button class="host-drawer-close" type="button" aria-label="Close edit drawer" data-host-drawer-close>
+      <button class="host-drawer-close" type="button" aria-label="Close drawer" data-host-drawer-close>
         ✕
       </button>
     </div>
-    <div class="host-drawer-meta">
+    <div class="host-drawer-meta" data-host-drawer-meta>
       <span class="host-drawer-pill" data-host-drawer-project>Project: Unassigned</span>
       <span class="host-drawer-pill host-drawer-pill-success" data-host-drawer-status>Status: Free</span>
     </div>
@@ -203,7 +152,7 @@
               {% endfor %}
             </select>
           </label>
-          <label class="field">
+          <label class="field" data-host-project-field>
             <span>Project</span>
             <select class="select" name="project_id" data-host-input="project_id" data-host-project-select>
               <option value="">Unassigned</option>
@@ -440,7 +389,10 @@
 (() => {
   const overlay = document.querySelector("[data-host-drawer-overlay]");
   const drawer = document.querySelector("[data-host-drawer]");
+  const drawerTitle = document.querySelector("[data-host-drawer-title]");
   const drawerSubtitle = document.querySelector("[data-host-drawer-subtitle]");
+  const drawerMeta = document.querySelector("[data-host-drawer-meta]");
+  const projectField = document.querySelector("[data-host-project-field]");
   const closeButton = document.querySelector("[data-host-drawer-close]");
   const cancelButton = document.querySelector("[data-host-drawer-cancel]");
   const saveButton = document.querySelector("[data-host-drawer-save]");
@@ -453,11 +405,13 @@
   const errorMessages = form ? form.querySelectorAll("[data-host-error]") : [];
   let initialValues = {};
   let isOpen = false;
+  let isAddMode = false;
 
   if (
     !overlay ||
     !drawer ||
     !form ||
+    !drawerTitle ||
     !drawerSubtitle ||
     !closeButton ||
     !cancelButton ||
@@ -538,17 +492,65 @@
     const dirty = isDirty();
     const valid = validate();
     saveButton.disabled = !(dirty && valid);
-    dirtyStatus.textContent = dirty ? "Unsaved changes" : "No changes";
+    if (isAddMode) {
+      dirtyStatus.textContent = dirty ? "Ready to create" : "Enter details";
+    } else {
+      dirtyStatus.textContent = dirty ? "Unsaved changes" : "No changes";
+    }
   };
 
-  const openDrawer = (hostData) => {
+  const openDrawerForAdd = () => {
+    isAddMode = true;
+    clearErrors();
+    inputs.forEach((input) => {
+      input.value = "";
+    });
+    form.action = "/ui/hosts";
+    drawerTitle.textContent = "Add Host";
+    drawerSubtitle.textContent = "Create a new host";
+    drawerMeta.style.display = "none";
+    if (projectField) {
+      projectField.style.display = "none";
+    }
+    const defaultOption = projectSelect.querySelector('option[value=""]');
+    if (defaultOption) {
+      defaultOption.textContent = "Unassigned";
+    }
+    projectSelect.value = "";
+    initialValues = {
+      name: "",
+      vendor_id: "",
+      project_id: "",
+      os_ips: "",
+      bmc_ips: "",
+      notes: "",
+    };
+    updateSaveState();
+    saveButton.textContent = "Create Host";
+    overlay.classList.add("is-open");
+    drawer.classList.add("is-open");
+    isOpen = true;
+    // Focus the name input
+    const nameInput = form.querySelector('[data-host-input="name"]');
+    if (nameInput) {
+      setTimeout(() => nameInput.focus(), 100);
+    }
+  };
+
+  const openDrawerForEdit = (hostData) => {
+    isAddMode = false;
     clearErrors();
     inputs.forEach((input) => {
       const key = input.dataset.hostInput;
       input.value = hostData[key] || "";
     });
     form.action = `/ui/hosts/${hostData.id}/edit`;
+    drawerTitle.textContent = "Edit Host";
     drawerSubtitle.textContent = hostData.name || "—";
+    drawerMeta.style.display = "flex";
+    if (projectField) {
+      projectField.style.display = "";
+    }
     projectPill.textContent = `Project: ${hostData.project_label || "Unassigned"}`;
     statusPill.textContent = `Status: ${hostData.status || "Free"}`;
     const defaultOption = projectSelect.querySelector('option[value=""]');
@@ -572,6 +574,7 @@
       notes: hostData.notes || "",
     };
     updateSaveState();
+    saveButton.textContent = "Save changes";
     overlay.classList.add("is-open");
     drawer.classList.add("is-open");
     isOpen = true;
@@ -581,6 +584,7 @@
     overlay.classList.remove("is-open");
     drawer.classList.remove("is-open");
     isOpen = false;
+    isAddMode = false;
   };
 
   const confirmClose = () => {
@@ -593,6 +597,14 @@
     }
   };
 
+  // Add Host button
+  document.querySelectorAll("[data-host-add]").forEach((button) => {
+    button.addEventListener("click", () => {
+      openDrawerForAdd();
+    });
+  });
+
+  // Edit buttons
   document.querySelectorAll("[data-host-edit]").forEach((button) => {
     button.addEventListener("click", () => {
       const hostData = {
@@ -614,7 +626,7 @@
         notes: button.dataset.hostNotes || "",
         status: button.dataset.hostStatus || "Free",
       };
-      openDrawer(hostData);
+      openDrawerForEdit(hostData);
     });
   });
 
