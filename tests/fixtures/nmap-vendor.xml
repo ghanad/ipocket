@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<nmaprun>
+  <host>
+    <status state="up" reason="arp-response" />
+    <address addr="192.168.10.10" addrtype="ipv4" />
+    <address addr="00:0C:29:39:64:B0" addrtype="mac" vendor="VMware" />
+  </host>
+  <host>
+    <status state="up" reason="arp-response" />
+    <address addr="192.168.10.11" addrtype="ipv4" />
+    <address addr="00:11:22:33:44:55" addrtype="mac" vendor="Dell" />
+  </host>
+</nmaprun>
