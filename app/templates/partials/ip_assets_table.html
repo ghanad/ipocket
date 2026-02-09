@@ -66,6 +66,26 @@
       No results to display.
       {% endif %}
     </div>
+    <div class="table-per-page">
+      <form method="get" action="/ui/ip-assets" class="per-page-form" hx-get="/ui/ip-assets" hx-trigger="submit" hx-target="#ip-table-container" hx-push-url="true">
+        <label class="field field-inline">
+          <span>Rows per page:</span>
+          <select
+            class="select select-small"
+            name="per-page"
+            hx-get="/ui/ip-assets"
+            hx-trigger="change"
+            hx-target="#ip-table-container"
+            hx-push-url="true"
+            hx-include="closest form"
+          >
+            {% for option in [10, 20, 50, 100] %}
+            <option value="{{ option }}"{% if pagination.per_page == option %} selected{% endif %}>{{ option }}</option>
+            {% endfor %}
+          </select>
+        </label>
+      </form>
+    </div>
     {% if pagination.total_pages > 1 %}
     <nav class="pagination" aria-label="IP assets pagination">
       <a
@@ -101,3 +121,21 @@
     {% endif %}
   </div>
 </section>
+<style>
+  .table-per-page {
+    display: flex;
+    align-items: center;
+  }
+  .per-page-form {
+    margin: 0;
+  }
+  .per-page-form .field {
+    margin: 0;
+    flex-direction: row;
+    align-items: center;
+  }
+  .per-page-form .field span {
+    font-size: 13px;
+    color: var(--color-muted-light, #64748b);
+  }
+</style>
