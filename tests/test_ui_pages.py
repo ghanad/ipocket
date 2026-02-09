@@ -873,6 +873,32 @@ def test_audit_log_page_lists_ip_entries(client) -> None:
     assert "CREATE" in response.text
 
 
+def test_audit_log_page_pagination(client) -> None:
+    import os
+    from app import db, repository
+
+    connection = db.connect(os.environ["IPAM_DB_PATH"])
+    try:
+        db.init_db(connection)
+        for i in range(25):
+            repository.create_ip_asset(connection, ip_address=f"10.45.0.{i}", asset_type=IPAssetType.VM)
+    finally:
+        connection.close()
+
+    response = client.get("/ui/audit-log?page=1&per-page=10")
+    assert response.status_code == 200
+    assert "Showing" in response.text
+    assert "Page 1 of" in response.text
+
+    response = client.get("/ui/audit-log?page=2&per-page=10")
+    assert response.status_code == 200
+    assert "Page 2 of" in response.text
+
+    response = client.get("/ui/audit-log?page=999")
+    assert response.status_code == 200
+    assert "Page" in response.text
+
+
 def test_row_actions_panel_hidden_style_present() -> None:
     css = Path("app/static/app.css").read_text(encoding="utf-8")
     assert ".row-actions-panel[hidden]" in css

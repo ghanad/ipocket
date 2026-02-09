@@ -151,6 +151,40 @@ def list_audit_logs(
     return [_row_to_audit_log(row) for row in rows]
 
 
+def count_audit_logs(
+    connection: sqlite3.Connection,
+    target_type: str = "IP_ASSET",
+) -> int:
+    row = connection.execute(
+        """
+        SELECT COUNT(*) AS count
+        FROM audit_logs
+        WHERE target_type = ?
+        """,
+        (target_type,),
+    ).fetchone()
+    return row["count"] if row else 0
+
+
+def list_audit_logs_paginated(
+    connection: sqlite3.Connection,
+    target_type: str = "IP_ASSET",
+    limit: int = 20,
+    offset: int = 0,
+) -> list[AuditLog]:
+    rows = connection.execute(
+        """
+        SELECT *
+        FROM audit_logs
+        WHERE target_type = ?
+        ORDER BY created_at DESC, id DESC
+        LIMIT ? OFFSET ?
+        """,
+        (target_type, limit, offset),
+    ).fetchall()
+    return [_row_to_audit_log(row) for row in rows]
+
+
 def _project_label(connection: sqlite3.Connection, project_id: Optional[int]) -> str:
     if project_id is None:
         return "Unassigned"
