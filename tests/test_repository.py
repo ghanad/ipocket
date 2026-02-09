@@ -6,6 +6,7 @@ from app.db import init_db
 from app.models import IPAssetType, UserRole
 from app.repository import (
     archive_ip_asset,
+    count_audit_logs,
     create_host,
     create_ip_asset,
     create_ip_range,
@@ -22,6 +23,7 @@ from app.repository import (
     delete_host,
     get_ip_asset_metrics,
     list_audit_logs,
+    list_audit_logs_paginated,
     list_hosts,
     list_hosts_with_ip_counts,
     list_host_pair_ips_for_hosts,
@@ -639,3 +641,52 @@ def test_list_audit_logs_returns_recent_ip_entries(tmp_path) -> None:
     assert logs[0].target_label == "10.10.20.2"
     assert logs[0].action == "CREATE"
     assert logs[1].target_label == "10.10.20.1"
+
+
+def test_count_audit_logs_returns_total(tmp_path) -> None:
+    connection = _setup_connection(tmp_path)
+    user = create_user(connection, username="auditor", hashed_password="x", role=UserRole.ADMIN)
+
+    initial_count = count_audit_logs(connection)
+    assert initial_count == 0
+
+    create_ip_asset(connection, ip_address="10.10.30.1", asset_type=IPAssetType.VM, current_user=user)
+    create_ip_asset(connection, ip_address="10.10.30.2", asset_type=IPAssetType.OS, current_user=user)
+
+    new_count = count_audit_logs(connection)
+    assert new_count == 2
+
+
+def test_list_audit_logs_paginated_returns_correct_page(tmp_path) -> None:
+    connection = _setup_connection(tmp_path)
+    user = create_user(connection, username="auditor", hashed_password="x", role=UserRole.ADMIN)
+
+    for i in range(5):
+        create_ip_asset(connection, ip_address=f"10.10.40.{i}", asset_type=IPAssetType.VM, current_user=user)
+
+    total = count_audit_logs(connection)
+    assert total == 5
+
+    first_page = list_audit_logs_paginated(connection, limit=2, offset=0)
+    assert len(first_page) == 2
+    assert first_page[0].target_label == "10.10.40.4"
+    assert first_page[1].target_label == "10.10.40.3"
+
+    second_page = list_audit_logs_paginated(connection, limit=2, offset=2)
+    assert len(second_page) == 2
+    assert second_page[0].target_label == "10.10.40.2"
+    assert second_page[1].target_label == "10.10.40.1"
+
+    third_page = list_audit_logs_paginated(connection, limit=2, offset=4)
+    assert len(third_page) == 1
+    assert third_page[0].target_label == "10.10.40.0"
+
+
+def test_list_audit_logs_paginated_empty_when_offset_exceeds_total(tmp_path) -> None:
+    connection = _setup_connection(tmp_path)
+    user = create_user(connection, username="auditor", hashed_password="x", role=UserRole.ADMIN)
+
+    create_ip_asset(connection, ip_address="10.10.50.1", asset_type=IPAssetType.VM, current_user=user)
+
+    logs = list_audit_logs_paginated(connection, limit=10, offset=100)
+    assert len(logs) == 0
