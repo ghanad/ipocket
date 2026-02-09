@@ -59,7 +59,7 @@ Dry-run runs validation and returns a summary without writing to the database. A
 
 ## CSV formats
 
-The CSV import expects the same columns as the CSV exports.
+The CSV import expects the same columns as the CSV exports, plus optional columns noted below.
 
 ### hosts.csv
 
@@ -68,6 +68,8 @@ Columns:
 - `name` (required)
 - `notes`
 - `vendor_name`
+- `os_ip` (optional OS IP to create an `OS` IP asset linked to the host)
+- `bmc_ip` (optional BMC IP to create a `BMC` IP asset linked to the host)
 
 ### ip-assets.csv
 
