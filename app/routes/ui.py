@@ -285,15 +285,25 @@ def get_current_ui_user(
     signed_session = request.cookies.get(SESSION_COOKIE)
     user_id = _verify_session_value(signed_session)
     if not user_id:
+        current_path = request.url.path
+        query = request.url.query
+        return_url = current_path
+        if query:
+            return_url = f"{current_path}?{query}"
         raise HTTPException(
             status_code=status.HTTP_303_SEE_OTHER,
-            headers={"Location": "/ui/login"},
+            headers={"Location": f"/ui/login?return_to={return_url}"},
         )
     user = repository.get_user_by_id(connection, int(user_id))
     if user is None or not user.is_active:
+        current_path = request.url.path
+        query = request.url.query
+        return_url = current_path
+        if query:
+            return_url = f"{current_path}?{query}"
         raise HTTPException(
             status_code=status.HTTP_303_SEE_OTHER,
-            headers={"Location": "/ui/login"},
+            headers={"Location": f"/ui/login?return_to={return_url}"},
         )
     return user
 
@@ -996,11 +1006,11 @@ def export_bundle_zip(
 
 
 @router.get("/ui/login", response_class=HTMLResponse)
-def ui_login_form(request: Request) -> HTMLResponse:
+def ui_login_form(request: Request, return_to: Optional[str] = None) -> HTMLResponse:
     return _render_template(
         request,
         "login.html",
-        {"title": "ipocket - Login", "error_message": ""},
+        {"title": "ipocket - Login", "error_message": "", "return_to": return_to or ""},
         show_nav=False,
     )
 
@@ -1012,6 +1022,7 @@ async def ui_login_submit(
     form_data = await _parse_form_data(request)
     username = (form_data.get("username") or "").strip()
     password = form_data.get("password") or ""
+    return_to = form_data.get("return_to") or "/ui/ip-assets"
 
     user = None
     if username:
@@ -1027,6 +1038,7 @@ async def ui_login_submit(
             {
                 "title": "ipocket - Login",
                 "error_message": "Invalid username or password.",
+                "return_to": return_to,
             },
             status_code=401,
             show_nav=False,
@@ -1034,7 +1046,7 @@ async def ui_login_submit(
 
     response = _redirect_with_flash(
         request,
-        "/ui/ip-assets",
+        return_to,
         "Login successful.",
         message_type="success",
         status_code=303,
@@ -2462,6 +2474,7 @@ def ui_audit_log(
     page: Optional[str] = None,
     per_page: Optional[str] = Query(default=None, alias="per-page"),
     connection=Depends(get_connection),
+    _user=Depends(get_current_ui_user),
 ):
     per_page_value = _parse_positive_int_query(per_page, 20)
     allowed_page_sizes = {10, 20, 50, 100}
@@ -2767,6 +2780,7 @@ def ui_ip_asset_detail(
     request: Request,
     asset_id: int,
     connection=Depends(get_connection),
+    _user=Depends(get_current_ui_user),
 ):
     asset = repository.get_ip_asset_by_id(connection, asset_id)
     if asset is None or asset.archived:
