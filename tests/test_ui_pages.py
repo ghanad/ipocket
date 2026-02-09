@@ -781,17 +781,21 @@ def test_hosts_list_uses_edit_drawer_actions(client) -> None:
     assert "Save changes" in response.text
 
 
-def test_hosts_add_form_above_table_and_compact(client) -> None:
+def test_hosts_add_uses_side_panel(client) -> None:
+    """Test that Add Host uses the side panel drawer instead of inline form."""
     response = client.get("/ui/hosts")
 
     assert response.status_code == 200
-    assert 'id="add-host-card"' in response.text
-    assert 'class="card compact-card collapsible-card host-add-card"' in response.text
-    add_card_index = response.text.find('id="add-host-card"')
-    table_index = response.text.find('class="card table-card"')
-    assert add_card_index != -1
-    assert table_index != -1
-    assert add_card_index < table_index
+    # Should have the "New Host" button in page header
+    assert "data-host-add" in response.text
+    assert "New Host" in response.text
+    # Should have the drawer that can be used for both Add and Edit
+    assert "data-host-drawer" in response.text
+    # Should have "Create Host" button text in the drawer (set by JS)
+    # The drawer title is dynamically set by JS, but the form action should be /ui/hosts for add
+    assert 'formaction="/ui/hosts"' in response.text or 'action="/ui/hosts"' in response.text
+    # Should NOT have the old inline add form
+    assert 'id="add-host-card"' not in response.text
 
 
 def test_hosts_list_search_trims_whitespace(client) -> None:
