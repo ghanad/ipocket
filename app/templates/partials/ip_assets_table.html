@@ -66,62 +66,69 @@
       No results to display.
       {% endif %}
     </div>
-    <div class="table-per-page">
-      <form method="get" action="/ui/ip-assets" class="per-page-form" hx-get="/ui/ip-assets" hx-trigger="submit" hx-target="#ip-table-container" hx-push-url="true">
-        <label class="field field-inline">
-          <span>Rows per page:</span>
-          <select
-            class="select select-small"
-            name="per-page"
-            hx-get="/ui/ip-assets"
-            hx-trigger="change"
-            hx-target="#ip-table-container"
-            hx-push-url="true"
-            hx-include="closest form"
-          >
-            {% for option in [10, 20, 50, 100] %}
-            <option value="{{ option }}"{% if pagination.per_page == option %} selected{% endif %}>{{ option }}</option>
-            {% endfor %}
-          </select>
-        </label>
-      </form>
+    <div class="table-footer-controls">
+      <div class="table-per-page">
+        <form method="get" action="/ui/ip-assets" class="per-page-form" hx-get="/ui/ip-assets" hx-trigger="submit" hx-target="#ip-table-container" hx-push-url="true">
+          <label class="field field-inline">
+            <span>Rows</span>
+            <select
+              class="select select-minimal"
+              name="per-page"
+              hx-get="/ui/ip-assets"
+              hx-trigger="change"
+              hx-target="#ip-table-container"
+              hx-push-url="true"
+              hx-include="closest form"
+            >
+              {% for option in [10, 20, 50, 100] %}
+              <option value="{{ option }}"{% if pagination.per_page == option %} selected{% endif %}>{{ option }}</option>
+              {% endfor %}
+            </select>
+          </label>
+        </form>
+      </div>
+      {% if pagination.total_pages > 1 %}
+      <nav class="pagination" aria-label="IP assets pagination">
+        <a
+          class="btn btn-secondary btn-small{% if not pagination.has_prev %} btn-disabled{% endif %}"
+          href="/ui/ip-assets?{{ pagination.base_query }}&page={{ pagination.page - 1 }}"
+          {% if pagination.has_prev %}
+          hx-get="/ui/ip-assets?{{ pagination.base_query }}&page={{ pagination.page - 1 }}"
+          hx-target="#ip-table-container"
+          hx-push-url="true"
+          {% else %}
+          aria-disabled="true"
+          tabindex="-1"
+          {% endif %}
+        >
+          Previous
+        </a>
+        <span class="pagination-status">Page {{ pagination.page }} of {{ pagination.total_pages }}</span>
+        <a
+          class="btn btn-secondary btn-small{% if not pagination.has_next %} btn-disabled{% endif %}"
+          href="/ui/ip-assets?{{ pagination.base_query }}&page={{ pagination.page + 1 }}"
+          {% if pagination.has_next %}
+          hx-get="/ui/ip-assets?{{ pagination.base_query }}&page={{ pagination.page + 1 }}"
+          hx-target="#ip-table-container"
+          hx-push-url="true"
+          {% else %}
+          aria-disabled="true"
+          tabindex="-1"
+          {% endif %}
+        >
+          Next
+        </a>
+      </nav>
+      {% endif %}
     </div>
-    {% if pagination.total_pages > 1 %}
-    <nav class="pagination" aria-label="IP assets pagination">
-      <a
-        class="btn btn-secondary btn-small{% if not pagination.has_prev %} btn-disabled{% endif %}"
-        href="/ui/ip-assets?{{ pagination.base_query }}&page={{ pagination.page - 1 }}"
-        {% if pagination.has_prev %}
-        hx-get="/ui/ip-assets?{{ pagination.base_query }}&page={{ pagination.page - 1 }}"
-        hx-target="#ip-table-container"
-        hx-push-url="true"
-        {% else %}
-        aria-disabled="true"
-        tabindex="-1"
-        {% endif %}
-      >
-        Previous
-      </a>
-      <span class="pagination-status">Page {{ pagination.page }} of {{ pagination.total_pages }}</span>
-      <a
-        class="btn btn-secondary btn-small{% if not pagination.has_next %} btn-disabled{% endif %}"
-        href="/ui/ip-assets?{{ pagination.base_query }}&page={{ pagination.page + 1 }}"
-        {% if pagination.has_next %}
-        hx-get="/ui/ip-assets?{{ pagination.base_query }}&page={{ pagination.page + 1 }}"
-        hx-target="#ip-table-container"
-        hx-push-url="true"
-        {% else %}
-        aria-disabled="true"
-        tabindex="-1"
-        {% endif %}
-      >
-        Next
-      </a>
-    </nav>
-    {% endif %}
   </div>
 </section>
 <style>
+  .table-footer-controls {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
   .table-per-page {
     display: flex;
     align-items: center;
@@ -133,9 +140,31 @@
     margin: 0;
     flex-direction: row;
     align-items: center;
+    gap: 6px;
   }
   .per-page-form .field span {
-    font-size: 13px;
+    font-size: 12px;
     color: var(--color-muted-light, #64748b);
+    font-weight: 400;
+  }
+  .select-minimal {
+    appearance: none;
+    background: transparent;
+    border: 1px solid #e2e8f0;
+    border-radius: 4px;
+    padding: 2px 20px 2px 6px;
+    font-size: 12px;
+    color: #64748b;
+    cursor: pointer;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 4px center;
+  }
+  .select-minimal:hover {
+    border-color: #cbd5e1;
+  }
+  .select-minimal:focus {
+    outline: none;
+    border-color: #94a3b8;
   }
 </style>
