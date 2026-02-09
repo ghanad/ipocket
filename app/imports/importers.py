@@ -134,9 +134,15 @@ class CsvImporter:
 
         hosts = _parse_hosts_csv(inputs["hosts"], "hosts.csv") if "hosts" in inputs else []
         ip_assets = _parse_ip_assets_csv(inputs["ip_assets"], "ip-assets.csv") if "ip_assets" in inputs else []
+        derived_assets = _derive_ip_assets_from_hosts(hosts)
         vendors = _derive_vendors_from_hosts(hosts)
-        projects = _derive_projects_from_ip_assets(ip_assets)
-        return ImportBundle(vendors=vendors, projects=projects, hosts=hosts, ip_assets=ip_assets)
+        projects = _derive_projects_from_ip_assets([*derived_assets, *ip_assets])
+        return ImportBundle(
+            vendors=vendors,
+            projects=projects,
+            hosts=hosts,
+            ip_assets=[*derived_assets, *ip_assets],
+        )
 
 
 def _parse_hosts_csv(data: bytes, filename: str) -> list[ImportHost]:
@@ -149,6 +155,9 @@ def _parse_hosts_csv(data: bytes, filename: str) -> list[ImportHost]:
                 name=str(row.get("name") or ""),
                 notes=_normalize_optional_str(row.get("notes")),
                 vendor_name=_normalize_optional_str(row.get("vendor_name")),
+                project_name=_normalize_optional_str(row.get("project_name")),
+                os_ip=_normalize_optional_str(row.get("os_ip")),
+                bmc_ip=_normalize_optional_str(row.get("bmc_ip")),
                 source=ImportSource(f"{filename}:line {line_number}"),
             )
         )
@@ -200,6 +209,50 @@ def _derive_projects_from_ip_assets(ip_assets: list[ImportIPAsset]) -> list[Impo
                 seen.add(asset.project_name)
                 projects.append(ImportProject(name=asset.project_name, source=asset.source))
     return projects
+
+
+def _derive_ip_assets_from_hosts(hosts: list[ImportHost]) -> list[ImportIPAsset]:
+    assets: list[ImportIPAsset] = []
+    for host in hosts:
+        host_name = host.name.strip()
+        if not host_name:
+            continue
+        assets.extend(_ip_assets_from_host(host, host_name))
+    return assets
+
+
+def _ip_assets_from_host(host: ImportHost, host_name: str) -> list[ImportIPAsset]:
+    assets: list[ImportIPAsset] = []
+    project_name = _normalize_optional_str(host.project_name)
+    os_ip = _normalize_optional_str(host.os_ip)
+    if os_ip:
+        assets.append(
+            ImportIPAsset(
+                ip_address=os_ip,
+                asset_type="OS",
+                project_name=project_name,
+                host_name=host_name,
+                source=_with_host_field(host.source, "os_ip"),
+            )
+        )
+    bmc_ip = _normalize_optional_str(host.bmc_ip)
+    if bmc_ip:
+        assets.append(
+            ImportIPAsset(
+                ip_address=bmc_ip,
+                asset_type="BMC",
+                project_name=project_name,
+                host_name=host_name,
+                source=_with_host_field(host.source, "bmc_ip"),
+            )
+        )
+    return assets
+
+
+def _with_host_field(source: Optional[ImportSource], field: str) -> Optional[ImportSource]:
+    if source is None:
+        return None
+    return ImportSource(location=f"{source.location}.{field}")
 
 
 def _normalize_optional_str(value: object) -> Optional[str]:

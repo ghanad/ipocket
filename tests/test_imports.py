@@ -213,6 +213,55 @@ def test_csv_dry_run_single_file_imports(client) -> None:
     assert assets_summary["hosts"]["would_create"] == 0
 
 
+def test_csv_import_hosts_with_os_bmc_ips(client) -> None:
+    test_client, db_path = client
+    _create_user(db_path, "viewer", "viewer-pass", UserRole.VIEWER)
+    _create_user(db_path, "editor", "editor-pass", UserRole.EDITOR)
+
+    hosts_csv = (
+        "name,notes,vendor_name,project_name,os_ip,bmc_ip\n"
+        "node-10,edge,Dell,Core,10.0.0.50,10.0.0.51\n"
+    )
+
+    viewer_token = _login(test_client, "viewer", "viewer-pass")
+    dry_run_response = test_client.post(
+        "/import/csv?dry_run=1",
+        headers=_auth_headers(viewer_token),
+        files={"hosts": ("hosts.csv", hosts_csv, "text/csv")},
+    )
+    assert dry_run_response.status_code == 200
+    summary = dry_run_response.json()["summary"]
+    assert summary["hosts"]["would_create"] == 1
+    assert summary["vendors"]["would_create"] == 1
+    assert summary["ip_assets"]["would_create"] == 2
+
+    editor_token = _login(test_client, "editor", "editor-pass")
+    apply_response = test_client.post(
+        "/import/csv",
+        headers=_auth_headers(editor_token),
+        files={"hosts": ("hosts.csv", hosts_csv, "text/csv")},
+    )
+    assert apply_response.status_code == 200
+
+    connection = db.connect(str(db_path))
+    try:
+        host = repository.get_host_by_name(connection, "node-10")
+        assert host is not None
+        os_asset = repository.get_ip_asset_by_ip(connection, "10.0.0.50")
+        bmc_asset = repository.get_ip_asset_by_ip(connection, "10.0.0.51")
+        assert os_asset is not None
+        assert bmc_asset is not None
+        assert os_asset.asset_type == IPAssetType.OS
+        assert bmc_asset.asset_type == IPAssetType.BMC
+        assert os_asset.project_id is not None
+        assert bmc_asset.project_id is not None
+        assert os_asset.project_id == bmc_asset.project_id
+        assert os_asset.host_id == host.id
+        assert bmc_asset.host_id == host.id
+    finally:
+        connection.close()
+
+
 def test_csv_ignores_empty_optional_file(client) -> None:
     test_client, db_path = client
     _create_user(db_path, "viewer", "viewer-pass", UserRole.VIEWER)
