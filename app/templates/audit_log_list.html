@@ -4,22 +4,6 @@
 <section class="page-header">
   <h1>Audit Log</h1>
 </section>
-<section class="card filter-card">
-  <form class="filters-grid" method="get" action="/ui/audit-log" id="audit-log-filters">
-    <label class="field">
-      <span>Per page</span>
-      <select
-        class="select"
-        name="per-page"
-        onchange="document.getElementById('audit-log-filters').submit()"
-      >
-        {% for option in [10, 20, 50, 100] %}
-        <option value="{{ option }}"{% if pagination.per_page == option %} selected{% endif %}>{{ option }}</option>
-        {% endfor %}
-      </select>
-    </label>
-  </form>
-</section>
 <section class="card table-card">
   {% if audit_logs %}
     <div class="table-wrapper">
@@ -54,6 +38,22 @@
         No results to display.
         {% endif %}
       </div>
+      <div class="table-per-page">
+        <form method="get" action="/ui/audit-log" class="per-page-form">
+          <label class="field field-inline">
+            <span>Rows per page:</span>
+            <select
+              class="select select-small"
+              name="per-page"
+              onchange="this.form.submit()"
+            >
+              {% for option in [10, 20, 50, 100] %}
+              <option value="{{ option }}"{% if pagination.per_page == option %} selected{% endif %}>{{ option }}</option>
+              {% endfor %}
+            </select>
+          </label>
+        </form>
+      </div>
       {% if pagination.total_pages > 1 %}
       <nav class="pagination" aria-label="Audit log pagination">
         <a
@@ -84,4 +84,22 @@
     <p>No audit history yet.</p>
   {% endif %}
 </section>
+<style>
+  .table-per-page {
+    display: flex;
+    align-items: center;
+  }
+  .per-page-form {
+    margin: 0;
+  }
+  .per-page-form .field {
+    margin: 0;
+    flex-direction: row;
+    align-items: center;
+  }
+  .per-page-form .field span {
+    font-size: 13px;
+    color: var(--color-muted-light, #64748b);
+  }
+</style>
 {% endblock %}
