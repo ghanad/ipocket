@@ -396,9 +396,8 @@ async def ui_range_quick_add_address(
             active_nav="ranges",
         )
 
-    ip_anchor = (ip_address or "").replace(".", "-").replace(":", "-")
     return RedirectResponse(
-        url=f"/ui/ranges/{range_id}/addresses#ip-{ip_anchor}",
+        url=f"/ui/ranges/{range_id}/addresses",
         status_code=303,
     )
 
@@ -480,8 +479,7 @@ async def ui_range_quick_edit_address(
         notes_provided=True,
     )
 
-    ip_anchor = asset.ip_address.replace(".", "-").replace(":", "-")
     return RedirectResponse(
-        url=f"/ui/ranges/{range_id}/addresses#ip-{ip_anchor}",
+        url=f"/ui/ranges/{range_id}/addresses",
         status_code=303,
     )
