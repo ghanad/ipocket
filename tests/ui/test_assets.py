@@ -133,14 +133,14 @@ def test_tags_page_renders_and_allows_edit_delete(client) -> None:
     assert f'action="/ui/tags/{tag.id}/edit"' in response.text
     assert f'action="/ui/tags/{tag.id}/delete"' in response.text
     assert 'data-tag-delete-form' in response.text
-    assert 'Delete tag "${tagName}"?' in response.text
+    assert '/static/js/tags.js' in response.text
     assert 'class="card table-card tags-existing-card"' in response.text
     assert 'data-row-actions' in response.text
     assert 'data-row-actions-toggle' in response.text
     assert 'data-row-actions-panel' in response.text
     assert 'class="row-actions-icon"' in response.text
     assert f'aria-controls="row-actions-tag-{tag.id}"' in response.text
-    assert "positionMenuPanel" in response.text
+    assert "row-actions-trigger" in response.text
 
 def test_ip_assets_list_uses_edit_drawer_actions_with_delete_dialog(client) -> None:
     import os
@@ -178,9 +178,11 @@ def test_ip_assets_list_uses_edit_drawer_actions_with_delete_dialog(client) -> N
     assert f'id="delete-ip-{asset.id}"' in response.text
     assert "Delete IP asset?" in response.text
     assert "Continue to delete" in response.text
+    assert "data-ip-add" in response.text
     assert "data-ip-drawer" in response.text
-    assert "Save changes" in response.text
-    assert "ipocket.ip-assets.scrollY" in response.text
+    assert "data-ip-drawer-title" in response.text
+    assert "Save" in response.text
+    assert "/static/js/ip-assets.js" in response.text
     assert "data-ip-host-field" in response.text
 
 def test_ip_assets_list_htmx_response_renders_table_partial(client) -> None:
@@ -407,7 +409,7 @@ def test_ip_assets_list_supports_multi_tag_filter_and_clickable_filter_chips(cli
     filtered_response = client.get("/ui/ip-assets", params=[("tag", "prod"), ("tag", "edge")])
 
     assert list_response.status_code == 200
-    assert 'name="tag"' in list_response.text
+    assert 'data-tag-filter-selected' in list_response.text
     assert 'data-tag-filter-input' in list_response.text
     assert 'tag-filter-suggestions' in list_response.text
     assert '<span>Tags</span>' in list_response.text

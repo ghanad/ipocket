@@ -3,6 +3,7 @@
     const SCROLL_KEY = 'ipocket.ip-assets.scrollY';
     const overlay = document.querySelector('[data-ip-drawer-overlay]');
     const drawer = document.querySelector('[data-ip-drawer]');
+    const drawerTitle = document.querySelector('[data-ip-drawer-title]');
     const drawerSubtitle = document.querySelector('[data-ip-drawer-subtitle]');
     const closeButton = document.querySelector('[data-ip-drawer-close]');
     const cancelButton = document.querySelector('[data-ip-drawer-cancel]');
@@ -20,9 +21,11 @@
     const tagFilterInput = filterForm ? filterForm.querySelector('[data-tag-filter-input]') : null;
     const tagFilterSelected = filterForm ? filterForm.querySelector('[data-tag-filter-selected]') : null;
     const hostField = form ? form.querySelector('[data-ip-host-field]') : null;
+    const ipAddressInput = form ? form.querySelector('[data-ip-input="ip_address"]') : null;
     let initialValues = {};
     let currentAsset = null;
     let isOpen = false;
+    let isAddMode = false;
 
     const shouldShowHostField = (typeValue) => ['OS', 'BMC'].includes((typeValue || '').toUpperCase());
     const shouldShowAutoHost = (typeValue, hostValue) =>
@@ -69,19 +72,31 @@
         return (input.value || '').trim() !== (initialValues[key] || '');
       });
       saveButton.disabled = !dirty;
+      if (isAddMode) {
+        dirtyStatus.textContent = dirty ? 'Ready to create' : 'Enter details';
+        return;
+      }
       dirtyStatus.textContent = dirty ? 'Unsaved changes' : 'No changes';
     };
 
     const openDrawer = (assetData) => {
-      if (!overlay || !drawer || !form || !drawerSubtitle || !projectPill || !hostPill) {
+      if (!overlay || !drawer || !form || !drawerSubtitle || !projectPill || !hostPill || !drawerTitle) {
         return;
       }
+      isAddMode = false;
       currentAsset = assetData;
       inputs.forEach((input) => {
         const key = input.dataset.ipInput;
         input.value = assetData[key] || '';
       });
       form.action = `/ui/ip-assets/${assetData.id}/edit`;
+      if (ipAddressInput) {
+        ipAddressInput.readOnly = true;
+      }
+      if (saveButton) {
+        saveButton.textContent = 'Save changes';
+      }
+      drawerTitle.textContent = 'Edit IP asset';
       drawerSubtitle.textContent = assetData.ip_address || '—';
       projectPill.textContent = `Project: ${assetData.project_label || 'Unassigned'}`;
       hostPill.textContent = `Host: ${assetData.host_label || '—'}`;
@@ -109,6 +124,55 @@
       }
     };
 
+    const openDrawerForAdd = () => {
+      if (!overlay || !drawer || !form || !drawerSubtitle || !projectPill || !hostPill || !drawerTitle) {
+        return;
+      }
+      isAddMode = true;
+      currentAsset = null;
+      inputs.forEach((input) => {
+        const key = input.dataset.ipInput;
+        if (key === 'type') {
+          input.value = 'VM';
+          return;
+        }
+        input.value = '';
+      });
+      if (ipAddressInput) {
+        ipAddressInput.readOnly = false;
+      }
+      form.action = '/ui/ip-assets/new';
+      drawerTitle.textContent = 'Add IP asset';
+      drawerSubtitle.textContent = 'Create a new IP assignment';
+      projectPill.textContent = 'Project: Unassigned';
+      hostPill.textContent = 'Host: —';
+      if (saveButton) {
+        saveButton.textContent = 'Create IP';
+      }
+      initialValues = {
+        ip_address: '',
+        type: 'VM',
+        project_id: '',
+        host_id: '',
+        tags: '',
+        notes: '',
+      };
+      updateHostVisibility();
+      updateSaveState();
+      overlay.classList.add('is-open');
+      drawer.classList.add('is-open');
+      isOpen = true;
+      if (autoHostName) {
+        autoHostName.textContent = 'server_IP';
+      }
+      if (autoHostStatus) {
+        autoHostStatus.textContent = '';
+      }
+      if (ipAddressInput) {
+        setTimeout(() => ipAddressInput.focus(), 100);
+      }
+    };
+
     const closeDrawer = () => {
       if (!overlay || !drawer) {
         return;
@@ -116,6 +180,7 @@
       overlay.classList.remove('is-open');
       drawer.classList.remove('is-open');
       isOpen = false;
+      isAddMode = false;
     };
 
     const confirmClose = () => {
@@ -152,6 +217,19 @@
             tags: button.dataset.ipTags || '',
           };
           openDrawer(assetData);
+        });
+      });
+    };
+
+    const bindAddButtons = (root = document) => {
+      const addButtons = root.querySelectorAll('[data-ip-add]');
+      addButtons.forEach((button) => {
+        if (button.dataset.ipAddBound) {
+          return;
+        }
+        button.dataset.ipAddBound = 'true';
+        button.addEventListener('click', () => {
+          openDrawerForAdd();
         });
       });
     };
@@ -405,6 +483,9 @@
       });
       inputs.forEach((input) => {
         input.addEventListener('input', () => {
+          if (input.dataset.ipInput === 'ip_address' && autoHostName) {
+            autoHostName.textContent = `server_${input.value.trim() || 'IP'}`;
+          }
           if (input.dataset.ipInput === 'type') {
             updateHostVisibility();
           }
@@ -446,6 +527,7 @@
           bindEditButtons(event.target);
           bindDeleteDialogs(event.target);
           bindBulkEdit(event.target);
+          bindAddButtons();
         }
       });
       document.body.addEventListener('click', (event) => {
@@ -467,6 +549,7 @@
     }
 
     bindEditButtons();
+    bindAddButtons();
     bindDeleteDialogs();
     bindBulkEdit();
   })();
