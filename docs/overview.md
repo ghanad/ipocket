@@ -58,3 +58,5 @@ Hosts can be linked to a vendor from the shared **Vendors** catalog.
 ## Vendors
 
 Vendors are managed as a dedicated list (create/edit) and are selectable when creating or editing Hosts (API and UI).
+
+- UI route handlers are now organized as a modular package under `app/routes/ui/` (`auth.py`, `dashboard.py`, `ip_assets.py`, `hosts.py`, `ranges.py`, `settings.py`, `data_ops.py`) with shared helpers in `utils.py` and a single aggregated `router` exported from `app/routes/ui/__init__.py`.
