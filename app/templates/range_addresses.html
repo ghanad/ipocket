@@ -51,6 +51,40 @@
         hx-include="closest form"
       />
     </label>
+    <label class="field">
+      <span>Project</span>
+      <select
+        class="select"
+        name="project_id"
+        hx-get="/ui/ranges/{{ ip_range.id }}/addresses"
+        hx-trigger="change"
+        hx-target="#range-addresses-table-container"
+        hx-push-url="true"
+        hx-include="closest form"
+      >
+        <option value="">All</option>
+        {% for project in projects %}
+        <option value="{{ project.id }}"{% if filters.project_id == project.id %} selected{% endif %}>{{ project.name }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <label class="field">
+      <span>Type</span>
+      <select
+        class="select"
+        name="type"
+        hx-get="/ui/ranges/{{ ip_range.id }}/addresses"
+        hx-trigger="change"
+        hx-target="#range-addresses-table-container"
+        hx-push-url="true"
+        hx-include="closest form"
+      >
+        <option value="">All</option>
+        {% for item_type in types %}
+        <option value="{{ item_type }}"{% if filters.type == item_type %} selected{% endif %}>{{ item_type }}</option>
+        {% endfor %}
+      </select>
+    </label>
   </form>
 </section>
 

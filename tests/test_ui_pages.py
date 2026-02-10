@@ -198,6 +198,72 @@ def test_range_addresses_page_search_with_htmx_returns_partial(client) -> None:
     assert "Range details" not in response.text
 
 
+def test_range_addresses_page_filters_by_project_and_type_together(client) -> None:
+    import os
+    from app import db, repository
+
+    connection = db.connect(os.environ["IPAM_DB_PATH"])
+    try:
+        db.init_db(connection)
+        ip_range = repository.create_ip_range(connection, name="Filter Range", cidr="10.43.0.0/29")
+        core = repository.create_project(connection, name="Core")
+        edge = repository.create_project(connection, name="Edge")
+        repository.create_ip_asset(
+            connection,
+            ip_address="10.43.0.2",
+            asset_type=IPAssetType.OS,
+            project_id=core.id,
+        )
+        repository.create_ip_asset(
+            connection,
+            ip_address="10.43.0.3",
+            asset_type=IPAssetType.BMC,
+            project_id=core.id,
+        )
+        repository.create_ip_asset(
+            connection,
+            ip_address="10.43.0.4",
+            asset_type=IPAssetType.OS,
+            project_id=edge.id,
+        )
+    finally:
+        connection.close()
+
+    response = client.get(f"/ui/ranges/{ip_range.id}/addresses?project_id={core.id}&type=OS")
+
+    assert response.status_code == 200
+    assert "10.43.0.2" in response.text
+    assert "10.43.0.3" not in response.text
+    assert "10.43.0.4" not in response.text
+
+
+def test_range_addresses_page_renders_project_and_type_filters(client) -> None:
+    import os
+    from app import db, repository
+
+    connection = db.connect(os.environ["IPAM_DB_PATH"])
+    try:
+        db.init_db(connection)
+        ip_range = repository.create_ip_range(connection, name="Filter Range", cidr="10.44.0.0/29")
+        project = repository.create_project(connection, name="Core")
+        repository.create_ip_asset(
+            connection,
+            ip_address="10.44.0.2",
+            asset_type=IPAssetType.OS,
+            project_id=project.id,
+        )
+    finally:
+        connection.close()
+
+    response = client.get(f"/ui/ranges/{ip_range.id}/addresses?project_id={project.id}&type=OS")
+
+    assert response.status_code == 200
+    assert 'name="project_id"' in response.text
+    assert 'name="type"' in response.text
+    assert f'<option value="{project.id}" selected>' in response.text
+    assert '<option value="OS" selected>' in response.text
+
+
 def test_range_addresses_quick_add_creates_asset(client) -> None:
     import os
     from app import db, repository
