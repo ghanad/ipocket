@@ -37,6 +37,7 @@ def test_refactored_templates_load_external_page_assets() -> None:
         "audit_log": repo_root / "app/templates/audit_log_list.html",
     }
 
+    assert '<script src="/static/js/drawer.js" defer></script>' in templates["hosts"].read_text(encoding="utf-8")
     assert '<script src="/static/js/hosts.js" defer></script>' in templates["hosts"].read_text(encoding="utf-8")
     assert "<style>" not in templates["hosts"].read_text(encoding="utf-8")
     assert "<script>" not in templates["hosts"].read_text(encoding="utf-8")
@@ -53,6 +54,8 @@ def test_refactored_templates_load_external_page_assets() -> None:
 
     assert "<style>" not in templates["audit_log"].read_text(encoding="utf-8")
 
+    assert (repo_root / "app/static/js/drawer.js").exists()
+    assert (repo_root / "app/static/js/ranges.js").exists()
     assert (repo_root / "app/static/js/hosts.js").exists()
     assert (repo_root / "app/static/js/ip-assets.js").exists()
     assert (repo_root / "app/static/js/range-addresses.js").exists()
