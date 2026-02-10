@@ -8,7 +8,17 @@
   const closeButton = document.querySelector("[data-host-drawer-close]");
   const cancelButton = document.querySelector("[data-host-drawer-cancel]");
   const saveButton = document.querySelector("[data-host-drawer-save]");
+  const deleteButton = document.querySelector("[data-host-drawer-delete]");
   const form = document.querySelector("[data-host-edit-form]");
+  const deleteForm = document.querySelector("[data-host-delete-form]");
+  const deleteReturnTo = document.querySelector("[data-host-delete-return-to]");
+  const deleteName = document.querySelector("[data-host-delete-name]");
+  const deleteVendor = document.querySelector("[data-host-delete-vendor]");
+  const deleteProject = document.querySelector("[data-host-delete-project]");
+  const deleteLinkedCount = document.querySelector("[data-host-delete-linked-count]");
+  const deleteAck = document.querySelector("[data-host-delete-ack]");
+  const deleteConfirmInput = document.querySelector("[data-host-delete-confirm-input]");
+  const deleteError = document.querySelector("[data-host-delete-error]");
   const projectPill = document.querySelector("[data-host-drawer-project]");
   const statusPill = document.querySelector("[data-host-drawer-status]");
   const projectSelect = document.querySelector("[data-host-project-select]");
@@ -16,7 +26,9 @@
   const inputs = form ? form.querySelectorAll("[data-host-input]") : [];
   const errorMessages = form ? form.querySelectorAll("[data-host-error]") : [];
   let initialValues = {};
+  let currentHost = null;
   let isAddMode = false;
+  let isDeleteMode = false;
   const drawerController = window.ipocketCreateDrawerController
     ? window.ipocketCreateDrawerController({
       overlay,
@@ -39,6 +51,7 @@
     !closeButton ||
     !cancelButton ||
     !saveButton ||
+    !deleteButton ||
     !projectPill ||
     !statusPill ||
     !projectSelect ||
@@ -46,6 +59,23 @@
   ) {
     return;
   }
+
+  const setDrawerMode = (mode) => {
+    const normalizedMode = mode === "delete" ? "delete" : "edit";
+    isDeleteMode = normalizedMode === "delete";
+    drawer.dataset.hostDrawerMode = normalizedMode;
+    drawer.setAttribute("aria-label", normalizedMode === "delete" ? "Delete host" : "Host drawer");
+    form.hidden = isDeleteMode;
+    form.style.display = isDeleteMode ? "none" : "flex";
+    if (deleteForm) {
+      deleteForm.hidden = !isDeleteMode;
+      deleteForm.style.display = isDeleteMode ? "flex" : "none";
+    }
+    saveButton.hidden = isDeleteMode;
+    saveButton.style.display = isDeleteMode ? "none" : "";
+    deleteButton.hidden = !isDeleteMode;
+    deleteButton.style.display = isDeleteMode ? "" : "none";
+  };
 
   const isValidIPv4 = (value) => {
     if (!value) return true;
@@ -122,8 +152,19 @@
     }
   };
 
+  const updateDeleteState = () => {
+    if (!deleteButton || !deleteAck || !deleteConfirmInput || !currentHost) {
+      return;
+    }
+    const hasAck = Boolean(deleteAck.checked);
+    const hasExactName = deleteConfirmInput.value.trim() === (currentHost.name || "");
+    deleteButton.disabled = !(hasAck && hasExactName);
+  };
+
   const openDrawerForAdd = () => {
+    setDrawerMode("edit");
     isAddMode = true;
+    currentHost = null;
     clearErrors();
     inputs.forEach((input) => {
       input.value = "";
@@ -159,7 +200,9 @@
   };
 
   const openDrawerForEdit = (hostData) => {
+    setDrawerMode("edit");
     isAddMode = false;
+    currentHost = hostData;
     clearErrors();
     inputs.forEach((input) => {
       const key = input.dataset.hostInput;
@@ -199,6 +242,46 @@
     drawerController?.open();
   };
 
+  const openDrawerForDelete = (hostData) => {
+    if (!deleteForm || !deleteButton) {
+      return;
+    }
+    setDrawerMode("delete");
+    isAddMode = false;
+    currentHost = hostData;
+    drawerTitle.textContent = "Delete Host?";
+    drawerSubtitle.textContent = "Permanent and cannot be undone.";
+    drawerMeta.style.display = "none";
+    if (deleteName) {
+      deleteName.textContent = hostData.name || "—";
+    }
+    if (deleteVendor) {
+      deleteVendor.textContent = hostData.vendor || "Unassigned";
+    }
+    if (deleteProject) {
+      deleteProject.textContent = hostData.project_label || "Unassigned";
+    }
+    if (deleteLinkedCount) {
+      deleteLinkedCount.textContent = String(hostData.linked_count || 0);
+    }
+    if (deleteAck) {
+      deleteAck.checked = false;
+    }
+    if (deleteConfirmInput) {
+      deleteConfirmInput.value = "";
+    }
+    if (deleteError) {
+      deleteError.textContent = "";
+    }
+    deleteForm.action = `/ui/hosts/${hostData.id}/delete`;
+    if (deleteReturnTo) {
+      deleteReturnTo.value = window.location.pathname + window.location.search;
+    }
+    dirtyStatus.textContent = "Confirm deletion";
+    updateDeleteState();
+    drawerController?.open();
+  };
+
   // Add Host button
   document.querySelectorAll("[data-host-add]").forEach((button) => {
     button.addEventListener("click", () => {
@@ -232,6 +315,23 @@
     });
   });
 
+  document.querySelectorAll("[data-host-delete]").forEach((button) => {
+    button.addEventListener("click", () => {
+      const count = Number.parseInt(button.dataset.hostLinkedCount || "0", 10);
+      const projectLabel = (() => {
+        const projectName = button.dataset.hostProjectName || "";
+        return projectName.trim() || "Unassigned";
+      })();
+      openDrawerForDelete({
+        id: button.dataset.hostDelete,
+        name: button.dataset.hostName || "",
+        vendor: button.dataset.hostVendor || "",
+        linked_count: Number.isNaN(count) ? 0 : count,
+        project_label: projectLabel,
+      });
+    });
+  });
+
   const handleClose = () => {
     if (!drawerController) {
       return;
@@ -239,6 +339,7 @@
     drawerController.requestClose();
     if (!drawerController.isOpen()) {
       isAddMode = false;
+      setDrawerMode("edit");
     }
   };
 
@@ -259,9 +360,48 @@
   });
 
   form.addEventListener("submit", (event) => {
+    if (isDeleteMode) {
+      return;
+    }
     if (!validate()) {
       event.preventDefault();
       updateSaveState();
     }
   });
+
+  if (deleteAck) {
+    deleteAck.addEventListener("change", updateDeleteState);
+  }
+  if (deleteConfirmInput) {
+    deleteConfirmInput.addEventListener("input", updateDeleteState);
+  }
+  if (deleteForm) {
+    deleteForm.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      if (deleteError) {
+        deleteError.textContent = "";
+      }
+      deleteButton.disabled = true;
+      try {
+        const response = await fetch(deleteForm.action, {
+          method: "POST",
+          headers: {
+            Accept: "application/json",
+          },
+          body: new FormData(deleteForm),
+        });
+        const payload = await response.json();
+        if (!response.ok) {
+          throw new Error(payload.error || "Delete failed.");
+        }
+        window.location.reload();
+      } catch (error) {
+        if (deleteError) {
+          deleteError.textContent = error.message;
+        }
+      } finally {
+        updateDeleteState();
+      }
+    });
+  }
 })();

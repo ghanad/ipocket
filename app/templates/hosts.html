@@ -103,7 +103,17 @@
               >
                 Edit
               </button>
-              <a class="btn btn-danger btn-small" href="/ui/hosts/{{ host.id }}/delete">Delete</a>
+              <button
+                class="btn btn-danger btn-small"
+                type="button"
+                data-host-delete="{{ host.id }}"
+                data-host-name="{{ host.name }}"
+                data-host-vendor="{{ host.vendor or '' }}"
+                data-host-linked-count="{{ host.ip_count }}"
+                data-host-project-name="{{ host.project_name or '' }}"
+              >
+                Delete
+              </button>
             </div>
           </td>
         </tr>
@@ -191,7 +201,7 @@
     </div>
   </div>
   <div class="host-drawer-body">
-    <form class="host-drawer-form" method="post" data-host-edit-form id="host-edit-form">
+    <form class="host-drawer-form" method="post" data-host-edit-form data-host-mode-panel="edit" id="host-edit-form">
       <section class="host-drawer-section">
         <h3>Basic</h3>
         <label class="field">
@@ -244,12 +254,36 @@
         </label>
       </section>
     </form>
+
+    <form class="host-drawer-form host-drawer-delete-form" method="post" data-host-delete-form data-host-mode-panel="delete" id="host-delete-form" hidden>
+      <input type="hidden" name="return_to" value="/ui/hosts" data-host-delete-return-to>
+      <section class="host-drawer-section">
+        <h3 class="host-drawer-delete-heading">Delete Host?</h3>
+        <p class="host-drawer-delete-warning">Permanent and cannot be undone.</p>
+        <dl class="host-drawer-delete-details">
+          <div><dt>Name</dt><dd class="mono" data-host-delete-name>—</dd></div>
+          <div><dt>Vendor</dt><dd data-host-delete-vendor>—</dd></div>
+          <div><dt>Project</dt><dd data-host-delete-project>Unassigned</dd></div>
+          <div><dt>Linked IPs</dt><dd data-host-delete-linked-count>0</dd></div>
+        </dl>
+        <label class="field field-inline">
+          <input class="checkbox" type="checkbox" name="confirm_delete_ack" data-host-delete-ack>
+          <span>I understand this cannot be undone</span>
+        </label>
+        <label class="field">
+          <span>Type the exact host name to confirm</span>
+          <input class="input" type="text" name="confirm_name" data-host-delete-confirm-input autocomplete="off" />
+        </label>
+        <p class="host-drawer-help host-drawer-help-error" data-host-delete-error></p>
+      </section>
+    </form>
   </div>
   <div class="host-drawer-footer">
     <span class="host-drawer-footer-status" data-host-drawer-dirty>No changes</span>
     <div class="host-drawer-footer-actions">
       <button class="btn btn-secondary" type="button" data-host-drawer-cancel>Cancel</button>
-      <button class="btn btn-primary" type="submit" form="host-edit-form" data-host-drawer-save disabled>Save changes</button>
+      <button class="btn btn-primary" type="submit" form="host-edit-form" data-host-drawer-save data-host-mode-action="edit" disabled>Save changes</button>
+      <button class="btn btn-danger" type="submit" form="host-delete-form" data-host-drawer-delete data-host-mode-action="delete" hidden disabled>Delete permanently</button>
     </div>
   </div>
 </aside>

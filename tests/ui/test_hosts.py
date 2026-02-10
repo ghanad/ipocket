@@ -38,7 +38,7 @@ def test_hosts_page_renders_edit_drawer_and_actions(client) -> None:
     assert 'data-host-edit="' in response.text
     assert "Edit Host" in response.text
     assert "Save changes" in response.text
-    assert f'/ui/hosts/{host.id}/delete' in response.text
+    assert f'data-host-delete="{host.id}"' in response.text
     assert "host-edit-row-" not in response.text
 
 def test_hosts_list_renders_project_color_tag(client) -> None:
@@ -85,7 +85,7 @@ def test_hosts_list_uses_edit_drawer_actions(client) -> None:
     assert f'data-host-name="{host.name}"' in response.text
     assert 'data-host-project-count="0"' in response.text
     assert 'name="project_id"' in response.text
-    assert f'/ui/hosts/{host.id}/delete' in response.text
+    assert f'data-host-delete="{host.id}"' in response.text
     assert "data-host-drawer" in response.text
     assert "Save changes" in response.text
 
@@ -388,7 +388,29 @@ def test_ui_edit_host_requires_name(client) -> None:
     assert response.status_code == 400
     assert "Host name is required." in response.text
 
-def test_ui_delete_host_requires_confirmation_text(client) -> None:
+def test_hosts_list_uses_drawer_actions_for_edit_and_delete(client) -> None:
+    import os
+    from app import db, repository
+
+    connection = db.connect(os.environ["IPAM_DB_PATH"])
+    try:
+        db.init_db(connection)
+        host = repository.create_host(connection, name="drawer-delete-01", notes="rack-2")
+    finally:
+        connection.close()
+
+    response = client.get("/ui/hosts")
+
+    assert response.status_code == 200
+    assert f'data-host-edit="{host.id}"' in response.text
+    assert f'data-host-delete="{host.id}"' in response.text
+    assert 'data-host-delete-form' in response.text
+    assert 'data-host-mode-panel="delete"' in response.text
+    assert 'data-host-mode-action="delete"' in response.text
+    assert 'Delete permanently' in response.text
+
+
+def test_ui_delete_host_requires_acknowledgement_and_confirmation_text(client) -> None:
     import os
     from app import db, repository
 
@@ -401,18 +423,18 @@ def test_ui_delete_host_requires_confirmation_text(client) -> None:
 
     app.dependency_overrides[ui.require_ui_editor] = lambda: User(1, "editor", "x", UserRole.EDITOR, True)
     try:
-        form_response = client.get(f"/ui/hosts/{host.id}/delete")
         response = client.post(
             f"/ui/hosts/{host.id}/delete",
-            data={"confirm_name": "wrong-name"},
+            headers={"Accept": "application/json"},
+            data={"confirm_name": "wrong-name", "confirm_delete_ack": ""},
             follow_redirects=False,
         )
     finally:
         app.dependency_overrides.pop(ui.require_ui_editor, None)
 
-    assert form_response.status_code == 200
     assert response.status_code == 400
-    assert "برای حذف کامل" in response.text
+    assert response.json()["error"] == "Confirm that this delete cannot be undone."
+
 
 def test_ui_delete_host_with_confirmation_text(client) -> None:
     import os
@@ -429,13 +451,15 @@ def test_ui_delete_host_with_confirmation_text(client) -> None:
     try:
         response = client.post(
             f"/ui/hosts/{host.id}/delete",
-            data={"confirm_name": "node-delete-02"},
+            headers={"Accept": "application/json"},
+            data={"confirm_name": "node-delete-02", "confirm_delete_ack": "on"},
             follow_redirects=False,
         )
     finally:
         app.dependency_overrides.pop(ui.require_ui_editor, None)
 
-    assert response.status_code == 303
+    assert response.status_code == 200
+    assert response.json()["message"] == "Deleted node-delete-02."
 
     connection = db.connect(os.environ["IPAM_DB_PATH"])
     try:
@@ -444,6 +468,7 @@ def test_ui_delete_host_with_confirmation_text(client) -> None:
         connection.close()
 
     assert deleted is None
+
 
 def test_ui_delete_host_rejects_when_linked_ips_exist(client) -> None:
     import os
@@ -461,14 +486,15 @@ def test_ui_delete_host_rejects_when_linked_ips_exist(client) -> None:
     try:
         response = client.post(
             f"/ui/hosts/{host.id}/delete",
-            data={"confirm_name": "node-delete-03"},
+            headers={"Accept": "application/json"},
+            data={"confirm_name": "node-delete-03", "confirm_delete_ack": "on"},
             follow_redirects=False,
         )
     finally:
         app.dependency_overrides.pop(ui.require_ui_editor, None)
 
     assert response.status_code == 409
-    assert "قابل حذف نیست" in response.text
+    assert response.json()["error"] == "این Host هنوز IP لینک‌شده دارد و قابل حذف نیست."
 
 def test_ui_create_host_links_existing_ips(client) -> None:
     """Test that creating a host with existing IPs links them instead of throwing an error."""

@@ -1303,6 +1303,43 @@ p {
     min-height: 16px;
   }
 
+  .host-drawer-delete-heading {
+    color: var(--color-danger-dark);
+  }
+
+  .host-drawer-delete-warning {
+    margin: 0 0 12px;
+    color: var(--color-danger-dark);
+    font-size: 13px;
+  }
+
+  .host-drawer-delete-details {
+    margin: 0;
+    display: grid;
+    gap: 8px;
+    padding: 0;
+  }
+
+  .host-drawer-delete-details div {
+    display: grid;
+    grid-template-columns: 110px 1fr;
+    gap: 8px;
+    align-items: baseline;
+  }
+
+  .host-drawer-delete-details dt {
+    color: var(--color-muted);
+  }
+
+  .host-drawer-delete-details dd {
+    margin: 0;
+  }
+
+  .host-drawer-help-error {
+    color: var(--color-danger);
+    min-height: 16px;
+  }
+
   @media (max-width: 600px) {
     .host-drawer-row-two {
       grid-template-columns: 1fr;

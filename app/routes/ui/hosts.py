@@ -7,7 +7,7 @@ from typing import Optional
 from urllib.parse import urlencode
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
-from fastapi.responses import HTMLResponse, RedirectResponse, Response
+from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse, Response
 
 from app import repository
 from app.dependencies import get_connection
@@ -449,8 +449,21 @@ async def ui_delete_host(
     linked_count = len(linked["os"]) + len(linked["bmc"]) + len(linked["other"])
 
     form_data = await _parse_form_data(request)
+    return_to = str(form_data.get("return_to") or "/ui/hosts").strip()
     confirm_name = (form_data.get("confirm_name") or "").strip()
+    confirmation_ack_raw = str(form_data.get("confirm_delete_ack") or "").strip().lower()
+    confirmation_ack = bool(confirmation_ack_raw and confirmation_ack_raw not in {"0", "false", "off", "no"})
+    wants_json = "application/json" in (request.headers.get("accept") or "")
+
+    errors: list[str] = []
+    if not confirmation_ack:
+        errors.append("Confirm that this delete cannot be undone.")
     if confirm_name != host.name:
+        errors.append("برای حذف کامل، نام Host را دقیقاً وارد کنید.")
+
+    if errors:
+        if wants_json:
+            return JSONResponse({"error": errors[0]}, status_code=400)
         return _render_template(
             request,
             "host_delete_confirm.html",
@@ -458,7 +471,7 @@ async def ui_delete_host(
                 "title": "ipocket - Confirm Host Delete",
                 "host": host,
                 "linked_count": linked_count,
-                "errors": ["برای حذف کامل، نام Host را دقیقاً وارد کنید."],
+                "errors": errors,
                 "confirm_value": confirm_name,
             },
             status_code=400,
@@ -468,6 +481,9 @@ async def ui_delete_host(
     try:
         deleted = repository.delete_host(connection, host_id)
     except sqlite3.IntegrityError:
+        error_message = "این Host هنوز IP لینک‌شده دارد و قابل حذف نیست."
+        if wants_json:
+            return JSONResponse({"error": error_message}, status_code=409)
         return _render_template(
             request,
             "host_delete_confirm.html",
@@ -475,7 +491,7 @@ async def ui_delete_host(
                 "title": "ipocket - Confirm Host Delete",
                 "host": host,
                 "linked_count": linked_count,
-                "errors": ["این Host هنوز IP لینک‌شده دارد و قابل حذف نیست."],
+                "errors": [error_message],
                 "confirm_value": confirm_name,
             },
             status_code=409,
@@ -485,4 +501,8 @@ async def ui_delete_host(
     if not deleted:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
 
-    return RedirectResponse(url="/ui/hosts", status_code=303)
+    if wants_json:
+        return JSONResponse({"message": f"Deleted {host.name}.", "host_id": host.id, "host_name": host.name})
+
+    target = return_to if return_to.startswith("/") else "/ui/hosts"
+    return RedirectResponse(url=target, status_code=303)
