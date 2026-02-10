@@ -177,40 +177,6 @@ p {
   flex-direction: column;
 }
 
-.topbar {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 20px 32px;
-  background: var(--color-surface);
-  border-bottom: 1px solid var(--color-border);
-  position: sticky;
-  top: 0;
-  z-index: 10;
-}
-
-.topbar-title {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-.brand-pill {
-  background: #e8f0ff;
-  color: var(--color-primary);
-  font-weight: 700;
-  padding: 4px 10px;
-  border-radius: 999px;
-  font-size: 12px;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-}
-
-.topbar-subtitle {
-  color: var(--color-muted);
-  font-size: 14px;
-}
-
 .content {
   padding: 32px;
   width: 100%;
@@ -1666,4 +1632,3 @@ p {
     outline: none;
     border-color: #94a3b8;
   }
-

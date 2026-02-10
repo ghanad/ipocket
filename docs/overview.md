@@ -26,6 +26,7 @@ ipocket is a lightweight IP inventory app to track addresses and their project a
 - Management overview dashboard with quick totals for IPs, hosts, vendors, and projects, with cards linking to the relevant detail lists.
 - CIDR-based subnet utilization report on the Management overview page that shows used vs. free IPs per range.
 - Sidebar remains fixed-height with its own scroll to keep navigation and account actions accessible on long pages.
+- The old fixed top header has been removed from the main layout to give pages more vertical space; branding remains in the left sidebar.
 - UI templates now keep behavior and page-specific styling in static assets (`app/static/js/*.js` and `app/static/app.css`) to keep Jinja markup focused on structure.
 - The sidebar account section shows Login when signed out and Logout when signed in.
 - IP ranges page supports editing and deleting saved CIDR ranges for cleanup, with a confirmation step that requires typing the exact range name.
