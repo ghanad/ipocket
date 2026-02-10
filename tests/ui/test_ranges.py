@@ -22,10 +22,40 @@ def test_ranges_page_renders_add_form_and_saved_ranges(client) -> None:
     response = client.get("/ui/ranges")
 
     assert response.status_code == 200
+    assert "data-range-add" in response.text
     assert "Add IP Range" in response.text
+    assert "data-range-create-drawer" in response.text
     assert "192.168.10.0/24" in response.text
     assert "Saved ranges" in response.text
     assert "data-row-actions" in response.text
+
+
+
+def test_ranges_page_reopens_create_drawer_with_errors(client) -> None:
+    import os
+    from app import db, repository
+
+    connection = db.connect(os.environ["IPAM_DB_PATH"])
+    try:
+        db.init_db(connection)
+        user = repository.create_user(connection, username="editor", hashed_password="x", role=UserRole.EDITOR)
+    finally:
+        connection.close()
+
+    app.dependency_overrides[ui.require_ui_editor] = lambda: user
+    try:
+        response = client.post(
+            "/ui/ranges",
+            data={"name": "", "cidr": "", "notes": ""},
+            follow_redirects=False,
+        )
+    finally:
+        app.dependency_overrides.pop(ui.require_ui_editor, None)
+
+    assert response.status_code == 400
+    assert "Range name is required." in response.text
+    assert "CIDR is required." in response.text
+    assert 'data-range-open="true"' in response.text
 
 def test_range_addresses_page_shows_tags(client) -> None:
     import os

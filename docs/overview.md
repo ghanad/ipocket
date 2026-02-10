@@ -31,6 +31,8 @@ ipocket is a lightweight IP inventory app to track addresses and their project a
 - IP ranges page supports editing and deleting saved CIDR ranges for cleanup, with a confirmation step that requires typing the exact range name.
 - Range addresses view aligns columns with the IP assets list (plus Status), including Host Pair and Notes for used IPs in subnet drill-downs.
 - Range addresses view now uses a right-side drawer for both “Add” (free IPs) and “Edit” (used IPs), matching the IP assets page workflow.
+- IP ranges page now opens “Add IP Range” inside a right-side drawer instead of an inline card, keeping create UX consistent with Hosts/IP assets flows.
+- Drawer open/close behavior is shared through `app/static/js/drawer.js` so Hosts and Ranges follow the same interaction pattern.
 - Export data as CSV, JSON, or bundle (JSON/ZIP) for round-trip workflows.
 - Import data from bundle.json or CSV with dry-run support and upserts.
 - Upload Nmap XML from the Import page to discover reachable IPs and add them as `OTHER` assets, with inline example commands.
@@ -54,7 +56,7 @@ Hosts can be linked to a vendor from the shared **Vendors** catalog.
 - Hosts list shows linked OS and BMC IP addresses alongside the total linked IP count.
 - Hosts list displays a project badge (with project color) based on linked IP assignments; multiple linked projects show a warning badge.
 - Hosts page includes a collapsible search panel to filter by host name, vendor, notes, or linked IPs.
-- Add Host form appears in a compact, collapsible card above the hosts table for quick entry in large inventories.
+- Adding a host now uses the same right-side drawer interaction as editing, so create/edit actions stay visually consistent.
 - Host deletion from UI is a two-step safety flow: open delete page, then type exact host name to confirm permanent deletion.
 
 ## Vendors

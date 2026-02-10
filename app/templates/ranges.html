@@ -6,42 +6,9 @@
     <h1>IP Ranges</h1>
     <p class="page-subtitle">Define CIDR ranges and review utilization across active IP assets.</p>
   </div>
-</section>
-
-{% if errors %}
-  <div class="alert alert-error">
-    <ul>
-      {% for error in errors %}
-      <li>{{ error }}</li>
-      {% endfor %}
-    </ul>
+  <div class="page-header-actions">
+    <button class="btn btn-primary" type="button" data-range-add>New Range</button>
   </div>
-{% endif %}
-
-<section class="card">
-  <div class="card-header">
-    <div>
-      <h2>Add IP Range</h2>
-      <p class="subtitle">Use CIDR notation to group ranges for reporting.</p>
-    </div>
-  </div>
-  <form method="post" action="/ui/ranges" class="form-grid form-grid-two">
-    <label class="field">
-      <span>Name</span>
-      <input class="input" type="text" name="name" value="{{ form_state.name }}" required />
-    </label>
-    <label class="field">
-      <span>CIDR</span>
-      <input class="input" type="text" name="cidr" value="{{ form_state.cidr }}" placeholder="192.168.10.0/24" required />
-    </label>
-    <label class="field field-span">
-      <span>Notes</span>
-      <textarea class="textarea" name="notes" rows="2">{{ form_state.notes }}</textarea>
-    </label>
-    <div class="form-actions field-span">
-      <button class="btn btn-primary" type="submit">Save range</button>
-    </div>
-  </form>
 </section>
 
 <section class="card table-card">
@@ -264,4 +231,56 @@
     bindRowActions();
   })();
 </script>
+
+
+<div class="ip-drawer-overlay" data-range-create-overlay aria-hidden="true"></div>
+<aside class="ip-drawer" data-range-create-drawer data-range-open="{{ 'true' if errors else 'false' }}" role="dialog" aria-modal="true" aria-label="Add IP range">
+  <div class="ip-drawer-header">
+    <div class="ip-drawer-header-row">
+      <div>
+        <h2 class="ip-drawer-title">Add IP Range</h2>
+        <p class="ip-drawer-subtitle">Use CIDR notation to group ranges for reporting.</p>
+      </div>
+      <button class="ip-drawer-close" type="button" aria-label="Close drawer" data-range-create-close>✕</button>
+    </div>
+  </div>
+  <div class="ip-drawer-body">
+    {% if errors %}
+    <div class="alert alert-error">
+      <ul>
+        {% for error in errors %}
+        <li>{{ error }}</li>
+        {% endfor %}
+      </ul>
+    </div>
+    {% endif %}
+    <form class="ip-drawer-form" method="post" action="/ui/ranges" data-range-create-form id="range-create-form">
+      <section class="ip-drawer-section">
+        <h3>Range details</h3>
+        <label class="field">
+          <span>Name</span>
+          <input class="input" type="text" name="name" value="{{ form_state.name }}" data-range-input="name" required />
+        </label>
+        <label class="field">
+          <span>CIDR</span>
+          <input class="input" type="text" name="cidr" value="{{ form_state.cidr }}" placeholder="192.168.10.0/24" data-range-input="cidr" required />
+        </label>
+        <label class="field">
+          <span>Notes</span>
+          <textarea class="textarea" name="notes" rows="3" data-range-input="notes">{{ form_state.notes }}</textarea>
+        </label>
+      </section>
+    </form>
+  </div>
+  <div class="ip-drawer-footer">
+    <span class="ip-drawer-footer-status" data-range-create-dirty>Enter details</span>
+    <div class="ip-drawer-footer-actions">
+      <button class="btn btn-secondary" type="button" data-range-create-cancel>Cancel</button>
+      <button class="btn btn-primary" type="submit" form="range-create-form" data-range-create-save disabled>Save range</button>
+    </div>
+  </div>
+</aside>
+
+<script src="/static/js/drawer.js" defer></script>
+<script src="/static/js/ranges.js" defer></script>
 {% endblock %}

@@ -16,8 +16,19 @@
   const inputs = form ? form.querySelectorAll("[data-host-input]") : [];
   const errorMessages = form ? form.querySelectorAll("[data-host-error]") : [];
   let initialValues = {};
-  let isOpen = false;
   let isAddMode = false;
+  const drawerController = window.ipocketCreateDrawerController
+    ? window.ipocketCreateDrawerController({
+      overlay,
+      drawer,
+      onBeforeClose: () => {
+        if (!isDirty()) {
+          return true;
+        }
+        return window.confirm("Discard changes?");
+      },
+    })
+    : null;
 
   if (
     !overlay ||
@@ -139,9 +150,7 @@
     };
     updateSaveState();
     saveButton.textContent = "Create Host";
-    overlay.classList.add("is-open");
-    drawer.classList.add("is-open");
-    isOpen = true;
+    drawerController?.open();
     // Focus the name input
     const nameInput = form.querySelector('[data-host-input="name"]');
     if (nameInput) {
@@ -187,26 +196,7 @@
     };
     updateSaveState();
     saveButton.textContent = "Save changes";
-    overlay.classList.add("is-open");
-    drawer.classList.add("is-open");
-    isOpen = true;
-  };
-
-  const closeDrawer = () => {
-    overlay.classList.remove("is-open");
-    drawer.classList.remove("is-open");
-    isOpen = false;
-    isAddMode = false;
-  };
-
-  const confirmClose = () => {
-    if (!isDirty()) {
-      closeDrawer();
-      return;
-    }
-    if (window.confirm("Discard changes?")) {
-      closeDrawer();
-    }
+    drawerController?.open();
   };
 
   // Add Host button
@@ -242,13 +232,23 @@
     });
   });
 
-  closeButton.addEventListener("click", confirmClose);
-  cancelButton.addEventListener("click", confirmClose);
-  overlay.addEventListener("click", confirmClose);
+  const handleClose = () => {
+    if (!drawerController) {
+      return;
+    }
+    drawerController.requestClose();
+    if (!drawerController.isOpen()) {
+      isAddMode = false;
+    }
+  };
+
+  closeButton.addEventListener("click", handleClose);
+  cancelButton.addEventListener("click", handleClose);
+  overlay.addEventListener("click", handleClose);
 
   document.addEventListener("keydown", (event) => {
-    if (event.key === "Escape" && isOpen) {
-      confirmClose();
+    if (event.key === "Escape" && drawerController?.isOpen()) {
+      handleClose();
     }
   });
 
