@@ -179,13 +179,22 @@ def test_ip_assets_list_uses_drawer_actions_for_edit_and_delete(client) -> None:
     assert 'data-ip-notes="Primary"' in response.text
     assert f'data-ip-delete="{asset.id}"' in response.text
     assert 'data-ip-delete-form' in response.text
+    assert 'data-ip-drawer-mode="edit"' in response.text
+    assert 'data-ip-mode-panel="edit"' in response.text
+    assert 'data-ip-mode-panel="delete"' in response.text
+    assert 'data-ip-mode-action="edit"' in response.text
+    assert 'data-ip-mode-action="delete"' in response.text
     assert 'Delete permanently' in response.text
     assert 'I understand this cannot be undone' in response.text
     assert "data-ip-add" in response.text
     assert "data-ip-drawer" in response.text
     assert "Save changes" in response.text
     ip_assets_js = Path(__file__).resolve().parents[2] / "app/static/js/ip-assets.js"
-    assert "ipocket.ip-assets.scrollY" in ip_assets_js.read_text(encoding="utf-8")
+    js_source = ip_assets_js.read_text(encoding="utf-8")
+    assert "ipocket.ip-assets.scrollY" in js_source
+    assert "drawer.dataset.ipDrawerMode = normalizedMode" in js_source
+    assert "form.style.display = isDeleteMode ? 'none' : 'flex'" in js_source
+    assert "deleteForm.style.display = isDeleteMode ? 'flex' : 'none'" in js_source
     assert "data-ip-drawer-title" in response.text
     assert "Save" in response.text
     assert "/static/js/ip-assets.js" in response.text

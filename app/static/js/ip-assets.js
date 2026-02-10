@@ -78,18 +78,28 @@
   };
 
   const setDrawerMode = (mode) => {
-    isDeleteMode = mode === 'delete';
+    const normalizedMode = mode === 'delete' ? 'delete' : 'edit';
+    isDeleteMode = normalizedMode === 'delete';
+    if (drawer) {
+      drawer.dataset.ipDrawerMode = normalizedMode;
+      drawer.setAttribute('aria-label', normalizedMode === 'delete' ? 'Delete IP asset' : 'Edit IP asset');
+    }
     if (form) {
       form.hidden = isDeleteMode;
+      form.style.display = isDeleteMode ? 'none' : 'flex';
     }
     if (deleteForm) {
       deleteForm.hidden = !isDeleteMode;
+      deleteForm.style.display = isDeleteMode ? 'flex' : 'none';
     }
     if (saveButton) {
       saveButton.hidden = isDeleteMode;
+      saveButton.style.display = isDeleteMode ? 'none' : '';
+      saveButton.disabled = isDeleteMode ? true : saveButton.disabled;
     }
     if (deleteButton) {
       deleteButton.hidden = !isDeleteMode;
+      deleteButton.style.display = isDeleteMode ? '' : 'none';
     }
   };
 
@@ -372,7 +382,7 @@
   };
 
   const updateDeleteState = () => {
-    if (!deleteButton || !deleteAck) {
+    if (!deleteButton || !deleteAck || !currentAsset) {
       return;
     }
     const needsTypedConfirmation = Boolean(deleteConfirmWrap && !deleteConfirmWrap.hidden);

@@ -1669,3 +1669,17 @@ p {
   font-weight: 600;
   text-align: right;
 }
+
+.ip-drawer [hidden] {
+  display: none !important;
+}
+
+.ip-drawer[data-ip-drawer-mode='edit'] [data-ip-mode-panel='delete'],
+.ip-drawer[data-ip-drawer-mode='edit'] [data-ip-mode-action='delete'] {
+  display: none !important;
+}
+
+.ip-drawer[data-ip-drawer-mode='delete'] [data-ip-mode-panel='edit'],
+.ip-drawer[data-ip-drawer-mode='delete'] [data-ip-mode-action='edit'] {
+  display: none !important;
+}

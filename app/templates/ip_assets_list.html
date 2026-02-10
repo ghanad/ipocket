@@ -126,7 +126,7 @@
 </div>
 
 <div class="ip-drawer-overlay" data-ip-drawer-overlay aria-hidden="true"></div>
-<aside class="ip-drawer" data-ip-drawer role="dialog" aria-modal="true" aria-label="Edit IP asset">
+<aside class="ip-drawer" data-ip-drawer data-ip-drawer-mode="edit" role="dialog" aria-modal="true" aria-label="Edit IP asset">
   <div class="ip-drawer-header">
     <div class="ip-drawer-header-row">
       <div>
@@ -143,7 +143,7 @@
     </div>
   </div>
   <div class="ip-drawer-body">
-    <form class="ip-drawer-form" method="post" data-ip-edit-form id="ip-edit-form">
+    <form class="ip-drawer-form" method="post" data-ip-edit-form data-ip-mode-panel="edit" id="ip-edit-form">
       <input type="hidden" name="return_to" value="{{ return_to }}">
       <section class="ip-drawer-section">
         <h3>Assignment</h3>
@@ -202,7 +202,7 @@
       </section>
     </form>
 
-    <form class="ip-drawer-form ip-drawer-delete-form" method="post" data-ip-delete-form id="ip-delete-form" hidden>
+    <form class="ip-drawer-form ip-drawer-delete-form" method="post" data-ip-delete-form data-ip-mode-panel="delete" id="ip-delete-form" hidden>
       <input type="hidden" name="return_to" value="{{ return_to }}" data-ip-delete-return-to>
       <section class="ip-drawer-section">
         <h3 class="ip-drawer-delete-heading">Delete IP asset?</h3>
@@ -229,10 +229,10 @@
     <span class="ip-drawer-footer-status" data-ip-drawer-dirty>No changes</span>
     <div class="ip-drawer-footer-actions">
       <button class="btn btn-secondary" type="button" data-ip-drawer-cancel>Cancel</button>
-      <button class="btn btn-primary" type="submit" form="ip-edit-form" data-ip-drawer-save disabled>
+      <button class="btn btn-primary" type="submit" form="ip-edit-form" data-ip-drawer-save data-ip-mode-action="edit" disabled>
         Save changes
       </button>
-      <button class="btn btn-danger" type="submit" form="ip-delete-form" data-ip-drawer-delete hidden disabled>
+      <button class="btn btn-danger" type="submit" form="ip-delete-form" data-ip-drawer-delete data-ip-mode-action="delete" hidden disabled>
         Delete permanently
       </button>
     </div>
