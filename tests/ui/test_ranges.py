@@ -29,7 +29,7 @@ def test_ranges_page_renders_add_form_and_saved_ranges(client) -> None:
     assert "Saved ranges" in response.text
     assert 'class="btn btn-secondary btn-small"' in response.text
     assert 'class="btn btn-danger btn-small"' in response.text
-    assert ">Edit</a>" in response.text
+    assert "data-range-edit" in response.text
     assert ">Delete</a>" in response.text
 
 
@@ -197,9 +197,9 @@ def test_ranges_edit_and_delete_flow(client) -> None:
 
     app.dependency_overrides[ui.get_current_ui_user] = lambda: User(1, "editor", "x", UserRole.EDITOR, True)
     try:
-        edit_response = client.get(f"/ui/ranges/{ip_range.id}/edit")
-        assert edit_response.status_code == 200
-        assert "Edit IP Range" in edit_response.text
+        edit_response = client.get(f"/ui/ranges/{ip_range.id}/edit", follow_redirects=False)
+        assert edit_response.status_code == 303
+        assert edit_response.headers["location"].endswith(f"/ui/ranges?edit={ip_range.id}")
 
         update_response = client.post(
             f"/ui/ranges/{ip_range.id}/edit",
@@ -228,3 +228,50 @@ def test_ranges_edit_and_delete_flow(client) -> None:
     finally:
         app.dependency_overrides.pop(ui.get_current_ui_user, None)
 
+
+def test_ranges_page_opens_edit_drawer_from_query_param(client) -> None:
+    import os
+    from app import db, repository
+
+    connection = db.connect(os.environ["IPAM_DB_PATH"])
+    try:
+        db.init_db(connection)
+        ip_range = repository.create_ip_range(connection, name="Corp LAN", cidr="192.168.10.0/24", notes="initial")
+    finally:
+        connection.close()
+
+    response = client.get(f"/ui/ranges?edit={ip_range.id}")
+
+    assert response.status_code == 200
+    assert 'data-range-edit-drawer' in response.text
+    assert f'data-range-edit-id="{ip_range.id}"' in response.text
+    assert f'action="/ui/ranges/{ip_range.id}/edit"' in response.text
+    assert 'value="Corp LAN"' in response.text
+
+
+def test_range_edit_error_reopens_edit_drawer(client) -> None:
+    import os
+    from app import db, repository
+
+    connection = db.connect(os.environ["IPAM_DB_PATH"])
+    try:
+        db.init_db(connection)
+        user = repository.create_user(connection, username="editor", hashed_password="x", role=UserRole.EDITOR)
+        ip_range = repository.create_ip_range(connection, name="Corp LAN", cidr="192.168.10.0/24")
+    finally:
+        connection.close()
+
+    app.dependency_overrides[ui.require_ui_editor] = lambda: user
+    try:
+        response = client.post(
+            f"/ui/ranges/{ip_range.id}/edit",
+            data={"name": "", "cidr": "", "notes": ""},
+            follow_redirects=False,
+        )
+    finally:
+        app.dependency_overrides.pop(ui.require_ui_editor, None)
+
+    assert response.status_code == 400
+    assert 'Range name is required.' in response.text
+    assert 'CIDR is required.' in response.text
+    assert 'data-range-edit-open="true"' in response.text
