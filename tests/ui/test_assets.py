@@ -259,8 +259,9 @@ def test_ip_assets_bulk_edit_updates_selected_assets(client) -> None:
     finally:
         app.dependency_overrides.pop(ui.require_ui_editor, None)
 
-    assert response.status_code == 200
-    assert response.json()["ip_address"] == "10.20.0.11"
+    assert response.status_code == 303
+    assert response.headers["location"].startswith("/ui/ip-assets?")
+    assert "bulk-success=Updated+2+IP+assets." in response.headers["location"]
     follow_response = client.get(response.headers["location"])
     assert follow_response.status_code == 200
     assert "toast-success" in follow_response.text
@@ -315,8 +316,7 @@ def test_ip_assets_edit_returns_to_list_when_return_to_set(client) -> None:
     finally:
         app.dependency_overrides.pop(ui.require_ui_editor, None)
 
-    assert response.status_code == 200
-    assert response.json()["ip_address"] == "10.20.0.11"
+    assert response.status_code == 303
     assert response.headers["location"] == "/ui/ip-assets?archived-only=false"
 
 def test_ip_assets_bulk_edit_shows_error_toast_for_missing_selection(client) -> None:
