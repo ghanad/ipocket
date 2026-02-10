@@ -63,23 +63,26 @@
         {% endfor %}
       </select>
     </label>
-    <label class="field">
+    <label class="field field-tag-filter">
       <span>Tag</span>
-      <select
-        class="select"
-        name="tag"
-        multiple
-        hx-get="/ui/ip-assets"
-        hx-trigger="change"
-        hx-target="#ip-table-container"
-        hx-push-url="true"
-        hx-include="closest form"
-      >
+      <div class="tag-filter-controls">
+        <select
+          class="select"
+          name="tag"
+          multiple
+          hx-get="/ui/ip-assets"
+          hx-trigger="change"
+          hx-target="#ip-table-container"
+          hx-push-url="true"
+          hx-include="closest form"
+        >
 {% for tag in tags %}
-        <option value="{{ tag.name }}"{% if tag.name in filters.tag %} selected{% endif %}>{{ tag.name }}</option>
-        {% endfor %}
-      </select>
-      <small class="muted">Multi-select supported (ANY match)</small>
+          <option value="{{ tag.name }}"{% if tag.name in filters.tag %} selected{% endif %}>{{ tag.name }}</option>
+          {% endfor %}
+        </select>
+        <button class="btn btn-secondary btn-small" type="button" data-clear-tag-filter>Clear</button>
+      </div>
+      <small class="muted">Multi-select (ANY match). Use Ctrl/Cmd-click or quick tags in table.</small>
     </label>
     <label class="field">
       <span>Assignment</span>
@@ -382,6 +385,23 @@
     gap: 12px;
   }
 
+
+  .field-tag-filter .select[multiple] {
+    min-height: 40px;
+    height: 40px;
+    overflow-y: auto;
+  }
+
+  .tag-filter-controls {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+  }
+
+  .tag-filter-controls .select {
+    flex: 1;
+  }
+
   @media (max-width: 600px) {
     .ip-drawer-row-two {
       grid-template-columns: 1fr;
@@ -653,6 +673,24 @@
       filterForm.submit();
     };
 
+    const clearTagFilter = () => {
+      if (!filterForm) {
+        return;
+      }
+      const tagFilter = filterForm.querySelector('[name="tag"]');
+      if (!tagFilter || tagFilter.tagName !== 'SELECT') {
+        return;
+      }
+      Array.from(tagFilter.options).forEach((option) => {
+        option.selected = false;
+      });
+      if (window.htmx && typeof window.htmx.trigger === 'function') {
+        window.htmx.trigger(tagFilter, 'change');
+        return;
+      }
+      filterForm.submit();
+    };
+
     const createAutoHost = async () => {
       if (!currentAsset || !form || !autoHostButton) {
         return;
@@ -746,6 +784,11 @@
           window.sessionStorage.setItem(SCROLL_KEY, String(window.scrollY || 0));
         });
       }
+      const clearTagButton = document.querySelector('[data-clear-tag-filter]');
+      if (clearTagButton) {
+        clearTagButton.addEventListener('click', clearTagFilter);
+      }
+
       document.body.addEventListener('htmx:afterSwap', (event) => {
         if (event.target && event.target.id === 'ip-table-container') {
           bindEditButtons(event.target);

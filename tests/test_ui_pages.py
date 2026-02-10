@@ -736,6 +736,8 @@ def test_ip_assets_list_supports_multi_tag_filter_and_clickable_filter_chips(cli
     assert list_response.status_code == 200
     assert 'name="tag"' in list_response.text
     assert 'name="tag"' in list_response.text and 'multiple' in list_response.text
+    assert 'data-clear-tag-filter' in list_response.text
+    assert 'Multi-select (ANY match)' in list_response.text
     assert f'data-quick-filter-value="{project.id}"' in list_response.text
     assert 'data-quick-filter="type"' in list_response.text
     assert 'data-quick-filter="tag"' in list_response.text
