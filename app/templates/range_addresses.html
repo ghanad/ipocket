@@ -85,6 +85,31 @@
         {% endfor %}
       </select>
     </label>
+    <label class="field field-tag-filter">
+      <span>Tags</span>
+      <div class="tag-filter-controls">
+        <input
+          class="input"
+          type="text"
+          placeholder="Type tag and press Enter"
+          list="range-tag-filter-suggestions"
+          data-tag-filter-input
+        />
+      </div>
+      <datalist id="range-tag-filter-suggestions">
+        {% for tag in tags %}
+        <option value="{{ tag.name }}"></option>
+        {% endfor %}
+      </datalist>
+      <div class="tag-filter-selected" data-tag-filter-selected>
+        {% for selected_tag in filters.tag %}
+        <span class="tag-filter-entry" data-tag-filter-entry="{{ selected_tag }}">
+          <input type="hidden" name="tag" value="{{ selected_tag }}" />
+          <button class="tag tag-color tag-filter-chip" type="button" data-remove-tag-filter="{{ selected_tag }}">{{ selected_tag }} ×</button>
+        </span>
+        {% endfor %}
+      </div>
+    </label>
   </form>
 </section>
 

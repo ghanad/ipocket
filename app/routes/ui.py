@@ -1625,6 +1625,7 @@ def ui_range_addresses(
     range_id: int,
     q: Optional[str] = None,
     project_id: Optional[str] = None,
+    tag: Optional[list[str]] = Query(default=None),
     asset_type: Optional[str] = Query(default=None, alias="type"),
     connection=Depends(get_connection),
 ) -> HTMLResponse:
@@ -1645,6 +1646,19 @@ def ui_range_addresses(
 
     if normalized_asset_type is not None:
         addresses = [entry for entry in addresses if entry.get("asset_type") == normalized_asset_type.value]
+
+    raw_tag_values = tag or []
+    try:
+        tag_values = normalize_tag_names(raw_tag_values) if raw_tag_values else []
+    except ValueError:
+        tag_values = []
+    if tag_values:
+        selected_tags = set(tag_values)
+        addresses = [
+            entry
+            for entry in addresses
+            if selected_tags.intersection({tag_item.get("name", "") for tag_item in entry.get("tags") or []})
+        ]
 
     q_value = (q or "").strip()
     if q_value:
@@ -1683,11 +1697,13 @@ def ui_range_addresses(
             "address_display": addresses[:display_limit],
             "address_overflow": len(addresses) > display_limit,
             "projects": list(repository.list_projects(connection)),
+            "tags": list(repository.list_tags(connection)),
             "types": [asset.value for asset in IPAssetType],
             "errors": [],
             "filters": {
                 "q": q_value,
                 "project_id": parsed_project_id,
+                "tag": tag_values,
                 "type": normalized_asset_type.value if normalized_asset_type else "",
             },
         },
@@ -1764,9 +1780,10 @@ async def ui_range_quick_add_address(
                 "address_display": addresses[:display_limit],
                 "address_overflow": len(addresses) > display_limit,
                 "projects": projects,
+                "tags": list(repository.list_tags(connection)),
                 "types": [asset.value for asset in IPAssetType],
                 "errors": errors,
-                "filters": {"q": "", "project_id": None, "type": ""},
+                "filters": {"q": "", "project_id": None, "tag": [], "type": ""},
             },
             status_code=400,
             active_nav="ranges",
@@ -1803,9 +1820,10 @@ async def ui_range_quick_add_address(
                 "address_display": addresses[:display_limit],
                 "address_overflow": len(addresses) > display_limit,
                 "projects": projects,
+                "tags": list(repository.list_tags(connection)),
                 "types": [asset.value for asset in IPAssetType],
                 "errors": errors,
-                "filters": {"q": "", "project_id": None, "type": ""},
+                "filters": {"q": "", "project_id": None, "tag": [], "type": ""},
             },
             status_code=409,
             active_nav="ranges",
@@ -1878,9 +1896,10 @@ async def ui_range_quick_edit_address(
                 "address_display": addresses[:display_limit],
                 "address_overflow": len(addresses) > display_limit,
                 "projects": projects,
+                "tags": list(repository.list_tags(connection)),
                 "types": [asset_type_item.value for asset_type_item in IPAssetType],
                 "errors": errors,
-                "filters": {"q": "", "project_id": None, "type": ""},
+                "filters": {"q": "", "project_id": None, "tag": [], "type": ""},
             },
             status_code=400,
             active_nav="ranges",

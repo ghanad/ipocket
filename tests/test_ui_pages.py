@@ -289,8 +289,41 @@ def test_range_addresses_page_renders_quick_filter_chips(client) -> None:
     assert response.status_code == 200
     assert 'data-range-quick-filter="project_id"' in response.text
     assert 'data-range-quick-filter="type"' in response.text
-    assert 'data-range-quick-filter="q"' in response.text
+    assert 'data-range-quick-filter="tag"' in response.text
     assert 'data-range-quick-filter-value="critical"' in response.text
+
+
+def test_range_addresses_page_filters_by_tag_query_param(client) -> None:
+    import os
+    from app import db, repository
+
+    connection = db.connect(os.environ["IPAM_DB_PATH"])
+    try:
+        db.init_db(connection)
+        ip_range = repository.create_ip_range(connection, name="Tag Filter Range", cidr="10.46.0.0/29")
+        repository.create_tag(connection, name="critical", color="#ef4444")
+        repository.create_tag(connection, name="prod", color="#1d4ed8")
+        repository.create_ip_asset(
+            connection,
+            ip_address="10.46.0.2",
+            asset_type=IPAssetType.OS,
+            tags=["critical"],
+        )
+        repository.create_ip_asset(
+            connection,
+            ip_address="10.46.0.3",
+            asset_type=IPAssetType.OS,
+            tags=["prod"],
+        )
+    finally:
+        connection.close()
+
+    response = client.get(f"/ui/ranges/{ip_range.id}/addresses?tag=critical")
+
+    assert response.status_code == 200
+    assert "10.46.0.2" in response.text
+    assert "10.46.0.3" not in response.text
+    assert 'name="tag" value="critical"' in response.text
 
 
 def test_range_addresses_quick_add_creates_asset(client) -> None:
