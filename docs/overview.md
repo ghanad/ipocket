@@ -19,7 +19,7 @@ ipocket is a lightweight IP inventory app to track addresses and their project a
 - BMC IPs without a host assignment show a drawer action to create and assign a host named `server_<ip>`.
 - IP assets list includes a Host Pair column to show the OS or BMC IP linked to the same host.
 - IP assets list shows inline Edit/Delete actions side-by-side in the Actions column.
-- Deleting an IP from the list now uses the same right-side drawer shell as Add/Edit but with strict modes: delete mode hides all edit inputs, shows a compact destructive confirmation summary (IP/Project/Type/Host), requires an explicit checkbox, and for high-risk assets requires typing the exact IP before “Delete permanently” is enabled.
+- Deleting an IP from the list now uses the same right-side drawer shell as Add/Edit but with strict modes: delete mode hides all edit inputs, shows a compact destructive confirmation summary (IP/Project/Type/Host), keeps the acknowledgement checkbox inline with its label, and for high-risk assets requires typing the exact IP before “Delete permanently” is enabled.
 - IP assets list includes bulk edit controls to update type, project assignment, or add tags across multiple IPs at once.
 - Tags on IP assets (comma-separated in the UI) for lightweight grouping, with a dedicated Tags page to manage names and colors.
 - Tag deletion from the Tags page now requires a browser confirmation prompt before the delete request is submitted.

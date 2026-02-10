@@ -551,7 +551,11 @@ def test_ui_delete_ip_asset_with_low_risk_confirmation_checkbox_only(client) -> 
     try:
         response = client.post(
             f"/ui/ip-assets/{asset.id}/delete",
-            data={"confirm_delete_ack": "on", "confirm_ip": ""},
+            files={
+                "confirm_delete_ack": (None, "on"),
+                "confirm_ip": (None, ""),
+                "return_to": (None, "/ui/ip-assets"),
+            },
             headers={"Accept": "application/json"},
         )
     finally:
@@ -674,4 +678,3 @@ def test_ui_create_bmc_passes_auto_host_flag_disabled(client, monkeypatch) -> No
     assert response.status_code == 303
     assert captured["asset_type"] == IPAssetType.BMC
     assert captured["auto_host_for_bmc"] is False
-

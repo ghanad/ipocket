@@ -1670,6 +1670,17 @@ p {
   text-align: right;
 }
 
+.ip-drawer-delete-form .field-inline {
+  flex-direction: row;
+  align-items: center;
+}
+
+.ip-drawer-delete-form .field-inline span {
+  text-transform: none;
+  letter-spacing: 0;
+  font-size: 13px;
+}
+
 .ip-drawer [hidden] {
   display: none !important;
 }

@@ -309,7 +309,7 @@ async def ui_needs_assignment_assign(
     user=Depends(require_ui_editor),
 ):
     assignment_filter = _normalize_assignment_filter(filter)
-    form_data = await _parse_form_data(request)
+    form_data = dict(await request.form())
     ip_address = (form_data.get("ip_address") or "").strip()
     project_id = _parse_optional_int(form_data.get("project_id"))
 
@@ -727,16 +727,17 @@ async def ui_delete_ip_asset(
     if asset is None or asset.archived:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
 
-    form_data = await _parse_form_data(request)
-    return_to = (form_data.get("return_to") or "/ui/ip-assets").strip()
-    confirmation_ack = (form_data.get("confirm_delete_ack") or "").strip().lower()
-    confirm_ip = (form_data.get("confirm_ip") or "").strip()
+    form_data = await request.form()
+    return_to = str(form_data.get("return_to") or "/ui/ip-assets").strip()
+    confirmation_ack_raw = str(form_data.get("confirm_delete_ack") or "").strip().lower()
+    confirmation_ack = bool(confirmation_ack_raw and confirmation_ack_raw not in {"0", "false", "off", "no"})
+    confirm_ip = str(form_data.get("confirm_ip") or "").strip()
     tags_map = repository.list_tags_for_ip_assets(connection, [asset.id])
     tag_names = tags_map.get(asset.id, [])
     requires_exact_ip = _delete_requires_exact_ip(asset, tag_names)
 
     errors: list[str] = []
-    if confirmation_ack != "on":
+    if not confirmation_ack:
         errors.append("Confirm that this delete cannot be undone.")
     if requires_exact_ip and confirm_ip != asset.ip_address:
         errors.append("Type the exact IP address to delete this high-risk asset.")
