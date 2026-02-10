@@ -700,6 +700,54 @@ def test_ip_assets_list_search_trims_whitespace(client) -> None:
     assert "10.30.0.22" not in response.text
 
 
+def test_ip_assets_list_supports_multi_tag_filter_and_clickable_filter_chips(client) -> None:
+    import os
+    from app import db, repository
+
+    connection = db.connect(os.environ["IPAM_DB_PATH"])
+    try:
+        db.init_db(connection)
+        project = repository.create_project(connection, name="Chook")
+        repository.create_ip_asset(
+            connection,
+            ip_address="10.31.0.21",
+            asset_type=IPAssetType.VM,
+            project_id=project.id,
+            tags=["prod"],
+        )
+        repository.create_ip_asset(
+            connection,
+            ip_address="10.31.0.22",
+            asset_type=IPAssetType.OS,
+            tags=["edge"],
+        )
+        repository.create_ip_asset(
+            connection,
+            ip_address="10.31.0.23",
+            asset_type=IPAssetType.OS,
+            tags=["ops"],
+        )
+    finally:
+        connection.close()
+
+    list_response = client.get("/ui/ip-assets")
+    filtered_response = client.get("/ui/ip-assets", params=[("tag", "prod"), ("tag", "edge")])
+
+    assert list_response.status_code == 200
+    assert 'name="tag"' in list_response.text
+    assert 'data-tag-filter-input' in list_response.text
+    assert 'tag-filter-suggestions' in list_response.text
+    assert '<span>Tags</span>' in list_response.text
+    assert list_response.text.index('name="archived-only"') < list_response.text.index('data-tag-filter-input')
+    assert f'data-quick-filter-value="{project.id}"' in list_response.text
+    assert 'data-quick-filter="type"' in list_response.text
+    assert 'data-quick-filter="tag"' in list_response.text
+    assert filtered_response.status_code == 200
+    assert "10.31.0.21" in filtered_response.text
+    assert "10.31.0.22" in filtered_response.text
+    assert "10.31.0.23" not in filtered_response.text
+
+
 def test_ip_assets_list_includes_archived_filter(client) -> None:
     response = client.get("/ui/ip-assets")
 
