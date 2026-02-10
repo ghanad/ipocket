@@ -15,7 +15,7 @@ def _parse_metrics(text: str) -> dict[str, int]:
     return metrics
 
 
-def test_health_and_metrics_endpoints() -> None:
+def test_health_and_metrics_endpoints(db_path) -> None:
     with TestClient(app) as client:
         health = client.get("/health")
         assert health.status_code == 200
