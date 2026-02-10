@@ -7,6 +7,7 @@ from app import repository as repository
 from . import auth, dashboard, data_ops, hosts, ip_assets, ranges, settings
 from .utils import (
     FLASH_COOKIE as FLASH_COOKIE,
+    SESSION_COOKIE as SESSION_COOKIE,
     _encode_flash_payload as _encode_flash_payload,
     _sign_session_value as _sign_session_value,
     _is_authenticated_request as _is_authenticated_request,
@@ -24,4 +25,4 @@ router.include_router(settings.router)
 router.include_router(data_ops.router)
 
 
-__all__ = ["router", "repository", "require_ui_editor", "get_current_ui_user", "FLASH_COOKIE", "_encode_flash_payload", "_sign_session_value", "_is_authenticated_request"]
+__all__ = ["router", "repository", "require_ui_editor", "get_current_ui_user", "FLASH_COOKIE", "SESSION_COOKIE", "_encode_flash_payload", "_sign_session_value", "_is_authenticated_request"]

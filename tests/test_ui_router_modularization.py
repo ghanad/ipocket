@@ -18,3 +18,4 @@ def test_ui_module_keeps_legacy_testing_exports() -> None:
     assert callable(ui._encode_flash_payload)
     assert callable(ui._sign_session_value)
     assert isinstance(ui.FLASH_COOKIE, str)
+    assert isinstance(ui.SESSION_COOKIE, str)
