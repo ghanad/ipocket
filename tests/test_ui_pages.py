@@ -865,6 +865,95 @@ def test_hosts_list_search_trims_whitespace(client) -> None:
     assert "core-02" not in response.text
 
 
+def test_hosts_list_paginates_with_default_page_size(client) -> None:
+    import os
+    from app import db, repository
+
+    connection = db.connect(os.environ["IPAM_DB_PATH"])
+    try:
+        db.init_db(connection)
+        for i in range(25):
+            repository.create_host(connection, name=f"host-{i:03d}")
+    finally:
+        connection.close()
+
+    response = client.get("/ui/hosts")
+
+    assert response.status_code == 200
+    assert "host-000" in response.text
+    assert "host-019" in response.text
+    assert "host-020" not in response.text
+    assert "Page 1 of 2" in response.text
+    assert "Showing 1-20 of 25" in response.text
+
+
+def test_hosts_list_paginates_with_custom_page_size(client) -> None:
+    import os
+    from app import db, repository
+
+    connection = db.connect(os.environ["IPAM_DB_PATH"])
+    try:
+        db.init_db(connection)
+        for i in range(15):
+            repository.create_host(connection, name=f"host-{i:03d}")
+    finally:
+        connection.close()
+
+    response = client.get("/ui/hosts", params={"per-page": "10"})
+
+    assert response.status_code == 200
+    assert "host-000" in response.text
+    assert "host-009" in response.text
+    assert "host-010" not in response.text
+    assert "Page 1 of 2" in response.text
+    assert "Showing 1-10 of 15" in response.text
+
+
+def test_hosts_list_pagination_with_search(client) -> None:
+    import os
+    from app import db, repository
+
+    connection = db.connect(os.environ["IPAM_DB_PATH"])
+    try:
+        db.init_db(connection)
+        for i in range(25):
+            repository.create_host(connection, name=f"server-{i:03d}")
+        repository.create_host(connection, name="special-host")
+    finally:
+        connection.close()
+
+    response = client.get("/ui/hosts", params={"q": "server", "per-page": "10"})
+
+    assert response.status_code == 200
+    assert "server-000" in response.text
+    assert "special-host" not in response.text
+    assert "Page 1 of 3" in response.text
+    assert "Showing 1-10 of 25" in response.text
+
+
+def test_hosts_list_pagination_navigation(client) -> None:
+    import os
+    from app import db, repository
+
+    connection = db.connect(os.environ["IPAM_DB_PATH"])
+    try:
+        db.init_db(connection)
+        for i in range(30):
+            repository.create_host(connection, name=f"host-{i:03d}")
+    finally:
+        connection.close()
+
+    response = client.get("/ui/hosts", params={"page": "2", "per-page": "10"})
+
+    assert response.status_code == 200
+    assert "host-000" not in response.text
+    assert "host-010" in response.text
+    assert "host-019" in response.text
+    assert "host-020" not in response.text
+    assert "Page 2 of 3" in response.text
+    assert "Showing 11-20 of 30" in response.text
+
+
 def test_hosts_edit_updates_project_assignments(client) -> None:
     import os
     from app import db, repository

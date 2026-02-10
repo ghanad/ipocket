@@ -635,6 +635,104 @@ def list_hosts_with_ip_counts(connection: sqlite3.Connection) -> list[dict[str, 
     ]
 
 
+def count_hosts(connection: sqlite3.Connection) -> int:
+    """Return the total number of hosts."""
+    row = connection.execute("SELECT COUNT(*) AS count FROM hosts").fetchone()
+    return row["count"] if row else 0
+
+
+def list_hosts_with_ip_counts_paginated(
+    connection: sqlite3.Connection,
+    limit: int,
+    offset: int,
+) -> list[dict[str, object]]:
+    """Return a paginated list of hosts with IP counts."""
+    rows = connection.execute(
+        """
+        SELECT
+            hosts.id AS id,
+            hosts.name AS name,
+            hosts.notes AS notes,
+            vendors.name AS vendor,
+            (
+                SELECT COUNT(DISTINCT ip_assets.project_id)
+                FROM ip_assets
+                WHERE ip_assets.host_id = hosts.id
+                  AND ip_assets.archived = 0
+                  AND ip_assets.project_id IS NOT NULL
+            ) AS project_count,
+            (
+                SELECT projects.name
+                FROM ip_assets
+                JOIN projects ON projects.id = ip_assets.project_id
+                WHERE ip_assets.host_id = hosts.id
+                  AND ip_assets.archived = 0
+                  AND ip_assets.project_id IS NOT NULL
+                ORDER BY projects.name
+                LIMIT 1
+            ) AS project_name,
+            (
+                SELECT projects.color
+                FROM ip_assets
+                JOIN projects ON projects.id = ip_assets.project_id
+                WHERE ip_assets.host_id = hosts.id
+                  AND ip_assets.archived = 0
+                  AND ip_assets.project_id IS NOT NULL
+                ORDER BY projects.name
+                LIMIT 1
+            ) AS project_color,
+            (
+                SELECT COUNT(*)
+                FROM ip_assets
+                WHERE ip_assets.host_id = hosts.id
+                  AND ip_assets.archived = 0
+            ) AS ip_count,
+            (
+                SELECT group_concat(ip_address, ', ')
+                FROM (
+                    SELECT ip_address
+                    FROM ip_assets
+                    WHERE host_id = hosts.id
+                      AND archived = 0
+                      AND type = 'OS'
+                    ORDER BY ip_address
+                )
+            ) AS os_ips,
+            (
+                SELECT group_concat(ip_address, ', ')
+                FROM (
+                    SELECT ip_address
+                    FROM ip_assets
+                    WHERE host_id = hosts.id
+                      AND archived = 0
+                      AND type = 'BMC'
+                    ORDER BY ip_address
+                )
+            ) AS bmc_ips
+        FROM hosts
+        LEFT JOIN vendors ON vendors.id = hosts.vendor_id
+        ORDER BY hosts.name
+        LIMIT ? OFFSET ?
+        """,
+        (limit, offset),
+    ).fetchall()
+    return [
+        {
+            "id": row["id"],
+            "name": row["name"],
+            "notes": row["notes"],
+            "vendor": row["vendor"],
+            "project_count": int(row["project_count"] or 0),
+            "project_name": row["project_name"] or "",
+            "project_color": row["project_color"] or "",
+            "ip_count": int(row["ip_count"] or 0),
+            "os_ips": row["os_ips"] or "",
+            "bmc_ips": row["bmc_ips"] or "",
+        }
+        for row in rows
+    ]
+
+
 def get_host_linked_assets_grouped(connection: sqlite3.Connection, host_id: int) -> dict[str, list[IPAsset]]:
     rows = connection.execute("SELECT * FROM ip_assets WHERE host_id = ? AND archived = 0 ORDER BY ip_address", (host_id,)).fetchall()
     assets = [_row_to_ip_asset(row) for row in rows]
