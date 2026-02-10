@@ -405,6 +405,7 @@ def test_hosts_list_uses_drawer_actions_for_edit_and_delete(client) -> None:
     assert f'data-host-edit="{host.id}"' in response.text
     assert f'data-host-delete="{host.id}"' in response.text
     assert 'data-host-delete-form' in response.text
+    assert 'class="ip-drawer-delete-details"' in response.text
     assert 'data-host-mode-panel="delete"' in response.text
     assert 'data-host-mode-action="delete"' in response.text
     assert 'Delete permanently' in response.text

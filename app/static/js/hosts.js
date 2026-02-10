@@ -173,6 +173,7 @@
     drawerTitle.textContent = "Add Host";
     drawerSubtitle.textContent = "Create a new host";
     drawerMeta.style.display = "none";
+    statusPill.classList.add("host-drawer-pill-success");
     if (projectField) {
       projectField.style.display = "none";
     }
@@ -216,6 +217,7 @@
       projectField.style.display = "";
     }
     projectPill.textContent = `Project: ${hostData.project_label || "Unassigned"}`;
+    statusPill.classList.add("host-drawer-pill-success");
     statusPill.textContent = `Status: ${hostData.status || "Free"}`;
     const defaultOption = projectSelect.querySelector('option[value=""]');
     if (defaultOption) {
@@ -251,7 +253,10 @@
     currentHost = hostData;
     drawerTitle.textContent = "Delete Host?";
     drawerSubtitle.textContent = "Permanent and cannot be undone.";
-    drawerMeta.style.display = "none";
+    drawerMeta.style.display = "flex";
+    projectPill.textContent = `Project: ${hostData.project_label || "Unassigned"}`;
+    statusPill.classList.remove("host-drawer-pill-success");
+    statusPill.textContent = `Vendor: ${hostData.vendor || "Unassigned"}`;
     if (deleteName) {
       deleteName.textContent = hostData.name || "—";
     }
