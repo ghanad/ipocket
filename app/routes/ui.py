@@ -1664,6 +1664,8 @@ async def ui_range_quick_add_address(
     ip_address = form_data.get("ip_address")
     asset_type = form_data.get("type")
     project_id = _parse_optional_int(form_data.get("project_id"))
+    notes = _parse_optional_str(form_data.get("notes"))
+    tags_raw = form_data.get("tags") or ""
     projects = list(repository.list_projects(connection))
 
     errors: list[str] = []
@@ -1685,6 +1687,11 @@ async def ui_range_quick_add_address(
 
     if project_id is not None and not any(project.id == project_id for project in projects):
         errors.append("Selected project does not exist.")
+    try:
+        tags = normalize_tag_names(split_tag_string(tags_raw)) if tags_raw else []
+    except ValueError as exc:
+        tags = []
+        errors.append(str(exc))
 
     breakdown = repository.get_ip_range_address_breakdown(connection, range_id)
     if breakdown is None:
@@ -1728,8 +1735,8 @@ async def ui_range_quick_add_address(
             ip_address=ip_address,
             asset_type=normalized_asset_type,
             project_id=project_id,
-            notes=None,
-            tags=[],
+            notes=notes,
+            tags=tags,
             auto_host_for_bmc=_is_auto_host_for_bmc_enabled(),
             current_user=user,
         )
@@ -1761,6 +1768,91 @@ async def ui_range_quick_add_address(
         )
 
     ip_anchor = (ip_address or "").replace(".", "-").replace(":", "-")
+    return RedirectResponse(
+        url=f"/ui/ranges/{range_id}/addresses#ip-{ip_anchor}",
+        status_code=303,
+    )
+
+
+@router.post("/ui/ranges/{range_id}/addresses/{asset_id}/edit", response_class=HTMLResponse)
+async def ui_range_quick_edit_address(
+    range_id: int,
+    asset_id: int,
+    request: Request,
+    connection=Depends(get_connection),
+    user=Depends(require_ui_editor),
+) -> HTMLResponse:
+    breakdown = repository.get_ip_range_address_breakdown(connection, range_id)
+    if breakdown is None:
+        raise HTTPException(status_code=404, detail="IP range not found.")
+
+    asset = repository.get_ip_asset_by_id(connection, asset_id)
+    if asset is None or asset.archived:
+        raise HTTPException(status_code=404, detail="IP asset not found.")
+
+    range_entry = next((entry for entry in breakdown["addresses"] if entry["asset_id"] == asset.id), None)
+    if range_entry is None:
+        raise HTTPException(status_code=404, detail="IP asset not found in this range.")
+
+    form_data = await _parse_form_data(request)
+    asset_type = form_data.get("type")
+    project_id = _parse_optional_int(form_data.get("project_id"))
+    notes = _parse_optional_str(form_data.get("notes"))
+    tags_raw = form_data.get("tags") or ""
+    projects = list(repository.list_projects(connection))
+
+    errors: list[str] = []
+    normalized_asset_type = None
+    try:
+        normalized_asset_type = _normalize_asset_type(asset_type)
+    except ValueError:
+        errors.append("Asset type is required.")
+    if normalized_asset_type is None and not errors:
+        errors.append("Asset type is required.")
+    if project_id is not None and not any(project.id == project_id for project in projects):
+        errors.append("Selected project does not exist.")
+    try:
+        tags = normalize_tag_names(split_tag_string(tags_raw)) if tags_raw else []
+    except ValueError as exc:
+        tags = []
+        errors.append(str(exc))
+
+    if errors:
+        addresses = breakdown["addresses"]
+        display_limit = 512
+        return _render_template(
+            request,
+            "range_addresses.html",
+            {
+                "title": "ipocket - Range Addresses",
+                "ip_range": breakdown["ip_range"],
+                "addresses": addresses,
+                "used_total": breakdown["used"],
+                "free_total": breakdown["free"],
+                "total_usable": breakdown["total_usable"],
+                "display_limit": display_limit,
+                "address_display": addresses[:display_limit],
+                "address_overflow": len(addresses) > display_limit,
+                "projects": projects,
+                "types": [asset_type_item.value for asset_type_item in IPAssetType],
+                "errors": errors,
+            },
+            status_code=400,
+            active_nav="ranges",
+        )
+
+    repository.update_ip_asset(
+        connection,
+        ip_address=asset.ip_address,
+        asset_type=normalized_asset_type,
+        project_id=project_id,
+        notes=notes,
+        tags=tags,
+        current_user=user,
+        notes_provided=True,
+    )
+
+    ip_anchor = asset.ip_address.replace(".", "-").replace(":", "-")
     return RedirectResponse(
         url=f"/ui/ranges/{range_id}/addresses#ip-{ip_anchor}",
         status_code=303,

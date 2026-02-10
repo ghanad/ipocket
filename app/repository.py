@@ -399,6 +399,7 @@ def get_ip_range_address_breakdown(
                ip_assets.ip_address AS ip_address,
                ip_assets.type AS asset_type,
                ip_assets.host_id AS host_id,
+               ip_assets.project_id AS project_id,
                ip_assets.notes AS notes,
                projects.name AS project_name,
                projects.color AS project_color
@@ -428,6 +429,7 @@ def get_ip_range_address_breakdown(
                 "status": "used",
                 "asset_id": row["asset_id"],
                 "host_id": row["host_id"],
+                "project_id": row["project_id"],
                 "project_name": row["project_name"],
                 "project_color": row["project_color"] or DEFAULT_PROJECT_COLOR,
                 "project_unassigned": not row["project_name"],
@@ -456,6 +458,7 @@ def get_ip_range_address_breakdown(
             "ip_address": str(ip_value),
             "status": "free",
             "asset_id": None,
+            "project_id": None,
             "project_name": None,
             "project_color": DEFAULT_PROJECT_COLOR,
             "project_unassigned": True,

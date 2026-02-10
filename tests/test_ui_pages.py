@@ -131,6 +131,8 @@ def test_range_addresses_page_shows_tags(client) -> None:
     assert "tag-color" in response.text
     assert "10.40.0.11" in response.text
     assert "Add…" in response.text
+    assert "Edit" in response.text
+    assert "data-range-drawer" in response.text
     assert "Allocate next" not in response.text
 
 
@@ -151,7 +153,13 @@ def test_range_addresses_quick_add_creates_asset(client) -> None:
     try:
         response = client.post(
             f"/ui/ranges/{ip_range.id}/addresses/add",
-            data={"ip_address": "10.60.0.2", "type": "VM", "project_id": str(project.id)},
+            data={
+                "ip_address": "10.60.0.2",
+                "type": "VM",
+                "project_id": str(project.id),
+                "notes": "allocated from range",
+                "tags": "edge",
+            },
             follow_redirects=False,
         )
     finally:
@@ -165,6 +173,51 @@ def test_range_addresses_quick_add_creates_asset(client) -> None:
         asset = repository.get_ip_asset_by_ip(connection, "10.60.0.2")
         assert asset is not None
         assert asset.project_id == project.id
+        assert asset.notes == "allocated from range"
+        assert repository.list_tags_for_ip_assets(connection, [asset.id])[asset.id] == ["edge"]
+    finally:
+        connection.close()
+
+
+def test_range_addresses_quick_edit_updates_asset(client) -> None:
+    import os
+    from app import db, repository
+
+    connection = db.connect(os.environ["IPAM_DB_PATH"])
+    try:
+        db.init_db(connection)
+        user = repository.create_user(connection, username="editor", hashed_password="x", role=UserRole.EDITOR)
+        ip_range = repository.create_ip_range(connection, name="Edge Range", cidr="10.61.0.0/29")
+        project = repository.create_project(connection, name="Core")
+        asset = repository.create_ip_asset(
+            connection,
+            ip_address="10.61.0.2",
+            asset_type=IPAssetType.VM,
+        )
+    finally:
+        connection.close()
+
+    app.dependency_overrides[ui.require_ui_editor] = lambda: user
+    try:
+        response = client.post(
+            f"/ui/ranges/{ip_range.id}/addresses/{asset.id}/edit",
+            data={"type": "BMC", "project_id": str(project.id), "notes": "updated", "tags": "mgmt"},
+            follow_redirects=False,
+        )
+    finally:
+        app.dependency_overrides.pop(ui.require_ui_editor, None)
+
+    assert response.status_code == 303
+    assert response.headers["location"].endswith(f"/ui/ranges/{ip_range.id}/addresses#ip-10-61-0-2")
+
+    connection = db.connect(os.environ["IPAM_DB_PATH"])
+    try:
+        updated = repository.get_ip_asset_by_ip(connection, "10.61.0.2")
+        assert updated is not None
+        assert updated.asset_type == IPAssetType.BMC
+        assert updated.project_id == project.id
+        assert updated.notes == "updated"
+        assert repository.list_tags_for_ip_assets(connection, [updated.id])[updated.id] == ["mgmt"]
     finally:
         connection.close()
 
