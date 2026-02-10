@@ -368,9 +368,18 @@ def _collect_inline_ip_errors(
     host_id: Optional[int],
     os_ips: list[str],
     bmc_ips: list[str],
-) -> tuple[list[str], list[tuple[str, IPAssetType]]]:
+) -> tuple[list[str], list[tuple[str, IPAssetType]], list[tuple[str, IPAssetType]]]:
+    """Collect errors and categorize IPs for creation or update.
+    
+    Returns:
+        A tuple of (errors, ips_to_create, ips_to_update) where:
+        - errors: List of error messages
+        - ips_to_create: List of (ip_address, asset_type) for new IPs
+        - ips_to_update: List of (ip_address, asset_type) for existing IPs to link to host
+    """
     errors: list[str] = []
     to_create: list[tuple[str, IPAssetType]] = []
+    to_update: list[tuple[str, IPAssetType]] = []
     conflict_ips = set(os_ips) & set(bmc_ips)
     if conflict_ips:
         for ip in sorted(conflict_ips):
@@ -388,13 +397,15 @@ def _collect_inline_ip_errors(
             continue
         existing = repository.get_ip_asset_by_ip(connection, ip_address)
         if existing is not None:
+            # Already linked to this host with same type - skip
             if host_id is not None and existing.host_id == host_id and existing.asset_type == asset_type:
                 continue
-            errors.append(f"IP address already exists: {ip_address}.")
+            # Existing IP - add to update list to link to host
+            to_update.append((ip_address, asset_type))
             continue
         to_create.append((ip_address, asset_type))
     deduped_errors = list(dict.fromkeys(errors))
-    return deduped_errors, to_create
+    return deduped_errors, to_create, to_update
 
 
 def _normalize_project_color(value: Optional[str]) -> Optional[str]:
@@ -1911,7 +1922,7 @@ async def ui_create_host(
     errors = []
     if not name:
         errors.append("Host name is required.")
-    inline_errors, inline_assets = _collect_inline_ip_errors(connection, None, os_ips, bmc_ips)
+    inline_errors, inline_assets_to_create, inline_assets_to_update = _collect_inline_ip_errors(connection, None, os_ips, bmc_ips)
     errors.extend(inline_errors)
 
     if errors:
@@ -1945,7 +1956,8 @@ async def ui_create_host(
         if vendor_id is not None and vendor is None:
             raise sqlite3.IntegrityError("Selected vendor does not exist.")
         host = repository.create_host(connection, name=name, notes=notes, vendor=vendor.name if vendor else None)
-        for ip_address, asset_type in inline_assets:
+        # Create new IP assets
+        for ip_address, asset_type in inline_assets_to_create:
             repository.create_ip_asset(
                 connection,
                 ip_address=ip_address,
@@ -1954,6 +1966,14 @@ async def ui_create_host(
                 notes=None,
                 tags=[],
                 auto_host_for_bmc=_is_auto_host_for_bmc_enabled(),
+            )
+        # Link existing IP assets to the host
+        for ip_address, asset_type in inline_assets_to_update:
+            repository.update_ip_asset(
+                connection,
+                ip_address=ip_address,
+                asset_type=asset_type,
+                host_id=host.id,
             )
     except sqlite3.IntegrityError:
         hosts = repository.list_hosts_with_ip_counts(connection)
@@ -2049,7 +2069,7 @@ async def ui_edit_host(
             active_nav="hosts",
         )
 
-    inline_errors, inline_assets = _collect_inline_ip_errors(connection, host_id, os_ips, bmc_ips)
+    inline_errors, inline_assets_to_create, inline_assets_to_update = _collect_inline_ip_errors(connection, host_id, os_ips, bmc_ips)
     if inline_errors:
         toast_messages = [{"type": "error", "message": error} for error in inline_errors]
         return _render_template(
@@ -2112,7 +2132,8 @@ async def ui_edit_host(
                         project_id=project_id,
                         set_project_id=True,
                     )
-        for ip_address, asset_type in inline_assets:
+        # Create new IP assets
+        for ip_address, asset_type in inline_assets_to_create:
             repository.create_ip_asset(
                 connection,
                 ip_address=ip_address,
@@ -2121,6 +2142,14 @@ async def ui_edit_host(
                 notes=None,
                 tags=[],
                 auto_host_for_bmc=_is_auto_host_for_bmc_enabled(),
+            )
+        # Link existing IP assets to the host
+        for ip_address, asset_type in inline_assets_to_update:
+            repository.update_ip_asset(
+                connection,
+                ip_address=ip_address,
+                asset_type=asset_type,
+                host_id=host_id,
             )
     except sqlite3.IntegrityError:
         return _render_template(
