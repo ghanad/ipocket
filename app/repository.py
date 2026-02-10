@@ -64,6 +64,17 @@ def _ip_address_sort_key(value: str) -> tuple[int, int, int | str]:
     try:
         parsed_ip = ipaddress.ip_address(value)
     except ValueError:
+        parts = value.split(".")
+        if len(parts) == 4 and all(part.isdigit() for part in parts):
+            octets = [int(part) for part in parts]
+            if all(0 <= octet <= 255 for octet in octets):
+                packed_value = (
+                    (octets[0] << 24)
+                    + (octets[1] << 16)
+                    + (octets[2] << 8)
+                    + octets[3]
+                )
+                return (0, 4, packed_value)
         return (1, 0, value.lower())
     return (0, parsed_ip.version, int(parsed_ip))
 

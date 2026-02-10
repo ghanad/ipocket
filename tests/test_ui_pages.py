@@ -704,7 +704,7 @@ def test_ip_assets_list_renders_project_color_tag(client) -> None:
     response = client.get("/ui/ip-assets")
 
     assert response.status_code == 200
-    assert 'class="tag tag-project"' in response.text
+    assert 'class="tag tag-project tag-filter-chip"' in response.text
     assert "--project-color: #1d4ed8" in response.text
     assert "project-color-dot" not in response.text
 
