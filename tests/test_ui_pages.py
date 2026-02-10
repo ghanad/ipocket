@@ -479,6 +479,8 @@ def test_tags_page_renders_and_allows_edit_delete(client) -> None:
     assert 'type="color"' in response.text
     assert f'action="/ui/tags/{tag.id}/edit"' in response.text
     assert f'action="/ui/tags/{tag.id}/delete"' in response.text
+    assert 'data-tag-delete-form' in response.text
+    assert 'Delete tag "${tagName}"?' in response.text
     assert 'class="card table-card tags-existing-card"' in response.text
     assert 'data-row-actions' in response.text
     assert 'data-row-actions-toggle' in response.text
