@@ -98,7 +98,13 @@
                     <span>Save</span>
                   </button>
                 </form>
-                <form method="post" action="/ui/tags/{{ tag.id }}/delete" class="inline-edit-form">
+                <form
+                  method="post"
+                  action="/ui/tags/{{ tag.id }}/delete"
+                  class="inline-edit-form"
+                  data-tag-delete-form
+                  data-tag-name="{{ tag.name }}"
+                >
                   <button class="row-action-item row-action-item-danger" type="submit" role="menuitem">
                     <span aria-hidden="true">🗑️</span>
                     <span>Delete</span>
@@ -200,6 +206,24 @@
       });
     };
 
+    const bindTagDeleteConfirm = (root = document) => {
+      const deleteForms = root.querySelectorAll('[data-tag-delete-form]');
+      deleteForms.forEach((form) => {
+        if (form.dataset.confirmBound) {
+          return;
+        }
+
+        form.dataset.confirmBound = 'true';
+        form.addEventListener('submit', (event) => {
+          const tagName = form.dataset.tagName || 'this tag';
+          const confirmed = window.confirm(`Delete tag "${tagName}"?`);
+          if (!confirmed) {
+            event.preventDefault();
+          }
+        });
+      });
+    };
+
     if (!window[GLOBAL_FLAG]) {
       window[GLOBAL_FLAG] = true;
       document.addEventListener('click', () => {
@@ -233,6 +257,7 @@
     }
 
     bindRowActions();
+    bindTagDeleteConfirm();
   })();
 </script>
 {% endblock %}
