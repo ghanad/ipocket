@@ -8,7 +8,7 @@
     <p class="subtitle">Manage and monitor network address assignments across all zones.</p>
   </div>
   <div class="header-actions">
-    <a class="btn btn-primary" href="/ui/ip-assets/new">Add IP</a>
+    <button class="btn btn-primary" type="button" data-ip-add>Add IP</button>
     <a class="btn btn-secondary" href="/ui/ip-assets/needs-assignment">Needs Assignment</a>
   </div>
 </section>
@@ -130,7 +130,7 @@
   <div class="ip-drawer-header">
     <div class="ip-drawer-header-row">
       <div>
-        <h2 class="ip-drawer-title">Edit IP asset</h2>
+        <h2 class="ip-drawer-title" data-ip-drawer-title>Edit IP asset</h2>
         <p class="ip-drawer-subtitle" data-ip-drawer-subtitle>—</p>
       </div>
       <button class="ip-drawer-close" type="button" aria-label="Close edit drawer" data-ip-drawer-close>
@@ -149,7 +149,7 @@
         <h3>Assignment</h3>
         <label class="field">
           <span>IP address</span>
-          <input class="input" type="text" name="ip_address" readonly data-ip-input="ip_address" />
+          <input class="input" type="text" name="ip_address" data-ip-input="ip_address" />
         </label>
         <div class="ip-drawer-row ip-drawer-row-two">
           <label class="field">
@@ -207,7 +207,7 @@
     <div class="ip-drawer-footer-actions">
       <button class="btn btn-secondary" type="button" data-ip-drawer-cancel>Cancel</button>
       <button class="btn btn-primary" type="submit" form="ip-edit-form" data-ip-drawer-save disabled>
-        Save changes
+        Save
       </button>
     </div>
   </div>

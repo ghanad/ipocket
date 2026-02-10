@@ -135,6 +135,7 @@ def test_tags_page_renders_and_allows_edit_delete(client) -> None:
     assert 'data-tag-delete-form' in response.text
     tags_js = Path(__file__).resolve().parents[2] / "app/static/js/tags.js"
     assert 'Delete tag "${tagName}"?' in tags_js.read_text(encoding="utf-8")
+    assert '/static/js/tags.js' in response.text
     assert 'class="card table-card tags-existing-card"' in response.text
     assert 'data-row-actions' in response.text
     assert 'data-row-actions-toggle' in response.text
@@ -142,6 +143,7 @@ def test_tags_page_renders_and_allows_edit_delete(client) -> None:
     assert 'class="row-actions-icon"' in response.text
     assert f'aria-controls="row-actions-tag-{tag.id}"' in response.text
     assert "positionMenuPanel" in tags_js.read_text(encoding="utf-8")
+    assert "row-actions-trigger" in response.text
 
 def test_ip_assets_list_uses_edit_drawer_actions_with_delete_dialog(client) -> None:
     import os
@@ -179,10 +181,14 @@ def test_ip_assets_list_uses_edit_drawer_actions_with_delete_dialog(client) -> N
     assert f'id="delete-ip-{asset.id}"' in response.text
     assert "Delete IP asset?" in response.text
     assert "Continue to delete" in response.text
+    assert "data-ip-add" in response.text
     assert "data-ip-drawer" in response.text
     assert "Save changes" in response.text
     ip_assets_js = Path(__file__).resolve().parents[2] / "app/static/js/ip-assets.js"
     assert "ipocket.ip-assets.scrollY" in ip_assets_js.read_text(encoding="utf-8")
+    assert "data-ip-drawer-title" in response.text
+    assert "Save" in response.text
+    assert "/static/js/ip-assets.js" in response.text
     assert "data-ip-host-field" in response.text
 
 def test_ip_assets_list_htmx_response_renders_table_partial(client) -> None:
@@ -410,6 +416,7 @@ def test_ip_assets_list_supports_multi_tag_filter_and_clickable_filter_chips(cli
 
     assert list_response.status_code == 200
     assert 'name="tag"' not in list_response.text
+    assert 'data-tag-filter-selected' in list_response.text
     assert 'data-tag-filter-input' in list_response.text
     assert 'tag-filter-suggestions' in list_response.text
     assert '<span>Tags</span>' in list_response.text
