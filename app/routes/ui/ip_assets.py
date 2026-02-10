@@ -404,6 +404,7 @@ async def ui_add_ip_submit(
     user=Depends(require_ui_editor),
 ):
     form_data = await _parse_form_data(request)
+    return_to = (form_data.get("return_to") or "").strip()
     ip_address = form_data.get("ip_address")
     asset_type = form_data.get("type")
     project_id = _parse_optional_int(form_data.get("project_id"))
@@ -506,9 +507,10 @@ async def ui_add_ip_submit(
             active_nav="ip-assets",
         )
 
+    redirect_target = return_to if return_to.startswith("/") else "/ui/ip-assets"
     return _redirect_with_flash(
         request,
-        f"/ui/ip-assets/{asset.id}",
+        redirect_target,
         "IP asset created.",
         message_type="success",
         status_code=303,
