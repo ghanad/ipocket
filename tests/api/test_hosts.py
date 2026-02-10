@@ -2,54 +2,20 @@ from __future__ import annotations
 
 import sqlite3
 
-import pytest
-from fastapi.testclient import TestClient
-
-from app import auth, db, repository
+from app import db, repository
 from app.main import app
-from app.models import UserRole
+from app.models import User, UserRole
+from app.routes import ui
 
 
-@pytest.fixture
-def client(tmp_path, monkeypatch):
-    db_path = tmp_path / "test.db"
-    monkeypatch.setenv("IPAM_DB_PATH", str(db_path))
-    auth.clear_tokens()
-    with TestClient(app) as test_client:
-        yield test_client, db_path
-    auth.clear_tokens()
+def test_create_host_with_vendor_catalog_selection(client, _create_user, _login, _auth_headers) -> None:
+    _create_user("editor", "editor-pass", UserRole.EDITOR)
+    headers = _auth_headers(_login("editor", "editor-pass"))
 
-
-def _create_user(db_path, username: str, password: str, role: UserRole) -> None:
-    connection = db.connect(str(db_path))
-    try:
-        db.init_db(connection)
-        repository.create_user(
-            connection,
-            username=username,
-            hashed_password=auth.hash_password(password),
-            role=role,
-        )
-    finally:
-        connection.close()
-
-
-def _login(client: TestClient, username: str, password: str) -> str:
-    response = client.post("/login", json={"username": username, "password": password})
-    assert response.status_code == 200
-    return response.json()["access_token"]
-
-
-def test_create_host_with_vendor_catalog_selection(client) -> None:
-    test_client, db_path = client
-    _create_user(db_path, "editor", "editor-pass", UserRole.EDITOR)
-    token = _login(test_client, "editor", "editor-pass")
-    headers = {"Authorization": f"Bearer {token}"}
-
-    vendor_response = test_client.post("/vendors", headers=headers, json={"name": "HPE"})
+    vendor_response = client.post("/vendors", headers=headers, json={"name": "HPE"})
     assert vendor_response.status_code == 200
 
-    response = test_client.post(
+    response = client.post(
         "/hosts",
         headers=headers,
         json={"name": "host-a", "vendor_id": vendor_response.json()["id"], "notes": "rack-a"},
@@ -59,49 +25,36 @@ def test_create_host_with_vendor_catalog_selection(client) -> None:
     assert response.json()["vendor"] == "HPE"
 
 
-def test_update_host_vendor_by_vendor_id(client) -> None:
-    test_client, db_path = client
-    _create_user(db_path, "editor", "editor-pass", UserRole.EDITOR)
-    token = _login(test_client, "editor", "editor-pass")
-    headers = {"Authorization": f"Bearer {token}"}
+def test_update_host_vendor_by_vendor_id(client, _create_user, _login, _auth_headers) -> None:
+    _create_user("editor", "editor-pass", UserRole.EDITOR)
+    headers = _auth_headers(_login("editor", "editor-pass"))
 
-    dell = test_client.post("/vendors", headers=headers, json={"name": "Dell"})
-    created = test_client.post("/hosts", headers=headers, json={"name": "host-b"})
+    dell = client.post("/vendors", headers=headers, json={"name": "Dell"})
+    created = client.post("/hosts", headers=headers, json={"name": "host-b"})
     host_id = created.json()["id"]
 
-    updated = test_client.patch(
-        f"/hosts/{host_id}",
-        headers=headers,
-        json={"vendor_id": dell.json()["id"]},
-    )
+    updated = client.patch(f"/hosts/{host_id}", headers=headers, json={"vendor_id": dell.json()["id"]})
 
     assert updated.status_code == 200
     assert updated.json()["vendor"] == "Dell"
 
 
-
-def test_hosts_ui_form_uses_vendor_dropdown(client) -> None:
-    test_client, db_path = client
-    connection = db.connect(str(db_path))
+def test_hosts_ui_form_uses_vendor_dropdown(client, _setup_connection) -> None:
+    connection = _setup_connection()
     try:
-        db.init_db(connection)
         repository.create_vendor(connection, "HPE")
     finally:
         connection.close()
 
-    response = test_client.get("/ui/hosts")
+    response = client.get("/ui/hosts")
     assert response.status_code == 200
     assert 'name="vendor_id"' in response.text
     assert "HPE" in response.text
 
-def test_vendors_ui_page_renders_and_is_editable(client) -> None:
-    from app.models import User
-    from app.routes import ui
 
-    test_client, db_path = client
-    connection = db.connect(str(db_path))
+def test_vendors_ui_page_renders_and_is_editable(client, _setup_connection) -> None:
+    connection = _setup_connection()
     try:
-        db.init_db(connection)
         vendor = repository.create_vendor(connection, "Lenovo")
     finally:
         connection.close()
@@ -110,14 +63,14 @@ def test_vendors_ui_page_renders_and_is_editable(client) -> None:
     app.dependency_overrides[ui.require_ui_editor] = lambda: User(1, "editor", "x", UserRole.EDITOR, True)
 
     try:
-        list_response = test_client.get("/ui/vendors")
+        list_response = client.get("/ui/vendors")
         assert list_response.status_code == 200
         assert "Lenovo" in list_response.text
 
-        edit_response = test_client.post(f"/ui/vendors/{vendor.id}/edit", data={"name": "Supermicro"}, follow_redirects=False)
+        edit_response = client.post(f"/ui/vendors/{vendor.id}/edit", data={"name": "Supermicro"}, follow_redirects=False)
         assert edit_response.status_code == 303
 
-        after = test_client.get("/ui/vendors")
+        after = client.get("/ui/vendors")
         assert "Supermicro" in after.text
     finally:
         app.dependency_overrides.pop(ui.get_current_ui_user, None)
