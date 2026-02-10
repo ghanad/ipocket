@@ -8,7 +8,7 @@ ipocket is a lightweight IP inventory app to track addresses and their project a
 - Project colors to quickly scan ownership in the IP assets list
 - Needs Assignment UI for project-only assignment
 - IP assets list supports HTMX-powered live search and filtering (including an assignment dropdown) without full page reloads.
-- IP assets list supports one-click filtering from table values: clicking a Project, Type, or Tag chip applies that filter instantly.
+- IP assets list supports one-click filtering from table values: clicking a Project/Type chip applies that filter instantly, and Tag chips support multi-select filtering with ANY matching.
 - IP assets list includes an archived-only filter for reviewing soft-deleted records when needed.
 - IP assets list includes pagination with a user-selectable page size (default 20) to keep large inventories manageable.
 - IP assets list uses a right-side edit drawer for quick updates without leaving the list view.

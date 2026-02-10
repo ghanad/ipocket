@@ -68,17 +68,18 @@
       <select
         class="select"
         name="tag"
+        multiple
         hx-get="/ui/ip-assets"
         hx-trigger="change"
         hx-target="#ip-table-container"
         hx-push-url="true"
         hx-include="closest form"
       >
-        <option value="">All</option>
-        {% for tag in tags %}
-        <option value="{{ tag.name }}"{% if filters.tag == tag.name %} selected{% endif %}>{{ tag.name }}</option>
+{% for tag in tags %}
+        <option value="{{ tag.name }}"{% if tag.name in filters.tag %} selected{% endif %}>{{ tag.name }}</option>
         {% endfor %}
       </select>
+      <small class="muted">Multi-select supported (ANY match)</small>
     </label>
     <label class="field">
       <span>Assignment</span>
@@ -636,7 +637,15 @@
       if (!filterInput) {
         return;
       }
-      filterInput.value = value || '';
+      if (fieldName === 'tag' && filterInput.tagName === 'SELECT' && filterInput.multiple) {
+        const options = Array.from(filterInput.options);
+        const target = options.find((option) => option.value === value);
+        if (target) {
+          target.selected = !target.selected;
+        }
+      } else {
+        filterInput.value = value || '';
+      }
       if (window.htmx && typeof window.htmx.trigger === 'function') {
         window.htmx.trigger(filterInput, 'change');
         return;
