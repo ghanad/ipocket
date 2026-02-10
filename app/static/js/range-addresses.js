@@ -1,4 +1,6 @@
 (() => {
+  const scrollStateKey = "ipocket.rangeAddresses.scrollY";
+  const scrollPathKey = "ipocket.rangeAddresses.path";
   const overlay = document.querySelector("[data-range-drawer-overlay]");
   const drawer = document.querySelector("[data-range-drawer]");
   const form = document.querySelector("[data-range-drawer-form]");
@@ -12,6 +14,24 @@
   if (!overlay || !drawer || !form || !title || !subtitle || !statusLabel || !saveButton) {
     return;
   }
+
+  const restoreScrollPosition = () => {
+    const savedPath = window.sessionStorage.getItem(scrollPathKey);
+    const savedScrollY = window.sessionStorage.getItem(scrollStateKey);
+    if (savedPath !== window.location.pathname || savedScrollY === null) {
+      return;
+    }
+
+    const parsedScrollY = Number.parseInt(savedScrollY, 10);
+    if (Number.isFinite(parsedScrollY)) {
+      window.scrollTo({ top: parsedScrollY, behavior: "auto" });
+    }
+
+    window.sessionStorage.removeItem(scrollStateKey);
+    window.sessionStorage.removeItem(scrollPathKey);
+  };
+
+  restoreScrollPosition();
 
   const inputs = form.querySelectorAll("[data-range-input]");
   const state = { open: false, initialValues: {} };
@@ -122,5 +142,10 @@
   inputs.forEach((input) => {
     input.addEventListener("input", updateSaveState);
     input.addEventListener("change", updateSaveState);
+  });
+
+  form.addEventListener("submit", () => {
+    window.sessionStorage.setItem(scrollPathKey, window.location.pathname);
+    window.sessionStorage.setItem(scrollStateKey, String(window.scrollY));
   });
 })();

@@ -60,3 +60,12 @@ def test_refactored_templates_load_external_page_assets() -> None:
     assert (repo_root / "app/static/js/ip-assets.js").exists()
     assert (repo_root / "app/static/js/range-addresses.js").exists()
     assert (repo_root / "app/static/js/tags.js").exists()
+
+
+def test_range_addresses_script_restores_scroll_after_submit() -> None:
+    repo_root = Path(__file__).resolve().parents[1]
+    script = (repo_root / "app/static/js/range-addresses.js").read_text(encoding="utf-8")
+
+    assert "ipocket.rangeAddresses.scrollY" in script
+    assert "window.sessionStorage.setItem(scrollStateKey, String(window.scrollY));" in script
+    assert "window.scrollTo({ top: parsedScrollY, behavior: \"auto\" });" in script

@@ -31,6 +31,7 @@ ipocket is a lightweight IP inventory app to track addresses and their project a
 - IP ranges page supports editing and deleting saved CIDR ranges for cleanup, with a confirmation step that requires typing the exact range name.
 - Range addresses view aligns columns with the IP assets list (plus Status), including Host Pair and Notes for used IPs in subnet drill-downs.
 - Range addresses view now uses a right-side drawer for both “Add” (free IPs) and “Edit” (used IPs), matching the IP assets page workflow.
+- After saving from the range addresses drawer, the page restores the exact previous scroll position so the user stays in context instead of jumping up.
 - IP ranges page now opens “Add IP Range” inside a right-side drawer instead of an inline card, keeping create UX consistent with Hosts/IP assets flows.
 - Drawer open/close behavior is shared through `app/static/js/drawer.js` so Hosts and Ranges follow the same interaction pattern.
 - Export data as CSV, JSON, or bundle (JSON/ZIP) for round-trip workflows.
