@@ -216,26 +216,5 @@
   </div>
 </aside>
 
-<style>
-  .ip-drawer-overlay { position: fixed; inset: 0; background: rgba(15,23,42,.45); opacity: 0; pointer-events: none; transition: opacity .2s ease; z-index: 40; }
-  .ip-drawer-overlay.is-open { opacity: 1; pointer-events: auto; }
-  .ip-drawer { position: fixed; top: 0; right: 0; height: 100%; width: min(480px,100%); background: #fff; box-shadow: -24px 0 48px rgba(15,23,42,.16); transform: translateX(100%); transition: transform .24s ease; z-index: 50; display: flex; flex-direction: column; }
-  .ip-drawer.is-open { transform: translateX(0); }
-  .ip-drawer-header { padding: 20px 24px 12px; border-bottom: 1px solid #e2e8f0; }
-  .ip-drawer-header-row { display: flex; justify-content: space-between; gap: 12px; align-items: center; }
-  .ip-drawer-title { margin: 0; font-size: 20px; }
-  .ip-drawer-subtitle { margin: 4px 0 0; color: #64748b; }
-  .ip-drawer-close { border: none; background: none; font-size: 18px; cursor: pointer; }
-  .ip-drawer-body { flex: 1; overflow-y: auto; padding: 16px 24px; }
-  .ip-drawer-form, .ip-drawer-section { display: flex; flex-direction: column; gap: 12px; }
-  .ip-drawer-form { gap: 20px; }
-  .ip-drawer-section h3 { margin: 0; font-size: 14px; color: #475569; text-transform: uppercase; letter-spacing: .08em; }
-  .ip-drawer-row { display: grid; gap: 12px; }
-  .ip-drawer-row-two { grid-template-columns: repeat(2,minmax(0,1fr)); }
-  .ip-drawer-footer { padding: 16px 24px; border-top: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center; gap: 12px; }
-  .ip-drawer-footer-status { color: #64748b; font-size: 13px; }
-  .ip-drawer-footer-actions { display: flex; gap: 12px; }
-  @media (max-width: 600px) { .ip-drawer-row-two { grid-template-columns: 1fr; } }
-</style>
-<script src="/static/range-addresses.js" defer></script>
+<script src="/static/js/range-addresses.js" defer></script>
 {% endblock %}
