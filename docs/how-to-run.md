@@ -212,3 +212,21 @@ tag and `latest`.
 Required GitHub secrets:
 - `DOCKERHUB_USERNAME`
 - `DOCKERHUB_TOKEN`
+
+
+## Test suite layout
+
+Tests now mirror the application modules:
+
+- `tests/repository/` for repository/data-layer unit tests.
+- `tests/ui/` for UI router/page tests.
+- `tests/api/` for API route and auth/permission tests.
+- `tests/conftest.py` provides shared fixtures/helpers (`client`, `_setup_connection`, `_create_user`, `_login`, `_auth_headers`).
+
+Run subsets as needed, for example:
+
+```bash
+pytest tests/repository -q
+pytest tests/ui -q
+pytest tests/api -q
+```
