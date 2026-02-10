@@ -14,7 +14,7 @@
 <section class="card table-card">
   <div class="card-header card-header-padded">
     <div>
-      <h2>Subnet Utilization</h2>
+      <h2>IP Ranges</h2>
       <p class="subtitle">Click used or free to review addresses within each range.</p>
     </div>
   </div>
@@ -28,69 +28,37 @@
           <th>Used</th>
           <th>Free</th>
           <th>Utilization</th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for row in utilization %}
-        <tr>
-          <td>{{ row.name }}</td>
-          <td>{{ row.cidr }}</td>
-          <td>{{ row.total_usable }}</td>
-          <td><a class="link" href="/ui/ranges/{{ row.id }}/addresses#used">{{ row.used }}</a></td>
-          <td><a class="link" href="/ui/ranges/{{ row.id }}/addresses#free">{{ row.free }}</a></td>
-          <td>{{ "%.1f"|format(row.utilization_percent) }}%</td>
-        </tr>
-        {% else %}
-        <tr>
-          <td colspan="6" class="empty-state">No ranges yet. Add ranges to see utilization.</td>
-        </tr>
-        {% endfor %}
-      </tbody>
-    </table>
-  </div>
-</section>
-
-<section class="card">
-  <header class="card-header">
-    <h2>Saved ranges</h2>
-  </header>
-  <div class="table-wrapper">
-    <table class="table">
-      <thead>
-        <tr>
-          <th>Name</th>
-          <th>CIDR</th>
-          <th>Notes</th>
-          <th>Created</th>
           <th>Actions</th>
         </tr>
       </thead>
       <tbody>
-        {% for ip_range in ranges %}
+        {% for row in range_rows %}
         <tr>
-          <td>{{ ip_range.name }}</td>
-          <td>{{ ip_range.cidr }}</td>
-          <td>{{ ip_range.notes or "—" }}</td>
-          <td>{{ ip_range.created_at }}</td>
+          <td>{{ row.name }}</td>
+          <td>{{ row.cidr }}</td>
+          <td>{{ row.total_usable if row.total_usable is not none else "—" }}</td>
+          <td>{% if row.used is not none %}<a class="link" href="/ui/ranges/{{ row.id }}/addresses#used">{{ row.used }}</a>{% else %}—{% endif %}</td>
+          <td>{% if row.free is not none %}<a class="link" href="/ui/ranges/{{ row.id }}/addresses#free">{{ row.free }}</a>{% else %}—{% endif %}</td>
+          <td>{% if row.utilization_percent is not none %}{{ "%.1f"|format(row.utilization_percent) }}%{% else %}—{% endif %}</td>
           <td class="asset-actions-cell">
             <div class="table-actions">
               <button
                 class="btn btn-secondary btn-small"
                 type="button"
-                data-range-edit="{{ ip_range.id }}"
-                data-range-name="{{ ip_range.name }}"
-                data-range-cidr="{{ ip_range.cidr }}"
-                data-range-notes="{{ ip_range.notes or '' }}"
+                data-range-edit="{{ row.id }}"
+                data-range-name="{{ row.name }}"
+                data-range-cidr="{{ row.cidr }}"
+                data-range-notes="{{ row.notes or '' }}"
               >
                 Edit
               </button>
-              <a class="btn btn-danger btn-small" href="/ui/ranges/{{ ip_range.id }}/delete">Delete</a>
+              <a class="btn btn-danger btn-small" href="/ui/ranges/{{ row.id }}/delete">Delete</a>
             </div>
           </td>
         </tr>
         {% else %}
         <tr>
-          <td colspan="5" class="empty-state">No ranges saved yet.</td>
+          <td colspan="7" class="empty-state">No ranges yet. Add ranges to see utilization.</td>
         </tr>
         {% endfor %}
       </tbody>

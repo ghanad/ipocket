@@ -8,14 +8,14 @@ from app.models import IPAsset, IPAssetType, User, UserRole
 from app.routes import ui
 
 
-def test_ranges_page_renders_add_form_and_saved_ranges(client) -> None:
+def test_ranges_page_renders_single_combined_ranges_table(client) -> None:
     import os
     from app import db, repository
 
     connection = db.connect(os.environ["IPAM_DB_PATH"])
     try:
         db.init_db(connection)
-        repository.create_ip_range(connection, name="Corp LAN", cidr="192.168.10.0/24")
+        ip_range = repository.create_ip_range(connection, name="Corp LAN", cidr="192.168.10.0/24")
     finally:
         connection.close()
 
@@ -26,13 +26,43 @@ def test_ranges_page_renders_add_form_and_saved_ranges(client) -> None:
     assert "Add IP Range" in response.text
     assert "data-range-create-drawer" in response.text
     assert "192.168.10.0/24" in response.text
-    assert "Saved ranges" in response.text
+    assert "Saved ranges" not in response.text
+    assert "Subnet Utilization" not in response.text
+    assert "<h2>IP Ranges</h2>" in response.text
+    assert "Total usable" in response.text
+    assert "Used" in response.text
+    assert "Free" in response.text
+    assert "Utilization" in response.text
+    assert "Actions" in response.text
+    assert "Created" not in response.text
+    assert f'href="/ui/ranges/{ip_range.id}/addresses#used"' in response.text
+    assert f'href="/ui/ranges/{ip_range.id}/addresses#free"' in response.text
     assert 'class="btn btn-secondary btn-small"' in response.text
     assert 'class="btn btn-danger btn-small"' in response.text
     assert "data-range-edit" in response.text
     assert ">Delete</a>" in response.text
 
 
+
+def test_ranges_page_shows_em_dash_when_utilization_missing(client, monkeypatch) -> None:
+    import os
+
+    connection = db.connect(os.environ["IPAM_DB_PATH"])
+    try:
+        db.init_db(connection)
+        repository.create_ip_range(connection, name="No Util", cidr="10.10.10.0/30")
+    finally:
+        connection.close()
+
+    from app.routes.ui import ranges as ranges_ui
+
+    monkeypatch.setattr(ranges_ui.repository, "get_ip_range_utilization", lambda _connection: [])
+
+    response = client.get("/ui/ranges")
+
+    assert response.status_code == 200
+    assert "No Util" in response.text
+    assert "—" in response.text
 
 def test_ranges_page_reopens_create_drawer_with_errors(client) -> None:
     import os
