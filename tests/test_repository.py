@@ -424,6 +424,27 @@ def test_list_active_ip_assets_paginated_with_search(tmp_path) -> None:
     assert assets[0].ip_address == "10.60.0.10"
 
 
+def test_list_active_ip_assets_paginated_sorts_ip_addresses_numerically(tmp_path) -> None:
+    connection = _setup_connection(tmp_path)
+    create_ip_asset(connection, ip_address="192.168.1.2", asset_type=IPAssetType.VM)
+    create_ip_asset(connection, ip_address="192.168.1.11", asset_type=IPAssetType.VM)
+    create_ip_asset(connection, ip_address="192.168.1.1", asset_type=IPAssetType.VM)
+
+    assets = list_active_ip_assets_paginated(connection, query_text="192.168.1.", limit=10, offset=0)
+
+    assert [asset.ip_address for asset in assets] == ["192.168.1.1", "192.168.1.2", "192.168.1.11"]
+
+
+def test_list_active_ip_assets_paginated_applies_offset_after_numeric_sort(tmp_path) -> None:
+    connection = _setup_connection(tmp_path)
+    for ip_address in ["192.168.1.2", "192.168.1.11", "192.168.1.1"]:
+        create_ip_asset(connection, ip_address=ip_address, asset_type=IPAssetType.VM)
+
+    assets = list_active_ip_assets_paginated(connection, query_text="192.168.1.", limit=1, offset=1)
+
+    assert [asset.ip_address for asset in assets] == ["192.168.1.2"]
+
+
 def test_list_active_ip_assets_paginated_with_tag_filter_any(tmp_path) -> None:
     connection = _setup_connection(tmp_path)
     create_ip_asset(connection, ip_address="10.61.0.10", asset_type=IPAssetType.VM, tags=["edge"])
