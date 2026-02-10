@@ -1870,15 +1870,24 @@ async def ui_edit_vendor(vendor_id: int, request: Request, connection=Depends(ge
 def ui_list_hosts(
     request: Request,
     q: Optional[str] = None,
+    page: Optional[str] = None,
+    per_page: Optional[str] = Query(default=None, alias="per-page"),
     connection=Depends(get_connection),
 ) -> HTMLResponse:
-    hosts = repository.list_hosts_with_ip_counts(connection)
+    per_page_value = _parse_positive_int_query(per_page, 20)
+    allowed_page_sizes = {10, 20, 50, 100}
+    if per_page_value not in allowed_page_sizes:
+        per_page_value = 20
+    page_value = _parse_positive_int_query(page, 1)
+
     q_value = (q or "").strip()
     if q_value:
+        # When searching, filter in Python and paginate the filtered results
+        all_hosts = repository.list_hosts_with_ip_counts(connection)
         q_lower = q_value.lower()
-        hosts = [
+        filtered_hosts = [
             host
-            for host in hosts
+            for host in all_hosts
             if q_lower in (host["name"] or "").lower()
             or q_lower in (host["notes"] or "").lower()
             or q_lower in (host["vendor"] or "").lower()
@@ -1886,6 +1895,26 @@ def ui_list_hosts(
             or q_lower in (host["os_ips"] or "").lower()
             or q_lower in (host["bmc_ips"] or "").lower()
         ]
+        total_count = len(filtered_hosts)
+        total_pages = max(1, math.ceil(total_count / per_page_value)) if total_count else 1
+        page_value = max(1, min(page_value, total_pages))
+        offset = (page_value - 1) * per_page_value if total_count else 0
+        hosts = filtered_hosts[offset:offset + per_page_value]
+    else:
+        # No search: use paginated query
+        total_count = repository.count_hosts(connection)
+        total_pages = max(1, math.ceil(total_count / per_page_value)) if total_count else 1
+        page_value = max(1, min(page_value, total_pages))
+        offset = (page_value - 1) * per_page_value if total_count else 0
+        hosts = repository.list_hosts_with_ip_counts_paginated(connection, limit=per_page_value, offset=offset)
+
+    start_index = (page_value - 1) * per_page_value + 1 if total_count else 0
+    end_index = min(page_value * per_page_value, total_count) if total_count else 0
+    query_params = {"per-page": per_page_value}
+    if q_value:
+        query_params["q"] = q_value
+    base_query = urlencode(query_params)
+
     return _render_template(
         request,
         "hosts.html",
@@ -1899,6 +1928,17 @@ def ui_list_hosts(
             "filters": {"q": q_value},
             "show_search": bool(q_value),
             "show_add_host": False,
+            "pagination": {
+                "page": page_value,
+                "per_page": per_page_value,
+                "total": total_count,
+                "total_pages": total_pages,
+                "has_prev": page_value > 1,
+                "has_next": page_value < total_pages,
+                "start_index": start_index,
+                "end_index": end_index,
+                "base_query": base_query,
+            },
         },
         active_nav="hosts",
     )

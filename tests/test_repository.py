@@ -7,6 +7,7 @@ from app.models import IPAssetType, UserRole
 from app.repository import (
     archive_ip_asset,
     count_audit_logs,
+    count_hosts,
     create_host,
     create_ip_asset,
     create_ip_range,
@@ -26,6 +27,7 @@ from app.repository import (
     list_audit_logs_paginated,
     list_hosts,
     list_hosts_with_ip_counts,
+    list_hosts_with_ip_counts_paginated,
     list_host_pair_ips_for_hosts,
     list_active_ip_assets_paginated,
     count_active_ip_assets,
@@ -704,3 +706,58 @@ def test_list_audit_logs_paginated_empty_when_offset_exceeds_total(tmp_path) -> 
 
     logs = list_audit_logs_paginated(connection, limit=10, offset=100)
     assert len(logs) == 0
+
+
+def test_count_hosts_returns_total(tmp_path) -> None:
+    connection = _setup_connection(tmp_path)
+    create_host(connection, name="host-1")
+    create_host(connection, name="host-2")
+    create_host(connection, name="host-3")
+
+    total = count_hosts(connection)
+
+    assert total == 3
+
+
+def test_count_hosts_returns_zero_when_empty(tmp_path) -> None:
+    connection = _setup_connection(tmp_path)
+
+    total = count_hosts(connection)
+
+    assert total == 0
+
+
+def test_list_hosts_with_ip_counts_paginated_returns_subset(tmp_path) -> None:
+    connection = _setup_connection(tmp_path)
+    create_host(connection, name="alpha")
+    create_host(connection, name="beta")
+    create_host(connection, name="gamma")
+    create_host(connection, name="delta")
+
+    page1 = list_hosts_with_ip_counts_paginated(connection, limit=2, offset=0)
+    page2 = list_hosts_with_ip_counts_paginated(connection, limit=2, offset=2)
+
+    # Results are ordered alphabetically by name
+    assert [h["name"] for h in page1] == ["alpha", "beta"]
+    assert [h["name"] for h in page2] == ["delta", "gamma"]
+
+
+def test_list_hosts_with_ip_counts_paginated_respects_offset(tmp_path) -> None:
+    connection = _setup_connection(tmp_path)
+    create_host(connection, name="host-a")
+    create_host(connection, name="host-b")
+    create_host(connection, name="host-c")
+
+    hosts = list_hosts_with_ip_counts_paginated(connection, limit=10, offset=1)
+
+    assert len(hosts) == 2
+    assert [h["name"] for h in hosts] == ["host-b", "host-c"]
+
+
+def test_list_hosts_with_ip_counts_paginated_returns_empty_for_large_offset(tmp_path) -> None:
+    connection = _setup_connection(tmp_path)
+    create_host(connection, name="solo")
+
+    hosts = list_hosts_with_ip_counts_paginated(connection, limit=10, offset=100)
+
+    assert hosts == []
