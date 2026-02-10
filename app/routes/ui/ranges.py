@@ -25,6 +25,31 @@ from .utils import (
 
 router = APIRouter()
 
+
+def _build_range_table_rows(
+    ranges: list,
+    utilization: list[dict[str, object]],
+) -> list[dict[str, object]]:
+    utilization_by_id = {
+        row.get("id"): row for row in utilization if row.get("id") is not None
+    }
+    rows: list[dict[str, object]] = []
+    for ip_range in ranges:
+        summary = utilization_by_id.get(ip_range.id, {})
+        rows.append(
+            {
+                "id": ip_range.id,
+                "name": ip_range.name,
+                "cidr": ip_range.cidr,
+                "notes": ip_range.notes,
+                "total_usable": summary.get("total_usable"),
+                "used": summary.get("used"),
+                "free": summary.get("free"),
+                "utilization_percent": summary.get("utilization_percent"),
+            }
+        )
+    return rows
+
 @router.get("/ui/ranges", response_class=HTMLResponse)
 def ui_list_ranges(request: Request, connection=Depends(get_connection)) -> HTMLResponse:
     edit_param = request.query_params.get("edit")
@@ -32,13 +57,13 @@ def ui_list_ranges(request: Request, connection=Depends(get_connection)) -> HTML
     edit_ip_range = repository.get_ip_range_by_id(connection, edit_range_id) if edit_range_id else None
     ranges = list(repository.list_ip_ranges(connection))
     utilization = repository.get_ip_range_utilization(connection)
+    range_rows = _build_range_table_rows(ranges, utilization)
     return _render_template(
         request,
         "ranges.html",
         {
             "title": "ipocket - IP Ranges",
-            "ranges": ranges,
-            "utilization": utilization,
+            "range_rows": range_rows,
             "errors": [],
             "form_state": {"name": "", "cidr": "", "notes": ""},
             "edit_errors": [],
@@ -78,13 +103,13 @@ async def ui_create_range(
     if errors:
         ranges = list(repository.list_ip_ranges(connection))
         utilization = repository.get_ip_range_utilization(connection)
+        range_rows = _build_range_table_rows(ranges, utilization)
         return _render_template(
             request,
             "ranges.html",
             {
                 "title": "ipocket - IP Ranges",
-                "ranges": ranges,
-                "utilization": utilization,
+                "range_rows": range_rows,
                 "errors": errors,
                 "form_state": {"name": name, "cidr": cidr, "notes": notes or ""},
                 "edit_errors": [],
@@ -100,13 +125,13 @@ async def ui_create_range(
     except sqlite3.IntegrityError:
         ranges = list(repository.list_ip_ranges(connection))
         utilization = repository.get_ip_range_utilization(connection)
+        range_rows = _build_range_table_rows(ranges, utilization)
         return _render_template(
             request,
             "ranges.html",
             {
                 "title": "ipocket - IP Ranges",
-                "ranges": ranges,
-                "utilization": utilization,
+                "range_rows": range_rows,
                 "errors": ["CIDR already exists."],
                 "form_state": {"name": name, "cidr": cidr, "notes": notes or ""},
                 "edit_errors": [],
@@ -159,13 +184,14 @@ async def ui_update_range(
             errors.append("CIDR must be a valid IPv4 network (example: 192.168.10.0/24).")
 
     if errors:
+        ranges = list(repository.list_ip_ranges(connection))
+        utilization = repository.get_ip_range_utilization(connection)
         return _render_template(
             request,
             "ranges.html",
             {
                 "title": "ipocket - IP Ranges",
-                "ranges": list(repository.list_ip_ranges(connection)),
-                "utilization": repository.get_ip_range_utilization(connection),
+                "range_rows": _build_range_table_rows(ranges, utilization),
                 "errors": [],
                 "form_state": {"name": "", "cidr": "", "notes": ""},
                 "edit_errors": errors,
@@ -185,13 +211,14 @@ async def ui_update_range(
             notes=notes,
         )
     except sqlite3.IntegrityError:
+        ranges = list(repository.list_ip_ranges(connection))
+        utilization = repository.get_ip_range_utilization(connection)
         return _render_template(
             request,
             "ranges.html",
             {
                 "title": "ipocket - IP Ranges",
-                "ranges": list(repository.list_ip_ranges(connection)),
-                "utilization": repository.get_ip_range_utilization(connection),
+                "range_rows": _build_range_table_rows(ranges, utilization),
                 "errors": [],
                 "form_state": {"name": "", "cidr": "", "notes": ""},
                 "edit_errors": ["CIDR already exists."],
