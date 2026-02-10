@@ -1,27 +1,87 @@
 {% extends "base.html" %}
 
 {% block content %}
-<section class="page-header"><h1>{{ asset.ip_address }}</h1>
-  <p>
-    <a class="btn btn-secondary" href="/ui/ip-assets/{{ asset.id }}/edit">Edit</a>
-    <a class="btn btn-outline" href="/ui/ip-assets/{{ asset.id }}/delete">Delete</a>
-  </p>
+<section class="page-header ip-detail-header">
+  <div>
+    <p class="eyebrow">IP Asset</p>
+    <h1>{{ asset.ip_address }}</h1>
+    <div class="ip-detail-meta">
+      <span class="tag">{{ asset.type }}</span>
+      <span class="tag{% if not asset.project_unassigned %} tag-project{% endif %}"{% if not asset.project_unassigned and asset.project_color %} style="--project-color: {{ asset.project_color }}"{% endif %}>
+        Project: {% if asset.project_unassigned %}Unassigned{% else %}{{ asset.project_name }}{% endif %}
+      </span>
+      <span class="tag">Host: {{ asset.host_name or "—" }}</span>
+      <span class="tag{% if asset.unassigned %} tag-warning{% endif %}">
+        Status: {% if asset.unassigned %}Needs assignment{% else %}Assigned{% endif %}
+      </span>
+    </div>
+  </div>
+  <div class="header-actions">
+    <details class="row-actions-menu ip-detail-actions">
+      <summary class="row-actions-trigger" aria-label="IP asset actions">⋮</summary>
+      <div class="ip-detail-actions-panel">
+        <a class="row-action-item" href="/ui/ip-assets/{{ asset.id }}/edit">Edit</a>
+        <button
+          class="row-action-item row-action-item-danger"
+          type="button"
+          data-ip-delete="{{ asset.id }}"
+          data-ip-address="{{ asset.ip_address }}"
+          data-ip-type="{{ asset.type }}"
+          data-ip-project-name="{% if asset.project_unassigned %}Unassigned{% else %}{{ asset.project_name }}{% endif %}"
+          data-ip-project-id="{{ asset.project_id }}"
+          data-ip-host-name="{{ asset.host_name or '' }}"
+          data-ip-host-id="{{ asset.host_id }}"
+          data-ip-tags="{{ asset.tags_value }}"
+        >
+          Delete
+        </button>
+      </div>
+    </details>
+  </div>
 </section>
+
 <section class="card">
-  <p><strong>Project:</strong> {% if asset.project_unassigned %}Unassigned{% else %}{{ asset.project_name }}{% endif %}</p>
-  <p><strong>Type:</strong> {{ asset.type }}</p>
-  <p>
-    <strong>Tags:</strong>
-    {% if asset.tags %}
-      {% for tag in asset.tags %}
-      <span class="tag tag-color" style="--tag-color: {{ tag.color }}">{{ tag.name }}</span>
-      {% endfor %}
-    {% else %}
-      None
-    {% endif %}
-  </p>
-  <p><strong>Notes:</strong> {{ asset.notes }}</p>
+  <h2>Details</h2>
+  <div class="detail-grid">
+    <div class="detail-item">
+      <p class="detail-label">IP address</p>
+      <p class="detail-value mono">{{ asset.ip_address }}</p>
+    </div>
+    <div class="detail-item">
+      <p class="detail-label">Type</p>
+      <p class="detail-value">{{ asset.type }}</p>
+    </div>
+    <div class="detail-item">
+      <p class="detail-label">Project</p>
+      <p class="detail-value">{% if asset.project_unassigned %}Unassigned{% else %}{{ asset.project_name }}{% endif %}</p>
+    </div>
+    <div class="detail-item">
+      <p class="detail-label">Host</p>
+      <p class="detail-value">{{ asset.host_name or "—" }}</p>
+    </div>
+    <div class="detail-item">
+      <p class="detail-label">Tags</p>
+      <p class="detail-value ip-detail-tags">
+        {% if asset.tags %}
+          {% for tag in asset.tags %}
+          <span class="tag tag-color" style="--tag-color: {{ tag.color }}">{{ tag.name }}</span>
+          {% endfor %}
+        {% else %}
+          <span class="tag">No tags</span>
+        {% endif %}
+      </p>
+    </div>
+    <div class="detail-item">
+      <p class="detail-label">Status</p>
+      <p class="detail-value">{% if asset.unassigned %}Needs assignment{% else %}Assigned{% endif %}</p>
+    </div>
+    <div class="detail-item detail-item-wide">
+      <p class="detail-label">Notes</p>
+      <p class="detail-value">{{ asset.notes or "No notes" }}</p>
+    </div>
+  </div>
 </section>
+
 <section class="card">
   <h2>Audit Log</h2>
   {% if audit_logs %}
@@ -39,8 +99,20 @@
           <tr>
             <td>{{ log.created_at }}</td>
             <td>{{ log.user }}</td>
-            <td>{{ log.action }}</td>
-            <td>{{ log.changes }}</td>
+            <td>
+              <span class="pill {% if log.action == 'DELETE' %}pill-danger{% elif log.action == 'CREATE' %}pill-success{% else %}pill-warning{% endif %}">
+                {{ log.action }}
+              </span>
+            </td>
+            <td>
+              <p class="ip-audit-summary">{{ log.changes.summary }}</p>
+              {% if log.changes.raw and log.changes.raw != log.changes.summary %}
+                <details class="ip-audit-raw">
+                  <summary>View details</summary>
+                  <pre>{{ log.changes.raw }}</pre>
+                </details>
+              {% endif %}
+            </td>
           </tr>
         {% endfor %}
       </tbody>
@@ -49,4 +121,58 @@
     <p>No audit history yet.</p>
   {% endif %}
 </section>
+
+<div class="ip-drawer-overlay" data-ip-drawer-overlay aria-hidden="true"></div>
+<aside class="ip-drawer" data-ip-drawer data-ip-drawer-mode="delete" role="dialog" aria-modal="true" aria-label="Delete IP asset">
+  <div class="ip-drawer-header">
+    <div class="ip-drawer-header-row">
+      <div>
+        <h2 class="ip-drawer-title" data-ip-drawer-title>Delete IP asset?</h2>
+        <p class="ip-drawer-subtitle" data-ip-drawer-subtitle>Permanent and cannot be undone.</p>
+      </div>
+      <button class="ip-drawer-close" type="button" aria-label="Close drawer" data-ip-drawer-close>
+        ✕
+      </button>
+    </div>
+    <div class="ip-drawer-meta">
+      <span class="ip-drawer-pill" data-ip-drawer-project>Project: {% if asset.project_unassigned %}Unassigned{% else %}{{ asset.project_name }}{% endif %}</span>
+      <span class="ip-drawer-pill ip-drawer-pill-muted" data-ip-drawer-host>Host: {{ asset.host_name or "—" }}</span>
+    </div>
+  </div>
+  <div class="ip-drawer-body">
+    <form class="ip-drawer-form ip-drawer-delete-form" method="post" data-ip-delete-form id="ip-delete-form">
+      <input type="hidden" name="return_to" value="/ui/ip-assets/{{ asset.id }}" data-ip-delete-return-to>
+      <section class="ip-drawer-section">
+        <h3 class="ip-drawer-delete-heading">Delete IP asset?</h3>
+        <p class="ip-drawer-delete-warning">Permanent and cannot be undone.</p>
+        <dl class="ip-drawer-delete-details">
+          <div><dt>IP address</dt><dd class="mono" data-ip-delete-address>{{ asset.ip_address }}</dd></div>
+          <div><dt>Project</dt><dd data-ip-delete-project>{% if asset.project_unassigned %}Unassigned{% else %}{{ asset.project_name }}{% endif %}</dd></div>
+          <div><dt>Type</dt><dd data-ip-delete-type>{{ asset.type }}</dd></div>
+          <div><dt>Host</dt><dd data-ip-delete-host>{{ asset.host_name or "—" }}</dd></div>
+        </dl>
+        <label class="field field-inline">
+          <input class="checkbox" type="checkbox" name="confirm_delete_ack" data-ip-delete-ack />
+          <span>I understand this cannot be undone</span>
+        </label>
+        <label class="field" data-ip-delete-confirm-wrap hidden>
+          <span>High-risk asset: type the exact IP to confirm</span>
+          <input class="input" type="text" name="confirm_ip" data-ip-delete-confirm-input autocomplete="off" />
+        </label>
+        <p class="ip-drawer-helper ip-drawer-helper-error" data-ip-delete-error></p>
+      </section>
+    </form>
+  </div>
+  <div class="ip-drawer-footer">
+    <span class="ip-drawer-footer-status" data-ip-drawer-dirty>Confirm deletion</span>
+    <div class="ip-drawer-footer-actions">
+      <button class="btn btn-secondary" type="button" data-ip-drawer-cancel>Cancel</button>
+      <button class="btn btn-danger" type="submit" form="ip-delete-form" data-ip-drawer-delete>
+        Delete permanently
+      </button>
+    </div>
+  </div>
+</aside>
+
+<script src="/static/js/ip-assets.js" defer></script>
 {% endblock %}

@@ -710,3 +710,67 @@ def test_ui_create_bmc_passes_auto_host_flag_disabled(client, monkeypatch) -> No
     assert response.status_code == 303
     assert captured["asset_type"] == IPAssetType.BMC
     assert captured["auto_host_for_bmc"] is False
+
+def test_ip_asset_detail_uses_enhanced_layout_and_delete_drawer(client) -> None:
+    import os
+    from app import db, repository
+
+    connection = db.connect(os.environ["IPAM_DB_PATH"])
+    try:
+        db.init_db(connection)
+        user = repository.create_user(connection, username="viewer", hashed_password="x", role=UserRole.VIEWER)
+        project = repository.create_project(connection, name="Platform", color="#22c55e")
+        host = repository.create_host(connection, name="node-10")
+        asset = repository.create_ip_asset(
+            connection,
+            ip_address="10.90.0.10",
+            asset_type=IPAssetType.OS,
+            project_id=project.id,
+            host_id=host.id,
+            tags=["core"],
+            notes="Primary node",
+            current_user=user,
+        )
+    finally:
+        connection.close()
+
+    app.dependency_overrides[ui.get_current_ui_user] = lambda: user
+    try:
+        response = client.get(f"/ui/ip-assets/{asset.id}")
+    finally:
+        app.dependency_overrides.pop(ui.get_current_ui_user, None)
+
+    assert response.status_code == 200
+    assert "<h2>Details</h2>" in response.text
+    assert "Status: Assigned" in response.text
+    assert 'data-ip-delete="' in response.text
+    assert 'data-ip-drawer-mode="delete"' in response.text
+    assert 'data-ip-delete-form' in response.text
+    assert '/static/js/ip-assets.js' in response.text
+    assert 'class="pill pill-success"' in response.text
+    assert "Type: OS; Project ID:" in response.text
+    assert "View details" in response.text
+
+
+def test_ip_asset_detail_shows_no_tags_and_no_notes_defaults(client) -> None:
+    import os
+    from app import db, repository
+
+    connection = db.connect(os.environ["IPAM_DB_PATH"])
+    try:
+        db.init_db(connection)
+        user = repository.create_user(connection, username="viewer2", hashed_password="x", role=UserRole.VIEWER)
+        asset = repository.create_ip_asset(connection, ip_address="10.90.0.11", asset_type=IPAssetType.VM)
+    finally:
+        connection.close()
+
+    app.dependency_overrides[ui.get_current_ui_user] = lambda: user
+    try:
+        response = client.get(f"/ui/ip-assets/{asset.id}")
+    finally:
+        app.dependency_overrides.pop(ui.get_current_ui_user, None)
+
+    assert response.status_code == 200
+    assert "No tags" in response.text
+    assert "No notes" in response.text
+    assert "Status: Needs assignment" in response.text

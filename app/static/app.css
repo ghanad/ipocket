@@ -837,6 +837,70 @@ p {
   margin-top: 12px;
 }
 
+.ip-detail-header {
+  align-items: flex-start;
+}
+
+.ip-detail-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.ip-detail-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.ip-audit-summary {
+  margin: 0;
+}
+
+.ip-audit-raw {
+  margin-top: 8px;
+}
+
+.ip-audit-raw summary {
+  cursor: pointer;
+  color: var(--color-primary);
+  font-size: 13px;
+}
+
+.ip-audit-raw pre {
+  margin: 8px 0 0;
+  padding: 8px;
+  background: #f8fafc;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  font-size: 12px;
+  white-space: pre-wrap;
+}
+
+.ip-detail-actions {
+  position: relative;
+}
+
+.ip-detail-actions-panel {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 6px);
+  min-width: 160px;
+  background: #fff;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  box-shadow: 0 12px 30px rgba(15, 23, 42, 0.18);
+  padding: 8px;
+  display: none;
+  z-index: 20;
+}
+
+.ip-detail-actions[open] .ip-detail-actions-panel {
+  display: grid;
+  gap: 4px;
+}
+
 
 .asset-actions-cell {
   width: 92px;

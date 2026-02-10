@@ -34,6 +34,38 @@ router = APIRouter()
 _HIGH_RISK_DELETE_TAGS = {"prod", "production", "critical", "flagged"}
 
 
+def _friendly_audit_changes(changes: str) -> dict[str, str]:
+    normalized = (changes or "").strip()
+    if not normalized:
+        return {"summary": "No additional details.", "raw": ""}
+
+    if normalized.startswith("Created IP asset "):
+        raw_payload = normalized.removeprefix("Created IP asset ").strip()
+        compact_payload = raw_payload.strip("()")
+        raw_map: dict[str, str] = {}
+        for chunk in compact_payload.split(","):
+            key, _, value = chunk.strip().partition("=")
+            if key:
+                raw_map[key.strip()] = value.strip()
+        summary_parts = [
+            f"Type: {raw_map.get('type', 'Unknown')}",
+            (
+                "Project: Unassigned"
+                if raw_map.get("project_id") in {None, "", "None"}
+                else f"Project ID: {raw_map.get('project_id')}"
+            ),
+            (
+                "Host: Unassigned"
+                if raw_map.get("host_id") in {None, "", "None"}
+                else f"Host ID: {raw_map.get('host_id')}"
+            ),
+            f"Notes: {(raw_map.get('notes') or 'No notes').strip() or 'No notes'}",
+        ]
+        return {"summary": "; ".join(summary_parts), "raw": normalized}
+
+    return {"summary": normalized, "raw": normalized}
+
+
 def _delete_requires_exact_ip(asset, tag_names: list[str]) -> bool:
     normalized_tags = {tag.lower() for tag in tag_names}
     return bool(
@@ -539,7 +571,7 @@ def ui_ip_asset_detail(
             "created_at": log.created_at,
             "user": log.username or "System",
             "action": log.action,
-            "changes": log.changes or "",
+            "changes": _friendly_audit_changes(log.changes or ""),
         }
         for log in audit_logs
     ]
