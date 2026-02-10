@@ -60,6 +60,14 @@ def _row_to_ip_asset(row: sqlite3.Row) -> IPAsset:
     )
 
 
+def _ip_address_sort_key(value: str) -> tuple[int, int, int | str]:
+    try:
+        parsed_ip = ipaddress.ip_address(value)
+    except ValueError:
+        return (1, 0, value.lower())
+    return (0, parsed_ip.version, int(parsed_ip))
+
+
 def _row_to_audit_log(row: sqlite3.Row) -> AuditLog:
     return AuditLog(
         id=row["id"],
@@ -1030,7 +1038,8 @@ def list_active_ip_assets(
         query += " AND project_id IS NULL"
     query += " ORDER BY ip_address"
     rows = connection.execute(query, params).fetchall()
-    return [_row_to_ip_asset(row) for row in rows]
+    assets = [_row_to_ip_asset(row) for row in rows]
+    return sorted(assets, key=lambda asset: _ip_address_sort_key(asset.ip_address))
 
 
 def count_active_ip_assets(
@@ -1112,10 +1121,13 @@ def list_active_ip_assets_paginated(
         )
         """
         params.extend([name.lower() for name in normalized_tag_names])
-    query += " ORDER BY ip_address LIMIT ? OFFSET ?"
-    params.extend([limit, offset])
+    query += " ORDER BY ip_address"
     rows = connection.execute(query, params).fetchall()
-    return [_row_to_ip_asset(row) for row in rows]
+    sorted_assets = sorted((
+        _row_to_ip_asset(row)
+        for row in rows
+    ), key=lambda asset: _ip_address_sort_key(asset.ip_address))
+    return sorted_assets[offset : offset + limit]
 
 
 def list_sd_targets(connection: sqlite3.Connection, port: int, only_assigned: bool = False, project_names: Optional[list[str]] = None, asset_types: Optional[list[IPAssetType]] = None, group_by: str = "none") -> list[dict[str, object]]:
