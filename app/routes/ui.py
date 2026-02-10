@@ -2294,6 +2294,7 @@ def ui_list_ip_assets(
     request: Request,
     q: Optional[str] = None,
     project_id: Optional[str] = None,
+    tag: Optional[str] = None,
     asset_type: Optional[str] = Query(default=None, alias="type"),
     unassigned_only: bool = Query(default=False, alias="unassigned-only"),
     archived_only: bool = Query(default=False, alias="archived-only"),
@@ -2315,12 +2316,15 @@ def ui_list_ip_assets(
         asset_type_enum = None
     q_value = (q or "").strip()
     query_text = q_value or None
+    tag_value = (tag or "").strip()
+    tag_name = tag_value or None
     total_count = repository.count_active_ip_assets(
         connection,
         project_id=parsed_project_id,
         asset_type=asset_type_enum,
         unassigned_only=unassigned_only,
         query_text=query_text,
+        tag_name=tag_name,
         archived_only=archived_only,
     )
     total_pages = max(1, math.ceil(total_count / per_page_value)) if total_count else 1
@@ -2332,12 +2336,14 @@ def ui_list_ip_assets(
         asset_type=asset_type_enum,
         unassigned_only=unassigned_only,
         query_text=query_text,
+        tag_name=tag_name,
         limit=per_page_value,
         offset=offset,
         archived_only=archived_only,
     )
 
     projects = list(repository.list_projects(connection))
+    tags = list(repository.list_tags(connection))
     project_lookup = {project.id: {"name": project.name, "color": project.color} for project in projects}
     hosts = list(repository.list_hosts(connection))
     host_lookup = {host.id: host.name for host in hosts}
@@ -2363,6 +2369,8 @@ def ui_list_ip_assets(
         pagination_params["q"] = q_value
     if parsed_project_id is not None:
         pagination_params["project_id"] = parsed_project_id
+    if tag_name:
+        pagination_params["tag"] = tag_name
     if asset_type_enum:
         pagination_params["type"] = asset_type_enum.value
     if unassigned_only:
@@ -2382,6 +2390,7 @@ def ui_list_ip_assets(
         "title": "ipocket - IP Assets",
         "assets": view_models,
         "projects": projects,
+        "tags": tags,
         "hosts": hosts,
         "types": [asset.value for asset in IPAssetType],
         "return_to": return_to,
@@ -2404,6 +2413,7 @@ def ui_list_ip_assets(
                 "filters": {
                     "q": q or "",
                     "project_id": parsed_project_id,
+                    "tag": tag_name or "",
                     "type": asset_type_enum.value if asset_type_enum else "",
                     "unassigned_only": unassigned_only,
                     "archived_only": archived_only,

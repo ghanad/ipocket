@@ -64,6 +64,23 @@
       </select>
     </label>
     <label class="field">
+      <span>Tag</span>
+      <select
+        class="select"
+        name="tag"
+        hx-get="/ui/ip-assets"
+        hx-trigger="change"
+        hx-target="#ip-table-container"
+        hx-push-url="true"
+        hx-include="closest form"
+      >
+        <option value="">All</option>
+        {% for tag in tags %}
+        <option value="{{ tag.name }}"{% if filters.tag == tag.name %} selected{% endif %}>{{ tag.name }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <label class="field">
       <span>Assignment</span>
       <select
         class="select"
@@ -194,6 +211,12 @@
     gap: 8px;
     flex-wrap: nowrap;
     align-items: center;
+  }
+
+  .tag-filter-chip {
+    border: none;
+    font: inherit;
+    cursor: pointer;
   }
 
   .ip-drawer-overlay {
@@ -389,6 +412,7 @@
     const autoHostName = document.querySelector('[data-ip-auto-host-name]');
     const autoHostStatus = document.querySelector('[data-ip-auto-host-status]');
     const inputs = form ? form.querySelectorAll('[data-ip-input]') : [];
+    const filterForm = document.querySelector('.filters-grid');
     const hostField = form ? form.querySelector('[data-ip-host-field]') : null;
     let initialValues = {};
     let currentAsset = null;
@@ -604,6 +628,22 @@
       updateCount();
     };
 
+    const applyQuickFilter = (fieldName, value) => {
+      if (!filterForm) {
+        return;
+      }
+      const filterInput = filterForm.querySelector(`[name="${fieldName}"]`);
+      if (!filterInput) {
+        return;
+      }
+      filterInput.value = value || '';
+      if (window.htmx && typeof window.htmx.trigger === 'function') {
+        window.htmx.trigger(filterInput, 'change');
+        return;
+      }
+      filterForm.submit();
+    };
+
     const createAutoHost = async () => {
       if (!currentAsset || !form || !autoHostButton) {
         return;
@@ -703,6 +743,14 @@
           bindDeleteDialogs(event.target);
           bindBulkEdit(event.target);
         }
+      });
+      document.body.addEventListener('click', (event) => {
+        const trigger = event.target.closest('[data-quick-filter]');
+        if (!trigger) {
+          return;
+        }
+        event.preventDefault();
+        applyQuickFilter(trigger.dataset.quickFilter, trigger.dataset.quickFilterValue || '');
       });
     }
 

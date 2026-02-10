@@ -941,6 +941,7 @@ def count_active_ip_assets(
     asset_type: Optional[IPAssetType] = None,
     unassigned_only: bool = False,
     query_text: Optional[str] = None,
+    tag_name: Optional[str] = None,
     archived_only: bool = False,
 ) -> int:
     query = "SELECT COUNT(*) FROM ip_assets WHERE archived = ?"
@@ -958,6 +959,17 @@ def count_active_ip_assets(
         query += " AND (LOWER(ip_address) LIKE ? OR LOWER(COALESCE(notes, '')) LIKE ?)"
         query_value = f"%{query_text.lower()}%"
         params.extend([query_value, query_value])
+    if tag_name:
+        query += """
+        AND EXISTS (
+            SELECT 1
+            FROM ip_asset_tags
+            JOIN tags ON tags.id = ip_asset_tags.tag_id
+            WHERE ip_asset_tags.ip_asset_id = ip_assets.id
+              AND LOWER(tags.name) = LOWER(?)
+        )
+        """
+        params.append(tag_name)
     return int(connection.execute(query, params).fetchone()[0])
 
 
@@ -967,6 +979,7 @@ def list_active_ip_assets_paginated(
     asset_type: Optional[IPAssetType] = None,
     unassigned_only: bool = False,
     query_text: Optional[str] = None,
+    tag_name: Optional[str] = None,
     limit: int = 20,
     offset: int = 0,
     archived_only: bool = False,
@@ -986,6 +999,17 @@ def list_active_ip_assets_paginated(
         query += " AND (LOWER(ip_address) LIKE ? OR LOWER(COALESCE(notes, '')) LIKE ?)"
         query_value = f"%{query_text.lower()}%"
         params.extend([query_value, query_value])
+    if tag_name:
+        query += """
+        AND EXISTS (
+            SELECT 1
+            FROM ip_asset_tags
+            JOIN tags ON tags.id = ip_asset_tags.tag_id
+            WHERE ip_asset_tags.ip_asset_id = ip_assets.id
+              AND LOWER(tags.name) = LOWER(?)
+        )
+        """
+        params.append(tag_name)
     query += " ORDER BY ip_address LIMIT ? OFFSET ?"
     params.extend([limit, offset])
     rows = connection.execute(query, params).fetchall()

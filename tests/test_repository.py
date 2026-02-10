@@ -422,6 +422,19 @@ def test_list_active_ip_assets_paginated_with_search(tmp_path) -> None:
     assert assets[0].ip_address == "10.60.0.10"
 
 
+def test_list_active_ip_assets_paginated_with_tag_filter(tmp_path) -> None:
+    connection = _setup_connection(tmp_path)
+    create_ip_asset(connection, ip_address="10.61.0.10", asset_type=IPAssetType.VM, tags=["edge"])
+    create_ip_asset(connection, ip_address="10.61.0.11", asset_type=IPAssetType.VM, tags=["db"])
+
+    total = count_active_ip_assets(connection, tag_name="edge")
+    assets = list_active_ip_assets_paginated(connection, tag_name="edge", limit=10, offset=0)
+
+    assert total == 1
+    assert len(assets) == 1
+    assert assets[0].ip_address == "10.61.0.10"
+
+
 def test_count_ip_assets_with_archived_only_filter(tmp_path) -> None:
     connection = _setup_connection(tmp_path)
     create_ip_asset(connection, ip_address="10.70.0.10", asset_type=IPAssetType.VM)
