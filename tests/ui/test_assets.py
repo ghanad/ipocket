@@ -315,9 +315,40 @@ def test_ip_assets_edit_returns_to_list_when_return_to_set(client) -> None:
     finally:
         app.dependency_overrides.pop(ui.require_ui_editor, None)
 
-    assert response.status_code == 200
-    assert response.json()["ip_address"] == "10.20.0.11"
+    assert response.status_code == 303
     assert response.headers["location"] == "/ui/ip-assets?archived-only=false"
+
+def test_ip_assets_create_returns_to_list_when_return_to_set(client) -> None:
+    import os
+    from app import db, repository
+
+    connection = db.connect(os.environ["IPAM_DB_PATH"])
+    try:
+        db.init_db(connection)
+        user = repository.create_user(connection, username="editor", hashed_password="x", role=UserRole.EDITOR)
+    finally:
+        connection.close()
+
+    app.dependency_overrides[ui.require_ui_editor] = lambda: user
+    try:
+        response = client.post(
+            "/ui/ip-assets/new",
+            data={
+                "ip_address": "10.90.0.20",
+                "type": "VM",
+                "project_id": "",
+                "host_id": "",
+                "tags": "",
+                "notes": "",
+                "return_to": "/ui/ip-assets?q=10.90",
+            },
+            follow_redirects=False,
+        )
+    finally:
+        app.dependency_overrides.pop(ui.require_ui_editor, None)
+
+    assert response.status_code == 303
+    assert response.headers["location"] == "/ui/ip-assets?q=10.90"
 
 def test_ip_assets_bulk_edit_shows_error_toast_for_missing_selection(client) -> None:
     import os
