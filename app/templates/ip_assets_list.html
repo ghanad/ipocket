@@ -63,27 +63,6 @@
         {% endfor %}
       </select>
     </label>
-    <label class="field field-tag-filter">
-      <span>Tag</span>
-      <div class="tag-filter-controls">
-        <select
-          class="select"
-          name="tag"
-          multiple
-          hx-get="/ui/ip-assets"
-          hx-trigger="change"
-          hx-target="#ip-table-container"
-          hx-push-url="true"
-          hx-include="closest form"
-        >
-{% for tag in tags %}
-          <option value="{{ tag.name }}"{% if tag.name in filters.tag %} selected{% endif %}>{{ tag.name }}</option>
-          {% endfor %}
-        </select>
-        <button class="btn btn-secondary btn-small" type="button" data-clear-tag-filter>Clear</button>
-      </div>
-      <small class="muted">Multi-select (ANY match). Use Ctrl/Cmd-click or quick tags in table.</small>
-    </label>
     <label class="field">
       <span>Assignment</span>
       <select
@@ -113,6 +92,34 @@
         <option value="false"{% if not filters.archived_only %} selected{% endif %}>Active only</option>
         <option value="true"{% if filters.archived_only %} selected{% endif %}>Archived only</option>
       </select>
+    </label>
+    <label class="field field-tag-filter">
+      <span>Tag</span>
+      <div class="tag-filter-controls">
+        <input
+          class="input"
+          type="text"
+          placeholder="Type tag and press Enter"
+          list="tag-filter-suggestions"
+          data-tag-filter-input
+        />
+        <button class="btn btn-secondary btn-small" type="button" data-add-tag-filter>Add</button>
+        <button class="btn btn-secondary btn-small" type="button" data-clear-tag-filter>Clear</button>
+      </div>
+      <datalist id="tag-filter-suggestions">
+        {% for tag in tags %}
+        <option value="{{ tag.name }}"></option>
+        {% endfor %}
+      </datalist>
+      <div class="tag-filter-selected" data-tag-filter-selected>
+        {% for selected_tag in filters.tag %}
+        <span class="tag-filter-entry" data-tag-filter-entry="{{ selected_tag }}">
+          <input type="hidden" name="tag" value="{{ selected_tag }}" />
+          <button class="tag tag-color tag-filter-chip" type="button" data-remove-tag-filter="{{ selected_tag }}">{{ selected_tag }} ×</button>
+        </span>
+        {% endfor %}
+      </div>
+      <small class="muted">Autocomplete + multi-select (ANY match).</small>
     </label>
   </form>
 </section>
@@ -386,10 +393,8 @@
   }
 
 
-  .field-tag-filter .select[multiple] {
-    min-height: 40px;
-    height: 40px;
-    overflow-y: auto;
+  .field-tag-filter {
+    grid-column: 1 / -1;
   }
 
   .tag-filter-controls {
@@ -398,8 +403,15 @@
     align-items: center;
   }
 
-  .tag-filter-controls .select {
+  .tag-filter-controls .input {
     flex: 1;
+  }
+
+  .tag-filter-selected {
+    margin-top: 8px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
   }
 
   @media (max-width: 600px) {
@@ -434,6 +446,9 @@
     const autoHostStatus = document.querySelector('[data-ip-auto-host-status]');
     const inputs = form ? form.querySelectorAll('[data-ip-input]') : [];
     const filterForm = document.querySelector('.filters-grid');
+    const tagFilterInput = filterForm ? filterForm.querySelector('[data-tag-filter-input]') : null;
+    const tagFilterSelected = filterForm ? filterForm.querySelector('[data-tag-filter-selected]') : null;
+    const addTagButton = filterForm ? filterForm.querySelector('[data-add-tag-filter]') : null;
     const hostField = form ? form.querySelector('[data-ip-host-field]') : null;
     let initialValues = {};
     let currentAsset = null;
@@ -649,23 +664,89 @@
       updateCount();
     };
 
+    const normalizeTagValue = (rawValue) => {
+      const normalized = (rawValue || '').trim().toLowerCase();
+      if (!normalized) {
+        return '';
+      }
+      if (!/^[a-z0-9_-]+$/.test(normalized)) {
+        return '';
+      }
+      return normalized;
+    };
+
+    const listSelectedTags = () => {
+      if (!tagFilterSelected) {
+        return [];
+      }
+      return Array.from(tagFilterSelected.querySelectorAll('input[name="tag"]')).map((input) => input.value);
+    };
+
+    const addTagFilter = (rawValue) => {
+      if (!tagFilterSelected) {
+        return false;
+      }
+      const value = normalizeTagValue(rawValue);
+      if (!value) {
+        return false;
+      }
+      if (listSelectedTags().includes(value)) {
+        return false;
+      }
+      const entry = document.createElement('span');
+      entry.className = 'tag-filter-entry';
+      entry.dataset.tagFilterEntry = value;
+      entry.innerHTML = `<input type="hidden" name="tag" value="${value}" /><button class="tag tag-color tag-filter-chip" type="button" data-remove-tag-filter="${value}">${value} ×</button>`;
+      tagFilterSelected.appendChild(entry);
+      return true;
+    };
+
+    const removeTagFilter = (value) => {
+      if (!tagFilterSelected) {
+        return false;
+      }
+      const entry = tagFilterSelected.querySelector(`[data-tag-filter-entry="${value}"]`);
+      if (!entry) {
+        return false;
+      }
+      entry.remove();
+      return true;
+    };
+
+    const submitTagFilter = () => {
+      if (!filterForm) {
+        return;
+      }
+      if (window.htmx && typeof window.htmx.trigger === 'function') {
+        const searchInput = filterForm.querySelector('[name="q"]');
+        window.htmx.trigger(searchInput || filterForm, 'change');
+        return;
+      }
+      filterForm.submit();
+    };
+
     const applyQuickFilter = (fieldName, value) => {
       if (!filterForm) {
         return;
       }
       const filterInput = filterForm.querySelector(`[name="${fieldName}"]`);
-      if (!filterInput) {
+      if (!filterInput && fieldName !== 'tag') {
         return;
       }
-      if (fieldName === 'tag' && filterInput.tagName === 'SELECT' && filterInput.multiple) {
-        const options = Array.from(filterInput.options);
-        const target = options.find((option) => option.value === value);
-        if (target) {
-          target.selected = !target.selected;
+      if (fieldName === 'tag') {
+        const normalizedValue = normalizeTagValue(value);
+        if (!normalizedValue) {
+          return;
         }
-      } else {
-        filterInput.value = value || '';
+        const changed = listSelectedTags().includes(normalizedValue)
+          ? removeTagFilter(normalizedValue)
+          : addTagFilter(normalizedValue);
+        if (changed) {
+          submitTagFilter();
+        }
+        return;
       }
+      filterInput.value = value || '';
       if (window.htmx && typeof window.htmx.trigger === 'function') {
         window.htmx.trigger(filterInput, 'change');
         return;
@@ -674,21 +755,11 @@
     };
 
     const clearTagFilter = () => {
-      if (!filterForm) {
+      if (!tagFilterSelected) {
         return;
       }
-      const tagFilter = filterForm.querySelector('[name="tag"]');
-      if (!tagFilter || tagFilter.tagName !== 'SELECT') {
-        return;
-      }
-      Array.from(tagFilter.options).forEach((option) => {
-        option.selected = false;
-      });
-      if (window.htmx && typeof window.htmx.trigger === 'function') {
-        window.htmx.trigger(tagFilter, 'change');
-        return;
-      }
-      filterForm.submit();
+      tagFilterSelected.innerHTML = '';
+      submitTagFilter();
     };
 
     const createAutoHost = async () => {
@@ -788,6 +859,23 @@
       if (clearTagButton) {
         clearTagButton.addEventListener('click', clearTagFilter);
       }
+      if (addTagButton && tagFilterInput) {
+        addTagButton.addEventListener('click', () => {
+          if (addTagFilter(tagFilterInput.value)) {
+            tagFilterInput.value = '';
+            submitTagFilter();
+          }
+        });
+        tagFilterInput.addEventListener('keydown', (event) => {
+          if (event.key === 'Enter' || event.key === ',') {
+            event.preventDefault();
+            if (addTagFilter(tagFilterInput.value)) {
+              tagFilterInput.value = '';
+              submitTagFilter();
+            }
+          }
+        });
+      }
 
       document.body.addEventListener('htmx:afterSwap', (event) => {
         if (event.target && event.target.id === 'ip-table-container') {
@@ -797,6 +885,14 @@
         }
       });
       document.body.addEventListener('click', (event) => {
+        const removeTagButton = event.target.closest('[data-remove-tag-filter]');
+        if (removeTagButton) {
+          event.preventDefault();
+          if (removeTagFilter(removeTagButton.dataset.removeTagFilter || '')) {
+            submitTagFilter();
+          }
+          return;
+        }
         const trigger = event.target.closest('[data-quick-filter]');
         if (!trigger) {
           return;
