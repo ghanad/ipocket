@@ -145,7 +145,7 @@ def test_tags_page_renders_and_allows_edit_delete(client) -> None:
     assert "positionMenuPanel" in tags_js.read_text(encoding="utf-8")
     assert "row-actions-trigger" in response.text
 
-def test_ip_assets_list_uses_edit_drawer_actions_with_delete_dialog(client) -> None:
+def test_ip_assets_list_uses_drawer_actions_for_edit_and_delete(client) -> None:
     import os
     from app import db, repository
 
@@ -177,10 +177,10 @@ def test_ip_assets_list_uses_edit_drawer_actions_with_delete_dialog(client) -> N
     assert f'data-ip-host-id="{host.id}"' in response.text
     assert 'data-ip-tags="edge"' in response.text
     assert 'data-ip-notes="Primary"' in response.text
-    assert f'data-delete-dialog-id="delete-ip-{asset.id}"' in response.text
-    assert f'id="delete-ip-{asset.id}"' in response.text
-    assert "Delete IP asset?" in response.text
-    assert "Continue to delete" in response.text
+    assert f'data-ip-delete="{asset.id}"' in response.text
+    assert 'data-ip-delete-form' in response.text
+    assert 'Delete permanently' in response.text
+    assert 'I understand this cannot be undone' in response.text
     assert "data-ip-add" in response.text
     assert "data-ip-drawer" in response.text
     assert "Save changes" in response.text
@@ -250,7 +250,8 @@ def test_ip_assets_bulk_edit_updates_selected_assets(client) -> None:
     finally:
         app.dependency_overrides.pop(ui.require_ui_editor, None)
 
-    assert response.status_code == 303
+    assert response.status_code == 200
+    assert response.json()["ip_address"] == "10.20.0.11"
     follow_response = client.get(response.headers["location"])
     assert follow_response.status_code == 200
     assert "toast-success" in follow_response.text
@@ -305,7 +306,8 @@ def test_ip_assets_edit_returns_to_list_when_return_to_set(client) -> None:
     finally:
         app.dependency_overrides.pop(ui.require_ui_editor, None)
 
-    assert response.status_code == 303
+    assert response.status_code == 200
+    assert response.json()["ip_address"] == "10.20.0.11"
     assert response.headers["location"] == "/ui/ip-assets?archived-only=false"
 
 def test_ip_assets_bulk_edit_shows_error_toast_for_missing_selection(client) -> None:
@@ -500,7 +502,7 @@ def test_ip_asset_detail_page_requires_authentication(client) -> None:
     assert response.status_code == 303
     assert response.headers["Location"] == f"/ui/login?return_to=/ui/ip-assets/{asset.id}"
 
-def test_ui_delete_ip_asset_requires_confirmation_text(client) -> None:
+def test_ui_delete_ip_asset_requires_checkbox_confirmation(client) -> None:
     import os
     from app import db, repository
 
@@ -513,20 +515,18 @@ def test_ui_delete_ip_asset_requires_confirmation_text(client) -> None:
 
     app.dependency_overrides[ui.require_ui_editor] = lambda: User(1, "editor", "x", UserRole.EDITOR, True)
     try:
-        form_response = client.get(f"/ui/ip-assets/{asset.id}/delete")
         response = client.post(
             f"/ui/ip-assets/{asset.id}/delete",
-            data={"confirm_ip": "wrong-value"},
-            follow_redirects=False,
+            data={"confirm_ip": "", "confirm_delete_ack": ""},
+            headers={"Accept": "application/json"},
         )
     finally:
         app.dependency_overrides.pop(ui.require_ui_editor, None)
 
-    assert form_response.status_code == 200
     assert response.status_code == 400
-    assert "برای حذف کامل" in response.text
+    assert response.json()["error"] == "Confirm that this delete cannot be undone."
 
-def test_ui_delete_ip_asset_with_confirmation_text(client) -> None:
+def test_ui_delete_ip_asset_with_low_risk_confirmation_checkbox_only(client) -> None:
     import os
     from app import db, repository
 
@@ -542,13 +542,14 @@ def test_ui_delete_ip_asset_with_confirmation_text(client) -> None:
     try:
         response = client.post(
             f"/ui/ip-assets/{asset.id}/delete",
-            data={"confirm_ip": "10.20.0.11"},
-            follow_redirects=False,
+            data={"confirm_delete_ack": "on", "confirm_ip": ""},
+            headers={"Accept": "application/json"},
         )
     finally:
         app.dependency_overrides.pop(ui.require_ui_editor, None)
 
-    assert response.status_code == 303
+    assert response.status_code == 200
+    assert response.json()["ip_address"] == "10.20.0.11"
 
     connection = db.connect(os.environ["IPAM_DB_PATH"])
     try:
@@ -557,6 +558,45 @@ def test_ui_delete_ip_asset_with_confirmation_text(client) -> None:
         connection.close()
 
     assert deleted is None
+
+
+
+def test_ui_delete_high_risk_ip_asset_requires_exact_ip(client) -> None:
+    import os
+    from app import db, repository
+
+    connection = db.connect(os.environ["IPAM_DB_PATH"])
+    try:
+        db.init_db(connection)
+        user = repository.create_user(connection, username="editor", hashed_password="x", role=UserRole.EDITOR)
+        project = repository.create_project(connection, name="Prod")
+        asset = repository.create_ip_asset(
+            connection,
+            ip_address="10.20.0.21",
+            asset_type=IPAssetType.VM,
+            project_id=project.id,
+        )
+    finally:
+        connection.close()
+
+    app.dependency_overrides[ui.require_ui_editor] = lambda: user
+    try:
+        invalid_response = client.post(
+            f"/ui/ip-assets/{asset.id}/delete",
+            data={"confirm_delete_ack": "on", "confirm_ip": "10.20.0.99"},
+            headers={"Accept": "application/json"},
+        )
+        valid_response = client.post(
+            f"/ui/ip-assets/{asset.id}/delete",
+            data={"confirm_delete_ack": "on", "confirm_ip": "10.20.0.21"},
+            headers={"Accept": "application/json"},
+        )
+    finally:
+        app.dependency_overrides.pop(ui.require_ui_editor, None)
+
+    assert invalid_response.status_code == 400
+    assert invalid_response.json()["error"] == "Type the exact IP address to delete this high-risk asset."
+    assert valid_response.status_code == 200
 
 def test_ui_create_bmc_passes_auto_host_flag_enabled(client, monkeypatch) -> None:
     captured: dict[str, object] = {}

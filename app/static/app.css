@@ -1632,3 +1632,40 @@ p {
     outline: none;
     border-color: #94a3b8;
   }
+
+.ip-drawer-delete-heading {
+  margin: 0;
+  color: #b91c1c;
+  font-size: 16px;
+}
+
+.ip-drawer-delete-warning {
+  margin: 0;
+  color: #7f1d1d;
+  font-weight: 600;
+}
+
+.ip-drawer-delete-details {
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 8px;
+}
+
+.ip-drawer-delete-details div {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  border-bottom: 1px solid #e2e8f0;
+  padding-bottom: 6px;
+}
+
+.ip-drawer-delete-details dt {
+  color: #475569;
+}
+
+.ip-drawer-delete-details dd {
+  margin: 0;
+  font-weight: 600;
+  text-align: right;
+}

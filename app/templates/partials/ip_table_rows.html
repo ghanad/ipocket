@@ -1,6 +1,6 @@
 {% if assets %}
 {% for asset in assets %}
-<tr>
+<tr data-ip-asset-row-id="{{ asset.id }}">
   <td>
     <input class="checkbox" type="checkbox" name="asset_ids" value="{{ asset.id }}" data-bulk-select>
   </td>
@@ -73,25 +73,18 @@
       <button
         class="btn btn-danger btn-small"
         type="button"
-        data-delete-dialog-id="delete-ip-{{ asset.id }}"
+        data-ip-delete="{{ asset.id }}"
+        data-ip-address="{{ asset.ip_address }}"
+        data-ip-type="{{ asset.type }}"
+        data-ip-project-id="{{ asset.project_id }}"
+        data-ip-project-name="{{ asset.project_name or 'Unassigned' }}"
+        data-ip-host-id="{{ asset.host_id }}"
+        data-ip-host-name="{{ asset.host_name or '—' }}"
+        data-ip-tags="{{ asset.tags_value }}"
       >
         Delete
       </button>
     </div>
-
-    <dialog class="delete-confirm-dialog" id="delete-ip-{{ asset.id }}">
-      <form method="dialog" class="delete-confirm-dialog-card">
-        <h2>Delete IP asset?</h2>
-        <p>
-          <strong>{{ asset.ip_address }}</strong> will be removed permanently. You can review details on the
-          confirmation page before deletion.
-        </p>
-        <div class="delete-confirm-dialog-actions">
-          <button type="button" class="btn btn-secondary" data-close-delete-dialog>Cancel</button>
-          <a class="btn btn-danger" href="/ui/ip-assets/{{ asset.id }}/delete">Continue to delete</a>
-        </div>
-      </form>
-    </dialog>
   </td>
 </tr>
 {% endfor %}
