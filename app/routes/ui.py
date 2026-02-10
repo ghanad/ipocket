@@ -1623,6 +1623,7 @@ async def ui_delete_range(
 def ui_range_addresses(
     request: Request,
     range_id: int,
+    q: Optional[str] = None,
     connection=Depends(get_connection),
 ) -> HTMLResponse:
     breakdown = repository.get_ip_range_address_breakdown(connection, range_id)
@@ -1630,11 +1631,32 @@ def ui_range_addresses(
         raise HTTPException(status_code=404, detail="IP range not found.")
 
     addresses = breakdown["addresses"]
+    q_value = (q or "").strip()
+    if q_value:
+        q_lower = q_value.lower()
+
+        def _matches_query(entry: dict) -> bool:
+            tag_names = " ".join(tag.get("name", "") for tag in entry.get("tags") or [])
+            searchable_values = [
+                entry.get("ip_address") or "",
+                entry.get("status") or "",
+                entry.get("project_name") or "",
+                entry.get("asset_type") or "",
+                entry.get("host_pair") or "",
+                entry.get("notes") or "",
+                tag_names,
+            ]
+            return any(q_lower in value.lower() for value in searchable_values)
+
+        addresses = [entry for entry in addresses if _matches_query(entry)]
+
     display_limit = 512
+    is_htmx = request.headers.get("HX-Request") is not None
+    template_name = "partials/range_addresses_table.html" if is_htmx else "range_addresses.html"
 
     return _render_template(
         request,
-        "range_addresses.html",
+        template_name,
         {
             "title": "ipocket - Range Addresses",
             "ip_range": breakdown["ip_range"],
@@ -1648,6 +1670,9 @@ def ui_range_addresses(
             "projects": list(repository.list_projects(connection)),
             "types": [asset.value for asset in IPAssetType],
             "errors": [],
+            "filters": {
+                "q": q_value,
+            },
         },
         active_nav="ranges",
     )
@@ -1724,6 +1749,7 @@ async def ui_range_quick_add_address(
                 "projects": projects,
                 "types": [asset.value for asset in IPAssetType],
                 "errors": errors,
+                "filters": {"q": ""},
             },
             status_code=400,
             active_nav="ranges",
@@ -1762,6 +1788,7 @@ async def ui_range_quick_add_address(
                 "projects": projects,
                 "types": [asset.value for asset in IPAssetType],
                 "errors": errors,
+                "filters": {"q": ""},
             },
             status_code=409,
             active_nav="ranges",
@@ -1836,6 +1863,7 @@ async def ui_range_quick_edit_address(
                 "projects": projects,
                 "types": [asset_type_item.value for asset_type_item in IPAssetType],
                 "errors": errors,
+                "filters": {"q": ""},
             },
             status_code=400,
             active_nav="ranges",

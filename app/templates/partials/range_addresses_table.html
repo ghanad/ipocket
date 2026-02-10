@@ -1,0 +1,119 @@
+<section class="card table-card" id="addresses">
+  <div class="card-header card-header-padded">
+    <div>
+      <h2>Addresses in this range</h2>
+      <p class="subtitle">Used: {{ used_total }} • Free: {{ free_total }}</p>
+    </div>
+  </div>
+  <div class="table-wrapper">
+    <table class="table">
+      <thead>
+        <tr>
+          <th>IP address</th>
+          <th>Status</th>
+          <th>Project</th>
+          <th>Type</th>
+          <th>Host Pair</th>
+          <th>Tags</th>
+          <th>Notes</th>
+          <th>Action</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for entry in address_display %}
+        <tr id="ip-{{ entry.ip_address | replace('.', '-') | replace(':', '-') }}">
+          <td class="mono">
+            {% if entry.asset_id %}
+            <a class="link" href="/ui/ip-assets/{{ entry.asset_id }}">{{ entry.ip_address }}</a>
+            {% else %}
+            {{ entry.ip_address }}
+            {% endif %}
+          </td>
+          <td>
+            {% if entry.status == "used" %}
+            <span class="pill pill-danger">Used</span>
+            {% else %}
+            <span class="pill pill-success">Free</span>
+            {% endif %}
+          </td>
+          <td>
+            {% if entry.status == "used" and entry.project_unassigned %}
+            <span class="tag tag-warning">Unassigned</span>
+            {% elif entry.status == "used" %}
+            <span class="tag tag-project" style="--project-color: {{ entry.project_color }}">{{ entry.project_name }}</span>
+            {% else %}
+            <span class="muted">—</span>
+            {% endif %}
+          </td>
+          <td class="muted">
+            {% if entry.status == "used" %}
+            {{ entry.asset_type }}
+            {% else %}
+            —
+            {% endif %}
+          </td>
+          <td>
+            {% if entry.status == "used" and entry.host_pair %}
+            <span class="mono">{{ entry.host_pair }}</span>
+            {% else %}
+            <span class="muted">—</span>
+            {% endif %}
+          </td>
+          <td>
+            {% if entry.status == "used" and entry.tags %}
+            {% for tag in entry.tags %}
+            <span class="tag tag-color" style="--tag-color: {{ tag.color }}">{{ tag.name }}</span>
+            {% endfor %}
+            {% else %}
+            <span class="muted">—</span>
+            {% endif %}
+          </td>
+          <td class="muted">
+            {% if entry.status == "used" and entry.notes %}
+            {{ entry.notes }}
+            {% else %}
+            —
+            {% endif %}
+          </td>
+          <td>
+            {% if entry.status == "free" %}
+            <button
+              class="btn btn-secondary btn-small"
+              type="button"
+              data-range-address-add
+              data-ip-address="{{ entry.ip_address }}"
+            >
+              Add…
+            </button>
+            {% elif entry.asset_id %}
+            <button
+              class="btn btn-secondary btn-small"
+              type="button"
+              data-range-address-edit
+              data-asset-id="{{ entry.asset_id }}"
+              data-ip-address="{{ entry.ip_address }}"
+              data-type="{{ entry.asset_type }}"
+              data-project-id="{{ entry.project_id or '' }}"
+              data-project-name="{{ entry.project_name or '' }}"
+              data-notes="{{ entry.notes }}"
+              data-tags="{% if entry.tags %}{% for tag in entry.tags %}{{ tag.name }}{% if not loop.last %}, {% endif %}{% endfor %}{% endif %}"
+            >
+              Edit
+            </button>
+            {% else %}
+            <span class="muted">—</span>
+            {% endif %}
+          </td>
+        </tr>
+        {% else %}
+        <tr>
+          <td colspan="8" class="empty-state">No addresses in this range.</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% if address_overflow %}
+  <p class="table-footer muted">Showing first {{ display_limit }} of {{ addresses|length }} addresses.</p>
+  {% endif %}
+</section>

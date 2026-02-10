@@ -136,6 +136,68 @@ def test_range_addresses_page_shows_tags(client) -> None:
     assert "Allocate next" not in response.text
 
 
+def test_range_addresses_page_supports_search_filter(client) -> None:
+    import os
+    from app import db, repository
+
+    connection = db.connect(os.environ["IPAM_DB_PATH"])
+    try:
+        db.init_db(connection)
+        ip_range = repository.create_ip_range(connection, name="Search Range", cidr="10.41.0.0/29")
+        project = repository.create_project(connection, name="Payments")
+        repository.create_tag(connection, name="critical", color="#ef4444")
+        repository.create_ip_asset(
+            connection,
+            ip_address="10.41.0.2",
+            asset_type=IPAssetType.OS,
+            project_id=project.id,
+            notes="postgres primary",
+            tags=["critical"],
+        )
+        repository.create_ip_asset(
+            connection,
+            ip_address="10.41.0.3",
+            asset_type=IPAssetType.BMC,
+            notes="management",
+        )
+    finally:
+        connection.close()
+
+    response = client.get(f"/ui/ranges/{ip_range.id}/addresses?q=postgres")
+
+    assert response.status_code == 200
+    assert "postgres primary" in response.text
+    assert "10.41.0.2" in response.text
+    assert "10.41.0.3" not in response.text
+
+
+def test_range_addresses_page_search_with_htmx_returns_partial(client) -> None:
+    import os
+    from app import db, repository
+
+    connection = db.connect(os.environ["IPAM_DB_PATH"])
+    try:
+        db.init_db(connection)
+        ip_range = repository.create_ip_range(connection, name="Search Range", cidr="10.42.0.0/29")
+        repository.create_ip_asset(
+            connection,
+            ip_address="10.42.0.2",
+            asset_type=IPAssetType.OS,
+            notes="db",
+        )
+    finally:
+        connection.close()
+
+    response = client.get(
+        f"/ui/ranges/{ip_range.id}/addresses?q=db",
+        headers={"HX-Request": "true"},
+    )
+
+    assert response.status_code == 200
+    assert "Addresses in this range" in response.text
+    assert "Range details" not in response.text
+
+
 def test_range_addresses_quick_add_creates_asset(client) -> None:
     import os
     from app import db, repository

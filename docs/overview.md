@@ -29,6 +29,7 @@ ipocket is a lightweight IP inventory app to track addresses and their project a
 - IP ranges page supports editing and deleting saved CIDR ranges for cleanup, with a confirmation step that requires typing the exact range name.
 - Range addresses view aligns columns with the IP assets list (plus Status), including Host Pair and Notes for used IPs in subnet drill-downs.
 - Range addresses view now uses a right-side drawer for both “Add” (free IPs) and “Edit” (used IPs), matching the IP assets page workflow.
+- Range addresses view includes an HTMX live search field (same interaction as IP assets) to filter by IP, status, project, type, host pair, tags, and notes.
 - Export data as CSV, JSON, or bundle (JSON/ZIP) for round-trip workflows.
 - Import data from bundle.json or CSV with dry-run support and upserts.
 - Upload Nmap XML from the Import page to discover reachable IPs and add them as `OTHER` assets, with inline example commands.
