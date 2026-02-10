@@ -113,29 +113,29 @@
           </td>
           <td>
             {% if entry.status == "free" %}
-            <div class="range-add-cell" data-range-add>
-              <button class="btn btn-secondary btn-small" type="button" data-range-add-trigger aria-haspopup="dialog" aria-expanded="false">Add…</button>
-              <div class="range-add-popover" role="dialog" aria-label="Allocate address" data-range-add-popover>
-                <form class="range-add-form" method="post" action="/ui/ranges/{{ ip_range.id }}/addresses/add">
-                  <input type="hidden" name="ip_address" value="{{ entry.ip_address }}" />
-                  <select class="select select-small" name="type" aria-label="Asset type">
-                    {% for asset_type in types %}
-                    <option value="{{ asset_type }}"{% if asset_type == "VM" %} selected{% endif %}>{{ asset_type }}</option>
-                    {% endfor %}
-                  </select>
-                  <select class="select select-small" name="project_id" aria-label="Project">
-                    <option value="">No project</option>
-                    {% for project in projects %}
-                    <option value="{{ project.id }}">{{ project.name }}</option>
-                    {% endfor %}
-                  </select>
-                  <div class="range-add-actions">
-                    <button class="btn btn-primary btn-small" type="submit">Allocate</button>
-                    <button class="btn btn-secondary btn-small" type="button" data-range-add-cancel>Cancel</button>
-                  </div>
-                </form>
-              </div>
-            </div>
+            <button
+              class="btn btn-secondary btn-small"
+              type="button"
+              data-range-address-add
+              data-ip-address="{{ entry.ip_address }}"
+            >
+              Add…
+            </button>
+            {% elif entry.asset_id %}
+            <button
+              class="btn btn-secondary btn-small"
+              type="button"
+              data-range-address-edit
+              data-asset-id="{{ entry.asset_id }}"
+              data-ip-address="{{ entry.ip_address }}"
+              data-type="{{ entry.asset_type }}"
+              data-project-id="{{ entry.project_id or '' }}"
+              data-project-name="{{ entry.project_name or '' }}"
+              data-notes="{{ entry.notes }}"
+              data-tags="{% if entry.tags %}{% for tag in entry.tags %}{{ tag.name }}{% if not loop.last %}, {% endif %}{% endfor %}{% endif %}"
+            >
+              Edit
+            </button>
             {% else %}
             <span class="muted">—</span>
             {% endif %}
@@ -153,5 +153,89 @@
   <p class="table-footer muted">Showing first {{ display_limit }} of {{ used_total + free_total }} addresses.</p>
   {% endif %}
 </section>
+
+<div class="ip-drawer-overlay" data-range-drawer-overlay aria-hidden="true"></div>
+<aside class="ip-drawer" data-range-drawer role="dialog" aria-modal="true" aria-label="Manage range address">
+  <div class="ip-drawer-header">
+    <div class="ip-drawer-header-row">
+      <div>
+        <h2 class="ip-drawer-title" data-range-drawer-title>Add IP asset</h2>
+        <p class="ip-drawer-subtitle" data-range-drawer-subtitle>—</p>
+      </div>
+      <button class="ip-drawer-close" type="button" data-range-drawer-close aria-label="Close drawer">✕</button>
+    </div>
+  </div>
+  <div class="ip-drawer-body">
+    <form class="ip-drawer-form" method="post" data-range-drawer-form id="range-address-form">
+      <input type="hidden" name="ip_address" data-range-input="ip_address" />
+      <section class="ip-drawer-section">
+        <h3>Assignment</h3>
+        <label class="field">
+          <span>IP address</span>
+          <input class="input" type="text" readonly data-range-input="ip_display" />
+        </label>
+        <div class="ip-drawer-row ip-drawer-row-two">
+          <label class="field">
+            <span>Type</span>
+            <select class="select" name="type" data-range-input="type">
+              {% for asset_type in types %}
+              <option value="{{ asset_type }}">{{ asset_type }}</option>
+              {% endfor %}
+            </select>
+          </label>
+          <label class="field">
+            <span>Project</span>
+            <select class="select" name="project_id" data-range-input="project_id">
+              <option value="">Unassigned</option>
+              {% for project in projects %}
+              <option value="{{ project.id }}">{{ project.name }}</option>
+              {% endfor %}
+            </select>
+          </label>
+        </div>
+      </section>
+      <section class="ip-drawer-section">
+        <h3>Notes & tags</h3>
+        <label class="field">
+          <span>Tags</span>
+          <input class="input" type="text" name="tags" placeholder="comma,separated" data-range-input="tags" />
+        </label>
+        <label class="field">
+          <span>Notes</span>
+          <textarea class="textarea" name="notes" rows="3" data-range-input="notes"></textarea>
+        </label>
+      </section>
+    </form>
+  </div>
+  <div class="ip-drawer-footer">
+    <span class="ip-drawer-footer-status" data-range-drawer-status>No changes</span>
+    <div class="ip-drawer-footer-actions">
+      <button class="btn btn-secondary" type="button" data-range-drawer-cancel>Cancel</button>
+      <button class="btn btn-primary" type="submit" form="range-address-form" data-range-drawer-save disabled>Save</button>
+    </div>
+  </div>
+</aside>
+
+<style>
+  .ip-drawer-overlay { position: fixed; inset: 0; background: rgba(15,23,42,.45); opacity: 0; pointer-events: none; transition: opacity .2s ease; z-index: 40; }
+  .ip-drawer-overlay.is-open { opacity: 1; pointer-events: auto; }
+  .ip-drawer { position: fixed; top: 0; right: 0; height: 100%; width: min(480px,100%); background: #fff; box-shadow: -24px 0 48px rgba(15,23,42,.16); transform: translateX(100%); transition: transform .24s ease; z-index: 50; display: flex; flex-direction: column; }
+  .ip-drawer.is-open { transform: translateX(0); }
+  .ip-drawer-header { padding: 20px 24px 12px; border-bottom: 1px solid #e2e8f0; }
+  .ip-drawer-header-row { display: flex; justify-content: space-between; gap: 12px; align-items: center; }
+  .ip-drawer-title { margin: 0; font-size: 20px; }
+  .ip-drawer-subtitle { margin: 4px 0 0; color: #64748b; }
+  .ip-drawer-close { border: none; background: none; font-size: 18px; cursor: pointer; }
+  .ip-drawer-body { flex: 1; overflow-y: auto; padding: 16px 24px; }
+  .ip-drawer-form, .ip-drawer-section { display: flex; flex-direction: column; gap: 12px; }
+  .ip-drawer-form { gap: 20px; }
+  .ip-drawer-section h3 { margin: 0; font-size: 14px; color: #475569; text-transform: uppercase; letter-spacing: .08em; }
+  .ip-drawer-row { display: grid; gap: 12px; }
+  .ip-drawer-row-two { grid-template-columns: repeat(2,minmax(0,1fr)); }
+  .ip-drawer-footer { padding: 16px 24px; border-top: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+  .ip-drawer-footer-status { color: #64748b; font-size: 13px; }
+  .ip-drawer-footer-actions { display: flex; gap: 12px; }
+  @media (max-width: 600px) { .ip-drawer-row-two { grid-template-columns: 1fr; } }
+</style>
 <script src="/static/range-addresses.js" defer></script>
 {% endblock %}
