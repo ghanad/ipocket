@@ -31,6 +31,18 @@ from .utils import (
 
 router = APIRouter()
 
+_HIGH_RISK_DELETE_TAGS = {"prod", "production", "critical", "flagged"}
+
+
+def _delete_requires_exact_ip(asset, tag_names: list[str]) -> bool:
+    normalized_tags = {tag.lower() for tag in tag_names}
+    return bool(
+        asset.project_id
+        or asset.host_id
+        or asset.asset_type == IPAssetType.VIP
+        or normalized_tags.intersection(_HIGH_RISK_DELETE_TAGS)
+    )
+
 @router.get("/ui/ip-assets", response_class=HTMLResponse)
 def ui_list_ip_assets(
     request: Request,
@@ -42,6 +54,8 @@ def ui_list_ip_assets(
     archived_only: bool = Query(default=False, alias="archived-only"),
     bulk_error: Optional[str] = Query(default=None, alias="bulk-error"),
     bulk_success: Optional[str] = Query(default=None, alias="bulk-success"),
+    delete_error: Optional[str] = Query(default=None, alias="delete-error"),
+    delete_success: Optional[str] = Query(default=None, alias="delete-success"),
     page: Optional[str] = None,
     per_page: Optional[str] = Query(default=None, alias="per-page"),
     connection=Depends(get_connection),
@@ -131,6 +145,10 @@ def ui_list_ip_assets(
         toast_messages.append({"type": "error", "message": bulk_error})
     if bulk_success:
         toast_messages.append({"type": "success", "message": bulk_success})
+    if delete_error:
+        toast_messages.append({"type": "error", "message": delete_error})
+    if delete_success:
+        toast_messages.append({"type": "success", "message": delete_success})
     context = {
         "title": "ipocket - IP Assets",
         "assets": view_models,
@@ -291,7 +309,7 @@ async def ui_needs_assignment_assign(
     user=Depends(require_ui_editor),
 ):
     assignment_filter = _normalize_assignment_filter(filter)
-    form_data = await _parse_form_data(request)
+    form_data = dict(await request.form())
     ip_address = (form_data.get("ip_address") or "").strip()
     project_id = _parse_optional_int(form_data.get("project_id"))
 
@@ -709,24 +727,37 @@ async def ui_delete_ip_asset(
     if asset is None or asset.archived:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
 
-    form_data = await _parse_form_data(request)
-    confirm_ip = (form_data.get("confirm_ip") or "").strip()
-    if confirm_ip != asset.ip_address:
-        return _render_template(
-            request,
-            "ip_asset_delete_confirm.html",
-            {
-                "title": "ipocket - Confirm IP Delete",
-                "asset": asset,
-                "errors": ["برای حذف کامل، آدرس IP را دقیقاً وارد کنید."],
-                "confirm_value": confirm_ip,
-            },
-            status_code=400,
-            active_nav="ip-assets",
+    form_data = await request.form()
+    return_to = str(form_data.get("return_to") or "/ui/ip-assets").strip()
+    confirmation_ack_raw = str(form_data.get("confirm_delete_ack") or "").strip().lower()
+    confirmation_ack = bool(confirmation_ack_raw and confirmation_ack_raw not in {"0", "false", "off", "no"})
+    confirm_ip = str(form_data.get("confirm_ip") or "").strip()
+    tags_map = repository.list_tags_for_ip_assets(connection, [asset.id])
+    tag_names = tags_map.get(asset.id, [])
+    requires_exact_ip = _delete_requires_exact_ip(asset, tag_names)
+
+    errors: list[str] = []
+    if not confirmation_ack:
+        errors.append("Confirm that this delete cannot be undone.")
+    if requires_exact_ip and confirm_ip != asset.ip_address:
+        errors.append("Type the exact IP address to delete this high-risk asset.")
+
+    wants_json = "application/json" in (request.headers.get("accept") or "")
+    if errors:
+        if wants_json:
+            return JSONResponse({"error": errors[0]}, status_code=400)
+        return RedirectResponse(
+            url=_append_query_param(return_to if return_to.startswith("/") else "/ui/ip-assets", "delete-error", errors[0]),
+            status_code=303,
         )
 
     repository.delete_ip_asset(connection, asset.ip_address, current_user=user)
-    return RedirectResponse(url="/ui/ip-assets", status_code=303)
+    if wants_json:
+        return JSONResponse(
+            {"message": f"Deleted {asset.ip_address}.", "asset_id": asset.id, "ip_address": asset.ip_address}
+        )
+    success_url = _append_query_param(return_to if return_to.startswith("/") else "/ui/ip-assets", "delete-success", f"Deleted {asset.ip_address}.")
+    return RedirectResponse(url=success_url, status_code=303)
 
 @router.post("/ui/ip-assets/{asset_id}/archive")
 def ui_archive_ip_asset(
