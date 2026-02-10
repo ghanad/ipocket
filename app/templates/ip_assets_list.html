@@ -94,7 +94,7 @@
       </select>
     </label>
     <label class="field field-tag-filter">
-      <span>Tag</span>
+      <span>Tags</span>
       <div class="tag-filter-controls">
         <input
           class="input"
@@ -103,8 +103,6 @@
           list="tag-filter-suggestions"
           data-tag-filter-input
         />
-        <button class="btn btn-secondary btn-small" type="button" data-add-tag-filter>Add</button>
-        <button class="btn btn-secondary btn-small" type="button" data-clear-tag-filter>Clear</button>
       </div>
       <datalist id="tag-filter-suggestions">
         {% for tag in tags %}
@@ -119,7 +117,6 @@
         </span>
         {% endfor %}
       </div>
-      <small class="muted">Autocomplete + multi-select (ANY match).</small>
     </label>
   </form>
 </section>
@@ -448,7 +445,6 @@
     const filterForm = document.querySelector('.filters-grid');
     const tagFilterInput = filterForm ? filterForm.querySelector('[data-tag-filter-input]') : null;
     const tagFilterSelected = filterForm ? filterForm.querySelector('[data-tag-filter-selected]') : null;
-    const addTagButton = filterForm ? filterForm.querySelector('[data-add-tag-filter]') : null;
     const hostField = form ? form.querySelector('[data-ip-host-field]') : null;
     let initialValues = {};
     let currentAsset = null;
@@ -717,9 +713,15 @@
       if (!filterForm) {
         return;
       }
-      if (window.htmx && typeof window.htmx.trigger === 'function') {
-        const searchInput = filterForm.querySelector('[name="q"]');
-        window.htmx.trigger(searchInput || filterForm, 'change');
+      if (window.htmx && typeof window.htmx.ajax === 'function') {
+        const url = new URL(filterForm.action || '/ui/ip-assets', window.location.origin);
+        const params = new URLSearchParams(new FormData(filterForm));
+        url.search = params.toString();
+        window.htmx.ajax('GET', url.toString(), {
+          target: '#ip-table-container',
+          swap: 'innerHTML',
+          pushURL: url.pathname + (url.search ? `?${url.searchParams.toString()}` : ''),
+        });
         return;
       }
       filterForm.submit();
@@ -752,14 +754,6 @@
         return;
       }
       filterForm.submit();
-    };
-
-    const clearTagFilter = () => {
-      if (!tagFilterSelected) {
-        return;
-      }
-      tagFilterSelected.innerHTML = '';
-      submitTagFilter();
     };
 
     const createAutoHost = async () => {
@@ -855,12 +849,8 @@
           window.sessionStorage.setItem(SCROLL_KEY, String(window.scrollY || 0));
         });
       }
-      const clearTagButton = document.querySelector('[data-clear-tag-filter]');
-      if (clearTagButton) {
-        clearTagButton.addEventListener('click', clearTagFilter);
-      }
-      if (addTagButton && tagFilterInput) {
-        addTagButton.addEventListener('click', () => {
+      if (tagFilterInput) {
+        tagFilterInput.addEventListener('change', () => {
           if (addTagFilter(tagFilterInput.value)) {
             tagFilterInput.value = '';
             submitTagFilter();
