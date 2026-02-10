@@ -27,7 +27,10 @@ def test_ranges_page_renders_add_form_and_saved_ranges(client) -> None:
     assert "data-range-create-drawer" in response.text
     assert "192.168.10.0/24" in response.text
     assert "Saved ranges" in response.text
-    assert "data-row-actions" in response.text
+    assert 'class="btn btn-secondary btn-small"' in response.text
+    assert 'class="btn btn-danger btn-small"' in response.text
+    assert ">Edit</a>" in response.text
+    assert ">Delete</a>" in response.text
 
 
 
