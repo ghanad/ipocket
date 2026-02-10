@@ -445,6 +445,17 @@ def test_list_active_ip_assets_paginated_applies_offset_after_numeric_sort(tmp_p
     assert [asset.ip_address for asset in assets] == ["192.168.1.2"]
 
 
+def test_list_active_ip_assets_paginated_sorts_zero_padded_ipv4_numerically(tmp_path) -> None:
+    connection = _setup_connection(tmp_path)
+    create_ip_asset(connection, ip_address="10.40.0.10", asset_type=IPAssetType.VM)
+    create_ip_asset(connection, ip_address="10.40.0.00", asset_type=IPAssetType.VM)
+    create_ip_asset(connection, ip_address="10.40.0.02", asset_type=IPAssetType.VM)
+
+    assets = list_active_ip_assets_paginated(connection, query_text="10.40.0.", limit=10, offset=0)
+
+    assert [asset.ip_address for asset in assets] == ["10.40.0.00", "10.40.0.02", "10.40.0.10"]
+
+
 def test_list_active_ip_assets_paginated_with_tag_filter_any(tmp_path) -> None:
     connection = _setup_connection(tmp_path)
     create_ip_asset(connection, ip_address="10.61.0.10", asset_type=IPAssetType.VM, tags=["edge"])
