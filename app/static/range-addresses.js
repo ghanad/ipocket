@@ -8,6 +8,8 @@
   const saveButton = document.querySelector("[data-range-drawer-save]");
   const closeButton = document.querySelector("[data-range-drawer-close]");
   const cancelButton = document.querySelector("[data-range-drawer-cancel]");
+  const filterForm = document.querySelector(".filter-card form");
+  const filterTarget = "#range-addresses-table-container";
 
   if (!overlay || !drawer || !form || !title || !subtitle || !statusLabel || !saveButton) {
     return;
@@ -83,27 +85,71 @@
     document.body.style.overflow = "hidden";
   };
 
-  document.querySelectorAll("[data-range-address-add]").forEach((button) => {
-    button.addEventListener("click", () => {
+  const submitFilters = () => {
+    if (!filterForm) {
+      return;
+    }
+    if (window.htmx && typeof window.htmx.ajax === "function") {
+      const url = new URL(filterForm.action || window.location.pathname, window.location.origin);
+      const params = new URLSearchParams(new FormData(filterForm));
+      url.search = params.toString();
+      window.htmx.ajax("GET", url.toString(), {
+        target: filterTarget,
+        swap: "innerHTML",
+        pushURL: url.pathname + (url.search ? `?${url.searchParams.toString()}` : ""),
+      });
+      return;
+    }
+    filterForm.submit();
+  };
+
+  const applyQuickFilter = (fieldName, value) => {
+    if (!filterForm) {
+      return;
+    }
+    const filterInput = filterForm.querySelector(`[name="${fieldName}"]`);
+    if (!filterInput) {
+      return;
+    }
+    filterInput.value = value || "";
+    submitFilters();
+  };
+
+  document.addEventListener("click", (event) => {
+    const addButton = event.target.closest("[data-range-address-add]");
+    if (addButton) {
+      event.preventDefault();
       openDrawer({
         mode: "add",
-        ipAddress: button.dataset.ipAddress,
+        ipAddress: addButton.dataset.ipAddress,
       });
-    });
-  });
+      return;
+    }
 
-  document.querySelectorAll("[data-range-address-edit]").forEach((button) => {
-    button.addEventListener("click", () => {
+    const editButton = event.target.closest("[data-range-address-edit]");
+    if (editButton) {
+      event.preventDefault();
       openDrawer({
         mode: "edit",
-        assetId: button.dataset.assetId,
-        ipAddress: button.dataset.ipAddress,
-        assetType: button.dataset.type,
-        projectId: button.dataset.projectId,
-        notes: button.dataset.notes,
-        tags: button.dataset.tags,
+        assetId: editButton.dataset.assetId,
+        ipAddress: editButton.dataset.ipAddress,
+        assetType: editButton.dataset.type,
+        projectId: editButton.dataset.projectId,
+        notes: editButton.dataset.notes,
+        tags: editButton.dataset.tags,
       });
-    });
+      return;
+    }
+
+    const quickFilter = event.target.closest("[data-range-quick-filter]");
+    if (!quickFilter) {
+      return;
+    }
+    event.preventDefault();
+    applyQuickFilter(
+      quickFilter.dataset.rangeQuickFilter,
+      quickFilter.dataset.rangeQuickFilterValue || "",
+    );
   });
 
   [overlay, closeButton, cancelButton].forEach((element) => {

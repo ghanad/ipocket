@@ -264,6 +264,35 @@ def test_range_addresses_page_renders_project_and_type_filters(client) -> None:
     assert '<option value="OS" selected>' in response.text
 
 
+def test_range_addresses_page_renders_quick_filter_chips(client) -> None:
+    import os
+    from app import db, repository
+
+    connection = db.connect(os.environ["IPAM_DB_PATH"])
+    try:
+        db.init_db(connection)
+        ip_range = repository.create_ip_range(connection, name="Quick Filter Range", cidr="10.45.0.0/29")
+        project = repository.create_project(connection, name="Core")
+        repository.create_tag(connection, name="critical", color="#ef4444")
+        repository.create_ip_asset(
+            connection,
+            ip_address="10.45.0.2",
+            asset_type=IPAssetType.OS,
+            project_id=project.id,
+            tags=["critical"],
+        )
+    finally:
+        connection.close()
+
+    response = client.get(f"/ui/ranges/{ip_range.id}/addresses")
+
+    assert response.status_code == 200
+    assert 'data-range-quick-filter="project_id"' in response.text
+    assert 'data-range-quick-filter="type"' in response.text
+    assert 'data-range-quick-filter="q"' in response.text
+    assert 'data-range-quick-filter-value="critical"' in response.text
+
+
 def test_range_addresses_quick_add_creates_asset(client) -> None:
     import os
     from app import db, repository
