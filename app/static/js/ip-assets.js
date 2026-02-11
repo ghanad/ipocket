@@ -39,6 +39,8 @@
   let isOpen = false;
   let isAddMode = false;
   let isDeleteMode = false;
+  let activeTagsPopoverTrigger = null;
+  let tagsPopover = null;
 
   const shouldShowHostField = (typeValue) => ['OS', 'BMC'].includes((typeValue || '').toUpperCase());
   const shouldShowAutoHost = (typeValue, hostValue) =>
@@ -75,6 +77,156 @@
     toast.append(text, close);
     toastContainer.appendChild(toast);
     window.setTimeout(() => toast.remove(), 4000);
+  };
+
+  const ensureTagsPopover = () => {
+    if (tagsPopover) {
+      return tagsPopover;
+    }
+    tagsPopover = document.createElement('section');
+    tagsPopover.className = 'ip-tags-popover';
+    tagsPopover.setAttribute('role', 'dialog');
+    tagsPopover.setAttribute('aria-modal', 'false');
+    tagsPopover.hidden = true;
+    tagsPopover.innerHTML = `
+      <header class="ip-tags-popover-header">
+        <h3 class="ip-tags-popover-title" data-tags-popover-title></h3>
+        <button type="button" class="ip-tags-popover-close" data-tags-popover-close aria-label="Close tags popover">✕</button>
+      </header>
+      <label class="field ip-tags-popover-search-field">
+        <span class="visually-hidden">Search tags</span>
+        <input class="input" type="search" placeholder="Filter tags" data-tags-popover-search />
+      </label>
+      <div class="ip-tags-popover-list" data-tags-popover-list></div>
+    `;
+    document.body.appendChild(tagsPopover);
+    const closeButton = tagsPopover.querySelector('[data-tags-popover-close]');
+    if (closeButton) {
+      closeButton.addEventListener('click', () => closeTagsPopover());
+    }
+    const searchInput = tagsPopover.querySelector('[data-tags-popover-search]');
+    if (searchInput) {
+      searchInput.addEventListener('input', renderTagsPopoverList);
+    }
+    return tagsPopover;
+  };
+
+  const closeTagsPopover = () => {
+    if (activeTagsPopoverTrigger) {
+      activeTagsPopoverTrigger.setAttribute('aria-expanded', 'false');
+    }
+    activeTagsPopoverTrigger = null;
+    if (tagsPopover) {
+      tagsPopover.hidden = true;
+      tagsPopover.dataset.tagsPopoverItems = '[]';
+    }
+  };
+
+  const parseTagsPopoverItems = () => {
+    if (!tagsPopover) {
+      return [];
+    }
+    try {
+      const parsed = JSON.parse(tagsPopover.dataset.tagsPopoverItems || '[]');
+      return Array.isArray(parsed) ? parsed : [];
+    } catch (error) {
+      return [];
+    }
+  };
+
+  const renderTagsPopoverList = () => {
+    if (!tagsPopover) {
+      return;
+    }
+    const list = tagsPopover.querySelector('[data-tags-popover-list]');
+    const searchInput = tagsPopover.querySelector('[data-tags-popover-search]');
+    if (!list) {
+      return;
+    }
+    const term = ((searchInput && searchInput.value) || '').trim().toLowerCase();
+    const items = parseTagsPopoverItems().filter((item) => {
+      const name = String(item?.name || '').toLowerCase();
+      return !term || name.includes(term);
+    });
+    list.replaceChildren();
+    if (!items.length) {
+      const emptyMessage = document.createElement('p');
+      emptyMessage.className = 'muted ip-tags-popover-empty';
+      emptyMessage.textContent = 'No matching tags.';
+      list.appendChild(emptyMessage);
+      return;
+    }
+    items.forEach((item) => {
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.className = 'tag tag-color tag-filter-chip';
+      button.dataset.quickFilter = 'tag';
+      button.dataset.quickFilterValue = String(item?.name || '');
+      button.style.setProperty('--tag-color', String(item?.color || '#94a3b8'));
+      button.textContent = String(item?.name || '');
+      list.appendChild(button);
+    });
+  };
+
+  const positionTagsPopover = () => {
+    if (!tagsPopover || !activeTagsPopoverTrigger || tagsPopover.hidden) {
+      return;
+    }
+    const gutter = 12;
+    const rect = activeTagsPopoverTrigger.getBoundingClientRect();
+    const popoverWidth = Math.min(window.innerWidth - gutter * 2, window.innerWidth < 640 ? window.innerWidth - 16 : 340);
+    tagsPopover.style.width = `${popoverWidth}px`;
+    tagsPopover.style.maxWidth = `${popoverWidth}px`;
+    const popoverRect = tagsPopover.getBoundingClientRect();
+    const availableBelow = window.innerHeight - rect.bottom;
+    const top = availableBelow > popoverRect.height + gutter
+      ? rect.bottom + 6
+      : rect.top - popoverRect.height - 6;
+    const clampedTop = Math.min(window.innerHeight - popoverRect.height - gutter, Math.max(gutter, top));
+    const left = Math.min(window.innerWidth - popoverRect.width - gutter, Math.max(gutter, rect.left));
+    tagsPopover.style.top = `${clampedTop + window.scrollY}px`;
+    tagsPopover.style.left = `${left + window.scrollX}px`;
+  };
+
+  const openTagsPopover = (trigger) => {
+    if (!trigger) {
+      return;
+    }
+    ensureTagsPopover();
+    if (!tagsPopover) {
+      return;
+    }
+    const rawItems = trigger.dataset.tagsJson || '[]';
+    let items = [];
+    try {
+      const parsed = JSON.parse(rawItems);
+      if (Array.isArray(parsed)) {
+        items = parsed;
+      }
+    } catch (error) {
+      items = [];
+    }
+    const ipAddress = trigger.dataset.tagsIp || 'IP';
+    const title = tagsPopover.querySelector('[data-tags-popover-title]');
+    const searchInput = tagsPopover.querySelector('[data-tags-popover-search]');
+    if (activeTagsPopoverTrigger && activeTagsPopoverTrigger !== trigger) {
+      activeTagsPopoverTrigger.setAttribute('aria-expanded', 'false');
+    }
+    activeTagsPopoverTrigger = trigger;
+    activeTagsPopoverTrigger.setAttribute('aria-expanded', 'true');
+    tagsPopover.dataset.tagsPopoverItems = JSON.stringify(items);
+    if (title) {
+      title.textContent = `Tags for ${ipAddress}`;
+    }
+    if (searchInput) {
+      searchInput.value = '';
+    }
+    tagsPopover.hidden = false;
+    renderTagsPopoverList();
+    positionTagsPopover();
+    if (searchInput) {
+      searchInput.focus();
+    }
   };
 
   const setDrawerMode = (mode) => {
@@ -603,10 +755,15 @@
       overlay.addEventListener('click', confirmClose);
     }
     document.addEventListener('keydown', (event) => {
+      if (event.key === 'Escape' && activeTagsPopoverTrigger) {
+        closeTagsPopover();
+      }
       if (event.key === 'Escape' && isOpen) {
         confirmClose();
       }
     });
+    window.addEventListener('resize', positionTagsPopover);
+    window.addEventListener('scroll', positionTagsPopover, true);
     inputs.forEach((input) => {
       input.addEventListener('input', () => {
         if (input.dataset.ipInput === 'ip_address' && autoHostName) {
@@ -691,6 +848,7 @@
 
     document.body.addEventListener('htmx:afterSwap', (event) => {
       if (event.target && event.target.id === 'ip-table-container') {
+        closeTagsPopover();
         bindEditButtons(event.target);
         bindDeleteButtons(event.target);
         bindBulkEdit(event.target);
@@ -705,6 +863,19 @@
           submitTagFilter();
         }
         return;
+      }
+      const tagsMoreTrigger = event.target.closest('[data-tags-more-toggle]');
+      if (tagsMoreTrigger) {
+        event.preventDefault();
+        if (activeTagsPopoverTrigger === tagsMoreTrigger) {
+          closeTagsPopover();
+        } else {
+          openTagsPopover(tagsMoreTrigger);
+        }
+        return;
+      }
+      if (activeTagsPopoverTrigger && tagsPopover && !tagsPopover.contains(event.target)) {
+        closeTagsPopover();
       }
       const trigger = event.target.closest('[data-quick-filter]');
       if (!trigger) {
