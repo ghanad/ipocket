@@ -37,6 +37,7 @@ def test_projects_page_uses_drawer_actions(client) -> None:
     assert "data-project-create-drawer" in response.text
     assert "data-project-edit-drawer" in response.text
     assert "data-project-delete-drawer" in response.text
+    assert 'class="table table-compact"' in response.text
     assert f'data-project-edit="{project.id}"' in response.text
     assert f'data-project-delete="{project.id}"' in response.text
     assert "<th>IPs</th>" in response.text
@@ -131,6 +132,7 @@ def test_library_tabs_render_tag_and_vendor_content(client, _setup_connection) -
     assert "Catalog Settings" in tags_response.text
     assert 'href="/ui/projects?tab=tags"' in tags_response.text
     assert "data-tag-add" in tags_response.text
+    assert 'class="table table-compact"' in tags_response.text
 
     vendors_response = client.get("/ui/projects?tab=vendors")
     assert vendors_response.status_code == 200

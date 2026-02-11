@@ -46,6 +46,7 @@ ipocket is a lightweight IP inventory app to track addresses and their project a
 - Drawer open/close behavior is shared through `app/static/js/drawer.js` so Hosts and Ranges follow the same interaction pattern.
 - Projects management is part of the shared Library page and follows the same right-side drawer UX for create/edit/delete actions, including destructive confirmation by typing the exact project name.
 - The Library page uses one shared "Catalog Settings" header with compact segmented tabs (Projects/Tags/Vendors) and a tab-aware primary action button (New Project/Tag/Vendor) to keep controls in one place.
+- The Projects and Tags tab tables now use compact row spacing so catalog rows stay denser and easier to scan.
 - Projects table now shows an **IPs** count column so you can quickly see how many active IP assets are currently assigned to each project.
 - Use the shared **Data Ops** page (Import/Export tabs) for round-trip workflows.
 - Export data as CSV, JSON, or bundle (JSON/ZIP) from the Data Ops Export tab.
