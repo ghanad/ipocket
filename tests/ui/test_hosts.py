@@ -328,6 +328,46 @@ def test_ui_create_host_with_os_and_bmc_ips(client) -> None:
     assert os_asset.host_id == host.id
     assert bmc_asset.host_id == host.id
 
+def test_ui_create_host_with_project_assigns_linked_ips(client) -> None:
+    import os
+    from app import db, repository
+
+    connection = db.connect(os.environ["IPAM_DB_PATH"])
+    try:
+        db.init_db(connection)
+        project = repository.create_project(connection, name="Core")
+    finally:
+        connection.close()
+
+    app.dependency_overrides[ui.require_ui_editor] = lambda: User(1, "editor", "x", UserRole.EDITOR, True)
+    try:
+        response = client.post(
+            "/ui/hosts",
+            data={
+                "name": "edge-02-with-project",
+                "project_id": str(project.id),
+                "os_ips": "10.10.2.10",
+                "bmc_ips": "10.10.2.20",
+            },
+            follow_redirects=False,
+        )
+    finally:
+        app.dependency_overrides.pop(ui.require_ui_editor, None)
+
+    assert response.status_code == 303
+
+    connection = db.connect(os.environ["IPAM_DB_PATH"])
+    try:
+        os_asset = repository.get_ip_asset_by_ip(connection, "10.10.2.10")
+        bmc_asset = repository.get_ip_asset_by_ip(connection, "10.10.2.20")
+    finally:
+        connection.close()
+
+    assert os_asset is not None
+    assert bmc_asset is not None
+    assert os_asset.project_id == project.id
+    assert bmc_asset.project_id == project.id
+
 def test_ui_edit_host_adds_os_and_bmc_ips(client) -> None:
     import os
     from app import db, repository
@@ -625,4 +665,3 @@ def test_ui_delete_host_shows_success_flash_message(client) -> None:
     # Flash message should be set in cookie (via Set-Cookie header)
     set_cookie = response.headers.get("set-cookie", "")
     assert FLASH_COOKIE in set_cookie
-
