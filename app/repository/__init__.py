@@ -44,6 +44,7 @@ from .metadata import (
     create_vendor,
     delete_project,
     delete_tag,
+    delete_vendor,
     get_project_by_id,
     get_tag_by_id,
     get_tag_by_name,
