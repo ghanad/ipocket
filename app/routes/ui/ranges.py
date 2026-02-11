@@ -26,8 +26,9 @@ router = APIRouter()
 
 
 def _parse_selected_tags(connection, raw_tags: list[str]) -> tuple[list[str], list[str]]:
+    cleaned_tags = [str(tag).strip() for tag in raw_tags if str(tag).strip()]
     try:
-        selected_tags = normalize_tag_names(raw_tags) if raw_tags else []
+        selected_tags = normalize_tag_names(cleaned_tags) if cleaned_tags else []
     except ValueError as exc:
         return [], [str(exc)]
     existing_tags = {tag.name for tag in repository.list_tags(connection)}

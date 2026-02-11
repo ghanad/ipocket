@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 from pathlib import Path
 
 from app import db, repository
@@ -112,8 +113,8 @@ def test_ip_asset_form_includes_tags_field_and_prefill(client) -> None:
     assert 'name="tags"' in create_response.text
     assert 'name="tags" multiple' in create_response.text
     assert 'data-tag-picker' in create_response.text
-    assert '<option value="edge" selected>' in edit_response.text
-    assert '<option value="prod" selected>' in edit_response.text
+    assert re.search(r'<option value="edge"[^>]*selected', edit_response.text)
+    assert re.search(r'<option value="prod"[^>]*selected', edit_response.text)
 
 def test_tags_page_uses_drawers_for_create_edit_delete(client) -> None:
     import os
