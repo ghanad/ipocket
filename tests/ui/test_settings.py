@@ -6,6 +6,7 @@ from app import repository
 from app.main import app
 from app.models import UserRole
 from app.routes import ui
+from app.routes.ui import settings as settings_routes
 
 
 def _override_editor(user) -> None:
@@ -229,3 +230,148 @@ def test_audit_log_pagination_defaults_and_system_user_label(client, _setup_conn
     assert re.search(r"Showing\s+1-12\s+of\s+12", response.text)
     assert re.search(r'<option value="20"\s+selected>', response.text)
     assert "System" in response.text
+
+
+def test_create_project_success_and_delete_guard_paths(
+    client, _setup_connection, monkeypatch
+) -> None:
+    connection = _setup_connection()
+    try:
+        user = repository.create_user(
+            connection,
+            username="editor-create-project",
+            hashed_password="x",
+            role=UserRole.EDITOR,
+        )
+    finally:
+        connection.close()
+
+    _override_editor(user)
+    try:
+        created = client.post(
+            "/ui/projects",
+            data={"name": "platform", "description": "", "color": ""},
+            follow_redirects=False,
+        )
+        assert created.status_code == 303
+
+        connection = _setup_connection()
+        try:
+            project = next(p for p in repository.list_projects(connection) if p.name == "platform")
+        finally:
+            connection.close()
+
+        mismatch = client.post(
+            f"/ui/projects/{project.id}/delete",
+            data={"confirm_name": "wrong"},
+        )
+        assert mismatch.status_code == 400
+        assert "Project name confirmation does not match." in mismatch.text
+
+        monkeypatch.setattr(settings_routes.repository, "delete_project", lambda *_: False)
+        blocked = client.post(
+            f"/ui/projects/{project.id}/delete",
+            data={"confirm_name": "platform"},
+        )
+    finally:
+        _clear_overrides()
+
+    assert blocked.status_code == 404
+
+
+def test_tags_listing_and_edit_delete_branches(client, _setup_connection, monkeypatch) -> None:
+    connection = _setup_connection()
+    try:
+        user = repository.create_user(
+            connection,
+            username="editor-tags-branches",
+            hashed_password="x",
+            role=UserRole.EDITOR,
+        )
+        primary = repository.create_tag(connection, name="prod")
+        repository.create_tag(connection, name="edge")
+    finally:
+        connection.close()
+
+    assert client.get("/ui/tags?edit=999").status_code == 404
+    assert client.get("/ui/tags?delete=999").status_code == 404
+
+    _override_editor(user)
+    try:
+        bad_color = client.post(
+            f"/ui/tags/{primary.id}/edit",
+            data={"name": "prod", "color": "nope"},
+        )
+        duplicate = client.post(
+            f"/ui/tags/{primary.id}/edit",
+            data={"name": "edge", "color": "#22c55e"},
+        )
+        monkeypatch.setattr(settings_routes.repository, "update_tag", lambda *_: None)
+        missing_after_update = client.post(
+            f"/ui/tags/{primary.id}/edit",
+            data={"name": "prod-x", "color": "#22c55e"},
+        )
+        monkeypatch.setattr(settings_routes.repository, "delete_tag", lambda *_: False)
+        delete_blocked = client.post(
+            f"/ui/tags/{primary.id}/delete",
+            data={"confirm_name": "prod"},
+        )
+    finally:
+        _clear_overrides()
+
+    assert bad_color.status_code == 400
+    assert "Tag color must be a valid hex color" in bad_color.text
+    assert duplicate.status_code == 409
+    assert "Tag name already exists." in duplicate.text
+    assert missing_after_update.status_code == 404
+    assert delete_blocked.status_code == 404
+
+
+def test_vendor_listing_create_edit_delete_branches(
+    client, _setup_connection, monkeypatch
+) -> None:
+    connection = _setup_connection()
+    try:
+        user = repository.create_user(
+            connection,
+            username="editor-vendor-branches",
+            hashed_password="x",
+            role=UserRole.EDITOR,
+        )
+        vendor = repository.create_vendor(connection, name="Cisco")
+    finally:
+        connection.close()
+
+    assert client.get("/ui/vendors?edit=999").status_code == 404
+    assert client.get("/ui/vendors?delete=999").status_code == 404
+
+    _override_editor(user)
+    try:
+        created = client.post(
+            "/ui/vendors",
+            data={"name": "Juniper"},
+            follow_redirects=False,
+        )
+        assert created.status_code == 303
+
+        monkeypatch.setattr(settings_routes.repository, "update_vendor", lambda *_: None)
+        update_missing = client.post(
+            f"/ui/vendors/{vendor.id}/edit",
+            data={"name": "Cisco-updated"},
+        )
+        delete_mismatch = client.post(
+            f"/ui/vendors/{vendor.id}/delete",
+            data={"confirm_name": "wrong"},
+        )
+        monkeypatch.setattr(settings_routes.repository, "delete_vendor", lambda *_: False)
+        delete_blocked = client.post(
+            f"/ui/vendors/{vendor.id}/delete",
+            data={"confirm_name": "Cisco"},
+        )
+    finally:
+        _clear_overrides()
+
+    assert update_missing.status_code == 404
+    assert delete_mismatch.status_code == 400
+    assert "Vendor name confirmation does not match." in delete_mismatch.text
+    assert delete_blocked.status_code == 404
