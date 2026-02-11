@@ -142,7 +142,8 @@ def test_tags_page_renders_drawers_for_create_edit_delete(client) -> None:
     tags_js = Path(__file__).resolve().parents[2] / "app/static/js/tags.js"
     tags_js_source = tags_js.read_text(encoding="utf-8")
     assert "ipocketCreateDrawerController" in tags_js_source
-    assert "createDrawerController = window.ipocketCreateDrawerController" in tags_js_source
+    assert "const createDrawerController = ({ overlay, drawer, onBeforeClose }) =>" in tags_js_source
+    assert "initCreateDrawer();" in tags_js_source
     assert "data-tag-delete-confirm" in tags_js_source
     assert '<td><span class="tag tag-color" style="--tag-color: #22c55e">#22c55e</span></td>' in response.text
 
