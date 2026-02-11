@@ -1,9 +1,5 @@
 from __future__ import annotations
 
-import sqlite3
-
-import pytest
-
 from app.models import IPAssetType, UserRole
 from app.repository import (
     archive_ip_asset,
@@ -56,13 +52,22 @@ def test_delete_host_removes_record_when_unlinked(_setup_connection) -> None:
     assert deleted is True
     assert get_host_by_name(connection, "host-delete-1") is None
 
-def test_delete_host_raises_for_linked_ip_assets(_setup_connection) -> None:
+def test_delete_host_unlinks_linked_ip_assets_before_delete(_setup_connection) -> None:
     connection = _setup_connection()
     host = create_host(connection, name="host-delete-2")
     create_ip_asset(connection, ip_address="10.0.3.10", asset_type=IPAssetType.OS, host_id=host.id)
+    create_ip_asset(connection, ip_address="10.0.3.11", asset_type=IPAssetType.BMC, host_id=host.id)
 
-    with pytest.raises(sqlite3.IntegrityError):
-        delete_host(connection, host.id)
+    deleted = delete_host(connection, host.id)
+    os_asset = get_ip_asset_by_ip(connection, "10.0.3.10")
+    bmc_asset = get_ip_asset_by_ip(connection, "10.0.3.11")
+
+    assert deleted is True
+    assert get_host_by_name(connection, "host-delete-2") is None
+    assert os_asset is not None
+    assert bmc_asset is not None
+    assert os_asset.host_id is None
+    assert bmc_asset.host_id is None
 
 def test_delete_host_returns_false_for_unknown_host(_setup_connection) -> None:
     connection = _setup_connection()
@@ -193,4 +198,3 @@ def test_list_hosts_with_ip_counts_paginated_returns_empty_for_large_offset(_set
     hosts = list_hosts_with_ip_counts_paginated(connection, limit=10, offset=100)
 
     assert hosts == []
-

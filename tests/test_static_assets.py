@@ -60,3 +60,14 @@ def test_refactored_templates_load_external_page_assets() -> None:
     assert (repo_root / "app/static/js/ip-assets.js").exists()
     assert (repo_root / "app/static/js/range-addresses.js").exists()
     assert (repo_root / "app/static/js/tags.js").exists()
+
+
+def test_hosts_drawer_css_matches_ip_drawer_layout_baseline() -> None:
+    repo_root = Path(__file__).resolve().parents[1]
+    css = (repo_root / "app/static/app.css").read_text(encoding="utf-8")
+
+    assert ".host-drawer {" in css
+    assert "width: min(480px, 100%);" in css
+    assert "transform: translateX(100%);" in css
+    assert ".host-drawer-form {" in css
+    assert "flex-direction: column;" in css

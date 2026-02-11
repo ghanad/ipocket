@@ -36,9 +36,9 @@ def test_hosts_page_renders_edit_drawer_and_actions(client) -> None:
 
     assert response.status_code == 200
     assert 'data-host-edit="' in response.text
+    assert f'data-host-delete="{host.id}"' in response.text
     assert "Edit Host" in response.text
     assert "Save changes" in response.text
-    assert f'/ui/hosts/{host.id}/delete' in response.text
     assert "host-edit-row-" not in response.text
 
 def test_hosts_list_renders_project_color_tag(client) -> None:
@@ -83,9 +83,9 @@ def test_hosts_list_uses_edit_drawer_actions(client) -> None:
     assert response.status_code == 200
     assert f'data-host-edit="{host.id}"' in response.text
     assert f'data-host-name="{host.name}"' in response.text
+    assert f'data-host-delete="{host.id}"' in response.text
     assert 'data-host-project-count="0"' in response.text
     assert 'name="project_id"' in response.text
-    assert f'/ui/hosts/{host.id}/delete' in response.text
     assert "data-host-drawer" in response.text
     assert "Save changes" in response.text
 
@@ -450,7 +450,8 @@ def test_ui_delete_host_requires_confirmation_text(client) -> None:
     finally:
         app.dependency_overrides.pop(ui.require_ui_editor, None)
 
-    assert form_response.status_code == 200
+    assert form_response.status_code == 303
+    assert form_response.headers.get("location", "").endswith(f"/ui/hosts?delete={host.id}")
     assert response.status_code == 400
     assert "برای حذف کامل" in response.text
 
@@ -485,7 +486,7 @@ def test_ui_delete_host_with_confirmation_text(client) -> None:
 
     assert deleted is None
 
-def test_ui_delete_host_rejects_when_linked_ips_exist(client) -> None:
+def test_ui_delete_host_allows_when_linked_ips_exist_and_unlinks_ips(client) -> None:
     import os
     from app import db, repository
 
@@ -507,8 +508,18 @@ def test_ui_delete_host_rejects_when_linked_ips_exist(client) -> None:
     finally:
         app.dependency_overrides.pop(ui.require_ui_editor, None)
 
-    assert response.status_code == 409
-    assert "قابل حذف نیست" in response.text
+    assert response.status_code == 303
+
+    connection = db.connect(os.environ["IPAM_DB_PATH"])
+    try:
+        deleted_host = repository.get_host_by_id(connection, host.id)
+        linked_asset = repository.get_ip_asset_by_ip(connection, "10.20.0.31")
+    finally:
+        connection.close()
+
+    assert deleted_host is None
+    assert linked_asset is not None
+    assert linked_asset.host_id is None
 
 def test_ui_create_host_links_existing_ips(client) -> None:
     """Test that creating a host with existing IPs links them instead of throwing an error."""
@@ -610,8 +621,8 @@ def test_ui_edit_host_links_existing_ips(client) -> None:
     assert bmc_asset.host_id == host.id
 
 
-def test_ui_delete_host_confirm_page_has_cancel_link_to_detail(client) -> None:
-    """Test that the delete confirmation page has Cancel link pointing to host detail page."""
+def test_ui_delete_host_open_delete_redirect_shows_drawer(client) -> None:
+    """Test that opening host delete redirects to hosts page with delete drawer open."""
     import os
     from app import db, repository
 
@@ -625,14 +636,18 @@ def test_ui_delete_host_confirm_page_has_cancel_link_to_detail(client) -> None:
     app.dependency_overrides[ui.require_ui_editor] = lambda: User(1, "editor", "x", UserRole.EDITOR, True)
     try:
         response = client.get(f"/ui/hosts/{host.id}/delete")
+        list_response = client.get(f"/ui/hosts?delete={host.id}")
     finally:
         app.dependency_overrides.pop(ui.require_ui_editor, None)
 
-    assert response.status_code == 200
-    # Cancel link should go to host detail page, not the hosts list
-    assert f'href="/ui/hosts/{host.id}"' in response.text
-    # Should NOT link to hosts list as cancel action
-    assert 'href="/ui/hosts">Cancel' not in response.text
+    assert response.status_code == 303
+    assert response.headers.get("location", "").endswith(f"/ui/hosts?delete={host.id}")
+    assert list_response.status_code == 200
+    assert 'data-host-delete-open="true"' in list_response.text
+    assert f'data-host-delete-id="{host.id}"' in list_response.text
+    assert "data-host-delete-linked-value" in list_response.text
+    assert 'data-host-mode-panel="delete"' in list_response.text
+    assert "Delete permanently" in list_response.text
 
 
 def test_ui_delete_host_shows_success_flash_message(client) -> None:

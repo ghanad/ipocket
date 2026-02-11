@@ -8,7 +8,14 @@
   const closeButton = document.querySelector("[data-host-drawer-close]");
   const cancelButton = document.querySelector("[data-host-drawer-cancel]");
   const saveButton = document.querySelector("[data-host-drawer-save]");
+  const deleteButton = document.querySelector("[data-host-drawer-delete]");
   const form = document.querySelector("[data-host-edit-form]");
+  const deleteForm = document.querySelector("[data-host-delete-form]");
+  const deleteNameDisplay = document.querySelector("[data-host-delete-name-display]");
+  const deleteLinked = document.querySelector("[data-host-delete-linked-value]");
+  const deleteNameInline = document.querySelector("[data-host-delete-name-inline]");
+  const deleteAck = document.querySelector("[data-host-delete-ack]");
+  const deleteConfirmInput = document.querySelector("[data-host-delete-confirm]");
   const projectPill = document.querySelector("[data-host-drawer-project]");
   const statusPill = document.querySelector("[data-host-drawer-status]");
   const projectSelect = document.querySelector("[data-host-project-select]");
@@ -17,6 +24,9 @@
   const errorMessages = form ? form.querySelectorAll("[data-host-error]") : [];
   let initialValues = {};
   let isAddMode = false;
+  let isDeleteMode = false;
+  let currentHost = null;
+  const shouldOpenDeleteByDefault = drawer?.dataset.hostDeleteOpen === "true";
   const drawerController = window.ipocketCreateDrawerController
     ? window.ipocketCreateDrawerController({
       overlay,
@@ -39,13 +49,33 @@
     !closeButton ||
     !cancelButton ||
     !saveButton ||
+    !deleteButton ||
     !projectPill ||
     !statusPill ||
     !projectSelect ||
-    !dirtyStatus
+    !dirtyStatus ||
+    !deleteForm ||
+    !deleteNameDisplay ||
+    !deleteLinked ||
+    !deleteNameInline ||
+    !deleteAck ||
+    !deleteConfirmInput
   ) {
     return;
   }
+
+  const setDrawerMode = (mode) => {
+    isDeleteMode = mode === "delete";
+    drawer.dataset.hostDrawerMode = isDeleteMode ? "delete" : "edit";
+    saveButton.hidden = isDeleteMode;
+    saveButton.style.display = isDeleteMode ? "none" : "";
+    deleteButton.hidden = !isDeleteMode;
+    deleteButton.style.display = isDeleteMode ? "" : "none";
+    form.hidden = isDeleteMode;
+    form.style.display = isDeleteMode ? "none" : "flex";
+    deleteForm.hidden = !isDeleteMode;
+    deleteForm.style.display = isDeleteMode ? "flex" : "none";
+  };
 
   const isValidIPv4 = (value) => {
     if (!value) return true;
@@ -112,6 +142,9 @@
   };
 
   const updateSaveState = () => {
+    if (isDeleteMode) {
+      return;
+    }
     const dirty = isDirty();
     const valid = validate();
     saveButton.disabled = !(dirty && valid);
@@ -124,7 +157,9 @@
 
   const openDrawerForAdd = () => {
     isAddMode = true;
+    currentHost = null;
     clearErrors();
+    setDrawerMode("edit");
     inputs.forEach((input) => {
       input.value = "";
     });
@@ -160,7 +195,9 @@
 
   const openDrawerForEdit = (hostData) => {
     isAddMode = false;
+    currentHost = null;
     clearErrors();
+    setDrawerMode("edit");
     inputs.forEach((input) => {
       const key = input.dataset.hostInput;
       input.value = hostData[key] || "";
@@ -199,6 +236,45 @@
     drawerController?.open();
   };
 
+  const updateDeleteState = () => {
+    if (!isDeleteMode || !currentHost) {
+      return;
+    }
+    const valid = deleteAck.checked && deleteConfirmInput.value.trim() === currentHost.name;
+    deleteButton.disabled = !valid;
+    if (!deleteAck.checked) {
+      dirtyStatus.textContent = "Confirm deletion";
+      return;
+    }
+    dirtyStatus.textContent = valid ? "Ready to delete" : "Type exact host name";
+  };
+
+  const openDrawerForDelete = (hostData, options = {}) => {
+    isAddMode = false;
+    currentHost = hostData;
+    clearErrors();
+    setDrawerMode("delete");
+    drawerTitle.textContent = "Delete host?";
+    drawerSubtitle.textContent = "Permanent and cannot be undone.";
+    projectPill.textContent = `Project: ${hostData.project_label || "Unassigned"}`;
+    statusPill.textContent = `Status: ${hostData.status || "Free"}`;
+    deleteNameDisplay.textContent = hostData.name || "—";
+    deleteNameInline.textContent = hostData.name || "—";
+    deleteLinked.textContent = String(hostData.linked_count || 0);
+    deleteForm.action = hostData.id ? `/ui/hosts/${hostData.id}/delete` : "#";
+    deleteButton.disabled = true;
+    deleteAck.checked = false;
+    dirtyStatus.textContent = "Confirm deletion";
+    if (!options.keepConfirmation) {
+      deleteConfirmInput.value = "";
+    }
+    updateDeleteState();
+    drawerController?.open();
+    setTimeout(() => {
+      deleteConfirmInput.focus();
+    }, 100);
+  };
+
   // Add Host button
   document.querySelectorAll("[data-host-add]").forEach((button) => {
     button.addEventListener("click", () => {
@@ -232,6 +308,27 @@
     });
   });
 
+  document.querySelectorAll("[data-host-delete]").forEach((button) => {
+    button.addEventListener("click", () => {
+      openDrawerForDelete({
+        id: button.dataset.hostDelete || "",
+        name: button.dataset.hostDeleteName || "",
+        linked_count: Number.parseInt(button.dataset.hostDeleteLinked || "0", 10) || 0,
+      });
+    });
+  });
+
+  if (shouldOpenDeleteByDefault) {
+    openDrawerForDelete(
+      {
+        id: deleteForm.dataset.hostDeleteId || "",
+        name: deleteForm.dataset.hostDeleteName || "",
+        linked_count: Number.parseInt(deleteLinked.textContent || "0", 10) || 0,
+      },
+      { keepConfirmation: true },
+    );
+  }
+
   const handleClose = () => {
     if (!drawerController) {
       return;
@@ -264,4 +361,7 @@
       updateSaveState();
     }
   });
+
+  deleteAck.addEventListener("change", updateDeleteState);
+  deleteConfirmInput.addEventListener("input", updateDeleteState);
 })();
