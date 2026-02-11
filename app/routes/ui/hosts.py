@@ -116,13 +116,28 @@ async def ui_create_host(
     form_data = await _parse_form_data(request)
     name = (form_data.get("name") or "").strip()
     notes = _parse_optional_str(form_data.get("notes"))
-    vendor_id = _parse_optional_int(form_data.get("vendor_id"))
+    vendor_raw = form_data.get("vendor_id")
+    project_raw = form_data.get("project_id")
+    vendor_id: Optional[int] = None
+    project_id: Optional[int] = None
+    errors = []
+    try:
+        vendor_id = _parse_optional_int(vendor_raw)
+    except (TypeError, ValueError):
+        errors.append("Select a valid vendor.")
+    try:
+        project_id = _parse_optional_int(project_raw)
+    except (TypeError, ValueError):
+        errors.append("Select a valid project.")
     os_ips_raw = form_data.get("os_ips")
     bmc_ips_raw = form_data.get("bmc_ips")
     os_ips = _parse_inline_ip_list(os_ips_raw)
     bmc_ips = _parse_inline_ip_list(bmc_ips_raw)
 
-    errors = []
+    projects = list(repository.list_projects(connection))
+    if project_id is not None and all(project.id != project_id for project in projects):
+        errors.append("Selected project does not exist.")
+
     if not name:
         errors.append("Host name is required.")
     inline_errors, inline_assets_to_create, inline_assets_to_update = _collect_inline_ip_errors(connection, None, os_ips, bmc_ips)
@@ -138,11 +153,12 @@ async def ui_create_host(
                 "errors": errors,
                 "hosts": hosts,
                 "vendors": list(repository.list_vendors(connection)),
-                "projects": list(repository.list_projects(connection)),
+                "projects": projects,
                 "form_state": {
                     "name": name,
                     "notes": notes or "",
                     "vendor_id": str(vendor_id or ""),
+                    "project_id": str(project_id or ""),
                     "os_ips": os_ips_raw or "",
                     "bmc_ips": bmc_ips_raw or "",
                 },
@@ -165,6 +181,7 @@ async def ui_create_host(
                 connection,
                 ip_address=ip_address,
                 asset_type=asset_type,
+                project_id=project_id,
                 host_id=host.id,
                 notes=None,
                 tags=[],
@@ -172,12 +189,14 @@ async def ui_create_host(
             )
         # Link existing IP assets to the host
         for ip_address, asset_type in inline_assets_to_update:
-            repository.update_ip_asset(
-                connection,
-                ip_address=ip_address,
-                asset_type=asset_type,
-                host_id=host.id,
-            )
+            update_kwargs: dict[str, object] = {
+                "ip_address": ip_address,
+                "asset_type": asset_type,
+                "host_id": host.id,
+            }
+            if project_id is not None:
+                update_kwargs["project_id"] = project_id
+            repository.update_ip_asset(connection, **update_kwargs)
     except sqlite3.IntegrityError:
         hosts = repository.list_hosts_with_ip_counts(connection)
         return _render_template(
@@ -188,11 +207,12 @@ async def ui_create_host(
                 "errors": ["Host name already exists."],
                 "hosts": hosts,
                 "vendors": list(repository.list_vendors(connection)),
-                "projects": list(repository.list_projects(connection)),
+                "projects": projects,
                 "form_state": {
                     "name": name,
                     "notes": notes or "",
                     "vendor_id": str(vendor_id or ""),
+                    "project_id": str(project_id or ""),
                     "os_ips": os_ips_raw or "",
                     "bmc_ips": bmc_ips_raw or "",
                 },

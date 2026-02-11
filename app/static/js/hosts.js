@@ -133,7 +133,7 @@
     drawerSubtitle.textContent = "Create a new host";
     drawerMeta.style.display = "none";
     if (projectField) {
-      projectField.style.display = "none";
+      projectField.style.display = "";
     }
     const defaultOption = projectSelect.querySelector('option[value=""]');
     if (defaultOption) {
