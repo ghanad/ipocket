@@ -63,3 +63,20 @@ def test_list_project_ip_counts_returns_active_counts(_setup_connection) -> None
         assert counts == {project_a.id: 2}
     finally:
         connection.close()
+
+
+def test_delete_vendor_unassigns_linked_hosts(_setup_connection) -> None:
+    connection = _setup_connection()
+    try:
+        vendor = repository.create_vendor(connection, name="Dell")
+        host = repository.create_host(connection, name="node-01", vendor="Dell")
+
+        deleted = repository.delete_vendor(connection, vendor.id)
+
+        assert deleted is True
+        assert repository.get_vendor_by_id(connection, vendor.id) is None
+        updated_host = repository.get_host_by_id(connection, host.id)
+        assert updated_host is not None
+        assert updated_host.vendor is None
+    finally:
+        connection.close()

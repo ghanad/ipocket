@@ -52,10 +52,29 @@ def test_hosts_ui_form_uses_vendor_dropdown(client, _setup_connection) -> None:
     assert "HPE" in response.text
 
 
-def test_vendors_ui_page_renders_and_is_editable(client, _setup_connection) -> None:
+def test_vendors_ui_page_uses_drawer_actions(client, _setup_connection) -> None:
     connection = _setup_connection()
     try:
         vendor = repository.create_vendor(connection, "Lenovo")
+    finally:
+        connection.close()
+
+    response = client.get("/ui/vendors")
+
+    assert response.status_code == 200
+    assert "data-vendor-add" in response.text
+    assert "data-vendor-create-drawer" in response.text
+    assert "data-vendor-edit-drawer" in response.text
+    assert "data-vendor-delete-drawer" in response.text
+    assert f'data-vendor-edit="{vendor.id}"' in response.text
+    assert f'data-vendor-delete="{vendor.id}"' in response.text
+
+
+def test_vendors_ui_edit_and_delete_flow(client, _setup_connection) -> None:
+    connection = _setup_connection()
+    try:
+        vendor = repository.create_vendor(connection, "Lenovo")
+        host = repository.create_host(connection, name="node-1", vendor="Lenovo")
     finally:
         connection.close()
 
@@ -63,18 +82,47 @@ def test_vendors_ui_page_renders_and_is_editable(client, _setup_connection) -> N
     app.dependency_overrides[ui.require_ui_editor] = lambda: User(1, "editor", "x", UserRole.EDITOR, True)
 
     try:
-        list_response = client.get("/ui/vendors")
-        assert list_response.status_code == 200
-        assert "Lenovo" in list_response.text
+        edit_redirect = client.get(f"/ui/vendors/{vendor.id}/edit", follow_redirects=False)
+        assert edit_redirect.status_code == 303
+        assert edit_redirect.headers["location"].endswith(f"/ui/vendors?edit={vendor.id}")
 
-        edit_response = client.post(f"/ui/vendors/{vendor.id}/edit", data={"name": "Supermicro"}, follow_redirects=False)
+        edit_response = client.post(
+            f"/ui/vendors/{vendor.id}/edit",
+            data={"name": "Supermicro"},
+            follow_redirects=False,
+        )
         assert edit_response.status_code == 303
 
-        after = client.get("/ui/vendors")
-        assert "Supermicro" in after.text
+        delete_redirect = client.get(f"/ui/vendors/{vendor.id}/delete", follow_redirects=False)
+        assert delete_redirect.status_code == 303
+        assert delete_redirect.headers["location"].endswith(f"/ui/vendors?delete={vendor.id}")
+
+        delete_error = client.post(
+            f"/ui/vendors/{vendor.id}/delete",
+            data={"confirm_name": "Wrong"},
+        )
+        assert delete_error.status_code == 400
+        assert "Vendor name confirmation does not match." in delete_error.text
+        assert 'data-vendor-delete-open="true"' in delete_error.text
+
+        delete_response = client.post(
+            f"/ui/vendors/{vendor.id}/delete",
+            data={"confirm_name": "Supermicro"},
+            follow_redirects=False,
+        )
+        assert delete_response.status_code == 303
     finally:
         app.dependency_overrides.pop(ui.get_current_ui_user, None)
         app.dependency_overrides.pop(ui.require_ui_editor, None)
+
+    connection = _setup_connection()
+    try:
+        assert repository.get_vendor_by_id(connection, vendor.id) is None
+        updated_host = repository.get_host_by_id(connection, host.id)
+        assert updated_host is not None
+        assert updated_host.vendor is None
+    finally:
+        connection.close()
 
 
 def test_init_db_migrates_host_vendor_text_to_vendor_catalog(tmp_path) -> None:

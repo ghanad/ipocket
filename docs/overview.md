@@ -71,7 +71,9 @@ Hosts can be linked to a vendor from the shared **Vendors** catalog.
 
 ## Vendors
 
-Vendors are managed as a dedicated list (create/edit) and are selectable when creating or editing Hosts (API and UI).
+Vendors are managed as a dedicated list and are selectable when creating or editing Hosts (API and UI).
+
+- Vendors page now uses the same right-side drawer pattern as Projects for create/edit/delete, including destructive confirmation by typing the exact vendor name.
 
 - UI route handlers are now organized as a modular package under `app/routes/ui/` (`auth.py`, `dashboard.py`, `ip_assets.py`, `hosts.py`, `ranges.py`, `settings.py`, `data_ops.py`) with shared helpers in `utils.py` and a single aggregated `router` exported from `app/routes/ui/__init__.py`.
 - Developer compatibility note: `app/routes/ui/__init__.py` re-exports UI auth/session helpers (including `SESSION_COOKIE`) so existing integrations and tests continue working after modularization.

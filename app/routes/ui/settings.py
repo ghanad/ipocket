@@ -476,34 +476,109 @@ async def ui_delete_tag(
     return RedirectResponse(url="/ui/tags", status_code=303)
 
 @router.get("/ui/vendors", response_class=HTMLResponse)
-def ui_list_vendors(request: Request, connection=Depends(get_connection)) -> HTMLResponse:
-    vendors = list(repository.list_vendors(connection))
+def ui_list_vendors(
+    request: Request,
+    edit: Optional[int] = Query(default=None),
+    delete: Optional[int] = Query(default=None),
+    connection=Depends(get_connection),
+) -> HTMLResponse:
+    edit_vendor = None
+    delete_vendor = None
+    if edit is not None:
+        edit_vendor = repository.get_vendor_by_id(connection, edit)
+        if edit_vendor is None:
+            raise HTTPException(status_code=404, detail="Vendor not found")
+    if delete is not None:
+        delete_vendor = repository.get_vendor_by_id(connection, delete)
+        if delete_vendor is None:
+            raise HTTPException(status_code=404, detail="Vendor not found")
+
     return _render_template(
         request,
         "vendors.html",
-        {
-            "title": "ipocket - Vendors",
-            "vendors": vendors,
-            "errors": [],
-            "form_state": {"name": ""},
-        },
+        _vendors_template_context(connection, edit_vendor=edit_vendor, delete_vendor=delete_vendor),
         active_nav="vendors",
     )
 
+
+def _vendors_template_context(
+    connection,
+    *,
+    errors: Optional[list[str]] = None,
+    form_state: Optional[dict[str, str]] = None,
+    edit_errors: Optional[list[str]] = None,
+    edit_vendor=None,
+    edit_form_state: Optional[dict[str, str]] = None,
+    delete_errors: Optional[list[str]] = None,
+    delete_vendor=None,
+    delete_confirm_value: str = "",
+) -> dict:
+    return {
+        "title": "ipocket - Vendors",
+        "vendors": list(repository.list_vendors(connection)),
+        "errors": errors or [],
+        "form_state": form_state or {"name": ""},
+        "edit_errors": edit_errors or [],
+        "edit_vendor": edit_vendor,
+        "edit_form_state": edit_form_state or {"name": edit_vendor.name if edit_vendor else ""},
+        "delete_errors": delete_errors or [],
+        "delete_vendor": delete_vendor,
+        "delete_confirm_value": delete_confirm_value,
+    }
+
+
+@router.get("/ui/vendors/{vendor_id}/edit", response_class=HTMLResponse)
+def ui_open_vendor_edit(
+    vendor_id: int,
+    request: Request,
+    _user=Depends(get_current_ui_user),
+) -> RedirectResponse:
+    return _redirect_with_flash(
+        request,
+        f"/ui/vendors?{urlencode({'edit': vendor_id})}",
+        "",
+        status_code=303,
+    )
+
+
+@router.get("/ui/vendors/{vendor_id}/delete", response_class=HTMLResponse)
+def ui_open_vendor_delete(
+    vendor_id: int,
+    request: Request,
+    _user=Depends(get_current_ui_user),
+) -> RedirectResponse:
+    return _redirect_with_flash(
+        request,
+        f"/ui/vendors?{urlencode({'delete': vendor_id})}",
+        "",
+        status_code=303,
+    )
+
 @router.post("/ui/vendors", response_class=HTMLResponse)
-async def ui_create_vendor(request: Request, connection=Depends(get_connection), _user=Depends(require_ui_editor)) -> HTMLResponse:
+async def ui_create_vendor(
+    request: Request,
+    edit: Optional[int] = Query(default=None),
+    delete: Optional[int] = Query(default=None),
+    connection=Depends(get_connection),
+    _user=Depends(require_ui_editor),
+) -> HTMLResponse:
     form_data = await _parse_form_data(request)
     name = (form_data.get("name") or "").strip()
+
+    edit_vendor = repository.get_vendor_by_id(connection, edit) if edit is not None else None
+    delete_vendor = repository.get_vendor_by_id(connection, delete) if delete is not None else None
+
     if not name:
         return _render_template(
             request,
             "vendors.html",
-            {
-                "title": "ipocket - Vendors",
-                "vendors": list(repository.list_vendors(connection)),
-                "errors": ["Vendor name is required."],
-                "form_state": {"name": name},
-            },
+            _vendors_template_context(
+                connection,
+                errors=["Vendor name is required."],
+                form_state={"name": name},
+                edit_vendor=edit_vendor,
+                delete_vendor=delete_vendor,
+            ),
             status_code=400,
             active_nav="vendors",
         )
@@ -513,12 +588,13 @@ async def ui_create_vendor(request: Request, connection=Depends(get_connection),
         return _render_template(
             request,
             "vendors.html",
-            {
-                "title": "ipocket - Vendors",
-                "vendors": list(repository.list_vendors(connection)),
-                "errors": ["Vendor name already exists."],
-                "form_state": {"name": name},
-            },
+            _vendors_template_context(
+                connection,
+                errors=["Vendor name already exists."],
+                form_state={"name": name},
+                edit_vendor=edit_vendor,
+                delete_vendor=delete_vendor,
+            ),
             status_code=409,
             active_nav="vendors",
         )
@@ -535,36 +611,88 @@ async def ui_edit_vendor(vendor_id: int, request: Request, connection=Depends(ge
     form_data = await _parse_form_data(request)
     name = (form_data.get("name") or "").strip()
     if not name:
+        edit_vendor = repository.get_vendor_by_id(connection, vendor_id)
+        if edit_vendor is None:
+            return Response(status_code=404)
         return _render_template(
             request,
             "vendors.html",
-            {
-                "title": "ipocket - Vendors",
-                "vendors": list(repository.list_vendors(connection)),
-                "errors": ["Vendor name is required."],
-                "form_state": {"name": ""},
-            },
+            _vendors_template_context(
+                connection,
+                edit_errors=["Vendor name is required."],
+                edit_vendor=edit_vendor,
+                edit_form_state={"name": name},
+            ),
             status_code=400,
             active_nav="vendors",
         )
     try:
         updated = repository.update_vendor(connection, vendor_id, name)
     except sqlite3.IntegrityError:
+        edit_vendor = repository.get_vendor_by_id(connection, vendor_id)
+        if edit_vendor is None:
+            return Response(status_code=404)
         return _render_template(
             request,
             "vendors.html",
-            {
-                "title": "ipocket - Vendors",
-                "vendors": list(repository.list_vendors(connection)),
-                "errors": ["Vendor name already exists."],
-                "form_state": {"name": ""},
-            },
+            _vendors_template_context(
+                connection,
+                edit_errors=["Vendor name already exists."],
+                edit_vendor=edit_vendor,
+                edit_form_state={"name": name},
+            ),
             status_code=409,
             active_nav="vendors",
         )
     if updated is None:
         return Response(status_code=404)
-    return RedirectResponse(url="/ui/vendors", status_code=303)
+    return _redirect_with_flash(
+        request,
+        "/ui/vendors",
+        "Vendor updated.",
+        message_type="success",
+        status_code=303,
+    )
+
+
+@router.post("/ui/vendors/{vendor_id}/delete", response_class=HTMLResponse)
+async def ui_delete_vendor(
+    vendor_id: int,
+    request: Request,
+    connection=Depends(get_connection),
+    _user=Depends(require_ui_editor),
+) -> HTMLResponse:
+    form_data = await _parse_form_data(request)
+    confirm_name = (form_data.get("confirm_name") or "").strip()
+    vendor = repository.get_vendor_by_id(connection, vendor_id)
+    if vendor is None:
+        return Response(status_code=404)
+
+    if confirm_name != vendor.name:
+        return _render_template(
+            request,
+            "vendors.html",
+            _vendors_template_context(
+                connection,
+                delete_errors=["Vendor name confirmation does not match."],
+                delete_vendor=vendor,
+                delete_confirm_value=confirm_name,
+            ),
+            status_code=400,
+            active_nav="vendors",
+        )
+
+    deleted = repository.delete_vendor(connection, vendor_id)
+    if not deleted:
+        return Response(status_code=404)
+
+    return _redirect_with_flash(
+        request,
+        "/ui/vendors",
+        "Vendor deleted.",
+        message_type="success",
+        status_code=303,
+    )
 
 @router.get("/ui/audit-log", response_class=HTMLResponse)
 def ui_audit_log(

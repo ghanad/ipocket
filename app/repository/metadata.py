@@ -110,6 +110,14 @@ def update_vendor(connection: sqlite3.Connection, vendor_id: int, name: str) -> 
 
 
 
+
+
+def delete_vendor(connection: sqlite3.Connection, vendor_id: int) -> bool:
+    with connection:
+        connection.execute("UPDATE hosts SET vendor_id = NULL WHERE vendor_id = ?", (vendor_id,))
+        cursor = connection.execute("DELETE FROM vendors WHERE id = ?", (vendor_id,))
+    return cursor.rowcount > 0
+
 def create_tag(connection: sqlite3.Connection, name: str, color: Optional[str] = None) -> Tag:
     normalized_color = normalize_hex_color(color) or DEFAULT_TAG_COLOR
     cursor = connection.execute(
