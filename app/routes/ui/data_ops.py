@@ -117,7 +117,13 @@ async def ui_import_nmap_submit(
     user=Depends(get_current_ui_user),
 ) -> HTMLResponse:
     form_data = await _parse_multipart_form(request)
-    dry_run = bool(form_data.get("dry_run"))
+    mode = form_data.get("mode")
+    if mode is None:
+        # Backward compatibility: old Nmap form used a dry_run checkbox.
+        # If missing, treat as apply (same as historical behavior).
+        dry_run = bool(form_data.get("dry_run"))
+    else:
+        dry_run = mode != "apply"
     if not dry_run and user.role not in (UserRole.EDITOR, UserRole.ADMIN):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN)
     upload = form_data.get("nmap_file")

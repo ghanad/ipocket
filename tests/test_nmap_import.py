@@ -165,6 +165,22 @@ def test_nmap_viewer_cannot_apply(client) -> None:
     assert response.status_code == 403
 
 
+def test_nmap_viewer_can_dry_run_with_mode(client) -> None:
+    test_client, _ = client
+    app.dependency_overrides[ui.get_current_ui_user] = lambda: User(1, "viewer", "x", UserRole.VIEWER, True)
+    try:
+        payload = _load_fixture()
+        response = test_client.post(
+            "/ui/import/nmap",
+            data={"mode": "dry-run"},
+            files={"nmap_file": ("scan.xml", payload, "text/xml")},
+        )
+    finally:
+        app.dependency_overrides.pop(ui.get_current_ui_user, None)
+
+    assert response.status_code == 200
+
+
 def test_import_nmap_redirects_to_import_page(client) -> None:
     test_client, _ = client
     app.dependency_overrides[ui.get_current_ui_user] = lambda: User(1, "viewer", "x", UserRole.VIEWER, True)
