@@ -110,7 +110,7 @@ def test_ip_asset_form_includes_tags_field_and_prefill(client) -> None:
     assert 'name="tags"' in create_response.text
     assert 'value="edge, prod"' in edit_response.text
 
-def test_tags_page_renders_and_allows_edit_delete(client) -> None:
+def test_tags_page_uses_drawers_for_create_edit_delete(client) -> None:
     import os
     from app import db, repository
 
@@ -128,22 +128,46 @@ def test_tags_page_renders_and_allows_edit_delete(client) -> None:
         app.dependency_overrides.pop(ui.require_ui_editor, None)
 
     assert response.status_code == 200
+    assert 'data-tag-add' in response.text
+    assert 'data-tag-create-drawer' in response.text
+    assert 'data-tag-edit-drawer' in response.text
+    assert 'data-tag-delete-drawer' in response.text
     assert 'action="/ui/tags"' in response.text
     assert 'type="color"' in response.text
-    assert f'action="/ui/tags/{tag.id}/edit"' in response.text
-    assert f'action="/ui/tags/{tag.id}/delete"' in response.text
-    assert 'data-tag-delete-form' in response.text
+    assert f'data-tag-edit="{tag.id}"' in response.text
+    assert f'data-tag-delete="{tag.id}"' in response.text
+    assert f'data-tag-name="{tag.name}"' in response.text
+    assert f'data-tag-color="{tag.color}"' in response.text
     tags_js = Path(__file__).resolve().parents[2] / "app/static/js/tags.js"
-    assert 'Delete tag "${tagName}"?' in tags_js.read_text(encoding="utf-8")
+    tags_js_content = tags_js.read_text(encoding="utf-8")
+    assert "data-tag-create-overlay" in tags_js_content
+    assert "data-tag-edit-overlay" in tags_js_content
+    assert "data-tag-delete-overlay" in tags_js_content
     assert '/static/js/tags.js' in response.text
+    assert '/static/js/drawer.js' in response.text
     assert 'class="card table-card tags-existing-card"' in response.text
-    assert 'data-row-actions' in response.text
-    assert 'data-row-actions-toggle' in response.text
-    assert 'data-row-actions-panel' in response.text
-    assert 'class="row-actions-icon"' in response.text
-    assert f'aria-controls="row-actions-tag-{tag.id}"' in response.text
-    assert "positionMenuPanel" in tags_js.read_text(encoding="utf-8")
-    assert "row-actions-trigger" in response.text
+
+
+def test_tag_delete_requires_exact_name_confirmation(client) -> None:
+    import os
+    from app import db, repository
+
+    connection = db.connect(os.environ["IPAM_DB_PATH"])
+    try:
+        db.init_db(connection)
+        tag = repository.create_tag(connection, name="prod", color="#22c55e")
+    finally:
+        connection.close()
+
+    app.dependency_overrides[ui.require_ui_editor] = lambda: User(1, "editor", "x", UserRole.EDITOR, True)
+    try:
+        response = client.post(f"/ui/tags/{tag.id}/delete", data={"confirm_name": "wrong"})
+    finally:
+        app.dependency_overrides.pop(ui.require_ui_editor, None)
+
+    assert response.status_code == 400
+    assert "Tag name confirmation does not match." in response.text
+    assert f'action="/ui/tags/{tag.id}/delete"' in response.text
 
 def test_ip_assets_list_uses_drawer_actions_for_edit_and_delete(client) -> None:
     import os
