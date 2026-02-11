@@ -15,8 +15,12 @@ def test_sd_targets_support_project_grouping(tmp_path, monkeypatch) -> None:
     try:
         db.init_db(connection)
         project = repository.create_project(connection, name="core")
-        repository.create_ip_asset(connection, "10.20.0.1", IPAssetType.VM, project_id=project.id)
-        repository.create_ip_asset(connection, "10.20.0.2", IPAssetType.VM, project_id=None)
+        repository.create_ip_asset(
+            connection, "10.20.0.1", IPAssetType.VM, project_id=project.id
+        )
+        repository.create_ip_asset(
+            connection, "10.20.0.2", IPAssetType.VM, project_id=None
+        )
     finally:
         connection.close()
 

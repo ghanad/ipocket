@@ -14,7 +14,7 @@ def test_ui_assets_are_local() -> None:
 
     css = (repo_root / "app/static/app.css").read_text(encoding="utf-8")
     assert "fonts.googleapis.com" not in css
-    assert "font-family: \"Inter\"" in css
+    assert 'font-family: "Inter"' in css
     assert "height: 100vh" in css
     assert "position: sticky" in css
     assert "overflow-y: auto" in css
@@ -38,19 +38,29 @@ def test_refactored_templates_load_external_page_assets() -> None:
         "audit_log": repo_root / "app/templates/audit_log_list.html",
     }
 
-    assert '<script src="/static/js/drawer.js" defer></script>' in templates["hosts"].read_text(encoding="utf-8")
-    assert '<script src="/static/js/hosts.js" defer></script>' in templates["hosts"].read_text(encoding="utf-8")
+    assert '<script src="/static/js/drawer.js" defer></script>' in templates[
+        "hosts"
+    ].read_text(encoding="utf-8")
+    assert '<script src="/static/js/hosts.js" defer></script>' in templates[
+        "hosts"
+    ].read_text(encoding="utf-8")
     assert "<style>" not in templates["hosts"].read_text(encoding="utf-8")
     assert "<script>" not in templates["hosts"].read_text(encoding="utf-8")
 
-    assert '<script src="/static/js/ip-assets.js" defer></script>' in templates["ip_assets"].read_text(encoding="utf-8")
+    assert '<script src="/static/js/ip-assets.js" defer></script>' in templates[
+        "ip_assets"
+    ].read_text(encoding="utf-8")
     assert "<style>" not in templates["ip_assets"].read_text(encoding="utf-8")
     assert "<script>" not in templates["ip_assets"].read_text(encoding="utf-8")
 
-    assert '<script src="/static/js/range-addresses.js" defer></script>' in templates["range_addresses"].read_text(encoding="utf-8")
+    assert '<script src="/static/js/range-addresses.js" defer></script>' in templates[
+        "range_addresses"
+    ].read_text(encoding="utf-8")
     assert "<style>" not in templates["range_addresses"].read_text(encoding="utf-8")
 
-    assert '<script src="/static/js/tags.js" defer></script>' in templates["tags"].read_text(encoding="utf-8")
+    assert '<script src="/static/js/tags.js" defer></script>' in templates[
+        "tags"
+    ].read_text(encoding="utf-8")
     assert "<script>" not in templates["tags"].read_text(encoding="utf-8")
 
     assert "<style>" not in templates["audit_log"].read_text(encoding="utf-8")
@@ -62,7 +72,9 @@ def test_refactored_templates_load_external_page_assets() -> None:
     assert (repo_root / "app/static/js/range-addresses.js").exists()
     assert (repo_root / "app/static/js/tags.js").exists()
     assert (repo_root / "app/static/js/tag-picker.js").exists()
-    tag_picker_js = (repo_root / "app/static/js/tag-picker.js").read_text(encoding="utf-8")
+    tag_picker_js = (repo_root / "app/static/js/tag-picker.js").read_text(
+        encoding="utf-8"
+    )
     assert "picker.append(inputWrap, selectedWrap);" in tag_picker_js
 
 

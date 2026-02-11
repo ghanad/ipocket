@@ -12,21 +12,23 @@ from .mappers import _ip_address_sort_key, _row_to_ip_asset
 def _project_label(connection: sqlite3.Connection, project_id: Optional[int]) -> str:
     if project_id is None:
         return "Unassigned"
-    project = connection.execute("SELECT name FROM projects WHERE id = ?", (project_id,)).fetchone()
+    project = connection.execute(
+        "SELECT name FROM projects WHERE id = ?", (project_id,)
+    ).fetchone()
     if project is None:
         return f"Unknown ({project_id})"
     return project["name"]
 
 
-
 def _host_label(connection: sqlite3.Connection, host_id: Optional[int]) -> str:
     if host_id is None:
         return "Unassigned"
-    host = connection.execute("SELECT name FROM hosts WHERE id = ?", (host_id,)).fetchone()
+    host = connection.execute(
+        "SELECT name FROM hosts WHERE id = ?", (host_id,)
+    ).fetchone()
     if host is None:
         return f"Unknown ({host_id})"
     return host["name"]
-
 
 
 def _summarize_ip_asset_changes(
@@ -39,7 +41,9 @@ def _summarize_ip_asset_changes(
 ) -> str:
     changes: list[str] = []
     if existing.asset_type != updated.asset_type:
-        changes.append(f"type: {existing.asset_type.value} -> {updated.asset_type.value}")
+        changes.append(
+            f"type: {existing.asset_type.value} -> {updated.asset_type.value}"
+        )
     if existing.project_id != updated.project_id:
         changes.append(
             f"project: {_project_label(connection, existing.project_id)} -> {_project_label(connection, updated.project_id)}"
@@ -50,12 +54,15 @@ def _summarize_ip_asset_changes(
         )
     if (existing.notes or "") != (updated.notes or ""):
         changes.append(f"notes: {existing.notes or ''} -> {updated.notes or ''}")
-    if tags_before is not None and tags_after is not None and sorted(tags_before) != sorted(tags_after):
+    if (
+        tags_before is not None
+        and tags_after is not None
+        and sorted(tags_before) != sorted(tags_after)
+    ):
         before_label = ", ".join(tags_before) if tags_before else "none"
         after_label = ", ".join(tags_after) if tags_after else "none"
         changes.append(f"tags: {before_label} -> {after_label}")
     return "; ".join(changes) if changes else "No changes recorded."
-
 
 
 def list_tag_details_for_ip_assets(
@@ -78,7 +85,9 @@ def list_tag_details_for_ip_assets(
         """,
         asset_ids_list,
     ).fetchall()
-    mapping: dict[int, list[dict[str, str]]] = {asset_id: [] for asset_id in asset_ids_list}
+    mapping: dict[int, list[dict[str, str]]] = {
+        asset_id: [] for asset_id in asset_ids_list
+    }
     for row in rows:
         mapping.setdefault(row["asset_id"], []).append(
             {"name": row["tag_name"], "color": row["tag_color"]}
@@ -86,8 +95,9 @@ def list_tag_details_for_ip_assets(
     return mapping
 
 
-
-def list_tags_for_ip_assets(connection: sqlite3.Connection, asset_ids: Iterable[int]) -> dict[int, list[str]]:
+def list_tags_for_ip_assets(
+    connection: sqlite3.Connection, asset_ids: Iterable[int]
+) -> dict[int, list[str]]:
     asset_ids_list = list(asset_ids)
     if not asset_ids_list:
         return {}
@@ -109,8 +119,9 @@ def list_tags_for_ip_assets(connection: sqlite3.Connection, asset_ids: Iterable[
     return mapping
 
 
-
-def set_ip_asset_tags(connection: sqlite3.Connection, asset_id: int, tag_names: Iterable[str]) -> list[str]:
+def set_ip_asset_tags(
+    connection: sqlite3.Connection, asset_id: int, tag_names: Iterable[str]
+) -> list[str]:
     normalized_tags = normalize_tag_names(list(tag_names))
     connection.execute("DELETE FROM ip_asset_tags WHERE ip_asset_id = ?", (asset_id,))
     if not normalized_tags:
@@ -150,11 +161,19 @@ def create_ip_asset(
 ) -> IPAsset:
     resolved_host_id = host_id
     with connection:
-        if auto_host_for_bmc and asset_type == IPAssetType.BMC and resolved_host_id is None:
+        if (
+            auto_host_for_bmc
+            and asset_type == IPAssetType.BMC
+            and resolved_host_id is None
+        ):
             host_name = f"server_{ip_address}"
-            existing_host = connection.execute("SELECT id FROM hosts WHERE name = ?", (host_name,)).fetchone()
+            existing_host = connection.execute(
+                "SELECT id FROM hosts WHERE name = ?", (host_name,)
+            ).fetchone()
             if existing_host is None:
-                host_cursor = connection.execute("INSERT INTO hosts (name, notes) VALUES (?, ?)", (host_name, None))
+                host_cursor = connection.execute(
+                    "INSERT INTO hosts (name, notes) VALUES (?, ?)", (host_name, None)
+                )
                 resolved_host_id = host_cursor.lastrowid
             else:
                 resolved_host_id = existing_host["id"]
@@ -177,26 +196,35 @@ def create_ip_asset(
         )
         if tags is not None:
             set_ip_asset_tags(connection, cursor.lastrowid, tags)
-    row = connection.execute("SELECT * FROM ip_assets WHERE id = ?", (cursor.lastrowid,)).fetchone()
+    row = connection.execute(
+        "SELECT * FROM ip_assets WHERE id = ?", (cursor.lastrowid,)
+    ).fetchone()
     if row is None:
         raise RuntimeError("Failed to fetch newly created IP asset.")
     return _row_to_ip_asset(row)
 
 
-
-def get_ip_asset_by_ip(connection: sqlite3.Connection, ip_address: str) -> Optional[IPAsset]:
-    row = connection.execute("SELECT * FROM ip_assets WHERE ip_address = ?", (ip_address,)).fetchone()
+def get_ip_asset_by_ip(
+    connection: sqlite3.Connection, ip_address: str
+) -> Optional[IPAsset]:
+    row = connection.execute(
+        "SELECT * FROM ip_assets WHERE ip_address = ?", (ip_address,)
+    ).fetchone()
     return _row_to_ip_asset(row) if row else None
 
 
-
-def get_ip_asset_by_id(connection: sqlite3.Connection, asset_id: int) -> Optional[IPAsset]:
-    row = connection.execute("SELECT * FROM ip_assets WHERE id = ?", (asset_id,)).fetchone()
+def get_ip_asset_by_id(
+    connection: sqlite3.Connection, asset_id: int
+) -> Optional[IPAsset]:
+    row = connection.execute(
+        "SELECT * FROM ip_assets WHERE id = ?", (asset_id,)
+    ).fetchone()
     return _row_to_ip_asset(row) if row else None
 
 
-
-def list_ip_assets_by_ids(connection: sqlite3.Connection, asset_ids: Iterable[int]) -> list[IPAsset]:
+def list_ip_assets_by_ids(
+    connection: sqlite3.Connection, asset_ids: Iterable[int]
+) -> list[IPAsset]:
     asset_ids_list = list(asset_ids)
     if not asset_ids_list:
         return []
@@ -206,7 +234,6 @@ def list_ip_assets_by_ids(connection: sqlite3.Connection, asset_ids: Iterable[in
         asset_ids_list,
     ).fetchall()
     return [_row_to_ip_asset(row) for row in rows]
-
 
 
 def list_active_ip_assets(
@@ -233,7 +260,6 @@ def list_active_ip_assets(
     return sorted(assets, key=lambda asset: _ip_address_sort_key(asset.ip_address))
 
 
-
 def count_active_ip_assets(
     connection: sqlite3.Connection,
     project_id: Optional[int] = None,
@@ -258,7 +284,9 @@ def count_active_ip_assets(
         query += " AND (LOWER(ip_address) LIKE ? OR LOWER(COALESCE(notes, '')) LIKE ?)"
         query_value = f"%{query_text.lower()}%"
         params.extend([query_value, query_value])
-    normalized_tag_names = [tag.strip() for tag in (tag_names or []) if tag and tag.strip()]
+    normalized_tag_names = [
+        tag.strip() for tag in (tag_names or []) if tag and tag.strip()
+    ]
     if normalized_tag_names:
         placeholders = ",".join(["?"] * len(normalized_tag_names))
         query += f"""
@@ -272,7 +300,6 @@ def count_active_ip_assets(
         """
         params.extend([name.lower() for name in normalized_tag_names])
     return int(connection.execute(query, params).fetchone()[0])
-
 
 
 def list_active_ip_assets_paginated(
@@ -301,7 +328,9 @@ def list_active_ip_assets_paginated(
         query += " AND (LOWER(ip_address) LIKE ? OR LOWER(COALESCE(notes, '')) LIKE ?)"
         query_value = f"%{query_text.lower()}%"
         params.extend([query_value, query_value])
-    normalized_tag_names = [tag.strip() for tag in (tag_names or []) if tag and tag.strip()]
+    normalized_tag_names = [
+        tag.strip() for tag in (tag_names or []) if tag and tag.strip()
+    ]
     if normalized_tag_names:
         placeholders = ",".join(["?"] * len(normalized_tag_names))
         query += f"""
@@ -316,15 +345,21 @@ def list_active_ip_assets_paginated(
         params.extend([name.lower() for name in normalized_tag_names])
     query += " ORDER BY ip_address"
     rows = connection.execute(query, params).fetchall()
-    sorted_assets = sorted((
-        _row_to_ip_asset(row)
-        for row in rows
-    ), key=lambda asset: _ip_address_sort_key(asset.ip_address))
+    sorted_assets = sorted(
+        (_row_to_ip_asset(row) for row in rows),
+        key=lambda asset: _ip_address_sort_key(asset.ip_address),
+    )
     return sorted_assets[offset : offset + limit]
 
 
-
-def list_sd_targets(connection: sqlite3.Connection, port: int, only_assigned: bool = False, project_names: Optional[list[str]] = None, asset_types: Optional[list[IPAssetType]] = None, group_by: str = "none") -> list[dict[str, object]]:
+def list_sd_targets(
+    connection: sqlite3.Connection,
+    port: int,
+    only_assigned: bool = False,
+    project_names: Optional[list[str]] = None,
+    asset_types: Optional[list[IPAssetType]] = None,
+    group_by: str = "none",
+) -> list[dict[str, object]]:
     query = "SELECT ip_assets.ip_address AS ip_address, ip_assets.type AS asset_type, projects.name AS project_name FROM ip_assets LEFT JOIN projects ON projects.id = ip_assets.project_id WHERE ip_assets.archived = 0"
     params: list[object] = []
     if only_assigned:
@@ -353,12 +388,13 @@ def list_sd_targets(connection: sqlite3.Connection, port: int, only_assigned: bo
         project_label = next(iter(projects)) if len(projects) == 1 else "multiple"
         types = {r["asset_type"] for r in group_rows}
         type_label = next(iter(types)) if len(types) == 1 else "multiple"
-        output.append({
-            "targets": [f"{r['ip_address']}:{port}" for r in group_rows],
-            "labels": {"project": project_label, "type": type_label},
-        })
+        output.append(
+            {
+                "targets": [f"{r['ip_address']}:{port}" for r in group_rows],
+                "labels": {"project": project_label, "type": type_label},
+            }
+        )
     return output
-
 
 
 def list_ip_assets_for_export(
@@ -416,7 +452,6 @@ def list_ip_assets_for_export(
     ]
 
 
-
 def get_ip_asset_metrics(connection: sqlite3.Connection) -> dict[str, int]:
     row = connection.execute(
         """
@@ -445,14 +480,17 @@ def get_ip_asset_metrics(connection: sqlite3.Connection) -> dict[str, int]:
     }
 
 
-
 def archive_ip_asset(connection: sqlite3.Connection, ip_address: str) -> None:
-    connection.execute("UPDATE ip_assets SET archived = 1, updated_at = CURRENT_TIMESTAMP WHERE ip_address = ?", (ip_address,))
+    connection.execute(
+        "UPDATE ip_assets SET archived = 1, updated_at = CURRENT_TIMESTAMP WHERE ip_address = ?",
+        (ip_address,),
+    )
     connection.commit()
 
 
-
-def set_ip_asset_archived(connection: sqlite3.Connection, ip_address: str, archived: bool) -> None:
+def set_ip_asset_archived(
+    connection: sqlite3.Connection, ip_address: str, archived: bool
+) -> None:
     connection.execute(
         "UPDATE ip_assets SET archived = ?, updated_at = CURRENT_TIMESTAMP WHERE ip_address = ?",
         (1 if archived else 0, ip_address),
@@ -460,13 +498,16 @@ def set_ip_asset_archived(connection: sqlite3.Connection, ip_address: str, archi
     connection.commit()
 
 
-
-def delete_ip_asset(connection: sqlite3.Connection, ip_address: str, current_user: Optional[User] = None) -> bool:
+def delete_ip_asset(
+    connection: sqlite3.Connection, ip_address: str, current_user: Optional[User] = None
+) -> bool:
     asset = get_ip_asset_by_ip(connection, ip_address)
     if asset is None:
         return False
     with connection:
-        cursor = connection.execute("DELETE FROM ip_assets WHERE ip_address = ?", (ip_address,))
+        cursor = connection.execute(
+            "DELETE FROM ip_assets WHERE ip_address = ?", (ip_address,)
+        )
         if cursor.rowcount > 0:
             create_audit_log(
                 connection,
@@ -478,7 +519,6 @@ def delete_ip_asset(connection: sqlite3.Connection, ip_address: str, current_use
                 changes="Deleted IP asset.",
             )
     return cursor.rowcount > 0
-
 
 
 def update_ip_asset(
@@ -498,12 +538,20 @@ def update_ip_asset(
     if existing is None:
         return None
     notes_should_update = notes_provided or notes is not None
-    normalized_notes = notes if notes is not None and notes.strip() else None if notes_should_update else None
+    normalized_notes = (
+        notes
+        if notes is not None and notes.strip()
+        else None
+        if notes_should_update
+        else None
+    )
     normalized_tags = normalize_tag_names(tags) if tags is not None else None
     existing_tags: list[str] = []
     tags_changed = False
     if normalized_tags is not None:
-        existing_tags = list_tags_for_ip_assets(connection, [existing.id]).get(existing.id, [])
+        existing_tags = list_tags_for_ip_assets(connection, [existing.id]).get(
+            existing.id, []
+        )
         tags_changed = sorted(existing_tags) != sorted(normalized_tags)
     project_should_update = project_id_provided or project_id is not None
     host_should_update = host_id_provided or host_id is not None
@@ -567,7 +615,6 @@ def update_ip_asset(
         if updated is not None and tags_changed and normalized_tags is not None:
             set_ip_asset_tags(connection, updated.id, normalized_tags)
     return updated
-
 
 
 def bulk_update_ip_assets(

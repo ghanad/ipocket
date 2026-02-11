@@ -32,7 +32,13 @@ FLASH_MAX_MESSAGES = 5
 
 
 def _is_auto_host_for_bmc_enabled() -> bool:
-    return os.getenv("IPOCKET_AUTO_HOST_FOR_BMC", "1").strip().lower() not in {"0", "false", "no", "off"}
+    return os.getenv("IPOCKET_AUTO_HOST_FOR_BMC", "1").strip().lower() not in {
+        "0",
+        "false",
+        "no",
+        "off",
+    }
+
 
 def _render_template(
     request: Request,
@@ -72,12 +78,14 @@ def _render_template(
         response.delete_cookie(FLASH_COOKIE)
     return response
 
+
 def _append_query_param(url: str, key: str, value: str) -> str:
     parsed = urlparse(url)
     query = parse_qs(parsed.query)
     query[key] = [value]
     updated_query = urlencode(query, doseq=True)
     return urlunparse(parsed._replace(query=updated_query))
+
 
 def _render_fallback_template(
     template_name: str, payload: dict, status_code: int = 200
@@ -112,16 +120,30 @@ def _render_fallback_template(
         if name:
             lines.append(str(name))
     for host in payload.get("hosts") or []:
-        name = getattr(host, "name", None) if not isinstance(host, dict) else host.get("name")
+        name = (
+            getattr(host, "name", None)
+            if not isinstance(host, dict)
+            else host.get("name")
+        )
         if name:
             lines.append(str(name))
     for vendor in payload.get("vendors") or []:
-        name = getattr(vendor, "name", None) if not isinstance(vendor, dict) else vendor.get("name")
+        name = (
+            getattr(vendor, "name", None)
+            if not isinstance(vendor, dict)
+            else vendor.get("name")
+        )
         if name:
             lines.append(str(name))
     if template_name == "management.html":
         summary = payload.get("summary") or {}
-        for key in ("active_ip_total", "archived_ip_total", "host_total", "vendor_total", "project_total"):
+        for key in (
+            "active_ip_total",
+            "archived_ip_total",
+            "host_total",
+            "vendor_total",
+            "project_total",
+        ):
             if key in summary:
                 lines.append(str(summary[key]))
         for report in payload.get("utilization") or []:
@@ -145,11 +167,13 @@ def _render_fallback_template(
         lines.append(f"ipocket v{version} ({commit}) • built {build_time}")
     return HTMLResponse(content="\n".join(lines), status_code=status_code)
 
+
 def _sign_session_value(value: str) -> str:
     signature = hmac.new(
         SESSION_SECRET, value.encode("utf-8"), hashlib.sha256
     ).hexdigest()
     return f"{value}.{signature}"
+
 
 def _verify_session_value(value: Optional[str]) -> Optional[str]:
     if not value:
@@ -164,6 +188,7 @@ def _verify_session_value(value: Optional[str]) -> Optional[str]:
         return None
     return payload
 
+
 def _normalize_flash_type(value: Optional[str]) -> str:
     if not value:
         return "info"
@@ -172,15 +197,18 @@ def _normalize_flash_type(value: Optional[str]) -> str:
         return normalized
     return "info"
 
+
 def _encode_flash_payload(messages: list[dict[str, str]]) -> str:
     serialized = json.dumps(messages, separators=(",", ":"))
     return base64.urlsafe_b64encode(serialized.encode("utf-8")).decode("utf-8")
+
 
 def _decode_flash_payload(payload: str) -> Optional[str]:
     try:
         return base64.urlsafe_b64decode(payload.encode("utf-8")).decode("utf-8")
     except (binascii.Error, UnicodeDecodeError):
         return None
+
 
 def _load_flash_messages(request: Request) -> list[dict[str, str]]:
     signed_value = request.cookies.get(FLASH_COOKIE)
@@ -211,6 +239,7 @@ def _load_flash_messages(request: Request) -> list[dict[str, str]]:
         )
     return messages[:FLASH_MAX_MESSAGES]
 
+
 def _store_flash_messages(response: Response, messages: list[dict[str, str]]) -> None:
     if not messages:
         return
@@ -221,6 +250,7 @@ def _store_flash_messages(response: Response, messages: list[dict[str, str]]) ->
         httponly=True,
         samesite="lax",
     )
+
 
 def _add_flash_message(
     request: Request,
@@ -237,6 +267,7 @@ def _add_flash_message(
     )
     _store_flash_messages(response, messages)
 
+
 def _redirect_with_flash(
     request: Request,
     url: str,
@@ -248,13 +279,13 @@ def _redirect_with_flash(
     _add_flash_message(request, response, message_type, message)
     return response
 
+
 def _is_authenticated_request(request: Request) -> bool:
     signed_session = request.cookies.get(SESSION_COOKIE)
     return _verify_session_value(signed_session) is not None
 
-def get_current_ui_user(
-    request: Request, connection=Depends(get_connection)
-):
+
+def get_current_ui_user(request: Request, connection=Depends(get_connection)):
     signed_session = request.cookies.get(SESSION_COOKIE)
     user_id = _verify_session_value(signed_session)
     if not user_id:
@@ -280,18 +311,22 @@ def get_current_ui_user(
         )
     return user
 
+
 def require_ui_editor(user=Depends(get_current_ui_user)):
     if user.role not in (UserRole.EDITOR, UserRole.ADMIN):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN)
     return user
 
+
 def _is_unassigned(project_id: Optional[int]) -> bool:
     return project_id is None
+
 
 def _parse_optional_int(value: Optional[str]) -> Optional[int]:
     if value is None or value == "":
         return None
     return int(value)
+
 
 def _parse_optional_int_query(value: Optional[str]) -> Optional[int]:
     if value is None or value == "":
@@ -301,17 +336,20 @@ def _parse_optional_int_query(value: Optional[str]) -> Optional[int]:
     except ValueError:
         return None
 
+
 def _parse_optional_str(value: Optional[str]) -> Optional[str]:
     if value is None:
         return None
     stripped = value.strip()
     return stripped if stripped else None
 
+
 def _parse_positive_int_query(value: Optional[str], default: int) -> int:
     parsed = _parse_optional_int_query(value)
     if parsed is None or parsed <= 0:
         return default
     return parsed
+
 
 def _parse_inline_ip_list(value: Optional[str]) -> list[str]:
     normalized = _parse_optional_str(value)
@@ -328,6 +366,7 @@ def _parse_inline_ip_list(value: Optional[str]) -> list[str]:
         entries.append(candidate)
     return entries
 
+
 def _collect_inline_ip_errors(
     connection: sqlite3.Connection,
     host_id: Optional[int],
@@ -335,7 +374,7 @@ def _collect_inline_ip_errors(
     bmc_ips: list[str],
 ) -> tuple[list[str], list[tuple[str, IPAssetType]], list[tuple[str, IPAssetType]]]:
     """Collect errors and categorize IPs for creation or update.
-    
+
     Returns:
         A tuple of (errors, ips_to_create, ips_to_update) where:
         - errors: List of error messages
@@ -363,7 +402,11 @@ def _collect_inline_ip_errors(
         existing = repository.get_ip_asset_by_ip(connection, ip_address)
         if existing is not None:
             # Already linked to this host with same type - skip
-            if host_id is not None and existing.host_id == host_id and existing.asset_type == asset_type:
+            if (
+                host_id is not None
+                and existing.host_id == host_id
+                and existing.asset_type == asset_type
+            ):
                 continue
             # Existing IP - add to update list to link to host
             to_update.append((ip_address, asset_type))
@@ -372,17 +415,20 @@ def _collect_inline_ip_errors(
     deduped_errors = list(dict.fromkeys(errors))
     return deduped_errors, to_create, to_update
 
+
 def _normalize_project_color(value: Optional[str]) -> Optional[str]:
     normalized_value = _parse_optional_str(value)
     if normalized_value is None:
         return None
     return normalize_hex_color(normalized_value)
 
+
 def _normalize_asset_type(value: Optional[str]) -> Optional[IPAssetType]:
     normalized_value = _parse_optional_str(value)
     if normalized_value is None:
         return None
     return IPAssetType.normalize(normalized_value)
+
 
 def _normalize_export_asset_type(value: Optional[str]) -> Optional[IPAssetType]:
     if value is None:
@@ -395,13 +441,17 @@ def _normalize_export_asset_type(value: Optional[str]) -> Optional[IPAssetType]:
             detail="Invalid asset type. Use VM, OS, BMC (formerly IPMI/iLO), VIP, OTHER.",
         ) from exc
 
+
 def _build_csv_content(headers: list[str], rows: list[dict[str, object]]) -> str:
     buffer = io.StringIO()
     writer = csv.DictWriter(buffer, fieldnames=headers)
     writer.writeheader()
     for row in rows:
-        writer.writerow({key: "" if row.get(key) is None else row.get(key) for key in headers})
+        writer.writerow(
+            {key: "" if row.get(key) is None else row.get(key) for key in headers}
+        )
     return buffer.getvalue()
+
 
 def _format_ip_asset_csv_rows(rows: list[dict[str, object]]) -> list[dict[str, object]]:
     formatted: list[dict[str, object]] = []
@@ -413,15 +463,22 @@ def _format_ip_asset_csv_rows(rows: list[dict[str, object]]) -> list[dict[str, o
         formatted.append(updated)
     return formatted
 
-def _csv_response(filename: str, headers: list[str], rows: list[dict[str, object]]) -> Response:
-    response = Response(content=_build_csv_content(headers, rows), media_type="text/csv")
+
+def _csv_response(
+    filename: str, headers: list[str], rows: list[dict[str, object]]
+) -> Response:
+    response = Response(
+        content=_build_csv_content(headers, rows), media_type="text/csv"
+    )
     response.headers["Content-Disposition"] = f'attachment; filename="{filename}"'
     return response
+
 
 def _json_response(filename: str, payload: object) -> Response:
     response = JSONResponse(content=payload)
     response.headers["Content-Disposition"] = f'attachment; filename="{filename}"'
     return response
+
 
 def _zip_response(filename: str, files: dict[str, str]) -> Response:
     buffer = io.BytesIO()
@@ -431,6 +488,7 @@ def _zip_response(filename: str, files: dict[str, str]) -> Response:
     response = Response(content=buffer.getvalue(), media_type="application/zip")
     response.headers["Content-Disposition"] = f'attachment; filename="{filename}"'
     return response
+
 
 def _build_asset_view_models(
     assets: list[IPAsset],
@@ -451,7 +509,11 @@ def _build_asset_view_models(
         tags_value = ", ".join(tag["name"] for tag in tags)
         host_pair = ""
         if asset.host_id and asset.asset_type in (IPAssetType.OS, IPAssetType.BMC):
-            pair_type = IPAssetType.BMC.value if asset.asset_type == IPAssetType.OS else IPAssetType.OS.value
+            pair_type = (
+                IPAssetType.BMC.value
+                if asset.asset_type == IPAssetType.OS
+                else IPAssetType.OS.value
+            )
             pair_ips = host_pair_lookup.get(asset.host_id, {}).get(pair_type, [])
             host_pair = ", ".join(pair_ips)
         view_models.append(
@@ -474,10 +536,12 @@ def _build_asset_view_models(
         )
     return view_models
 
+
 async def _parse_form_data(request: Request) -> dict:
     body = await request.body()
     parsed = parse_qs(body.decode(), keep_blank_values=True)
     return {key: values[0] for key, values in parsed.items()}
+
 
 async def _parse_multipart_form(request: Request) -> dict:
     form = await request.form()

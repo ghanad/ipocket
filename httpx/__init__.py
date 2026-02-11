@@ -151,7 +151,8 @@ class Client:
         cookies: _types.CookieTypes | None = None,
         auth: _types.AuthTypes | _client.UseClientDefault = _client.USE_CLIENT_DEFAULT,
         follow_redirects: bool | None = None,
-        timeout: _types.TimeoutTypes | _client.UseClientDefault = _client.USE_CLIENT_DEFAULT,
+        timeout: _types.TimeoutTypes
+        | _client.UseClientDefault = _client.USE_CLIENT_DEFAULT,
         extensions: Mapping[str, Any] | None = None,
     ) -> Response:
         merged_url = self._merge_url(url)
@@ -199,12 +200,16 @@ class Client:
                 )
             parts.append(f"--{boundary}--\r\n".encode("utf-8"))
             body = b"".join(parts)
-            request_headers.setdefault("content-type", f"multipart/form-data; boundary={boundary}")
+            request_headers.setdefault(
+                "content-type", f"multipart/form-data; boundary={boundary}"
+            )
         elif content is not None:
             body = content.encode("utf-8") if isinstance(content, str) else content
         elif data is not None:
             body = urlencode(data, doseq=True).encode("utf-8")
-            request_headers.setdefault("content-type", "application/x-www-form-urlencoded")
+            request_headers.setdefault(
+                "content-type", "application/x-www-form-urlencoded"
+            )
         request = Request(method, merged_url, headers=request_headers, content=body)
         return self.transport.handle_request(request)
 

@@ -8,7 +8,9 @@ from app import db, repository
 from app.models import UserRole
 
 
-def test_ipasset_crud_without_owner(client, _create_user, _login, _auth_headers) -> None:
+def test_ipasset_crud_without_owner(
+    client, _create_user, _login, _auth_headers
+) -> None:
     _create_user("editor", "editor-pass", UserRole.EDITOR)
     headers = _auth_headers(_login("editor", "editor-pass"))
 
@@ -23,13 +25,19 @@ def test_ipasset_crud_without_owner(client, _create_user, _login, _auth_headers)
     assert create.status_code == 200
     assert "owner_id" not in create.json()
 
-    edge_id = client.post("/projects", headers=headers, json={"name": "Edge"}).json()["id"]
-    update = client.patch("/ip-assets/10.10.0.10", headers=headers, json={"project_id": edge_id})
+    edge_id = client.post("/projects", headers=headers, json={"name": "Edge"}).json()[
+        "id"
+    ]
+    update = client.patch(
+        "/ip-assets/10.10.0.10", headers=headers, json={"project_id": edge_id}
+    )
     assert update.status_code == 200
     assert update.json()["project_id"] == edge_id
 
 
-def test_create_bmc_ip_asset_auto_creates_host_by_default(client, db_path, _create_user, _login, _auth_headers) -> None:
+def test_create_bmc_ip_asset_auto_creates_host_by_default(
+    client, db_path, _create_user, _login, _auth_headers
+) -> None:
     _create_user("editor", "editor-pass", UserRole.EDITOR)
     headers = _auth_headers(_login("editor", "editor-pass"))
 
@@ -87,22 +95,33 @@ def test_delete_ip_asset_endpoint(client, _create_user, _login, _auth_headers) -
     )
     assert create.status_code == 200
 
-    assert client.request("DELETE", "/ip-assets/10.10.0.99", headers=headers).status_code == 204
+    assert (
+        client.request("DELETE", "/ip-assets/10.10.0.99", headers=headers).status_code
+        == 204
+    )
     assert client.get("/ip-assets/10.10.0.99").status_code == 404
 
 
-def test_delete_ip_asset_endpoint_returns_404_for_missing_ip(client, _create_user, _login, _auth_headers) -> None:
+def test_delete_ip_asset_endpoint_returns_404_for_missing_ip(
+    client, _create_user, _login, _auth_headers
+) -> None:
     _create_user("editor", "editor-pass", UserRole.EDITOR)
     headers = _auth_headers(_login("editor", "editor-pass"))
 
-    delete_response = client.request("DELETE", "/ip-assets/10.10.0.250", headers=headers)
+    delete_response = client.request(
+        "DELETE", "/ip-assets/10.10.0.250", headers=headers
+    )
     assert delete_response.status_code == 404
 
 
-def test_create_ip_asset_has_no_pydantic_alias_warning(client, _create_user, _login, _auth_headers) -> None:
+def test_create_ip_asset_has_no_pydantic_alias_warning(
+    client, _create_user, _login, _auth_headers
+) -> None:
     _create_user("editor", "editor-pass", UserRole.EDITOR)
     headers = _auth_headers(_login("editor", "editor-pass"))
-    project_id = client.post("/projects", headers=headers, json={"name": "Core"}).json()["id"]
+    project_id = client.post(
+        "/projects", headers=headers, json={"name": "Core"}
+    ).json()["id"]
 
     with warnings.catch_warnings(record=True) as caught:
         warnings.simplefilter("always", UnsupportedFieldAttributeWarning)
@@ -113,5 +132,7 @@ def test_create_ip_asset_has_no_pydantic_alias_warning(client, _create_user, _lo
         )
 
     assert response.status_code == 200
-    alias_warnings = [w for w in caught if issubclass(w.category, UnsupportedFieldAttributeWarning)]
+    alias_warnings = [
+        w for w in caught if issubclass(w.category, UnsupportedFieldAttributeWarning)
+    ]
     assert alias_warnings == []

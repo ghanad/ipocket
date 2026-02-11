@@ -11,7 +11,11 @@ from app.utils import validate_ip_address
 
 from .dependencies import require_editor
 from .schemas import IPAssetCreate, IPAssetUpdate
-from .utils import asset_payload, is_auto_host_for_bmc_enabled, normalize_asset_type_value
+from .utils import (
+    asset_payload,
+    is_auto_host_for_bmc_enabled,
+    normalize_asset_type_value,
+)
 
 router = APIRouter()
 
@@ -23,8 +27,13 @@ def create_ip_asset(
     user=Depends(require_editor),
 ):
     validate_ip_address(payload.ip_address)
-    if payload.host_id is not None and repository.get_host_by_id(connection, payload.host_id) is None:
-        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Host not found.")
+    if (
+        payload.host_id is not None
+        and repository.get_host_by_id(connection, payload.host_id) is None
+    ):
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Host not found."
+        )
     try:
         asset = repository.create_ip_asset(
             connection,
@@ -53,14 +62,18 @@ def list_ip_assets(
     unassigned_only: bool = Query(default=False, alias="unassigned-only"),
     connection=Depends(get_connection),
 ):
-    normalized_asset_type = normalize_asset_type_value(asset_type) if asset_type is not None else None
+    normalized_asset_type = (
+        normalize_asset_type_value(asset_type) if asset_type is not None else None
+    )
     assets = repository.list_active_ip_assets(
         connection,
         project_id=project_id,
         asset_type=normalized_asset_type,
         unassigned_only=unassigned_only,
     )
-    tag_map = repository.list_tags_for_ip_assets(connection, [asset.id for asset in assets])
+    tag_map = repository.list_tags_for_ip_assets(
+        connection, [asset.id for asset in assets]
+    )
     return [asset_payload(asset, tags=tag_map.get(asset.id, [])) for asset in assets]
 
 
@@ -83,8 +96,13 @@ def update_ip_asset(
     connection=Depends(get_connection),
     user=Depends(require_editor),
 ):
-    if payload.host_id is not None and repository.get_host_by_id(connection, payload.host_id) is None:
-        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Host not found.")
+    if (
+        payload.host_id is not None
+        and repository.get_host_by_id(connection, payload.host_id) is None
+    ):
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Host not found."
+        )
     updated = repository.update_ip_asset(
         connection,
         ip_address=ip_address,

@@ -52,7 +52,9 @@ def _bundle_payload() -> dict:
         "exported_at": "2024-01-01T12:00:00+00:00",
         "data": {
             "vendors": [{"name": "HPE"}],
-            "projects": [{"name": "Core", "description": "Core project", "color": "#1d4ed8"}],
+            "projects": [
+                {"name": "Core", "description": "Core project", "color": "#1d4ed8"}
+            ],
             "hosts": [{"name": "node-01", "notes": "primary", "vendor_name": "HPE"}],
             "ip_assets": [
                 {
@@ -101,7 +103,9 @@ def test_bundle_json_apply_creates_and_updates(client) -> None:
     connection = db.connect(str(db_path))
     try:
         db.init_db(connection)
-        repository.create_project(connection, name="Core", description="Old", color="#94a3b8")
+        repository.create_project(
+            connection, name="Core", description="Old", color="#94a3b8"
+        )
     finally:
         connection.close()
 
@@ -326,7 +330,9 @@ def test_viewer_cannot_apply_import(client) -> None:
     response = test_client.post(
         "/import/bundle",
         headers=_auth_headers(token),
-        files={"file": ("bundle.json", json.dumps(_bundle_payload()), "application/json")},
+        files={
+            "file": ("bundle.json", json.dumps(_bundle_payload()), "application/json")
+        },
     )
     assert response.status_code == 403
 
@@ -336,9 +342,13 @@ def test_round_trip_bundle_import(tmp_path) -> None:
     try:
         db.init_db(source_connection)
         vendor = repository.create_vendor(source_connection, "HPE")
-        project = repository.create_project(source_connection, "Core", "Core project", "#1d4ed8")
-        host = repository.create_host(source_connection, "node-03", "notes", vendor.name)
-        asset = repository.create_ip_asset(
+        project = repository.create_project(
+            source_connection, "Core", "Core project", "#1d4ed8"
+        )
+        host = repository.create_host(
+            source_connection, "node-03", "notes", vendor.name
+        )
+        repository.create_ip_asset(
             source_connection,
             ip_address="10.0.0.30",
             asset_type=IPAssetType.VM,

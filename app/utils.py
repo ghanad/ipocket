@@ -59,7 +59,9 @@ def normalize_tag_name(value: str) -> str:
     if not normalized:
         raise ValueError("Tag name is required.")
     if not _TAG_PATTERN.match(normalized):
-        raise ValueError("Tag name may include letters, digits, dash, and underscore only.")
+        raise ValueError(
+            "Tag name may include letters, digits, dash, and underscore only."
+        )
     return normalized
 
 

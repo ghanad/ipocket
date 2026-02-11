@@ -60,7 +60,9 @@ def _create_user(db_path, _setup_connection) -> Callable[[str, str, UserRole], N
 @pytest.fixture
 def _login(client: FastAPITestClient) -> Callable[[str, str], str]:
     def _factory(username: str, password: str) -> str:
-        response = client.post("/login", json={"username": username, "password": password})
+        response = client.post(
+            "/login", json={"username": username, "password": password}
+        )
         assert response.status_code == 200
         return response.json()["access_token"]
 

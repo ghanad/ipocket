@@ -12,7 +12,9 @@ def test_projects_page_uses_drawer_actions(client) -> None:
     connection = db.connect(os.environ["IPAM_DB_PATH"])
     try:
         db.init_db(connection)
-        project = repository.create_project(connection, name="Platform", description="Core workloads")
+        project = repository.create_project(
+            connection, name="Platform", description="Core workloads"
+        )
         repository.create_ip_asset(
             connection,
             ip_address="10.20.0.10",
@@ -47,8 +49,12 @@ def test_projects_edit_and_delete_flow(client) -> None:
     connection = db.connect(os.environ["IPAM_DB_PATH"])
     try:
         db.init_db(connection)
-        user = repository.create_user(connection, username="editor", hashed_password="x", role=UserRole.EDITOR)
-        project = repository.create_project(connection, name="Legacy", description="Old")
+        user = repository.create_user(
+            connection, username="editor", hashed_password="x", role=UserRole.EDITOR
+        )
+        project = repository.create_project(
+            connection, name="Legacy", description="Old"
+        )
         repository.create_ip_asset(
             connection,
             ip_address="10.0.10.2",
@@ -61,9 +67,13 @@ def test_projects_edit_and_delete_flow(client) -> None:
     app.dependency_overrides[ui.require_ui_editor] = lambda: user
     app.dependency_overrides[ui.get_current_ui_user] = lambda: user
     try:
-        edit_redirect = client.get(f"/ui/projects/{project.id}/edit", follow_redirects=False)
+        edit_redirect = client.get(
+            f"/ui/projects/{project.id}/edit", follow_redirects=False
+        )
         assert edit_redirect.status_code == 303
-        assert edit_redirect.headers["location"].endswith(f"/ui/projects?edit={project.id}")
+        assert edit_redirect.headers["location"].endswith(
+            f"/ui/projects?edit={project.id}"
+        )
 
         edited = client.post(
             f"/ui/projects/{project.id}/edit",
@@ -72,9 +82,13 @@ def test_projects_edit_and_delete_flow(client) -> None:
         )
         assert edited.status_code == 303
 
-        delete_redirect = client.get(f"/ui/projects/{project.id}/delete", follow_redirects=False)
+        delete_redirect = client.get(
+            f"/ui/projects/{project.id}/delete", follow_redirects=False
+        )
         assert delete_redirect.status_code == 303
-        assert delete_redirect.headers["location"].endswith(f"/ui/projects?delete={project.id}")
+        assert delete_redirect.headers["location"].endswith(
+            f"/ui/projects?delete={project.id}"
+        )
 
         delete_error = client.post(
             f"/ui/projects/{project.id}/delete",

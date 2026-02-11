@@ -6,7 +6,9 @@ from app.models import IPAssetType, UserRole
 def test_login_happy_path(client, _create_user) -> None:
     _create_user("viewer", "viewer-pass", UserRole.VIEWER)
 
-    response = client.post("/login", json={"username": "viewer", "password": "viewer-pass"})
+    response = client.post(
+        "/login", json={"username": "viewer", "password": "viewer-pass"}
+    )
 
     assert response.status_code == 200
     assert response.json()["access_token"]
@@ -24,13 +26,17 @@ def test_auth_required_for_write_endpoints(client) -> None:
     assert response.status_code == 401
 
 
-def test_viewer_cannot_write(client, db_path, _create_user, _login, _auth_headers, _setup_connection) -> None:
+def test_viewer_cannot_write(
+    client, db_path, _create_user, _login, _auth_headers, _setup_connection
+) -> None:
     _create_user("viewer", "viewer-pass", UserRole.VIEWER)
     connection = _setup_connection()
     try:
         from app import repository
 
-        repository.create_ip_asset(connection, ip_address="10.0.0.33", asset_type=IPAssetType.VM)
+        repository.create_ip_asset(
+            connection, ip_address="10.0.0.33", asset_type=IPAssetType.VM
+        )
     finally:
         connection.close()
 
@@ -44,12 +50,24 @@ def test_viewer_cannot_write(client, db_path, _create_user, _login, _auth_header
     )
     assert response.status_code == 403
 
-    assert client.patch("/ip-assets/10.0.0.33", headers=headers, json={"notes": "blocked"}).status_code == 403
-    assert client.post("/ip-assets/10.0.0.33/archive", headers=headers).status_code == 403
-    assert client.request("DELETE", "/ip-assets/10.0.0.33", headers=headers).status_code == 403
+    assert (
+        client.patch(
+            "/ip-assets/10.0.0.33", headers=headers, json={"notes": "blocked"}
+        ).status_code
+        == 403
+    )
+    assert (
+        client.post("/ip-assets/10.0.0.33/archive", headers=headers).status_code == 403
+    )
+    assert (
+        client.request("DELETE", "/ip-assets/10.0.0.33", headers=headers).status_code
+        == 403
+    )
 
 
-def test_editor_can_create_update_and_delete(client, _create_user, _login, _auth_headers) -> None:
+def test_editor_can_create_update_and_delete(
+    client, _create_user, _login, _auth_headers
+) -> None:
     _create_user("editor", "editor-pass", UserRole.EDITOR)
     headers = _auth_headers(_login("editor", "editor-pass"))
 
@@ -68,7 +86,10 @@ def test_editor_can_create_update_and_delete(client, _create_user, _login, _auth
     assert update_response.status_code == 200
     assert update_response.json()["notes"] == "Updated"
 
-    assert client.request("DELETE", "/ip-assets/10.0.0.32", headers=headers).status_code == 204
+    assert (
+        client.request("DELETE", "/ip-assets/10.0.0.32", headers=headers).status_code
+        == 204
+    )
 
 
 def test_range_create_permissions(client, _create_user, _login, _auth_headers) -> None:

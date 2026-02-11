@@ -19,7 +19,9 @@ depends_on = None
 def upgrade() -> None:
     op.add_column(
         "tags",
-        sa.Column("color", sa.Text(), nullable=False, server_default=sa.text("'#e2e8f0'")),
+        sa.Column(
+            "color", sa.Text(), nullable=False, server_default=sa.text("'#e2e8f0'")
+        ),
     )
 
 

@@ -22,7 +22,9 @@ async def import_bundle_json(
     if not dry_run and user.role not in (UserRole.EDITOR, UserRole.ADMIN):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN)
     payload = await file.read()
-    result = run_import(connection, BundleImporter(), {"bundle": payload}, dry_run=dry_run)
+    result = run_import(
+        connection, BundleImporter(), {"bundle": payload}, dry_run=dry_run
+    )
     return import_result_payload(result)
 
 
@@ -37,7 +39,10 @@ async def import_csv_files(
     if not dry_run and user.role not in (UserRole.EDITOR, UserRole.ADMIN):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN)
     if hosts_file is None and ip_assets_file is None:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="CSV import requires at least one file.")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="CSV import requires at least one file.",
+        )
     inputs: dict[str, bytes] = {}
     if hosts_file is not None:
         hosts_payload = await hosts_file.read()
@@ -48,6 +53,9 @@ async def import_csv_files(
         if ip_assets_payload:
             inputs["ip_assets"] = ip_assets_payload
     if not inputs:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="CSV import requires at least one file.")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="CSV import requires at least one file.",
+        )
     result = run_import(connection, CsvImporter(), inputs, dry_run=dry_run)
     return import_result_payload(result)

@@ -1,56 +1,29 @@
 from __future__ import annotations
 
-import sqlite3
 
 import pytest
 
-from app.models import IPAssetType, UserRole
+from app.models import IPAssetType
 from app.repository import (
     archive_ip_asset,
-    bulk_update_ip_assets,
-    count_active_ip_assets,
-    count_audit_logs,
-    count_hosts,
     create_host,
     create_ip_asset,
     create_ip_range,
     create_project,
-    create_tag,
-    create_user,
-    create_vendor,
-    delete_host,
-    delete_ip_asset,
     delete_ip_range,
-    delete_tag,
-    get_audit_logs_for_ip,
-    get_host_by_name,
-    get_ip_asset_by_ip,
-    get_ip_asset_metrics,
     get_ip_range_address_breakdown,
     get_ip_range_by_id,
     get_ip_range_utilization,
-    get_management_summary,
-    list_active_ip_assets_paginated,
-    list_audit_logs,
-    list_audit_logs_paginated,
-    list_host_pair_ips_for_hosts,
-    list_hosts,
-    list_hosts_with_ip_counts,
-    list_hosts_with_ip_counts_paginated,
-    list_tags,
-    list_tags_for_ip_assets,
-    update_ip_asset,
     update_ip_range,
-    update_project,
-    update_tag,
 )
-from app.utils import normalize_tag_name
 
 
 def test_create_ip_range_valid_and_invalid(_setup_connection) -> None:
     connection = _setup_connection()
 
-    ip_range = create_ip_range(connection, name="Corp LAN", cidr="192.168.10.0/24", notes="main")
+    ip_range = create_ip_range(
+        connection, name="Corp LAN", cidr="192.168.10.0/24", notes="main"
+    )
 
     assert ip_range.cidr == "192.168.10.0/24"
     assert ip_range.name == "Corp LAN"
@@ -58,10 +31,13 @@ def test_create_ip_range_valid_and_invalid(_setup_connection) -> None:
     with pytest.raises(ValueError):
         create_ip_range(connection, name="Bad range", cidr="192.168.10.999/24")
 
+
 def test_update_and_delete_ip_range(_setup_connection) -> None:
     connection = _setup_connection()
 
-    ip_range = create_ip_range(connection, name="Corp LAN", cidr="192.168.10.0/24", notes="main")
+    ip_range = create_ip_range(
+        connection, name="Corp LAN", cidr="192.168.10.0/24", notes="main"
+    )
 
     updated = update_ip_range(
         connection,
@@ -83,6 +59,7 @@ def test_update_and_delete_ip_range(_setup_connection) -> None:
     assert delete_ip_range(connection, ip_range.id) is True
     assert get_ip_range_by_id(connection, ip_range.id) is None
 
+
 def test_ip_range_utilization_counts(_setup_connection) -> None:
     connection = _setup_connection()
     create_ip_range(connection, name="Corp LAN", cidr="192.168.10.0/24")
@@ -90,7 +67,9 @@ def test_ip_range_utilization_counts(_setup_connection) -> None:
     create_ip_range(connection, name="Loopback", cidr="10.0.0.5/32")
 
     create_ip_asset(connection, ip_address="192.168.10.10", asset_type=IPAssetType.VM)
-    archived_asset = create_ip_asset(connection, ip_address="192.168.10.11", asset_type=IPAssetType.OS)
+    archived_asset = create_ip_asset(
+        connection, ip_address="192.168.10.11", asset_type=IPAssetType.OS
+    )
     archive_ip_asset(connection, archived_asset.ip_address)
     create_ip_asset(connection, ip_address="192.168.11.1", asset_type=IPAssetType.VM)
     create_ip_asset(connection, ip_address="10.0.0.0", asset_type=IPAssetType.VM)
@@ -113,6 +92,7 @@ def test_ip_range_utilization_counts(_setup_connection) -> None:
     assert loopback["total_usable"] == 1
     assert loopback["used"] == 1
     assert loopback["free"] == 0
+
 
 def test_ip_range_address_breakdown(_setup_connection) -> None:
     connection = _setup_connection()
@@ -156,4 +136,3 @@ def test_ip_range_address_breakdown(_setup_connection) -> None:
     assert addresses[1]["status"] == "free"
     assert addresses[2]["status"] == "used"
     assert addresses[2]["host_pair"] == "192.168.20.1"
-

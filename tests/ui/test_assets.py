@@ -11,12 +11,13 @@ from app.routes import ui
 
 def test_ip_assets_drawer_auto_host_creates_and_assigns(client) -> None:
     import os
-    from app import db, repository
 
     connection = db.connect(os.environ["IPAM_DB_PATH"])
     try:
         db.init_db(connection)
-        user = repository.create_user(connection, username="editor", hashed_password="x", role=UserRole.EDITOR)
+        user = repository.create_user(
+            connection, username="editor", hashed_password="x", role=UserRole.EDITOR
+        )
         asset = repository.create_ip_asset(
             connection,
             ip_address="10.70.0.5",
@@ -46,14 +47,16 @@ def test_ip_assets_drawer_auto_host_creates_and_assigns(client) -> None:
     finally:
         connection.close()
 
+
 def test_ip_assets_drawer_auto_host_rejects_assigned_asset(client) -> None:
     import os
-    from app import db, repository
 
     connection = db.connect(os.environ["IPAM_DB_PATH"])
     try:
         db.init_db(connection)
-        user = repository.create_user(connection, username="editor", hashed_password="x", role=UserRole.EDITOR)
+        user = repository.create_user(
+            connection, username="editor", hashed_password="x", role=UserRole.EDITOR
+        )
         host = repository.create_host(connection, name="edge-02")
         asset = repository.create_ip_asset(
             connection,
@@ -74,6 +77,7 @@ def test_ip_assets_drawer_auto_host_rejects_assigned_asset(client) -> None:
     payload = response.json()
     assert payload["error"] == "This IP is already assigned to a host."
 
+
 def test_sample_csv_files_are_available(client) -> None:
     hosts_response = client.get("/static/samples/hosts.csv")
     assets_response = client.get("/static/samples/ip-assets.csv")
@@ -81,11 +85,14 @@ def test_sample_csv_files_are_available(client) -> None:
     assert hosts_response.status_code == 200
     assert assets_response.status_code == 200
     assert "name,notes,vendor_name" in hosts_response.text
-    assert "ip_address,type,project_name,host_name,tags,notes,archived" in assets_response.text
+    assert (
+        "ip_address,type,project_name,host_name,tags,notes,archived"
+        in assets_response.text
+    )
+
 
 def test_ip_asset_form_includes_tags_field_and_prefill(client) -> None:
     import os
-    from app import db, repository
 
     connection = db.connect(os.environ["IPAM_DB_PATH"])
     try:
@@ -101,7 +108,9 @@ def test_ip_asset_form_includes_tags_field_and_prefill(client) -> None:
     finally:
         connection.close()
 
-    app.dependency_overrides[ui.require_ui_editor] = lambda: User(1, "editor", "x", UserRole.EDITOR, True)
+    app.dependency_overrides[ui.require_ui_editor] = lambda: User(
+        1, "editor", "x", UserRole.EDITOR, True
+    )
     try:
         create_response = client.get("/ui/ip-assets/new")
         edit_response = client.get(f"/ui/ip-assets/{asset.id}/edit")
@@ -112,13 +121,13 @@ def test_ip_asset_form_includes_tags_field_and_prefill(client) -> None:
     assert edit_response.status_code == 200
     assert 'name="tags"' in create_response.text
     assert 'name="tags" multiple' in create_response.text
-    assert 'data-tag-picker' in create_response.text
+    assert "data-tag-picker" in create_response.text
     assert re.search(r'<option value="edge"[^>]*selected', edit_response.text)
     assert re.search(r'<option value="prod"[^>]*selected', edit_response.text)
 
+
 def test_tags_page_uses_drawers_for_create_edit_delete(client) -> None:
     import os
-    from app import db, repository
 
     connection = db.connect(os.environ["IPAM_DB_PATH"])
     try:
@@ -133,18 +142,20 @@ def test_tags_page_uses_drawers_for_create_edit_delete(client) -> None:
     finally:
         connection.close()
 
-    app.dependency_overrides[ui.require_ui_editor] = lambda: User(1, "editor", "x", UserRole.EDITOR, True)
+    app.dependency_overrides[ui.require_ui_editor] = lambda: User(
+        1, "editor", "x", UserRole.EDITOR, True
+    )
     try:
         response = client.get("/ui/tags")
     finally:
         app.dependency_overrides.pop(ui.require_ui_editor, None)
 
     assert response.status_code == 200
-    assert 'data-tag-add' in response.text
+    assert "data-tag-add" in response.text
     assert 'type="button" data-tag-add' in response.text
-    assert 'data-tag-create-drawer' in response.text
-    assert 'data-tag-edit-drawer' in response.text
-    assert 'data-tag-delete-drawer' in response.text
+    assert "data-tag-create-drawer" in response.text
+    assert "data-tag-edit-drawer" in response.text
+    assert "data-tag-delete-drawer" in response.text
     assert 'action="/ui/tags"' in response.text
     assert 'type="color"' in response.text
     assert f'data-tag-edit="{tag.id}"' in response.text
@@ -160,12 +171,13 @@ def test_tags_page_uses_drawers_for_create_edit_delete(client) -> None:
     assert "data-tag-create-overlay" in tags_js_content
     assert "data-tag-edit-overlay" in tags_js_content
     assert "data-tag-delete-overlay" in tags_js_content
-    assert '/static/js/tags.js' in response.text
-    assert '/static/js/drawer.js' in response.text
+    assert "/static/js/tags.js" in response.text
+    assert "/static/js/drawer.js" in response.text
     assert 'class="card table-card tags-existing-card"' in response.text
+
+
 def test_tag_delete_requires_exact_name_confirmation(client) -> None:
     import os
-    from app import db, repository
 
     connection = db.connect(os.environ["IPAM_DB_PATH"])
     try:
@@ -174,9 +186,13 @@ def test_tag_delete_requires_exact_name_confirmation(client) -> None:
     finally:
         connection.close()
 
-    app.dependency_overrides[ui.require_ui_editor] = lambda: User(1, "editor", "x", UserRole.EDITOR, True)
+    app.dependency_overrides[ui.require_ui_editor] = lambda: User(
+        1, "editor", "x", UserRole.EDITOR, True
+    )
     try:
-        response = client.post(f"/ui/tags/{tag.id}/delete", data={"confirm_name": "wrong"})
+        response = client.post(
+            f"/ui/tags/{tag.id}/delete", data={"confirm_name": "wrong"}
+        )
     finally:
         app.dependency_overrides.pop(ui.require_ui_editor, None)
 
@@ -184,9 +200,9 @@ def test_tag_delete_requires_exact_name_confirmation(client) -> None:
     assert "Tag name confirmation does not match." in response.text
     assert f'action="/ui/tags/{tag.id}/delete"' in response.text
 
+
 def test_ip_assets_list_uses_drawer_actions_for_edit_and_delete(client) -> None:
     import os
-    from app import db, repository
 
     connection = db.connect(os.environ["IPAM_DB_PATH"])
     try:
@@ -217,14 +233,14 @@ def test_ip_assets_list_uses_drawer_actions_for_edit_and_delete(client) -> None:
     assert 'data-ip-tags="edge"' in response.text
     assert 'data-ip-notes="Primary"' in response.text
     assert f'data-ip-delete="{asset.id}"' in response.text
-    assert 'data-ip-delete-form' in response.text
+    assert "data-ip-delete-form" in response.text
     assert 'data-ip-drawer-mode="edit"' in response.text
     assert 'data-ip-mode-panel="edit"' in response.text
     assert 'data-ip-mode-panel="delete"' in response.text
     assert 'data-ip-mode-action="edit"' in response.text
     assert 'data-ip-mode-action="delete"' in response.text
-    assert 'Delete permanently' in response.text
-    assert 'I understand this cannot be undone' in response.text
+    assert "Delete permanently" in response.text
+    assert "I understand this cannot be undone" in response.text
     assert "data-ip-add" in response.text
     assert "data-ip-drawer" in response.text
     assert "Save changes" in response.text
@@ -241,15 +257,15 @@ def test_ip_assets_list_uses_drawer_actions_for_edit_and_delete(client) -> None:
     assert "data-tag-picker" in response.text
 
 
-
 def test_ip_assets_edit_can_clear_project_assignment(client) -> None:
     import os
-    from app import db, repository
 
     connection = db.connect(os.environ["IPAM_DB_PATH"])
     try:
         db.init_db(connection)
-        user = repository.create_user(connection, username="editor", hashed_password="x", role=UserRole.EDITOR)
+        user = repository.create_user(
+            connection, username="editor", hashed_password="x", role=UserRole.EDITOR
+        )
         project = repository.create_project(connection, name="Core")
         asset = repository.create_ip_asset(
             connection,
@@ -289,9 +305,10 @@ def test_ip_assets_edit_can_clear_project_assignment(client) -> None:
         connection.close()
 
 
-def test_ip_assets_list_collapses_tag_chips_and_renders_more_popover_trigger(client) -> None:
+def test_ip_assets_list_collapses_tag_chips_and_renders_more_popover_trigger(
+    client,
+) -> None:
     import os
-    from app import db, repository
 
     connection = db.connect(os.environ["IPAM_DB_PATH"])
     try:
@@ -313,9 +330,9 @@ def test_ip_assets_list_collapses_tag_chips_and_renders_more_popover_trigger(cli
     response = client.get("/ui/ip-assets")
 
     assert response.status_code == 200
-    assert 'data-tags-more-toggle' in response.text
+    assert "data-tags-more-toggle" in response.text
     assert 'data-tags-ip="10.30.0.21"' in response.text
-    assert '+2 more' in response.text
+    assert "+2 more" in response.text
     assert 'aria-label="Tags for 10.30.0.21"' in response.text
     assert '<td class="ip-tags-cell">' in response.text
     assert response.text.count('<span class="muted">—</span>') >= 1
@@ -325,14 +342,16 @@ def test_ip_assets_list_collapses_tag_chips_and_renders_more_popover_trigger(cli
     assert "data-tags-more-toggle" in js_source
     assert "closeTagsPopover" in js_source
 
+
 def test_ip_assets_list_htmx_response_renders_table_partial(client) -> None:
     import os
-    from app import db, repository
 
     connection = db.connect(os.environ["IPAM_DB_PATH"])
     try:
         db.init_db(connection)
-        asset = repository.create_ip_asset(connection, ip_address="10.30.0.12", asset_type=IPAssetType.VM)
+        asset = repository.create_ip_asset(
+            connection, ip_address="10.30.0.12", asset_type=IPAssetType.VM
+        )
     finally:
         connection.close()
 
@@ -340,18 +359,20 @@ def test_ip_assets_list_htmx_response_renders_table_partial(client) -> None:
 
     assert response.status_code == 200
     assert f"/ui/ip-assets/{asset.id}" in response.text
-    assert 'data-ip-edit' in response.text
+    assert "data-ip-edit" in response.text
     assert "<table" in response.text
     assert "Apply filters" not in response.text
 
+
 def test_ip_assets_bulk_edit_updates_selected_assets(client) -> None:
     import os
-    from app import db, repository
 
     connection = db.connect(os.environ["IPAM_DB_PATH"])
     try:
         db.init_db(connection)
-        user = repository.create_user(connection, username="editor", hashed_password="x", role=UserRole.EDITOR)
+        user = repository.create_user(
+            connection, username="editor", hashed_password="x", role=UserRole.EDITOR
+        )
         project = repository.create_project(connection, name="Core")
         repository.create_tag(connection, name="edge")
         repository.create_tag(connection, name="core")
@@ -405,20 +426,24 @@ def test_ip_assets_bulk_edit_updates_selected_assets(client) -> None:
         assert updated_two.asset_type == IPAssetType.VIP
         assert updated_one.project_id == project.id
         assert updated_two.project_id == project.id
-        tag_map = repository.list_tags_for_ip_assets(connection, [asset_one.id, asset_two.id])
+        tag_map = repository.list_tags_for_ip_assets(
+            connection, [asset_one.id, asset_two.id]
+        )
         assert tag_map[asset_one.id] == ["core", "edge", "prod"]
         assert tag_map[asset_two.id] == ["core", "edge"]
     finally:
         connection.close()
 
+
 def test_ip_assets_edit_returns_to_list_when_return_to_set(client) -> None:
     import os
-    from app import db, repository
 
     connection = db.connect(os.environ["IPAM_DB_PATH"])
     try:
         db.init_db(connection)
-        user = repository.create_user(connection, username="editor", hashed_password="x", role=UserRole.EDITOR)
+        user = repository.create_user(
+            connection, username="editor", hashed_password="x", role=UserRole.EDITOR
+        )
         asset = repository.create_ip_asset(
             connection,
             ip_address="10.90.0.10",
@@ -447,14 +472,16 @@ def test_ip_assets_edit_returns_to_list_when_return_to_set(client) -> None:
     assert response.status_code == 303
     assert response.headers["location"] == "/ui/ip-assets?archived-only=false"
 
+
 def test_ip_assets_create_returns_to_list_when_return_to_set(client) -> None:
     import os
-    from app import db, repository
 
     connection = db.connect(os.environ["IPAM_DB_PATH"])
     try:
         db.init_db(connection)
-        user = repository.create_user(connection, username="editor", hashed_password="x", role=UserRole.EDITOR)
+        user = repository.create_user(
+            connection, username="editor", hashed_password="x", role=UserRole.EDITOR
+        )
     finally:
         connection.close()
 
@@ -479,15 +506,19 @@ def test_ip_assets_create_returns_to_list_when_return_to_set(client) -> None:
     assert response.status_code == 303
     assert response.headers["location"] == "/ui/ip-assets?q=10.90"
 
+
 def test_ip_assets_bulk_edit_shows_error_toast_for_missing_selection(client) -> None:
     import os
-    from app import db, repository
 
     connection = db.connect(os.environ["IPAM_DB_PATH"])
     try:
         db.init_db(connection)
-        user = repository.create_user(connection, username="editor", hashed_password="x", role=UserRole.EDITOR)
-        repository.create_ip_asset(connection, ip_address="10.70.0.12", asset_type=IPAssetType.VM)
+        user = repository.create_user(
+            connection, username="editor", hashed_password="x", role=UserRole.EDITOR
+        )
+        repository.create_ip_asset(
+            connection, ip_address="10.70.0.12", asset_type=IPAssetType.VM
+        )
     finally:
         connection.close()
 
@@ -513,12 +544,13 @@ def test_ip_assets_bulk_edit_shows_error_toast_for_missing_selection(client) -> 
 
 def test_ip_assets_create_rejects_nonexistent_tag_selection(client) -> None:
     import os
-    from app import db, repository
 
     connection = db.connect(os.environ["IPAM_DB_PATH"])
     try:
         db.init_db(connection)
-        user = repository.create_user(connection, username="editor", hashed_password="x", role=UserRole.EDITOR)
+        user = repository.create_user(
+            connection, username="editor", hashed_password="x", role=UserRole.EDITOR
+        )
     finally:
         connection.close()
 
@@ -545,13 +577,16 @@ def test_ip_assets_create_rejects_nonexistent_tag_selection(client) -> None:
 
 def test_ip_assets_bulk_edit_rejects_nonexistent_tag_selection(client) -> None:
     import os
-    from app import db, repository
 
     connection = db.connect(os.environ["IPAM_DB_PATH"])
     try:
         db.init_db(connection)
-        user = repository.create_user(connection, username="editor", hashed_password="x", role=UserRole.EDITOR)
-        asset = repository.create_ip_asset(connection, ip_address="10.70.0.55", asset_type=IPAssetType.VM)
+        user = repository.create_user(
+            connection, username="editor", hashed_password="x", role=UserRole.EDITOR
+        )
+        asset = repository.create_ip_asset(
+            connection, ip_address="10.70.0.55", asset_type=IPAssetType.VM
+        )
     finally:
         connection.close()
 
@@ -574,9 +609,9 @@ def test_ip_assets_bulk_edit_rejects_nonexistent_tag_selection(client) -> None:
     assert follow_response.status_code == 200
     assert "Selected tags do not exist: ghost." in follow_response.text
 
+
 def test_ip_assets_list_renders_project_color_tag(client) -> None:
     import os
-    from app import db, repository
 
     connection = db.connect(os.environ["IPAM_DB_PATH"])
     try:
@@ -598,15 +633,19 @@ def test_ip_assets_list_renders_project_color_tag(client) -> None:
     assert "--project-color: #1d4ed8" in response.text
     assert "project-color-dot" not in response.text
 
+
 def test_ip_assets_list_search_trims_whitespace(client) -> None:
     import os
-    from app import db, repository
 
     connection = db.connect(os.environ["IPAM_DB_PATH"])
     try:
         db.init_db(connection)
-        repository.create_ip_asset(connection, ip_address="10.30.0.21", asset_type=IPAssetType.VM)
-        repository.create_ip_asset(connection, ip_address="10.30.0.22", asset_type=IPAssetType.VM)
+        repository.create_ip_asset(
+            connection, ip_address="10.30.0.21", asset_type=IPAssetType.VM
+        )
+        repository.create_ip_asset(
+            connection, ip_address="10.30.0.22", asset_type=IPAssetType.VM
+        )
     finally:
         connection.close()
 
@@ -616,9 +655,11 @@ def test_ip_assets_list_search_trims_whitespace(client) -> None:
     assert "10.30.0.21" in response.text
     assert "10.30.0.22" not in response.text
 
-def test_ip_assets_list_supports_multi_tag_filter_and_clickable_filter_chips(client) -> None:
+
+def test_ip_assets_list_supports_multi_tag_filter_and_clickable_filter_chips(
+    client,
+) -> None:
     import os
-    from app import db, repository
 
     connection = db.connect(os.environ["IPAM_DB_PATH"])
     try:
@@ -647,15 +688,19 @@ def test_ip_assets_list_supports_multi_tag_filter_and_clickable_filter_chips(cli
         connection.close()
 
     list_response = client.get("/ui/ip-assets")
-    filtered_response = client.get("/ui/ip-assets", params=[("tag", "prod"), ("tag", "edge")])
+    filtered_response = client.get(
+        "/ui/ip-assets", params=[("tag", "prod"), ("tag", "edge")]
+    )
 
     assert list_response.status_code == 200
     assert 'name="tag"' not in list_response.text
-    assert 'data-tag-filter-selected' in list_response.text
-    assert 'data-tag-filter-input' in list_response.text
-    assert 'tag-filter-suggestions' in list_response.text
-    assert '<span>Tags</span>' in list_response.text
-    assert list_response.text.index('name="archived-only"') < list_response.text.index('data-tag-filter-input')
+    assert "data-tag-filter-selected" in list_response.text
+    assert "data-tag-filter-input" in list_response.text
+    assert "tag-filter-suggestions" in list_response.text
+    assert "<span>Tags</span>" in list_response.text
+    assert list_response.text.index('name="archived-only"') < list_response.text.index(
+        "data-tag-filter-input"
+    )
     assert f'data-quick-filter-value="{project.id}"' in list_response.text
     assert 'data-quick-filter="type"' in list_response.text
     assert 'data-quick-filter="tag"' in list_response.text
@@ -664,6 +709,7 @@ def test_ip_assets_list_supports_multi_tag_filter_and_clickable_filter_chips(cli
     assert "10.31.0.22" in filtered_response.text
     assert "10.31.0.23" not in filtered_response.text
 
+
 def test_ip_assets_list_includes_archived_filter(client) -> None:
     response = client.get("/ui/ip-assets")
 
@@ -671,9 +717,9 @@ def test_ip_assets_list_includes_archived_filter(client) -> None:
     assert 'name="archived-only"' in response.text
     assert "Archived only" in response.text
 
+
 def test_ip_assets_list_paginates_with_default_page_size(client) -> None:
     import os
-    from app import db, repository
 
     connection = db.connect(os.environ["IPAM_DB_PATH"])
     try:
@@ -695,9 +741,9 @@ def test_ip_assets_list_paginates_with_default_page_size(client) -> None:
     assert "10.40.0.00" in response.text
     assert "10.40.0.20" not in response.text
 
+
 def test_ip_assets_list_paginates_with_custom_page_size(client) -> None:
     import os
-    from app import db, repository
 
     connection = db.connect(os.environ["IPAM_DB_PATH"])
     try:
@@ -719,34 +765,42 @@ def test_ip_assets_list_paginates_with_custom_page_size(client) -> None:
     assert "10.50.0.09" not in response.text
     assert "10.50.0.10" in response.text
 
+
 def test_ip_asset_detail_page_requires_authentication(client) -> None:
     """Unauthenticated users should be redirected to login page for IP asset detail."""
     import os
-    from app import db, repository
 
     connection = db.connect(os.environ["IPAM_DB_PATH"])
     try:
         db.init_db(connection)
-        asset = repository.create_ip_asset(connection, ip_address="10.50.0.99", asset_type=IPAssetType.VM)
+        asset = repository.create_ip_asset(
+            connection, ip_address="10.50.0.99", asset_type=IPAssetType.VM
+        )
     finally:
         connection.close()
 
     response = client.get(f"/ui/ip-assets/{asset.id}", follow_redirects=False)
     assert response.status_code == 303
-    assert response.headers["Location"] == f"/ui/login?return_to=/ui/ip-assets/{asset.id}"
+    assert (
+        response.headers["Location"] == f"/ui/login?return_to=/ui/ip-assets/{asset.id}"
+    )
+
 
 def test_ui_delete_ip_asset_requires_checkbox_confirmation(client) -> None:
     import os
-    from app import db, repository
 
     connection = db.connect(os.environ["IPAM_DB_PATH"])
     try:
         db.init_db(connection)
-        asset = repository.create_ip_asset(connection, ip_address="10.20.0.10", asset_type=IPAssetType.VM)
+        asset = repository.create_ip_asset(
+            connection, ip_address="10.20.0.10", asset_type=IPAssetType.VM
+        )
     finally:
         connection.close()
 
-    app.dependency_overrides[ui.require_ui_editor] = lambda: User(1, "editor", "x", UserRole.EDITOR, True)
+    app.dependency_overrides[ui.require_ui_editor] = lambda: User(
+        1, "editor", "x", UserRole.EDITOR, True
+    )
     try:
         response = client.post(
             f"/ui/ip-assets/{asset.id}/delete",
@@ -759,15 +813,19 @@ def test_ui_delete_ip_asset_requires_checkbox_confirmation(client) -> None:
     assert response.status_code == 400
     assert response.json()["error"] == "Confirm that this delete cannot be undone."
 
+
 def test_ui_delete_ip_asset_with_low_risk_confirmation_checkbox_only(client) -> None:
     import os
-    from app import db, repository
 
     connection = db.connect(os.environ["IPAM_DB_PATH"])
     try:
         db.init_db(connection)
-        user = repository.create_user(connection, username="editor", hashed_password="x", role=UserRole.EDITOR)
-        asset = repository.create_ip_asset(connection, ip_address="10.20.0.11", asset_type=IPAssetType.VM)
+        user = repository.create_user(
+            connection, username="editor", hashed_password="x", role=UserRole.EDITOR
+        )
+        asset = repository.create_ip_asset(
+            connection, ip_address="10.20.0.11", asset_type=IPAssetType.VM
+        )
     finally:
         connection.close()
 
@@ -797,15 +855,15 @@ def test_ui_delete_ip_asset_with_low_risk_confirmation_checkbox_only(client) -> 
     assert deleted is None
 
 
-
 def test_ui_delete_high_risk_ip_asset_requires_exact_ip(client) -> None:
     import os
-    from app import db, repository
 
     connection = db.connect(os.environ["IPAM_DB_PATH"])
     try:
         db.init_db(connection)
-        user = repository.create_user(connection, username="editor", hashed_password="x", role=UserRole.EDITOR)
+        user = repository.create_user(
+            connection, username="editor", hashed_password="x", role=UserRole.EDITOR
+        )
         project = repository.create_project(connection, name="Prod")
         asset = repository.create_ip_asset(
             connection,
@@ -832,8 +890,12 @@ def test_ui_delete_high_risk_ip_asset_requires_exact_ip(client) -> None:
         app.dependency_overrides.pop(ui.require_ui_editor, None)
 
     assert invalid_response.status_code == 400
-    assert invalid_response.json()["error"] == "Type the exact IP address to delete this high-risk asset."
+    assert (
+        invalid_response.json()["error"]
+        == "Type the exact IP address to delete this high-risk asset."
+    )
     assert valid_response.status_code == 200
+
 
 def test_ui_create_bmc_passes_auto_host_flag_enabled(client, monkeypatch) -> None:
     captured: dict[str, object] = {}
@@ -853,8 +915,12 @@ def test_ui_create_bmc_passes_auto_host_flag_enabled(client, monkeypatch) -> Non
         )
 
     monkeypatch.delenv("IPOCKET_AUTO_HOST_FOR_BMC", raising=False)
-    monkeypatch.setattr("app.routes.ui.repository.create_ip_asset", fake_create_ip_asset)
-    app.dependency_overrides[ui.require_ui_editor] = lambda: User(1, "editor", "x", UserRole.EDITOR, True)
+    monkeypatch.setattr(
+        "app.routes.ui.repository.create_ip_asset", fake_create_ip_asset
+    )
+    app.dependency_overrides[ui.require_ui_editor] = lambda: User(
+        1, "editor", "x", UserRole.EDITOR, True
+    )
 
     try:
         response = client.post(
@@ -868,6 +934,7 @@ def test_ui_create_bmc_passes_auto_host_flag_enabled(client, monkeypatch) -> Non
     assert response.status_code == 303
     assert captured["asset_type"] == IPAssetType.BMC
     assert captured["auto_host_for_bmc"] is True
+
 
 def test_ui_create_bmc_passes_auto_host_flag_disabled(client, monkeypatch) -> None:
     captured: dict[str, object] = {}
@@ -887,8 +954,12 @@ def test_ui_create_bmc_passes_auto_host_flag_disabled(client, monkeypatch) -> No
         )
 
     monkeypatch.setenv("IPOCKET_AUTO_HOST_FOR_BMC", "off")
-    monkeypatch.setattr("app.routes.ui.repository.create_ip_asset", fake_create_ip_asset)
-    app.dependency_overrides[ui.require_ui_editor] = lambda: User(1, "editor", "x", UserRole.EDITOR, True)
+    monkeypatch.setattr(
+        "app.routes.ui.repository.create_ip_asset", fake_create_ip_asset
+    )
+    app.dependency_overrides[ui.require_ui_editor] = lambda: User(
+        1, "editor", "x", UserRole.EDITOR, True
+    )
 
     try:
         response = client.post(
@@ -903,15 +974,19 @@ def test_ui_create_bmc_passes_auto_host_flag_disabled(client, monkeypatch) -> No
     assert captured["asset_type"] == IPAssetType.BMC
     assert captured["auto_host_for_bmc"] is False
 
+
 def test_ip_asset_detail_uses_enhanced_layout_and_delete_drawer(client) -> None:
     import os
-    from app import db, repository
 
     connection = db.connect(os.environ["IPAM_DB_PATH"])
     try:
         db.init_db(connection)
-        user = repository.create_user(connection, username="viewer", hashed_password="x", role=UserRole.VIEWER)
-        project = repository.create_project(connection, name="Platform", color="#22c55e")
+        user = repository.create_user(
+            connection, username="viewer", hashed_password="x", role=UserRole.VIEWER
+        )
+        project = repository.create_project(
+            connection, name="Platform", color="#22c55e"
+        )
         host = repository.create_host(connection, name="node-10")
         asset = repository.create_ip_asset(
             connection,
@@ -937,8 +1012,8 @@ def test_ip_asset_detail_uses_enhanced_layout_and_delete_drawer(client) -> None:
     assert "Status: Assigned" in response.text
     assert 'data-ip-delete="' in response.text
     assert 'data-ip-drawer-mode="delete"' in response.text
-    assert 'data-ip-delete-form' in response.text
-    assert '/static/js/ip-assets.js' in response.text
+    assert "data-ip-delete-form" in response.text
+    assert "/static/js/ip-assets.js" in response.text
     assert 'class="pill pill-success"' in response.text
     assert "Type: OS; Project ID:" in response.text
     assert "View details" in response.text
@@ -946,13 +1021,16 @@ def test_ip_asset_detail_uses_enhanced_layout_and_delete_drawer(client) -> None:
 
 def test_ip_asset_detail_shows_no_tags_and_no_notes_defaults(client) -> None:
     import os
-    from app import db, repository
 
     connection = db.connect(os.environ["IPAM_DB_PATH"])
     try:
         db.init_db(connection)
-        user = repository.create_user(connection, username="viewer2", hashed_password="x", role=UserRole.VIEWER)
-        asset = repository.create_ip_asset(connection, ip_address="10.90.0.11", asset_type=IPAssetType.VM)
+        user = repository.create_user(
+            connection, username="viewer2", hashed_password="x", role=UserRole.VIEWER
+        )
+        asset = repository.create_ip_asset(
+            connection, ip_address="10.90.0.11", asset_type=IPAssetType.VM
+        )
     finally:
         connection.close()
 

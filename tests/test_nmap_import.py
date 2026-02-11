@@ -70,7 +70,9 @@ def test_nmap_apply_creates_new_other_assets(client) -> None:
         assert result.new_ips_created == 2
         assets = list(repository.list_active_ip_assets(connection))
         assert len(assets) == 2
-        expected_note = f"Discovered via nmap upload at {now.isoformat(timespec='seconds')}"
+        expected_note = (
+            f"Discovered via nmap upload at {now.isoformat(timespec='seconds')}"
+        )
         for asset in assets:
             assert asset.asset_type == IPAssetType.OTHER
             assert asset.notes == expected_note
@@ -153,7 +155,9 @@ def test_nmap_existing_assets_are_not_overwritten(client) -> None:
 
 def test_nmap_viewer_cannot_apply(client) -> None:
     test_client, _ = client
-    app.dependency_overrides[ui.get_current_ui_user] = lambda: User(1, "viewer", "x", UserRole.VIEWER, True)
+    app.dependency_overrides[ui.get_current_ui_user] = lambda: User(
+        1, "viewer", "x", UserRole.VIEWER, True
+    )
     try:
         payload = _load_fixture()
         response = test_client.post(
@@ -168,7 +172,9 @@ def test_nmap_viewer_cannot_apply(client) -> None:
 
 def test_nmap_viewer_can_dry_run_with_mode(client) -> None:
     test_client, _ = client
-    app.dependency_overrides[ui.get_current_ui_user] = lambda: User(1, "viewer", "x", UserRole.VIEWER, True)
+    app.dependency_overrides[ui.get_current_ui_user] = lambda: User(
+        1, "viewer", "x", UserRole.VIEWER, True
+    )
     try:
         payload = _load_fixture()
         response = test_client.post(
@@ -184,7 +190,9 @@ def test_nmap_viewer_can_dry_run_with_mode(client) -> None:
 
 def test_import_nmap_redirects_to_import_page(client) -> None:
     test_client, _ = client
-    app.dependency_overrides[ui.get_current_ui_user] = lambda: User(1, "viewer", "x", UserRole.VIEWER, True)
+    app.dependency_overrides[ui.get_current_ui_user] = lambda: User(
+        1, "viewer", "x", UserRole.VIEWER, True
+    )
     try:
         response = test_client.get("/ui/import-nmap", follow_redirects=False)
     finally:
@@ -196,7 +204,9 @@ def test_import_nmap_redirects_to_import_page(client) -> None:
 
 def test_import_nmap_redirect_has_no_redirect_deprecation_warning(client) -> None:
     test_client, _ = client
-    app.dependency_overrides[ui.get_current_ui_user] = lambda: User(1, "viewer", "x", UserRole.VIEWER, True)
+    app.dependency_overrides[ui.get_current_ui_user] = lambda: User(
+        1, "viewer", "x", UserRole.VIEWER, True
+    )
     try:
         with warnings.catch_warnings(record=True) as caught:
             warnings.simplefilter("always", DeprecationWarning)

@@ -74,7 +74,9 @@ def _delete_requires_exact_ip(asset, tag_names: list[str]) -> bool:
     )
 
 
-def _parse_selected_tags(connection, raw_tags: list[str]) -> tuple[list[str], list[str]]:
+def _parse_selected_tags(
+    connection, raw_tags: list[str]
+) -> tuple[list[str], list[str]]:
     cleaned_tags = [str(tag).strip() for tag in raw_tags if str(tag).strip()]
     try:
         selected_tags = normalize_tag_names(cleaned_tags) if cleaned_tags else []
@@ -85,6 +87,7 @@ def _parse_selected_tags(connection, raw_tags: list[str]) -> tuple[list[str], li
     if missing_tags:
         return [], [f"Selected tags do not exist: {', '.join(missing_tags)}."]
     return selected_tags, []
+
 
 @router.get("/ui/ip-assets", response_class=HTMLResponse)
 def ui_list_ip_assets(
@@ -146,10 +149,15 @@ def ui_list_ip_assets(
 
     projects = list(repository.list_projects(connection))
     tags = list(repository.list_tags(connection))
-    project_lookup = {project.id: {"name": project.name, "color": project.color} for project in projects}
+    project_lookup = {
+        project.id: {"name": project.name, "color": project.color}
+        for project in projects
+    }
     hosts = list(repository.list_hosts(connection))
     host_lookup = {host.id: host.name for host in hosts}
-    tag_lookup = repository.list_tag_details_for_ip_assets(connection, [asset.id for asset in assets])
+    tag_lookup = repository.list_tag_details_for_ip_assets(
+        connection, [asset.id for asset in assets]
+    )
     host_pair_lookup = repository.list_host_pair_ips_for_hosts(
         connection,
         [asset.host_id for asset in assets if asset.host_id],
@@ -163,7 +171,9 @@ def ui_list_ip_assets(
     )
 
     is_htmx = request.headers.get("HX-Request") is not None
-    template_name = "partials/ip_assets_table.html" if is_htmx else "ip_assets_list.html"
+    template_name = (
+        "partials/ip_assets_table.html" if is_htmx else "ip_assets_list.html"
+    )
     start_index = (page_value - 1) * per_page_value + 1 if total_count else 0
     end_index = min(page_value * per_page_value, total_count) if total_count else 0
     pagination_params: dict[str, object] = {"per-page": per_page_value}
@@ -236,6 +246,7 @@ def ui_list_ip_assets(
         active_nav="ip-assets",
     )
 
+
 @router.post("/ui/ip-assets/bulk-edit", response_class=HTMLResponse)
 async def ui_bulk_edit_ip_assets(
     request: Request,
@@ -307,6 +318,7 @@ async def ui_bulk_edit_ip_assets(
         status_code=303,
     )
 
+
 @router.get("/ui/ip-assets/new", response_class=HTMLResponse)
 def ui_add_ip_form(
     request: Request,
@@ -341,6 +353,7 @@ def ui_add_ip_form(
         },
         active_nav="ip-assets",
     )
+
 
 @router.post("/ui/ip-assets/new", response_class=HTMLResponse)
 async def ui_add_ip_submit(
@@ -410,7 +423,7 @@ async def ui_add_ip_submit(
         )
 
     try:
-        asset = repository.create_ip_asset(
+        repository.create_ip_asset(
             connection,
             ip_address=ip_address,
             asset_type=normalized_asset_type,
@@ -462,6 +475,7 @@ async def ui_add_ip_submit(
         status_code=303,
     )
 
+
 @router.get("/ui/ip-assets/{asset_id}", response_class=HTMLResponse)
 def ui_ip_asset_detail(
     request: Request,
@@ -478,7 +492,9 @@ def ui_ip_asset_detail(
     }
     host_lookup = {host.id: host.name for host in repository.list_hosts(connection)}
     tag_lookup = repository.list_tag_details_for_ip_assets(connection, [asset.id])
-    view_model = _build_asset_view_models([asset], project_lookup, host_lookup, tag_lookup)[0]
+    view_model = _build_asset_view_models(
+        [asset], project_lookup, host_lookup, tag_lookup
+    )[0]
     audit_logs = repository.get_audit_logs_for_ip(connection, asset.id)
     audit_log_rows = [
         {
@@ -492,9 +508,14 @@ def ui_ip_asset_detail(
     return _render_template(
         request,
         "ip_asset_detail.html",
-        {"title": "ipocket - IP Detail", "asset": view_model, "audit_logs": audit_log_rows},
+        {
+            "title": "ipocket - IP Detail",
+            "asset": view_model,
+            "audit_logs": audit_log_rows,
+        },
         active_nav="ip-assets",
     )
+
 
 @router.get("/ui/ip-assets/{asset_id}/edit", response_class=HTMLResponse)
 def ui_edit_ip_form(
@@ -537,6 +558,7 @@ def ui_edit_ip_form(
         active_nav="ip-assets",
     )
 
+
 @router.post("/ui/ip-assets/{asset_id}/auto-host", response_class=JSONResponse)
 def ui_create_auto_host(
     asset_id: int,
@@ -547,14 +569,21 @@ def ui_create_auto_host(
     if asset is None or asset.archived:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
     if asset.asset_type != IPAssetType.BMC:
-        return JSONResponse({"error": "Auto-host creation is only available for BMC assets."}, status_code=400)
+        return JSONResponse(
+            {"error": "Auto-host creation is only available for BMC assets."},
+            status_code=400,
+        )
     if asset.host_id is not None:
-        return JSONResponse({"error": "This IP is already assigned to a host."}, status_code=409)
+        return JSONResponse(
+            {"error": "This IP is already assigned to a host."}, status_code=409
+        )
 
     host_name = f"server_{asset.ip_address}"
     host = repository.get_host_by_name(connection, host_name)
     if host is None:
-        host = repository.create_host(connection, name=host_name, notes=None, vendor=None)
+        host = repository.create_host(
+            connection, name=host_name, notes=None, vendor=None
+        )
 
     repository.update_ip_asset(
         connection,
@@ -564,6 +593,7 @@ def ui_create_auto_host(
     )
 
     return JSONResponse({"host_id": host.id, "host_name": host.name})
+
 
 @router.post("/ui/ip-assets/{asset_id}/edit", response_class=HTMLResponse)
 async def ui_edit_ip_submit(
@@ -645,6 +675,7 @@ async def ui_edit_ip_submit(
         return RedirectResponse(url=return_to, status_code=303)
     return RedirectResponse(url=f"/ui/ip-assets/{asset.id}", status_code=303)
 
+
 @router.get("/ui/ip-assets/{asset_id}/delete", response_class=HTMLResponse)
 def ui_delete_ip_asset_confirm(
     request: Request,
@@ -667,6 +698,7 @@ def ui_delete_ip_asset_confirm(
         active_nav="ip-assets",
     )
 
+
 @router.post("/ui/ip-assets/{asset_id}/delete", response_class=HTMLResponse)
 async def ui_delete_ip_asset(
     request: Request,
@@ -680,8 +712,12 @@ async def ui_delete_ip_asset(
 
     form_data = await request.form()
     return_to = str(form_data.get("return_to") or "/ui/ip-assets").strip()
-    confirmation_ack_raw = str(form_data.get("confirm_delete_ack") or "").strip().lower()
-    confirmation_ack = bool(confirmation_ack_raw and confirmation_ack_raw not in {"0", "false", "off", "no"})
+    confirmation_ack_raw = (
+        str(form_data.get("confirm_delete_ack") or "").strip().lower()
+    )
+    confirmation_ack = bool(
+        confirmation_ack_raw and confirmation_ack_raw not in {"0", "false", "off", "no"}
+    )
     confirm_ip = str(form_data.get("confirm_ip") or "").strip()
     tags_map = repository.list_tags_for_ip_assets(connection, [asset.id])
     tag_names = tags_map.get(asset.id, [])
@@ -698,17 +734,30 @@ async def ui_delete_ip_asset(
         if wants_json:
             return JSONResponse({"error": errors[0]}, status_code=400)
         return RedirectResponse(
-            url=_append_query_param(return_to if return_to.startswith("/") else "/ui/ip-assets", "delete-error", errors[0]),
+            url=_append_query_param(
+                return_to if return_to.startswith("/") else "/ui/ip-assets",
+                "delete-error",
+                errors[0],
+            ),
             status_code=303,
         )
 
     repository.delete_ip_asset(connection, asset.ip_address, current_user=user)
     if wants_json:
         return JSONResponse(
-            {"message": f"Deleted {asset.ip_address}.", "asset_id": asset.id, "ip_address": asset.ip_address}
+            {
+                "message": f"Deleted {asset.ip_address}.",
+                "asset_id": asset.id,
+                "ip_address": asset.ip_address,
+            }
         )
-    success_url = _append_query_param(return_to if return_to.startswith("/") else "/ui/ip-assets", "delete-success", f"Deleted {asset.ip_address}.")
+    success_url = _append_query_param(
+        return_to if return_to.startswith("/") else "/ui/ip-assets",
+        "delete-success",
+        f"Deleted {asset.ip_address}.",
+    )
     return RedirectResponse(url=success_url, status_code=303)
+
 
 @router.post("/ui/ip-assets/{asset_id}/archive")
 def ui_archive_ip_asset(

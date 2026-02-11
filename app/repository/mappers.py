@@ -3,7 +3,18 @@ from __future__ import annotations
 import ipaddress
 import sqlite3
 
-from app.models import AuditLog, Host, IPAsset, IPAssetType, IPRange, Project, Tag, User, UserRole, Vendor
+from app.models import (
+    AuditLog,
+    Host,
+    IPAsset,
+    IPAssetType,
+    IPRange,
+    Project,
+    Tag,
+    User,
+    UserRole,
+    Vendor,
+)
 
 
 def _row_to_project(row: sqlite3.Row) -> Project:
@@ -15,20 +26,18 @@ def _row_to_project(row: sqlite3.Row) -> Project:
     )
 
 
-
 def _row_to_host(row: sqlite3.Row) -> Host:
-    return Host(id=row["id"], name=row["name"], notes=row["notes"], vendor=row["vendor_name"])
-
+    return Host(
+        id=row["id"], name=row["name"], notes=row["notes"], vendor=row["vendor_name"]
+    )
 
 
 def _row_to_vendor(row: sqlite3.Row) -> Vendor:
     return Vendor(id=row["id"], name=row["name"])
 
 
-
 def _row_to_tag(row: sqlite3.Row) -> Tag:
     return Tag(id=row["id"], name=row["name"], color=row["color"])
-
 
 
 def _row_to_user(row: sqlite3.Row) -> User:
@@ -39,7 +48,6 @@ def _row_to_user(row: sqlite3.Row) -> User:
         role=UserRole(row["role"]),
         is_active=bool(row["is_active"]),
     )
-
 
 
 def _row_to_ip_asset(row: sqlite3.Row) -> IPAsset:
@@ -56,7 +64,6 @@ def _row_to_ip_asset(row: sqlite3.Row) -> IPAsset:
     )
 
 
-
 def _ip_address_sort_key(value: str) -> tuple[int, int, int | str]:
     try:
         parsed_ip = ipaddress.ip_address(value)
@@ -66,15 +73,11 @@ def _ip_address_sort_key(value: str) -> tuple[int, int, int | str]:
             octets = [int(part) for part in parts]
             if all(0 <= octet <= 255 for octet in octets):
                 packed_value = (
-                    (octets[0] << 24)
-                    + (octets[1] << 16)
-                    + (octets[2] << 8)
-                    + octets[3]
+                    (octets[0] << 24) + (octets[1] << 16) + (octets[2] << 8) + octets[3]
                 )
                 return (0, 4, packed_value)
         return (1, 0, value.lower())
     return (0, parsed_ip.version, int(parsed_ip))
-
 
 
 def _row_to_audit_log(row: sqlite3.Row) -> AuditLog:
@@ -89,7 +92,6 @@ def _row_to_audit_log(row: sqlite3.Row) -> AuditLog:
         changes=row["changes"],
         created_at=row["created_at"],
     )
-
 
 
 def _row_to_ip_range(row: sqlite3.Row) -> IPRange:

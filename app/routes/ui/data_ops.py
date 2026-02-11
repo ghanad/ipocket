@@ -27,6 +27,7 @@ from .utils import (
 
 router = APIRouter()
 
+
 def _data_ops_context(
     *,
     active_tab: str = "import",
@@ -68,6 +69,7 @@ def ui_export(
 ) -> HTMLResponse:
     return _render_data_ops_template(request, active_tab="export")
 
+
 def _summary_payload(summary: ImportSummary) -> dict[str, dict[str, int]]:
     return {
         "vendors": summary.vendors.__dict__,
@@ -77,12 +79,14 @@ def _summary_payload(summary: ImportSummary) -> dict[str, dict[str, int]]:
         "total": summary.total().__dict__,
     }
 
+
 def _import_result_payload(result: ImportApplyResult) -> dict[str, object]:
     return {
         "summary": _summary_payload(result.summary),
         "errors": [issue.__dict__ for issue in result.errors],
         "warnings": [issue.__dict__ for issue in result.warnings],
     }
+
 
 def _nmap_result_payload(result: NmapImportResult) -> dict[str, object]:
     return {
@@ -93,6 +97,7 @@ def _nmap_result_payload(result: NmapImportResult) -> dict[str, object]:
         "new_assets": [asset.__dict__ for asset in result.new_assets],
     }
 
+
 @router.get("/ui/import", response_class=HTMLResponse)
 def ui_import(
     request: Request,
@@ -102,12 +107,14 @@ def ui_import(
     active_tab = "export" if tab == "export" else "import"
     return _render_data_ops_template(request, active_tab=active_tab)
 
+
 @router.get("/ui/import-nmap", response_class=HTMLResponse)
 def ui_import_nmap(
     _request: Request,
     _user=Depends(get_current_ui_user),
 ) -> HTMLResponse:
     return RedirectResponse(url="/ui/import", status_code=302)
+
 
 @router.post("/ui/import/nmap", response_class=HTMLResponse)
 @router.post("/ui/import-nmap", response_class=HTMLResponse)
@@ -146,15 +153,20 @@ async def ui_import_nmap_submit(
     toast_messages = []
     if not dry_run:
         if result.errors:
-            toast_messages.append({"type": "error", "message": "Nmap import completed with errors."})
+            toast_messages.append(
+                {"type": "error", "message": "Nmap import completed with errors."}
+            )
         else:
-            toast_messages.append({"type": "success", "message": "Nmap import applied successfully."})
+            toast_messages.append(
+                {"type": "success", "message": "Nmap import applied successfully."}
+            )
     return _render_data_ops_template(
         request,
         active_tab="import",
         nmap_result=_nmap_result_payload(result),
         toast_messages=toast_messages,
     )
+
 
 @router.post("/ui/import/bundle", response_class=HTMLResponse)
 async def ui_import_bundle(
@@ -176,19 +188,26 @@ async def ui_import_bundle(
             status_code=status.HTTP_400_BAD_REQUEST,
         )
     payload = await upload.read()
-    result = run_import(connection, BundleImporter(), {"bundle": payload}, dry_run=dry_run)
+    result = run_import(
+        connection, BundleImporter(), {"bundle": payload}, dry_run=dry_run
+    )
     toast_messages = []
     if not dry_run:
         if result.errors:
-            toast_messages.append({"type": "error", "message": "Bundle import completed with errors."})
+            toast_messages.append(
+                {"type": "error", "message": "Bundle import completed with errors."}
+            )
         else:
-            toast_messages.append({"type": "success", "message": "Bundle import applied successfully."})
+            toast_messages.append(
+                {"type": "success", "message": "Bundle import applied successfully."}
+            )
     return _render_data_ops_template(
         request,
         active_tab="import",
         bundle_result=_import_result_payload(result),
         toast_messages=toast_messages,
     )
+
 
 @router.post("/ui/import/csv", response_class=HTMLResponse)
 async def ui_import_csv(
@@ -223,22 +242,29 @@ async def ui_import_csv(
         return _render_data_ops_template(
             request,
             active_tab="import",
-            errors=["Upload at least one non-empty CSV file (hosts.csv or ip-assets.csv)."],
+            errors=[
+                "Upload at least one non-empty CSV file (hosts.csv or ip-assets.csv)."
+            ],
             status_code=status.HTTP_400_BAD_REQUEST,
         )
     result = run_import(connection, CsvImporter(), inputs, dry_run=dry_run)
     toast_messages = []
     if not dry_run:
         if result.errors:
-            toast_messages.append({"type": "error", "message": "CSV import completed with errors."})
+            toast_messages.append(
+                {"type": "error", "message": "CSV import completed with errors."}
+            )
         else:
-            toast_messages.append({"type": "success", "message": "CSV import applied successfully."})
+            toast_messages.append(
+                {"type": "success", "message": "CSV import applied successfully."}
+            )
     return _render_data_ops_template(
         request,
         active_tab="import",
         csv_result=_import_result_payload(result),
         toast_messages=toast_messages,
     )
+
 
 @router.get("/export/ip-assets.csv")
 def export_ip_assets_csv(
@@ -267,7 +293,10 @@ def export_ip_assets_csv(
         "created_at",
         "updated_at",
     ]
-    return _csv_response("ip-assets.csv", headers, _format_ip_asset_csv_rows(export_rows))
+    return _csv_response(
+        "ip-assets.csv", headers, _format_ip_asset_csv_rows(export_rows)
+    )
+
 
 @router.get("/export/ip-assets.json")
 def export_ip_assets_json(
@@ -287,6 +316,7 @@ def export_ip_assets_json(
     )
     return _json_response("ip-assets.json", export_rows)
 
+
 @router.get("/export/hosts.csv")
 def export_hosts_csv(
     include_archived: bool = Query(default=False),
@@ -298,6 +328,7 @@ def export_hosts_csv(
     headers = ["name", "notes", "vendor_name"]
     return _csv_response("hosts.csv", headers, export_rows)
 
+
 @router.get("/export/hosts.json")
 def export_hosts_json(
     include_archived: bool = Query(default=False),
@@ -307,6 +338,7 @@ def export_hosts_json(
 ) -> Response:
     export_rows = exports.export_hosts(connection, host_name=host)
     return _json_response("hosts.json", export_rows)
+
 
 @router.get("/export/vendors.csv")
 def export_vendors_csv(
@@ -318,6 +350,7 @@ def export_vendors_csv(
     headers = ["name"]
     return _csv_response("vendors.csv", headers, export_rows)
 
+
 @router.get("/export/vendors.json")
 def export_vendors_json(
     include_archived: bool = Query(default=False),
@@ -326,6 +359,7 @@ def export_vendors_json(
 ) -> Response:
     export_rows = exports.export_vendors(connection)
     return _json_response("vendors.json", export_rows)
+
 
 @router.get("/export/projects.csv")
 def export_projects_csv(
@@ -338,6 +372,7 @@ def export_projects_csv(
     headers = ["name", "description", "color"]
     return _csv_response("projects.csv", headers, export_rows)
 
+
 @router.get("/export/projects.json")
 def export_projects_json(
     include_archived: bool = Query(default=False),
@@ -347,6 +382,7 @@ def export_projects_json(
 ) -> Response:
     export_rows = exports.export_projects(connection, project_name=project)
     return _json_response("projects.json", export_rows)
+
 
 @router.get("/export/bundle.json")
 def export_bundle_json(
@@ -366,6 +402,7 @@ def export_bundle_json(
         host_name=host,
     )
     return _json_response("bundle.json", bundle)
+
 
 @router.get("/export/bundle.zip")
 def export_bundle_zip(

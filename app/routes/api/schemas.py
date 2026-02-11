@@ -5,7 +5,12 @@ from typing import Optional
 from pydantic import BaseModel, field_validator
 
 from app.models import IPAssetType
-from app.utils import normalize_cidr, normalize_hex_color, normalize_tag_names, split_tag_string
+from app.utils import (
+    normalize_cidr,
+    normalize_hex_color,
+    normalize_tag_names,
+    split_tag_string,
+)
 
 
 class LoginRequest(BaseModel):

@@ -18,3 +18,11 @@ def test_repository_is_package_with_public_api() -> None:
     ]
     for export_name in expected_exports:
         assert hasattr(repository, export_name), f"Missing export: {export_name}"
+
+
+def test_repository___all___contains_public_symbols() -> None:
+    assert "create_ip_asset" in repository.__all__
+    assert "list_hosts" in repository.__all__
+    assert "get_management_summary" in repository.__all__
+    assert all(not name.startswith("_") for name in repository.__all__)
+    assert all(hasattr(repository, name) for name in repository.__all__)

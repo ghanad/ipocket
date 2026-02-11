@@ -6,7 +6,13 @@ from app import repository
 from app.dependencies import get_connection
 
 from .dependencies import require_editor
-from .schemas import IPRangeCreate, ProjectCreate, ProjectUpdate, VendorCreate, VendorUpdate
+from .schemas import (
+    IPRangeCreate,
+    ProjectCreate,
+    ProjectUpdate,
+    VendorCreate,
+    VendorUpdate,
+)
 
 router = APIRouter()
 

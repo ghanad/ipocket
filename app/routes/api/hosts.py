@@ -24,9 +24,16 @@ def create_host(
     connection=Depends(get_connection),
     _user=Depends(require_editor),
 ):
-    vendor = repository.get_vendor_by_id(connection, payload.vendor_id) if payload.vendor_id is not None else None
+    vendor = (
+        repository.get_vendor_by_id(connection, payload.vendor_id)
+        if payload.vendor_id is not None
+        else None
+    )
     if payload.vendor_id is not None and vendor is None:
-        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Selected vendor does not exist.")
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Selected vendor does not exist.",
+        )
     host = repository.create_host(
         connection,
         name=payload.name,
@@ -59,9 +66,16 @@ def update_host(
     connection=Depends(get_connection),
     _user=Depends(require_editor),
 ):
-    vendor = repository.get_vendor_by_id(connection, payload.vendor_id) if payload.vendor_id is not None else None
+    vendor = (
+        repository.get_vendor_by_id(connection, payload.vendor_id)
+        if payload.vendor_id is not None
+        else None
+    )
     if payload.vendor_id is not None and vendor is None:
-        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Selected vendor does not exist.")
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Selected vendor does not exist.",
+        )
     host = repository.update_host(
         connection,
         host_id=host_id,

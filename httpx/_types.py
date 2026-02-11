@@ -1,8 +1,11 @@
 from __future__ import annotations
 
-from typing import Any, Mapping, Union
+from typing import TYPE_CHECKING, Any, Mapping, Union
 
 from ._client import UseClientDefault
+
+if TYPE_CHECKING:
+    from . import URL
 
 URLTypes = Union[str, "URL"]
 QueryParamTypes = Mapping[str, Any]

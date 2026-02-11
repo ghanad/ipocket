@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import sqlite3
 
-from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 
 from app import repository
@@ -10,22 +10,20 @@ from app.dependencies import get_connection
 from app.models import IPAssetType
 from app.utils import normalize_cidr, normalize_tag_names, validate_ip_address
 from .utils import (
-    _build_asset_view_models,
     _is_auto_host_for_bmc_enabled,
-    _collect_inline_ip_errors,
     _normalize_asset_type,
     _parse_optional_int,
     _parse_optional_str,
-    _parse_positive_int_query,
     _render_template,
-    _redirect_with_flash,
     require_ui_editor,
 )
 
 router = APIRouter()
 
 
-def _parse_selected_tags(connection, raw_tags: list[str]) -> tuple[list[str], list[str]]:
+def _parse_selected_tags(
+    connection, raw_tags: list[str]
+) -> tuple[list[str], list[str]]:
     cleaned_tags = [str(tag).strip() for tag in raw_tags if str(tag).strip()]
     try:
         selected_tags = normalize_tag_names(cleaned_tags) if cleaned_tags else []
@@ -62,14 +60,25 @@ def _build_range_table_rows(
         )
     return rows
 
+
 @router.get("/ui/ranges", response_class=HTMLResponse)
-def ui_list_ranges(request: Request, connection=Depends(get_connection)) -> HTMLResponse:
+def ui_list_ranges(
+    request: Request, connection=Depends(get_connection)
+) -> HTMLResponse:
     edit_param = request.query_params.get("edit")
     edit_range_id = _parse_optional_int(edit_param)
-    edit_ip_range = repository.get_ip_range_by_id(connection, edit_range_id) if edit_range_id else None
+    edit_ip_range = (
+        repository.get_ip_range_by_id(connection, edit_range_id)
+        if edit_range_id
+        else None
+    )
     delete_param = request.query_params.get("delete")
     delete_range_id = _parse_optional_int(delete_param)
-    delete_ip_range = repository.get_ip_range_by_id(connection, delete_range_id) if delete_range_id else None
+    delete_ip_range = (
+        repository.get_ip_range_by_id(connection, delete_range_id)
+        if delete_range_id
+        else None
+    )
     ranges = list(repository.list_ip_ranges(connection))
     utilization = repository.get_ip_range_utilization(connection)
     range_rows = _build_range_table_rows(ranges, utilization)
@@ -95,6 +104,7 @@ def ui_list_ranges(request: Request, connection=Depends(get_connection)) -> HTML
         active_nav="ranges",
     )
 
+
 @router.post("/ui/ranges", response_class=HTMLResponse)
 async def ui_create_range(
     request: Request,
@@ -116,7 +126,9 @@ async def ui_create_range(
         try:
             normalized_cidr = normalize_cidr(cidr)
         except ValueError:
-            errors.append("CIDR must be a valid IPv4 network (example: 192.168.10.0/24).")
+            errors.append(
+                "CIDR must be a valid IPv4 network (example: 192.168.10.0/24)."
+            )
 
     if errors:
         ranges = list(repository.list_ip_ranges(connection))
@@ -142,7 +154,9 @@ async def ui_create_range(
         )
 
     try:
-        repository.create_ip_range(connection, name=name, cidr=normalized_cidr or cidr, notes=notes)
+        repository.create_ip_range(
+            connection, name=name, cidr=normalized_cidr or cidr, notes=notes
+        )
     except sqlite3.IntegrityError:
         ranges = list(repository.list_ip_ranges(connection))
         utilization = repository.get_ip_range_utilization(connection)
@@ -168,6 +182,7 @@ async def ui_create_range(
 
     return RedirectResponse(url="/ui/ranges", status_code=303)
 
+
 @router.get("/ui/ranges/{range_id}/edit", response_class=HTMLResponse)
 def ui_edit_range(
     request: Request,
@@ -178,6 +193,7 @@ def ui_edit_range(
     if repository.get_ip_range_by_id(connection, range_id) is None:
         raise HTTPException(status_code=404, detail="IP range not found.")
     return RedirectResponse(url=f"/ui/ranges?edit={range_id}", status_code=303)
+
 
 @router.post("/ui/ranges/{range_id}/edit", response_class=HTMLResponse)
 async def ui_update_range(
@@ -205,7 +221,9 @@ async def ui_update_range(
         try:
             normalized_cidr = normalize_cidr(cidr)
         except ValueError:
-            errors.append("CIDR must be a valid IPv4 network (example: 192.168.10.0/24).")
+            errors.append(
+                "CIDR must be a valid IPv4 network (example: 192.168.10.0/24)."
+            )
 
     if errors:
         ranges = list(repository.list_ip_ranges(connection))
@@ -264,6 +282,7 @@ async def ui_update_range(
 
     return RedirectResponse(url="/ui/ranges", status_code=303)
 
+
 @router.get("/ui/ranges/{range_id}/delete", response_class=HTMLResponse)
 def ui_delete_range_confirm(
     request: Request,
@@ -275,6 +294,7 @@ def ui_delete_range_confirm(
     if ip_range is None:
         raise HTTPException(status_code=404, detail="IP range not found.")
     return RedirectResponse(url=f"/ui/ranges?delete={range_id}", status_code=303)
+
 
 @router.post("/ui/ranges/{range_id}/delete", response_class=HTMLResponse)
 async def ui_delete_range(
@@ -316,6 +336,7 @@ async def ui_delete_range(
         raise HTTPException(status_code=404, detail="IP range not found.")
     return RedirectResponse(url="/ui/ranges", status_code=303)
 
+
 @router.get("/ui/ranges/{range_id}/addresses", response_class=HTMLResponse)
 def ui_range_addresses(
     request: Request,
@@ -350,6 +371,7 @@ def ui_range_addresses(
         active_nav="ranges",
     )
 
+
 @router.post("/ui/ranges/{range_id}/addresses/add", response_class=HTMLResponse)
 async def ui_range_quick_add_address(
     range_id: int,
@@ -383,7 +405,9 @@ async def ui_range_quick_add_address(
     if normalized_asset_type is None and not errors:
         errors.append("Asset type is required.")
 
-    if project_id is not None and not any(project.id == project_id for project in projects):
+    if project_id is not None and not any(
+        project.id == project_id for project in projects
+    ):
         errors.append("Selected project does not exist.")
     tags, tag_errors = _parse_selected_tags(connection, tags_raw)
     errors.extend(tag_errors)
@@ -392,9 +416,7 @@ async def ui_range_quick_add_address(
     if breakdown is None:
         raise HTTPException(status_code=404, detail="IP range not found.")
 
-    address_lookup = {
-        entry["ip_address"]: entry for entry in breakdown["addresses"]
-    }
+    address_lookup = {entry["ip_address"]: entry for entry in breakdown["addresses"]}
     if ip_address and ip_address not in address_lookup:
         errors.append("IP address is not part of this range.")
     elif ip_address and address_lookup[ip_address]["status"] != "free":
@@ -470,7 +492,10 @@ async def ui_range_quick_add_address(
         status_code=303,
     )
 
-@router.post("/ui/ranges/{range_id}/addresses/{asset_id}/edit", response_class=HTMLResponse)
+
+@router.post(
+    "/ui/ranges/{range_id}/addresses/{asset_id}/edit", response_class=HTMLResponse
+)
 async def ui_range_quick_edit_address(
     range_id: int,
     asset_id: int,
@@ -486,7 +511,10 @@ async def ui_range_quick_edit_address(
     if asset is None or asset.archived:
         raise HTTPException(status_code=404, detail="IP asset not found.")
 
-    range_entry = next((entry for entry in breakdown["addresses"] if entry["asset_id"] == asset.id), None)
+    range_entry = next(
+        (entry for entry in breakdown["addresses"] if entry["asset_id"] == asset.id),
+        None,
+    )
     if range_entry is None:
         raise HTTPException(status_code=404, detail="IP asset not found in this range.")
 
@@ -506,7 +534,9 @@ async def ui_range_quick_edit_address(
         errors.append("Asset type is required.")
     if normalized_asset_type is None and not errors:
         errors.append("Asset type is required.")
-    if project_id is not None and not any(project.id == project_id for project in projects):
+    if project_id is not None and not any(
+        project.id == project_id for project in projects
+    ):
         errors.append("Selected project does not exist.")
     tags, tag_errors = _parse_selected_tags(connection, tags_raw)
     errors.extend(tag_errors)
