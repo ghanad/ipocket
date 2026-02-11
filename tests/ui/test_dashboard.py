@@ -8,9 +8,19 @@ from app.models import IPAsset, IPAssetType, User, UserRole
 from app.routes import ui
 
 
-def test_needs_assignment_page_renders(client) -> None:
-    response = client.get("/ui/ip-assets/needs-assignment?filter=project")
+def test_needs_assignment_route_removed(client) -> None:
+    app.dependency_overrides[ui.get_current_ui_user] = lambda: User(1, "viewer", "x", UserRole.VIEWER, True)
+    try:
+        response = client.get("/ui/ip-assets/needs-assignment?filter=project")
+        assert response.status_code == 422
+    finally:
+        app.dependency_overrides.pop(ui.get_current_ui_user, None)
+
+
+def test_needs_assignment_links_removed_from_ui(client) -> None:
+    response = client.get("/ui/ip-assets")
     assert response.status_code == 200
+    assert "/ui/ip-assets/needs-assignment" not in response.text
 
 def test_management_page_shows_summary_counts(client) -> None:
     import os

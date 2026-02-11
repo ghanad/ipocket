@@ -11,7 +11,6 @@ from .assets import (
     list_active_ip_assets_paginated,
     list_ip_assets_by_ids,
     list_ip_assets_for_export,
-    list_ip_assets_needing_assignment,
     list_sd_targets,
     list_tag_details_for_ip_assets,
     list_tags_for_ip_assets,

@@ -16,7 +16,6 @@ from .utils import (
     _append_query_param,
     _build_asset_view_models,
     _is_auto_host_for_bmc_enabled,
-    _normalize_assignment_filter,
     _normalize_asset_type,
     _parse_form_data,
     _parse_optional_int,
@@ -297,102 +296,6 @@ async def ui_bulk_edit_ip_assets(
     success_message = f"Updated {len(updated_assets)} IP assets."
     return RedirectResponse(
         url=_append_query_param(return_to, "bulk-success", success_message),
-        status_code=303,
-    )
-
-@router.get("/ui/ip-assets/needs-assignment", response_class=HTMLResponse)
-def ui_needs_assignment(
-    request: Request,
-    filter: Optional[str] = None,
-    connection=Depends(get_connection),
-):
-    assignment_filter = _normalize_assignment_filter(filter)
-    assets = list(
-        repository.list_ip_assets_needing_assignment(connection, assignment_filter)
-    )
-    projects = list(repository.list_projects(connection))
-    project_lookup = {project.id: {"name": project.name, "color": project.color} for project in projects}
-    host_lookup = {host.id: host.name for host in repository.list_hosts(connection)}
-    tag_lookup = repository.list_tag_details_for_ip_assets(connection, [asset.id for asset in assets])
-    view_models = _build_asset_view_models(assets, project_lookup, host_lookup, tag_lookup)
-    form_state = {
-        "ip_address": view_models[0]["ip_address"] if view_models else "",
-        "project_id": None,
-    }
-    return _render_template(
-        request,
-        "needs_assignment.html",
-        {
-            "title": "ipocket - Needs Assignment",
-            "assets": view_models,
-            "projects": projects,
-            "selected_filter": assignment_filter,
-            "errors": [],
-            "form_state": form_state,
-        },
-        active_nav="needs-assignment",
-    )
-
-@router.post("/ui/ip-assets/needs-assignment/assign", response_class=HTMLResponse)
-async def ui_needs_assignment_assign(
-    request: Request,
-    filter: Optional[str] = None,
-    connection=Depends(get_connection),
-    user=Depends(require_ui_editor),
-):
-    assignment_filter = _normalize_assignment_filter(filter)
-    form_data = dict(await request.form())
-    ip_address = (form_data.get("ip_address") or "").strip()
-    project_id = _parse_optional_int(form_data.get("project_id"))
-
-    errors = []
-    if not ip_address:
-        errors.append("Select an IP address.")
-    if project_id is None:
-        errors.append("Assign Project.")
-
-    asset = None
-    if ip_address:
-        asset = repository.get_ip_asset_by_ip(connection, ip_address)
-        if asset is None or asset.archived:
-            errors.append("Selected IP address was not found.")
-
-    if errors:
-        assets = list(
-            repository.list_ip_assets_needing_assignment(
-                connection, assignment_filter
-            )
-        )
-        projects = list(repository.list_projects(connection))
-        project_lookup = {project.id: {"name": project.name, "color": project.color} for project in projects}
-        host_lookup = {host.id: host.name for host in repository.list_hosts(connection)}
-        tag_lookup = repository.list_tag_details_for_ip_assets(connection, [asset.id for asset in assets])
-        view_models = _build_asset_view_models(assets, project_lookup, host_lookup, tag_lookup)
-        return _render_template(
-            request,
-            "needs_assignment.html",
-            {
-                "title": "ipocket - Needs Assignment",
-                "assets": view_models,
-                "projects": projects,
-                "selected_filter": assignment_filter,
-                "errors": errors,
-                "form_state": {
-                    "ip_address": ip_address,
-                    "project_id": project_id,
-                },
-            },
-            active_nav="needs-assignment",
-        )
-
-    repository.update_ip_asset(
-        connection,
-        ip_address=ip_address,
-        project_id=project_id,
-        current_user=user,
-    )
-    return RedirectResponse(
-        url=f"/ui/ip-assets/needs-assignment?filter={assignment_filter}",
         status_code=303,
     )
 
