@@ -4,7 +4,7 @@ import sqlite3
 from collections.abc import Callable, Generator
 
 import pytest
-from fastapi.testclient import TestClient
+from fastapi.testclient import TestClient as FastAPITestClient
 
 from app import auth, db, repository
 from app.main import app
@@ -21,9 +21,9 @@ def db_path(tmp_path, monkeypatch):
 
 
 @pytest.fixture
-def client(db_path) -> Generator[TestClient, None, None]:
+def client(db_path) -> Generator[FastAPITestClient, None, None]:
     auth.clear_tokens()
-    with TestClient(app) as test_client:
+    with FastAPITestClient(app) as test_client:
         yield test_client
     auth.clear_tokens()
 
@@ -58,7 +58,7 @@ def _create_user(db_path, _setup_connection) -> Callable[[str, str, UserRole], N
 
 
 @pytest.fixture
-def _login(client: TestClient) -> Callable[[str, str], str]:
+def _login(client: FastAPITestClient) -> Callable[[str, str], str]:
     def _factory(username: str, password: str) -> str:
         response = client.post("/login", json={"username": username, "password": password})
         assert response.status_code == 200

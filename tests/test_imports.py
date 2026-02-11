@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 
 import pytest
-from fastapi.testclient import TestClient
+from fastapi.testclient import TestClient as FastAPITestClient
 
 from app import auth, db, exports, repository
 from app.imports import BundleImporter, run_import
@@ -16,7 +16,7 @@ def client(tmp_path, monkeypatch):
     db_path = tmp_path / "test.db"
     monkeypatch.setenv("IPAM_DB_PATH", str(db_path))
     auth.clear_tokens()
-    with TestClient(app) as test_client:
+    with FastAPITestClient(app) as test_client:
         yield test_client, db_path
     auth.clear_tokens()
 
@@ -35,7 +35,7 @@ def _create_user(db_path, username: str, password: str, role: UserRole) -> None:
         connection.close()
 
 
-def _login(client: TestClient, username: str, password: str) -> str:
+def _login(client: FastAPITestClient, username: str, password: str) -> str:
     response = client.post("/login", json={"username": username, "password": password})
     assert response.status_code == 200
     return response.json()["access_token"]

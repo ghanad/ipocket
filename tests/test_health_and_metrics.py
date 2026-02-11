@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from fastapi.testclient import TestClient
+from fastapi.testclient import TestClient as FastAPITestClient
 
 from app.main import app
 
@@ -16,7 +16,7 @@ def _parse_metrics(text: str) -> dict[str, int]:
 
 
 def test_health_and_metrics_endpoints(db_path) -> None:
-    with TestClient(app) as client:
+    with FastAPITestClient(app) as client:
         health = client.get("/health")
         assert health.status_code == 200
 

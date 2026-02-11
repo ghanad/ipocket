@@ -66,7 +66,7 @@ def _render_template(
             template_name, payload, status_code=status_code
         )
     response = templates.TemplateResponse(
-        template_name, payload, status_code=status_code
+        request, template_name, payload, status_code=status_code
     )
     if flash_messages:
         response.delete_cookie(FLASH_COOKIE)

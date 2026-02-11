@@ -2,10 +2,11 @@ from __future__ import annotations
 
 import csv
 import io
+import warnings
 from http.cookies import SimpleCookie
 
 import pytest
-from fastapi.testclient import TestClient
+from fastapi.testclient import TestClient as FastAPITestClient
 
 from app import auth, db, repository
 from app.main import app
@@ -18,7 +19,7 @@ def client(tmp_path, monkeypatch):
     db_path = tmp_path / "test.db"
     monkeypatch.setenv("IPAM_DB_PATH", str(db_path))
     auth.clear_tokens()
-    with TestClient(app) as test_client:
+    with FastAPITestClient(app) as test_client:
         yield test_client, db_path
     auth.clear_tokens()
 
@@ -37,7 +38,7 @@ def _create_user(db_path, username: str, password: str) -> None:
         connection.close()
 
 
-def _login_ui(client: TestClient, username: str, password: str) -> str:
+def _login_ui(client: FastAPITestClient, username: str, password: str) -> str:
     response = client.post(
         "/ui/login",
         data={"username": username, "password": password},
@@ -166,3 +167,22 @@ def test_ui_export_page_has_bundle_link(client) -> None:
     assert "/export/hosts.csv" in response.text
     assert "/export/vendors.csv" not in response.text
     assert "/export/projects.csv" not in response.text
+
+
+def test_ui_export_page_has_no_template_deprecation_warning(client) -> None:
+    test_client, db_path = client
+    _create_user(db_path, "ui-user-no-warning", "ui-pass")
+    session_cookie = _login_ui(test_client, "ui-user-no-warning", "ui-pass")
+
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter("always", DeprecationWarning)
+        response = test_client.get("/ui/export", headers=_auth_headers(session_cookie))
+
+    assert response.status_code == 200
+    template_warnings = [
+        w
+        for w in caught
+        if issubclass(w.category, DeprecationWarning)
+        and "TemplateResponse" in str(w.message)
+    ]
+    assert template_warnings == []

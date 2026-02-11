@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from fastapi.testclient import TestClient
+from fastapi.testclient import TestClient as FastAPITestClient
 
 from app import db, repository
 from app.main import app
@@ -20,7 +20,7 @@ def test_sd_targets_support_project_grouping(tmp_path, monkeypatch) -> None:
     finally:
         connection.close()
 
-    with TestClient(app) as client:
+    with FastAPITestClient(app) as client:
         grouped = client.get("/sd/node?group_by=project")
         assert grouped.status_code == 200
         labels = [g["labels"]["project"] for g in grouped.json()]

@@ -4,7 +4,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 import pytest
-from fastapi.testclient import TestClient
+from fastapi.testclient import TestClient as FastAPITestClient
 
 from app import auth, db, repository
 from app.imports.nmap import import_nmap_xml, parse_nmap_xml
@@ -18,7 +18,7 @@ def client(tmp_path, monkeypatch):
     db_path = tmp_path / "test.db"
     monkeypatch.setenv("IPAM_DB_PATH", str(db_path))
     auth.clear_tokens()
-    with TestClient(app) as test_client:
+    with FastAPITestClient(app) as test_client:
         yield test_client, db_path
     auth.clear_tokens()
 
