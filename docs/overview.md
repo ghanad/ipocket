@@ -68,6 +68,7 @@ Hosts can be linked to a vendor from the shared **Vendors** catalog.
 - Host add form supports selecting a project plus inline OS/BMC IP inputs; when a project is selected, newly linked IP assets inherit that project during host creation.
 - Hosts list shows side-by-side Edit/Delete actions in the Actions column for quick access.
 - Hosts list shows linked OS and BMC IP addresses alongside the total linked IP count.
+- In Host edit, clearing an OS/BMC IP from the drawer and saving now unlinks that IP from the host (the IP asset is kept, only `host_id` is cleared).
 - Hosts list displays a project badge (with project color) based on linked IP assignments; multiple linked projects show a warning badge.
 - Hosts page includes a collapsible search panel to filter by host name, vendor, notes, or linked IPs.
 - Adding a host now uses the same right-side drawer interaction as editing, so create/edit actions stay visually consistent.
