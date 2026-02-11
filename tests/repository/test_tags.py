@@ -13,13 +13,20 @@ from app.repository import (
     list_tags,
     update_tag,
 )
-from app.utils import normalize_tag_name
+from app.utils import normalize_tag_name, suggest_random_tag_color
 
 
 def test_tag_normalization_rules() -> None:
     assert normalize_tag_name(" Prod ") == "prod"
     with pytest.raises(ValueError):
         normalize_tag_name("bad tag")
+
+
+def test_suggest_random_tag_color_uses_hsl_palette(monkeypatch) -> None:
+    values = iter([120, 70, 50])
+    monkeypatch.setattr("app.utils.random.randint", lambda _start, _end: next(values))
+
+    assert suggest_random_tag_color() == "#26d926"
 
 
 def test_create_update_delete_tag(_setup_connection) -> None:

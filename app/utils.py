@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import colorsys
 import ipaddress
+import random
 import re
 
 from fastapi import HTTPException, status
@@ -37,6 +39,14 @@ DEFAULT_TAG_COLOR = "#e2e8f0"
 
 _HEX_COLOR_PATTERN = re.compile(r"^#[0-9a-fA-F]{6}$")
 _TAG_PATTERN = re.compile(r"^[a-z0-9_-]+$")
+
+
+def suggest_random_tag_color() -> str:
+    hue = random.randint(0, 359)
+    saturation = random.randint(55, 80) / 100
+    lightness = random.randint(45, 60) / 100
+    red, green, blue = colorsys.hls_to_rgb(hue / 360, lightness, saturation)
+    return f"#{round(red * 255):02x}{round(green * 255):02x}{round(blue * 255):02x}"
 
 
 def normalize_hex_color(value: str | None) -> str | None:

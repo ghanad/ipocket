@@ -16,6 +16,7 @@ from app.utils import (
     DEFAULT_TAG_COLOR,
     normalize_hex_color,
     normalize_tag_name,
+    suggest_random_tag_color,
 )
 from .utils import (
     _normalize_project_color,
@@ -495,7 +496,7 @@ async def ui_create_tag(
     normalized_color = None
     if not errors:
         try:
-            normalized_color = normalize_hex_color(color) or DEFAULT_TAG_COLOR
+            normalized_color = normalize_hex_color(color) or suggest_random_tag_color()
         except ValueError:
             errors.append("Tag color must be a valid hex color (example: #1a2b3c).")
 
@@ -506,7 +507,7 @@ async def ui_create_tag(
             _tags_template_context(
                 connection,
                 errors=errors,
-                form_state={"name": name, "color": color or DEFAULT_TAG_COLOR},
+                form_state={"name": name, "color": color or suggest_random_tag_color()},
             ),
             status_code=400,
             active_nav="library",
@@ -521,7 +522,7 @@ async def ui_create_tag(
             _tags_template_context(
                 connection,
                 errors=["Tag name already exists."],
-                form_state={"name": name, "color": color or DEFAULT_TAG_COLOR},
+                form_state={"name": name, "color": color or suggest_random_tag_color()},
             ),
             status_code=409,
             active_nav="library",
@@ -671,7 +672,7 @@ def _tags_template_context(
         "tags": list(repository.list_tags(connection)),
         "tag_ip_counts": repository.list_tag_ip_counts(connection),
         "errors": errors or [],
-        "form_state": form_state or {"name": "", "color": DEFAULT_TAG_COLOR},
+        "form_state": form_state or {"name": "", "color": suggest_random_tag_color()},
         "edit_errors": edit_errors or [],
         "edit_tag": edit_tag,
         "edit_form_state": edit_form_state

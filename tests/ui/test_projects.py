@@ -4,6 +4,7 @@ from app import db, repository
 from app.main import app
 from app.models import IPAssetType, UserRole
 from app.routes import ui
+from app.routes.ui import settings as settings_routes
 
 
 def test_projects_page_uses_drawer_actions(client) -> None:
@@ -164,6 +165,17 @@ def test_vendors_tab_shows_vendor_ip_counts(client, _setup_connection) -> None:
     assert "<th>IPs</th>" in response.text
     assert ">Cisco</td>" in response.text
     assert ">1</td>" in response.text
+
+
+def test_tags_tab_create_drawer_uses_random_suggested_color(client, monkeypatch) -> None:
+    monkeypatch.setattr(
+        settings_routes, "suggest_random_tag_color", lambda: "#123abc"
+    )
+
+    response = client.get("/ui/projects?tab=tags")
+
+    assert response.status_code == 200
+    assert 'name="color" value="#123abc" data-tag-input="color"' in response.text
 
 
 def test_tags_route_renders_unified_library_page(client) -> None:
