@@ -29,7 +29,7 @@ def create_ip_asset(
         asset = repository.create_ip_asset(
             connection,
             ip_address=payload.ip_address,
-            asset_type=payload.asset_type,
+            asset_type=payload.type,
             project_id=payload.project_id,
             notes=payload.notes,
             host_id=payload.host_id,
@@ -88,7 +88,7 @@ def update_ip_asset(
     updated = repository.update_ip_asset(
         connection,
         ip_address=ip_address,
-        asset_type=payload.asset_type,
+        asset_type=payload.type,
         project_id=payload.project_id,
         notes=payload.notes,
         host_id=payload.host_id,

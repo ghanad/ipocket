@@ -1,5 +1,9 @@
 from __future__ import annotations
 
+import warnings
+
+from pydantic.warnings import UnsupportedFieldAttributeWarning
+
 from app import db, repository
 from app.models import UserRole
 
@@ -93,3 +97,21 @@ def test_delete_ip_asset_endpoint_returns_404_for_missing_ip(client, _create_use
 
     delete_response = client.request("DELETE", "/ip-assets/10.10.0.250", headers=headers)
     assert delete_response.status_code == 404
+
+
+def test_create_ip_asset_has_no_pydantic_alias_warning(client, _create_user, _login, _auth_headers) -> None:
+    _create_user("editor", "editor-pass", UserRole.EDITOR)
+    headers = _auth_headers(_login("editor", "editor-pass"))
+    project_id = client.post("/projects", headers=headers, json={"name": "Core"}).json()["id"]
+
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter("always", UnsupportedFieldAttributeWarning)
+        response = client.post(
+            "/ip-assets",
+            headers=headers,
+            json={"ip_address": "10.10.0.11", "type": "VM", "project_id": project_id},
+        )
+
+    assert response.status_code == 200
+    alias_warnings = [w for w in caught if issubclass(w.category, UnsupportedFieldAttributeWarning)]
+    assert alias_warnings == []
