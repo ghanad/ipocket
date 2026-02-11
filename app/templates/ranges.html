@@ -52,7 +52,16 @@
               >
                 Edit
               </button>
-              <a class="btn btn-danger btn-small" href="/ui/ranges/{{ row.id }}/delete">Delete</a>
+              <button
+                class="btn btn-danger btn-small"
+                type="button"
+                data-range-delete="{{ row.id }}"
+                data-range-delete-name="{{ row.name }}"
+                data-range-delete-cidr="{{ row.cidr }}"
+                data-range-delete-used="{{ row.used if row.used is not none else '—' }}"
+              >
+                Delete
+              </button>
             </div>
           </td>
         </tr>
@@ -164,6 +173,71 @@
     <div class="ip-drawer-footer-actions">
       <button class="btn btn-secondary" type="button" data-range-edit-cancel>Cancel</button>
       <button class="btn btn-primary" type="submit" form="range-edit-form" data-range-edit-save disabled>Save changes</button>
+    </div>
+  </div>
+</aside>
+
+<div class="ip-drawer-overlay" data-range-delete-overlay aria-hidden="true"></div>
+<aside class="ip-drawer" data-range-delete-drawer data-range-delete-open="{{ 'true' if delete_ip_range else 'false' }}" role="dialog" aria-modal="true" aria-label="Delete IP range">
+  <div class="ip-drawer-header">
+    <div class="ip-drawer-header-row">
+      <div>
+        <h2 class="ip-drawer-title">Delete IP Range</h2>
+        <p class="ip-drawer-subtitle" data-range-delete-subtitle>Permanent removal</p>
+      </div>
+      <button class="ip-drawer-close" type="button" aria-label="Close drawer" data-range-delete-close>✕</button>
+    </div>
+  </div>
+  <div class="ip-drawer-body">
+    {% if delete_errors %}
+    <div class="alert alert-error">
+      <ul>
+        {% for error in delete_errors %}
+        <li>{{ error }}</li>
+        {% endfor %}
+      </ul>
+    </div>
+    {% endif %}
+    <form
+      class="ip-drawer-form ip-drawer-delete-form"
+      method="post"
+      action="{% if delete_ip_range %}/ui/ranges/{{ delete_ip_range.id }}/delete{% else %}#{% endif %}"
+      data-range-delete-form
+      id="range-delete-form"
+      data-range-delete-id="{{ delete_ip_range.id if delete_ip_range else '' }}"
+      data-range-delete-name="{{ delete_ip_range.name if delete_ip_range else '' }}"
+    >
+      <section class="ip-drawer-section">
+        <h3 class="ip-drawer-delete-heading">Delete this range?</h3>
+        <p class="ip-drawer-delete-warning">This action permanently removes the range.</p>
+        <dl class="ip-drawer-delete-details">
+          <div><dt>Name</dt><dd data-range-delete-name-display>{{ delete_ip_range.name if delete_ip_range else '—' }}</dd></div>
+          <div><dt>CIDR</dt><dd class="mono" data-range-delete-cidr-display>{{ delete_ip_range.cidr if delete_ip_range else '—' }}</dd></div>
+          <div><dt>Used addresses</dt><dd data-range-delete-used-display>—</dd></div>
+        </dl>
+        <label class="field field-inline">
+          <input class="checkbox" type="checkbox" data-range-delete-ack />
+          <span>I understand this cannot be undone</span>
+        </label>
+        <label class="field">
+          <span>Type the range name to confirm: <strong data-range-delete-name-inline>{{ delete_ip_range.name if delete_ip_range else '—' }}</strong></span>
+          <input
+            class="input"
+            type="text"
+            name="confirm_name"
+            autocomplete="off"
+            data-range-delete-confirm
+            value="{{ delete_confirm_value }}"
+          />
+        </label>
+      </section>
+    </form>
+  </div>
+  <div class="ip-drawer-footer">
+    <span class="ip-drawer-footer-status" data-range-delete-dirty>Choose range</span>
+    <div class="ip-drawer-footer-actions">
+      <button class="btn btn-secondary" type="button" data-range-delete-cancel>Cancel</button>
+      <button class="btn btn-danger" type="submit" form="range-delete-form" data-range-delete-submit disabled>Delete permanently</button>
     </div>
   </div>
 </aside>

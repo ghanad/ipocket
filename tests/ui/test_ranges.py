@@ -40,7 +40,11 @@ def test_ranges_page_renders_single_combined_ranges_table(client) -> None:
     assert 'class="btn btn-secondary btn-small"' in response.text
     assert 'class="btn btn-danger btn-small"' in response.text
     assert "data-range-edit" in response.text
-    assert ">Delete</a>" in response.text
+    assert "data-range-delete" in response.text
+    assert "data-range-delete-cidr=\"192.168.10.0/24\"" in response.text
+    assert "data-range-delete-cidr-display" in response.text
+    assert "data-range-delete-used-display" in response.text
+    assert "data-range-delete-drawer" in response.text
 
 
 
@@ -238,9 +242,14 @@ def test_ranges_edit_and_delete_flow(client) -> None:
         )
         assert update_response.status_code == 303
 
-        delete_confirm = client.get(f"/ui/ranges/{ip_range.id}/delete")
-        assert delete_confirm.status_code == 200
-        assert "Confirm Range Delete" in delete_confirm.text
+        delete_confirm = client.get(f"/ui/ranges/{ip_range.id}/delete", follow_redirects=False)
+        assert delete_confirm.status_code == 303
+        assert delete_confirm.headers["location"].endswith(f"/ui/ranges?delete={ip_range.id}")
+
+        delete_drawer = client.get(f"/ui/ranges?delete={ip_range.id}")
+        assert delete_drawer.status_code == 200
+        assert 'data-range-delete-open="true"' in delete_drawer.text
+        assert f'action="/ui/ranges/{ip_range.id}/delete"' in delete_drawer.text
 
         delete_error = client.post(
             f"/ui/ranges/{ip_range.id}/delete",
@@ -248,6 +257,7 @@ def test_ranges_edit_and_delete_flow(client) -> None:
         )
         assert delete_error.status_code == 400
         assert "نام رنج" in delete_error.text
+        assert 'data-range-delete-open="true"' in delete_error.text
 
         delete_response = client.post(
             f"/ui/ranges/{ip_range.id}/delete",
@@ -257,6 +267,26 @@ def test_ranges_edit_and_delete_flow(client) -> None:
         assert delete_response.status_code == 303
     finally:
         app.dependency_overrides.pop(ui.get_current_ui_user, None)
+
+
+def test_ranges_page_opens_delete_drawer_from_query_param(client) -> None:
+    import os
+    from app import db, repository
+
+    connection = db.connect(os.environ["IPAM_DB_PATH"])
+    try:
+        db.init_db(connection)
+        ip_range = repository.create_ip_range(connection, name="Delete Me", cidr="10.30.0.0/24")
+    finally:
+        connection.close()
+
+    response = client.get(f"/ui/ranges?delete={ip_range.id}")
+
+    assert response.status_code == 200
+    assert 'data-range-delete-drawer' in response.text
+    assert 'data-range-delete-open="true"' in response.text
+    assert f'data-range-delete-id="{ip_range.id}"' in response.text
+    assert f'action="/ui/ranges/{ip_range.id}/delete"' in response.text
 
 
 def test_ranges_page_opens_edit_drawer_from_query_param(client) -> None:

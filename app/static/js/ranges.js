@@ -102,6 +102,135 @@
 })();
 
 (() => {
+  const overlay = document.querySelector('[data-range-delete-overlay]');
+  const drawer = document.querySelector('[data-range-delete-drawer]');
+  const form = document.querySelector('[data-range-delete-form]');
+  const closeButton = document.querySelector('[data-range-delete-close]');
+  const cancelButton = document.querySelector('[data-range-delete-cancel]');
+  const submitButton = document.querySelector('[data-range-delete-submit]');
+  const dirtyStatus = document.querySelector('[data-range-delete-dirty]');
+  const subtitle = document.querySelector('[data-range-delete-subtitle]');
+  const nameDisplay = document.querySelector('[data-range-delete-name-display]');
+  const nameInline = document.querySelector('[data-range-delete-name-inline]');
+  const cidrDisplay = document.querySelector('[data-range-delete-cidr-display]');
+  const usedDisplay = document.querySelector('[data-range-delete-used-display]');
+  const ackInput = document.querySelector('[data-range-delete-ack]');
+  const confirmInput = document.querySelector('[data-range-delete-confirm]');
+
+  if (
+    !overlay || !drawer || !form || !closeButton || !cancelButton || !submitButton || !dirtyStatus || !subtitle ||
+    !nameDisplay || !nameInline || !cidrDisplay || !usedDisplay || !ackInput || !confirmInput
+  ) {
+    return;
+  }
+
+  const deleteButtons = document.querySelectorAll('[data-range-delete]');
+  const shouldOpenByDefault = drawer.dataset.rangeDeleteOpen === 'true';
+  let activeRange = {
+    id: form.dataset.rangeDeleteId || '',
+    name: form.dataset.rangeDeleteName || '',
+    cidr: cidrDisplay.textContent || '—',
+    used: usedDisplay.textContent || '—',
+  };
+
+  const isValid = () => {
+    if (!activeRange.id || !activeRange.name) {
+      return false;
+    }
+    if (!ackInput.checked) {
+      return false;
+    }
+    return confirmInput.value.trim() === activeRange.name;
+  };
+
+  const updateSubmitState = () => {
+    const valid = isValid();
+    submitButton.disabled = !valid;
+    if (!activeRange.id) {
+      dirtyStatus.textContent = 'Choose range';
+      return;
+    }
+    if (!ackInput.checked) {
+      dirtyStatus.textContent = 'Acknowledge delete';
+      return;
+    }
+    dirtyStatus.textContent = valid ? 'Ready to delete' : 'Type exact range name';
+  };
+
+  const applyRange = ({ id, name, cidr, used }) => {
+    activeRange = {
+      id: id || '',
+      name: name || '',
+      cidr: cidr || '—',
+      used: used || '—',
+    };
+    form.dataset.rangeDeleteId = activeRange.id;
+    form.dataset.rangeDeleteName = activeRange.name;
+    form.action = activeRange.id ? `/ui/ranges/${activeRange.id}/delete` : '#';
+    subtitle.textContent = activeRange.name || 'Permanent removal';
+    nameDisplay.textContent = activeRange.name || '—';
+    nameInline.textContent = activeRange.name || '—';
+    cidrDisplay.textContent = activeRange.cidr || '—';
+    usedDisplay.textContent = activeRange.used || '—';
+    if (!shouldOpenByDefault) {
+      confirmInput.value = '';
+    }
+    ackInput.checked = false;
+    updateSubmitState();
+  };
+
+  const drawerController = window.ipocketCreateDrawerController
+    ? window.ipocketCreateDrawerController({
+      overlay,
+      drawer,
+      onBeforeClose: () => true,
+    })
+    : null;
+
+  const openDrawer = () => {
+    drawerController?.open();
+    setTimeout(() => {
+      confirmInput.focus();
+    }, 100);
+  };
+
+  const closeDrawer = () => {
+    drawerController?.requestClose();
+  };
+
+  deleteButtons.forEach((button) => {
+    button.addEventListener('click', () => {
+      applyRange({
+        id: button.dataset.rangeDelete || '',
+        name: button.dataset.rangeDeleteName || '',
+        cidr: button.dataset.rangeDeleteCidr || '—',
+        used: button.dataset.rangeDeleteUsed || '—',
+      });
+      openDrawer();
+    });
+  });
+
+  closeButton.addEventListener('click', closeDrawer);
+  cancelButton.addEventListener('click', closeDrawer);
+  overlay.addEventListener('click', closeDrawer);
+
+  document.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape' && drawerController?.isOpen()) {
+      closeDrawer();
+    }
+  });
+
+  ackInput.addEventListener('change', updateSubmitState);
+  confirmInput.addEventListener('input', updateSubmitState);
+
+  applyRange(activeRange);
+
+  if (shouldOpenByDefault) {
+    openDrawer();
+  }
+})();
+
+(() => {
   const overlay = document.querySelector('[data-range-edit-overlay]');
   const drawer = document.querySelector('[data-range-edit-drawer]');
   const form = document.querySelector('[data-range-edit-form]');
