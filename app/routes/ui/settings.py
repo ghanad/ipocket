@@ -327,7 +327,6 @@ async def ui_create_project(
 @router.get("/ui/tags", response_class=HTMLResponse)
 def ui_list_tags(
     request: Request,
-    create: Optional[int] = Query(default=None),
     edit: Optional[int] = Query(default=None),
     delete: Optional[int] = Query(default=None),
     connection=Depends(get_connection),
@@ -346,7 +345,7 @@ def ui_list_tags(
     return _render_template(
         request,
         "tags.html",
-        _tags_template_context(connection, create_open=create is not None, edit_tag=edit_tag, delete_tag=delete_tag),
+        _tags_template_context(connection, edit_tag=edit_tag, delete_tag=delete_tag),
         active_nav="tags",
     )
 
@@ -558,7 +557,6 @@ async def ui_delete_tag(
 def _tags_template_context(
     connection,
     *,
-    create_open: bool = False,
     errors: Optional[list[str]] = None,
     form_state: Optional[dict[str, str]] = None,
     edit_errors: Optional[list[str]] = None,
@@ -571,7 +569,6 @@ def _tags_template_context(
     return {
         "title": "ipocket - Tags",
         "tags": list(repository.list_tags(connection)),
-        "create_open": create_open,
         "errors": errors or [],
         "form_state": form_state or {"name": "", "color": DEFAULT_TAG_COLOR},
         "edit_errors": edit_errors or [],

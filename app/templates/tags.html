@@ -8,7 +8,7 @@
     <p class="subtitle">Create tags first, then assign them to IP assets.</p>
   </div>
   <div class="page-header-actions">
-    <a class="btn btn-primary" href="/ui/tags?create=1" data-tag-add>New Tag</a>
+    <button class="btn btn-primary" type="button" data-tag-add>New Tag</button>
   </div>
 </section>
 
@@ -40,23 +40,23 @@
           </td>
           <td class="asset-actions-cell">
             <div class="table-actions">
-              <a
+              <button
                 class="btn btn-secondary btn-small"
-                href="/ui/tags/{{ tag.id }}/edit"
+                type="button"
                 data-tag-edit="{{ tag.id }}"
                 data-tag-name="{{ tag.name }}"
                 data-tag-color="{{ tag.color }}"
               >
                 Edit
-              </a>
-              <a
+              </button>
+              <button
                 class="btn btn-danger btn-small"
-                href="/ui/tags/{{ tag.id }}/delete"
+                type="button"
                 data-tag-delete="{{ tag.id }}"
                 data-tag-delete-name="{{ tag.name }}"
               >
                 Delete
-              </a>
+              </button>
             </div>
           </td>
         </tr>
@@ -72,7 +72,7 @@
 </section>
 
 <div class="ip-drawer-overlay" data-tag-create-overlay aria-hidden="true"></div>
-<aside class="ip-drawer" data-tag-create-drawer data-tag-open="{{ 'true' if (errors or create_open) else 'false' }}" role="dialog" aria-modal="true" aria-label="Add tag">
+<aside class="ip-drawer" data-tag-create-drawer data-tag-open="{{ 'true' if errors else 'false' }}" role="dialog" aria-modal="true" aria-label="Add tag">
   <div class="ip-drawer-header">
     <div class="ip-drawer-header-row">
       <div>
