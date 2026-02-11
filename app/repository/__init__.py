@@ -52,6 +52,7 @@ from .metadata import (
     get_vendor_by_name,
     list_project_ip_counts,
     list_projects,
+    list_tag_ip_counts,
     list_tags,
     list_vendors,
     update_project,

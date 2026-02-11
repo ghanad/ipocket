@@ -37,6 +37,7 @@ from app.repository import (
     list_hosts,
     list_hosts_with_ip_counts,
     list_hosts_with_ip_counts_paginated,
+    list_tag_ip_counts,
     list_tags,
     list_tags_for_ip_assets,
     update_ip_asset,
@@ -67,3 +68,30 @@ def test_create_update_delete_tag(_setup_connection) -> None:
     deleted = delete_tag(connection, tag.id)
     assert deleted is True
 
+
+def test_list_tag_ip_counts_excludes_archived_assets(_setup_connection) -> None:
+    connection = _setup_connection()
+    create_tag(connection, name="prod")
+    create_tag(connection, name="edge")
+
+    active_asset = create_ip_asset(
+        connection,
+        ip_address="10.88.0.10",
+        asset_type=IPAssetType.VM,
+        tags=["prod", "edge"],
+    )
+    archived_asset = create_ip_asset(
+        connection,
+        ip_address="10.88.0.11",
+        asset_type=IPAssetType.VM,
+        tags=["prod"],
+    )
+    archive_ip_asset(connection, archived_asset.ip_address)
+
+    counts = list_tag_ip_counts(connection)
+
+    prod_tag = next(tag for tag in list_tags(connection) if tag.name == "prod")
+    edge_tag = next(tag for tag in list_tags(connection) if tag.name == "edge")
+    assert counts[prod_tag.id] == 1
+    assert counts[edge_tag.id] == 1
+    assert active_asset.id != archived_asset.id
