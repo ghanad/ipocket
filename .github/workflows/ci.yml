@@ -9,7 +9,7 @@ on:
       - "v*"
 
 jobs:
-  minimum-tests:
+  test-suite:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -25,9 +25,9 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
-      - name: Run minimum tests
+      - name: Run full pytest suite
         run: |
-          pytest tests/test_health_and_metrics.py
+          pytest tests
 
   docker-release:
     if: startsWith(github.ref, 'refs/tags/')
