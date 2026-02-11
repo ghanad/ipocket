@@ -158,7 +158,7 @@ UI design reference templates live in `/ui_template` for layout and styling guid
 7) Open **Data Ops** from the sidebar to import or export data using one unified page with tabs.
 8) When assigning tags on IP Assets or Range Address drawers, use the chip picker (`Add tags...`) to search and select existing tags only (create new tag names first in **Library → Tags**).
 
-Assignment workflow note: use **IP Assets → Assignment = Unassigned only** to review and update records that still need a project. The old dedicated **Needs Assignment** page is removed.
+Assignment workflow note: use **IP Assets → Assignment = Unassigned only** to review and update records that still need a project. You can also use **Project = Unassigned** in the search filters for the same project-missing view. The old dedicated **Needs Assignment** page is removed.
 
 ## Example API calls
 Login and capture a token:

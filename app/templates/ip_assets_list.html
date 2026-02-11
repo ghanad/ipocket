@@ -39,9 +39,10 @@
         hx-push-url="true"
         hx-include="closest form"
       >
-        <option value="">All</option>
+        <option value=""{% if filters.project_filter == "" %} selected{% endif %}>All</option>
+        <option value="unassigned"{% if filters.project_filter == "unassigned" %} selected{% endif %}>Unassigned</option>
         {% for project in projects %}
-        <option value="{{ project.id }}"{% if filters.project_id == project.id %} selected{% endif %}>{{ project.name }}</option>
+        <option value="{{ project.id }}"{% if filters.project_filter == (project.id ~ "") %} selected{% endif %}>{{ project.name }}</option>
         {% endfor %}
       </select>
     </label>

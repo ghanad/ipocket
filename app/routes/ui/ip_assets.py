@@ -111,7 +111,13 @@ def ui_list_ip_assets(
     if per_page_value not in allowed_page_sizes:
         per_page_value = 20
     page_value = _parse_positive_int_query(page, 1)
-    parsed_project_id = _parse_optional_int_query(project_id)
+    project_filter_value = (project_id or "").strip()
+    project_unassigned_only = project_filter_value == "unassigned"
+    parsed_project_id = (
+        None
+        if project_unassigned_only
+        else _parse_optional_int_query(project_filter_value)
+    )
     try:
         asset_type_enum = _normalize_asset_type(asset_type)
     except ValueError:
@@ -126,6 +132,7 @@ def ui_list_ip_assets(
     total_count = repository.count_active_ip_assets(
         connection,
         project_id=parsed_project_id,
+        project_unassigned_only=project_unassigned_only,
         asset_type=asset_type_enum,
         unassigned_only=unassigned_only,
         query_text=query_text,
@@ -138,6 +145,7 @@ def ui_list_ip_assets(
     assets = repository.list_active_ip_assets_paginated(
         connection,
         project_id=parsed_project_id,
+        project_unassigned_only=project_unassigned_only,
         asset_type=asset_type_enum,
         unassigned_only=unassigned_only,
         query_text=query_text,
@@ -179,7 +187,9 @@ def ui_list_ip_assets(
     pagination_params: dict[str, object] = {"per-page": per_page_value}
     if q_value:
         pagination_params["q"] = q_value
-    if parsed_project_id is not None:
+    if project_unassigned_only:
+        pagination_params["project_id"] = "unassigned"
+    elif parsed_project_id is not None:
         pagination_params["project_id"] = parsed_project_id
     if tag_values:
         pagination_params["tag"] = tag_values
@@ -229,6 +239,11 @@ def ui_list_ip_assets(
                 "filters": {
                     "q": q or "",
                     "project_id": parsed_project_id,
+                    "project_filter": (
+                        "unassigned"
+                        if project_unassigned_only
+                        else str(parsed_project_id or "")
+                    ),
                     "tag": tag_values,
                     "type": asset_type_enum.value if asset_type_enum else "",
                     "unassigned_only": unassigned_only,
