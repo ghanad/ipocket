@@ -45,9 +45,10 @@ ipocket is a lightweight IP inventory app to track addresses and their project a
 - Projects management is part of the shared Library page and follows the same right-side drawer UX for create/edit/delete actions, including destructive confirmation by typing the exact project name.
 - The Library page uses one shared "Catalog Settings" header with compact segmented tabs (Projects/Tags/Vendors) and a tab-aware primary action button (New Project/Tag/Vendor) to keep controls in one place.
 - Projects table now shows an **IPs** count column so you can quickly see how many active IP assets are currently assigned to each project.
-- Export data as CSV, JSON, or bundle (JSON/ZIP) for round-trip workflows.
-- Import data from bundle.json or CSV with dry-run support and upserts.
-- Upload Nmap XML from the Import page to discover reachable IPs and add them as `OTHER` assets, with inline example commands.
+- Use the shared **Data Ops** page (Import/Export tabs) for round-trip workflows.
+- Export data as CSV, JSON, or bundle (JSON/ZIP) from the Data Ops Export tab.
+- Import data from bundle.json or CSV with dry-run support and upserts from the Data Ops Import tab.
+- Upload Nmap XML from the Data Ops Import tab to discover reachable IPs and add them as `OTHER` assets, with inline example commands.
 - Prometheus metrics on `/metrics`
 - Prometheus SD endpoint on `/sd/node` with project grouping
 - Audit logging for IP asset create/update/delete actions, surfaced on the IP detail page and a global Audit Log view (both require authentication).

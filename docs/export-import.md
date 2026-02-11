@@ -13,7 +13,12 @@ ipocket supports round-trip workflows: export data (CSV/JSON/bundle) and re-impo
 
 ### UI
 
-Open `/ui/import` and upload:
+Open `/ui/import` and use the tabs:
+
+- `Import` tab for uploads
+- `Export` tab for downloads
+
+On the `Import` tab upload:
 
 - Bundle JSON section: `bundle.json`
 - CSV section: `hosts.csv` and/or `ip-assets.csv` (empty uploads are ignored)

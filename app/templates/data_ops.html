@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="page-header">
+  <div>
+    <p class="eyebrow">Data Operations</p>
+    <h1>Import & Export</h1>
+    <p class="subtitle">Move inventory data in and out from one place.</p>
+  </div>
+</section>
+
+<div class="tabs" role="tablist" aria-label="Data operations sections" style="margin-bottom: 16px;">
+  <a class="tab{% if active_tab == 'import' %} tab-active{% endif %}" href="/ui/import?tab=import" role="tab" aria-selected="{{ 'true' if active_tab == 'import' else 'false' }}">Import</a>
+  <a class="tab{% if active_tab == 'export' %} tab-active{% endif %}" href="/ui/import?tab=export" role="tab" aria-selected="{{ 'true' if active_tab == 'export' else 'false' }}">Export</a>
+</div>
+
+{% if active_tab == "export" %}
+  {% include "partials/export_tab_content.html" %}
+{% else %}
+  {% include "partials/import_tab_content.html" %}
+{% endif %}
+{% endblock %}

@@ -27,17 +27,46 @@ from .utils import (
 
 router = APIRouter()
 
+def _data_ops_context(
+    *,
+    active_tab: str = "import",
+    **overrides: object,
+) -> dict[str, object]:
+    context: dict[str, object] = {
+        "title": "ipocket - Data Operations",
+        "active_tab": active_tab,
+        "bundle_result": None,
+        "csv_result": None,
+        "nmap_result": None,
+        "errors": [],
+        "nmap_errors": [],
+    }
+    context.update(overrides)
+    return context
+
+
+def _render_data_ops_template(
+    request: Request,
+    *,
+    active_tab: str = "import",
+    status_code: int = status.HTTP_200_OK,
+    **overrides: object,
+) -> HTMLResponse:
+    return _render_template(
+        request,
+        "data_ops.html",
+        _data_ops_context(active_tab=active_tab, **overrides),
+        active_nav="data-ops",
+        status_code=status_code,
+    )
+
+
 @router.get("/ui/export", response_class=HTMLResponse)
 def ui_export(
     request: Request,
     _user=Depends(get_current_ui_user),
 ) -> HTMLResponse:
-    return _render_template(
-        request,
-        "export.html",
-        {"title": "ipocket - Export"},
-        active_nav="export",
-    )
+    return _render_data_ops_template(request, active_tab="export")
 
 def _summary_payload(summary: ImportSummary) -> dict[str, dict[str, int]]:
     return {
@@ -67,21 +96,11 @@ def _nmap_result_payload(result: NmapImportResult) -> dict[str, object]:
 @router.get("/ui/import", response_class=HTMLResponse)
 def ui_import(
     request: Request,
+    tab: Optional[str] = Query(default=None),
     _user=Depends(get_current_ui_user),
 ) -> HTMLResponse:
-    return _render_template(
-        request,
-        "import.html",
-        {
-            "title": "ipocket - Import",
-            "bundle_result": None,
-            "csv_result": None,
-            "nmap_result": None,
-            "errors": [],
-            "nmap_errors": [],
-        },
-        active_nav="import",
-    )
+    active_tab = "export" if tab == "export" else "import"
+    return _render_data_ops_template(request, active_tab=active_tab)
 
 @router.get("/ui/import-nmap", response_class=HTMLResponse)
 def ui_import_nmap(
@@ -103,34 +122,18 @@ async def ui_import_nmap_submit(
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN)
     upload = form_data.get("nmap_file")
     if upload is None:
-        return _render_template(
+        return _render_data_ops_template(
             request,
-            "import.html",
-            {
-                "title": "ipocket - Import",
-                "bundle_result": None,
-                "csv_result": None,
-                "nmap_result": None,
-                "errors": [],
-                "nmap_errors": ["Nmap XML file is required."],
-            },
-            active_nav="import",
+            active_tab="import",
+            nmap_errors=["Nmap XML file is required."],
             status_code=status.HTTP_400_BAD_REQUEST,
         )
     payload = await upload.read()
     if not payload:
-        return _render_template(
+        return _render_data_ops_template(
             request,
-            "import.html",
-            {
-                "title": "ipocket - Import",
-                "bundle_result": None,
-                "csv_result": None,
-                "nmap_result": None,
-                "errors": [],
-                "nmap_errors": ["Nmap XML file is empty."],
-            },
-            active_nav="import",
+            active_tab="import",
+            nmap_errors=["Nmap XML file is empty."],
             status_code=status.HTTP_400_BAD_REQUEST,
         )
     result = import_nmap_xml(connection, payload, dry_run=dry_run, current_user=user)
@@ -140,19 +143,11 @@ async def ui_import_nmap_submit(
             toast_messages.append({"type": "error", "message": "Nmap import completed with errors."})
         else:
             toast_messages.append({"type": "success", "message": "Nmap import applied successfully."})
-    return _render_template(
+    return _render_data_ops_template(
         request,
-        "import.html",
-        {
-            "title": "ipocket - Import",
-            "bundle_result": None,
-            "csv_result": None,
-            "nmap_result": _nmap_result_payload(result),
-            "errors": [],
-            "nmap_errors": [],
-            "toast_messages": toast_messages,
-        },
-        active_nav="import",
+        active_tab="import",
+        nmap_result=_nmap_result_payload(result),
+        toast_messages=toast_messages,
     )
 
 @router.post("/ui/import/bundle", response_class=HTMLResponse)
@@ -168,20 +163,12 @@ async def ui_import_bundle(
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN)
     upload = form_data.get("bundle_file")
     if upload is None:
-        return _render_template(
+        return _render_data_ops_template(
             request,
-        "import.html",
-        {
-            "title": "ipocket - Import",
-            "bundle_result": None,
-            "csv_result": None,
-            "nmap_result": None,
-            "errors": ["bundle.json file is required."],
-            "nmap_errors": [],
-        },
-        active_nav="import",
-        status_code=status.HTTP_400_BAD_REQUEST,
-    )
+            active_tab="import",
+            errors=["bundle.json file is required."],
+            status_code=status.HTTP_400_BAD_REQUEST,
+        )
     payload = await upload.read()
     result = run_import(connection, BundleImporter(), {"bundle": payload}, dry_run=dry_run)
     toast_messages = []
@@ -190,19 +177,11 @@ async def ui_import_bundle(
             toast_messages.append({"type": "error", "message": "Bundle import completed with errors."})
         else:
             toast_messages.append({"type": "success", "message": "Bundle import applied successfully."})
-    return _render_template(
+    return _render_data_ops_template(
         request,
-        "import.html",
-        {
-            "title": "ipocket - Import",
-            "bundle_result": _import_result_payload(result),
-            "csv_result": None,
-            "nmap_result": None,
-            "errors": [],
-            "nmap_errors": [],
-            "toast_messages": toast_messages,
-        },
-        active_nav="import",
+        active_tab="import",
+        bundle_result=_import_result_payload(result),
+        toast_messages=toast_messages,
     )
 
 @router.post("/ui/import/csv", response_class=HTMLResponse)
@@ -219,20 +198,12 @@ async def ui_import_csv(
     hosts_file = form_data.get("hosts_file")
     ip_assets_file = form_data.get("ip_assets_file")
     if hosts_file is None and ip_assets_file is None:
-        return _render_template(
+        return _render_data_ops_template(
             request,
-        "import.html",
-        {
-            "title": "ipocket - Import",
-            "bundle_result": None,
-            "csv_result": None,
-            "nmap_result": None,
-            "errors": ["Upload at least one CSV file (hosts.csv or ip-assets.csv)."],
-            "nmap_errors": [],
-        },
-        active_nav="import",
-        status_code=status.HTTP_400_BAD_REQUEST,
-    )
+            active_tab="import",
+            errors=["Upload at least one CSV file (hosts.csv or ip-assets.csv)."],
+            status_code=status.HTTP_400_BAD_REQUEST,
+        )
     inputs: dict[str, bytes] = {}
     if hosts_file is not None:
         hosts_payload = await hosts_file.read()
@@ -243,20 +214,12 @@ async def ui_import_csv(
         if ip_assets_payload:
             inputs["ip_assets"] = ip_assets_payload
     if not inputs:
-        return _render_template(
+        return _render_data_ops_template(
             request,
-        "import.html",
-        {
-            "title": "ipocket - Import",
-            "bundle_result": None,
-            "csv_result": None,
-            "nmap_result": None,
-            "errors": ["Upload at least one non-empty CSV file (hosts.csv or ip-assets.csv)."],
-            "nmap_errors": [],
-        },
-        active_nav="import",
-        status_code=status.HTTP_400_BAD_REQUEST,
-    )
+            active_tab="import",
+            errors=["Upload at least one non-empty CSV file (hosts.csv or ip-assets.csv)."],
+            status_code=status.HTTP_400_BAD_REQUEST,
+        )
     result = run_import(connection, CsvImporter(), inputs, dry_run=dry_run)
     toast_messages = []
     if not dry_run:
@@ -264,19 +227,11 @@ async def ui_import_csv(
             toast_messages.append({"type": "error", "message": "CSV import completed with errors."})
         else:
             toast_messages.append({"type": "success", "message": "CSV import applied successfully."})
-    return _render_template(
+    return _render_data_ops_template(
         request,
-        "import.html",
-        {
-            "title": "ipocket - Import",
-            "bundle_result": None,
-            "csv_result": _import_result_payload(result),
-            "nmap_result": None,
-            "errors": [],
-            "nmap_errors": [],
-            "toast_messages": toast_messages,
-        },
-        active_nav="import",
+        active_tab="import",
+        csv_result=_import_result_payload(result),
+        toast_messages=toast_messages,
     )
 
 @router.get("/export/ip-assets.csv")

@@ -154,6 +154,7 @@ UI design reference templates live in `/ui_template` for layout and styling guid
 3) Open **Library** from the sidebar and use tabs to create Projects, Tags, and Vendors.
 5) Create Hosts from the **Hosts** page and pick a Vendor when needed.
 6) Add IPs from the **IP Assets** page.
+7) Open **Data Ops** from the sidebar to import or export data using one unified page with tabs.
 
 Assignment workflow note: use **IP Assets → Assignment = Unassigned only** to review and update records that still need a project. The old dedicated **Needs Assignment** page is removed.
 
