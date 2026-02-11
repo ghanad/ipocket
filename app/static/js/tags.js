@@ -1,4 +1,45 @@
 (() => {
+  const createDrawerController = window.ipocketCreateDrawerController
+    || (({ overlay, drawer, onBeforeClose }) => {
+      if (!overlay || !drawer) {
+        return null;
+      }
+
+      let isOpen = false;
+
+      const open = () => {
+        overlay.classList.add('is-open');
+        drawer.classList.add('is-open');
+        isOpen = true;
+      };
+
+      const close = () => {
+        overlay.classList.remove('is-open');
+        drawer.classList.remove('is-open');
+        isOpen = false;
+      };
+
+      const requestClose = () => {
+        if (!isOpen) {
+          return;
+        }
+        if (typeof onBeforeClose === 'function') {
+          const canClose = onBeforeClose();
+          if (canClose === false) {
+            return;
+          }
+        }
+        close();
+      };
+
+      return {
+        open,
+        close,
+        requestClose,
+        isOpen: () => isOpen,
+      };
+    });
+
   const overlay = document.querySelector('[data-tag-create-overlay]');
   const drawer = document.querySelector('[data-tag-create-drawer]');
   const form = document.querySelector('[data-tag-create-form]');
@@ -42,18 +83,16 @@
     dirtyStatus.textContent = dirty ? 'Ready to create' : 'Enter details';
   };
 
-  const drawerController = window.ipocketCreateDrawerController
-    ? window.ipocketCreateDrawerController({
-      overlay,
-      drawer,
-      onBeforeClose: () => {
-        if (!isDirty()) {
-          return true;
-        }
-        return window.confirm('Discard changes?');
-      },
-    })
-    : null;
+  const drawerController = createDrawerController({
+    overlay,
+    drawer,
+    onBeforeClose: () => {
+      if (!isDirty()) {
+        return true;
+      }
+      return window.confirm('Discard changes?');
+    },
+  });
 
   const openDrawer = () => {
     drawerController?.open();
@@ -97,6 +136,47 @@
 })();
 
 (() => {
+  const createDrawerController = window.ipocketCreateDrawerController
+    || (({ overlay, drawer, onBeforeClose }) => {
+      if (!overlay || !drawer) {
+        return null;
+      }
+
+      let isOpen = false;
+
+      const open = () => {
+        overlay.classList.add('is-open');
+        drawer.classList.add('is-open');
+        isOpen = true;
+      };
+
+      const close = () => {
+        overlay.classList.remove('is-open');
+        drawer.classList.remove('is-open');
+        isOpen = false;
+      };
+
+      const requestClose = () => {
+        if (!isOpen) {
+          return;
+        }
+        if (typeof onBeforeClose === 'function') {
+          const canClose = onBeforeClose();
+          if (canClose === false) {
+            return;
+          }
+        }
+        close();
+      };
+
+      return {
+        open,
+        close,
+        requestClose,
+        isOpen: () => isOpen,
+      };
+    });
+
   const overlay = document.querySelector('[data-tag-edit-overlay]');
   const drawer = document.querySelector('[data-tag-edit-drawer]');
   const form = document.querySelector('[data-tag-edit-form]');
@@ -146,18 +226,16 @@
     dirtyStatus.textContent = dirty ? 'Ready to save' : 'No changes yet';
   };
 
-  const drawerController = window.ipocketCreateDrawerController
-    ? window.ipocketCreateDrawerController({
-      overlay,
-      drawer,
-      onBeforeClose: () => {
-        if (!isDirty()) {
-          return true;
-        }
-        return window.confirm('Discard changes?');
-      },
-    })
-    : null;
+  const drawerController = createDrawerController({
+    overlay,
+    drawer,
+    onBeforeClose: () => {
+      if (!isDirty()) {
+        return true;
+      }
+      return window.confirm('Discard changes?');
+    },
+  });
 
   const openDrawer = () => {
     drawerController?.open();
@@ -225,6 +303,47 @@
 })();
 
 (() => {
+  const createDrawerController = window.ipocketCreateDrawerController
+    || (({ overlay, drawer, onBeforeClose }) => {
+      if (!overlay || !drawer) {
+        return null;
+      }
+
+      let isOpen = false;
+
+      const open = () => {
+        overlay.classList.add('is-open');
+        drawer.classList.add('is-open');
+        isOpen = true;
+      };
+
+      const close = () => {
+        overlay.classList.remove('is-open');
+        drawer.classList.remove('is-open');
+        isOpen = false;
+      };
+
+      const requestClose = () => {
+        if (!isOpen) {
+          return;
+        }
+        if (typeof onBeforeClose === 'function') {
+          const canClose = onBeforeClose();
+          if (canClose === false) {
+            return;
+          }
+        }
+        close();
+      };
+
+      return {
+        open,
+        close,
+        requestClose,
+        isOpen: () => isOpen,
+      };
+    });
+
   const overlay = document.querySelector('[data-tag-delete-overlay]');
   const drawer = document.querySelector('[data-tag-delete-drawer]');
   const form = document.querySelector('[data-tag-delete-form]');
@@ -298,13 +417,11 @@
     updateSubmitState();
   };
 
-  const drawerController = window.ipocketCreateDrawerController
-    ? window.ipocketCreateDrawerController({
-      overlay,
-      drawer,
-      onBeforeClose: () => true,
-    })
-    : null;
+  const drawerController = createDrawerController({
+    overlay,
+    drawer,
+    onBeforeClose: () => true,
+  });
 
   const openDrawer = () => {
     drawerController?.open();

@@ -34,7 +34,7 @@
         {% for tag in tags %}
         <tr>
           <td>{{ tag.name }}</td>
-          <td><span class="mono">{{ tag.color }}</span></td>
+          <td><span class="tag tag-color" style="--tag-color: {{ tag.color }}">{{ tag.color }}</span></td>
           <td><span class="tag tag-color" style="--tag-color: {{ tag.color }}">{{ tag.name }}</span></td>
           <td class="asset-actions-cell">
             <div class="table-actions">

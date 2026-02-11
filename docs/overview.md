@@ -25,6 +25,7 @@ ipocket is a lightweight IP inventory app to track addresses and their project a
 - IP assets list includes bulk edit controls to update type, project assignment, or add tags across multiple IPs at once.
 - Tags on IP assets (comma-separated in the UI) for lightweight grouping, with a dedicated Tags page to manage names and colors.
 - Tags page now uses the shared right-side drawer workflow for create/edit/delete so management UX matches IP assets and ranges.
+- Tags table now renders color values as color chips (not plain hex text) for faster scanning.
 - Tag deletion now uses in-drawer acknowledgement + exact-name confirmation before enabling permanent removal.
 - Management overview dashboard with quick totals for IPs, hosts, vendors, and projects, with cards linking to the relevant detail lists.
 - CIDR-based subnet utilization report on the Management overview page that shows used vs. free IPs per range.
