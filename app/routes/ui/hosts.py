@@ -485,4 +485,10 @@ async def ui_delete_host(
     if not deleted:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
 
-    return RedirectResponse(url="/ui/hosts", status_code=303)
+    return _redirect_with_flash(
+        request,
+        "/ui/hosts",
+        f"Host {host.name} deleted.",
+        message_type="success",
+        status_code=303,
+    )
