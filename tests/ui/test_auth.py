@@ -1,10 +1,8 @@
 from __future__ import annotations
 
-from pathlib import Path
 
 from app import db, repository
-from app.main import app
-from app.models import IPAsset, IPAssetType, User, UserRole
+from app.models import IPAssetType, UserRole
 from app.routes import ui
 
 
@@ -39,7 +37,6 @@ def test_audit_log_page_requires_authentication(client) -> None:
 def test_ip_asset_detail_page_requires_authentication(client) -> None:
     """Unauthenticated users should be redirected to login page for IP asset detail."""
     import os
-    from app import db, repository
 
     connection = db.connect(os.environ["IPAM_DB_PATH"])
     try:
@@ -62,7 +59,6 @@ def test_login_preserves_return_url(client) -> None:
 def test_login_redirects_to_return_url_after_success(client) -> None:
     """After successful login, user should be redirected to the return URL."""
     import os
-    from app import db, repository
     from app.auth import hash_password
 
     connection = db.connect(os.environ["IPAM_DB_PATH"])

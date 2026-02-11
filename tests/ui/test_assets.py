@@ -11,7 +11,6 @@ from app.routes import ui
 
 def test_ip_assets_drawer_auto_host_creates_and_assigns(client) -> None:
     import os
-    from app import db, repository
 
     connection = db.connect(os.environ["IPAM_DB_PATH"])
     try:
@@ -48,7 +47,6 @@ def test_ip_assets_drawer_auto_host_creates_and_assigns(client) -> None:
 
 def test_ip_assets_drawer_auto_host_rejects_assigned_asset(client) -> None:
     import os
-    from app import db, repository
 
     connection = db.connect(os.environ["IPAM_DB_PATH"])
     try:
@@ -85,7 +83,6 @@ def test_sample_csv_files_are_available(client) -> None:
 
 def test_ip_asset_form_includes_tags_field_and_prefill(client) -> None:
     import os
-    from app import db, repository
 
     connection = db.connect(os.environ["IPAM_DB_PATH"])
     try:
@@ -118,7 +115,6 @@ def test_ip_asset_form_includes_tags_field_and_prefill(client) -> None:
 
 def test_tags_page_uses_drawers_for_create_edit_delete(client) -> None:
     import os
-    from app import db, repository
 
     connection = db.connect(os.environ["IPAM_DB_PATH"])
     try:
@@ -165,7 +161,6 @@ def test_tags_page_uses_drawers_for_create_edit_delete(client) -> None:
     assert 'class="card table-card tags-existing-card"' in response.text
 def test_tag_delete_requires_exact_name_confirmation(client) -> None:
     import os
-    from app import db, repository
 
     connection = db.connect(os.environ["IPAM_DB_PATH"])
     try:
@@ -186,7 +181,6 @@ def test_tag_delete_requires_exact_name_confirmation(client) -> None:
 
 def test_ip_assets_list_uses_drawer_actions_for_edit_and_delete(client) -> None:
     import os
-    from app import db, repository
 
     connection = db.connect(os.environ["IPAM_DB_PATH"])
     try:
@@ -244,7 +238,6 @@ def test_ip_assets_list_uses_drawer_actions_for_edit_and_delete(client) -> None:
 
 def test_ip_assets_edit_can_clear_project_assignment(client) -> None:
     import os
-    from app import db, repository
 
     connection = db.connect(os.environ["IPAM_DB_PATH"])
     try:
@@ -291,7 +284,6 @@ def test_ip_assets_edit_can_clear_project_assignment(client) -> None:
 
 def test_ip_assets_list_collapses_tag_chips_and_renders_more_popover_trigger(client) -> None:
     import os
-    from app import db, repository
 
     connection = db.connect(os.environ["IPAM_DB_PATH"])
     try:
@@ -327,7 +319,6 @@ def test_ip_assets_list_collapses_tag_chips_and_renders_more_popover_trigger(cli
 
 def test_ip_assets_list_htmx_response_renders_table_partial(client) -> None:
     import os
-    from app import db, repository
 
     connection = db.connect(os.environ["IPAM_DB_PATH"])
     try:
@@ -346,7 +337,6 @@ def test_ip_assets_list_htmx_response_renders_table_partial(client) -> None:
 
 def test_ip_assets_bulk_edit_updates_selected_assets(client) -> None:
     import os
-    from app import db, repository
 
     connection = db.connect(os.environ["IPAM_DB_PATH"])
     try:
@@ -413,7 +403,6 @@ def test_ip_assets_bulk_edit_updates_selected_assets(client) -> None:
 
 def test_ip_assets_edit_returns_to_list_when_return_to_set(client) -> None:
     import os
-    from app import db, repository
 
     connection = db.connect(os.environ["IPAM_DB_PATH"])
     try:
@@ -449,7 +438,6 @@ def test_ip_assets_edit_returns_to_list_when_return_to_set(client) -> None:
 
 def test_ip_assets_create_returns_to_list_when_return_to_set(client) -> None:
     import os
-    from app import db, repository
 
     connection = db.connect(os.environ["IPAM_DB_PATH"])
     try:
@@ -481,7 +469,6 @@ def test_ip_assets_create_returns_to_list_when_return_to_set(client) -> None:
 
 def test_ip_assets_bulk_edit_shows_error_toast_for_missing_selection(client) -> None:
     import os
-    from app import db, repository
 
     connection = db.connect(os.environ["IPAM_DB_PATH"])
     try:
@@ -513,7 +500,6 @@ def test_ip_assets_bulk_edit_shows_error_toast_for_missing_selection(client) -> 
 
 def test_ip_assets_create_rejects_nonexistent_tag_selection(client) -> None:
     import os
-    from app import db, repository
 
     connection = db.connect(os.environ["IPAM_DB_PATH"])
     try:
@@ -545,7 +531,6 @@ def test_ip_assets_create_rejects_nonexistent_tag_selection(client) -> None:
 
 def test_ip_assets_bulk_edit_rejects_nonexistent_tag_selection(client) -> None:
     import os
-    from app import db, repository
 
     connection = db.connect(os.environ["IPAM_DB_PATH"])
     try:
@@ -576,7 +561,6 @@ def test_ip_assets_bulk_edit_rejects_nonexistent_tag_selection(client) -> None:
 
 def test_ip_assets_list_renders_project_color_tag(client) -> None:
     import os
-    from app import db, repository
 
     connection = db.connect(os.environ["IPAM_DB_PATH"])
     try:
@@ -600,7 +584,6 @@ def test_ip_assets_list_renders_project_color_tag(client) -> None:
 
 def test_ip_assets_list_search_trims_whitespace(client) -> None:
     import os
-    from app import db, repository
 
     connection = db.connect(os.environ["IPAM_DB_PATH"])
     try:
@@ -618,7 +601,6 @@ def test_ip_assets_list_search_trims_whitespace(client) -> None:
 
 def test_ip_assets_list_supports_multi_tag_filter_and_clickable_filter_chips(client) -> None:
     import os
-    from app import db, repository
 
     connection = db.connect(os.environ["IPAM_DB_PATH"])
     try:
@@ -673,7 +655,6 @@ def test_ip_assets_list_includes_archived_filter(client) -> None:
 
 def test_ip_assets_list_paginates_with_default_page_size(client) -> None:
     import os
-    from app import db, repository
 
     connection = db.connect(os.environ["IPAM_DB_PATH"])
     try:
@@ -697,7 +678,6 @@ def test_ip_assets_list_paginates_with_default_page_size(client) -> None:
 
 def test_ip_assets_list_paginates_with_custom_page_size(client) -> None:
     import os
-    from app import db, repository
 
     connection = db.connect(os.environ["IPAM_DB_PATH"])
     try:
@@ -722,7 +702,6 @@ def test_ip_assets_list_paginates_with_custom_page_size(client) -> None:
 def test_ip_asset_detail_page_requires_authentication(client) -> None:
     """Unauthenticated users should be redirected to login page for IP asset detail."""
     import os
-    from app import db, repository
 
     connection = db.connect(os.environ["IPAM_DB_PATH"])
     try:
@@ -737,7 +716,6 @@ def test_ip_asset_detail_page_requires_authentication(client) -> None:
 
 def test_ui_delete_ip_asset_requires_checkbox_confirmation(client) -> None:
     import os
-    from app import db, repository
 
     connection = db.connect(os.environ["IPAM_DB_PATH"])
     try:
@@ -761,7 +739,6 @@ def test_ui_delete_ip_asset_requires_checkbox_confirmation(client) -> None:
 
 def test_ui_delete_ip_asset_with_low_risk_confirmation_checkbox_only(client) -> None:
     import os
-    from app import db, repository
 
     connection = db.connect(os.environ["IPAM_DB_PATH"])
     try:
@@ -800,7 +777,6 @@ def test_ui_delete_ip_asset_with_low_risk_confirmation_checkbox_only(client) -> 
 
 def test_ui_delete_high_risk_ip_asset_requires_exact_ip(client) -> None:
     import os
-    from app import db, repository
 
     connection = db.connect(os.environ["IPAM_DB_PATH"])
     try:
@@ -905,7 +881,6 @@ def test_ui_create_bmc_passes_auto_host_flag_disabled(client, monkeypatch) -> No
 
 def test_ip_asset_detail_uses_enhanced_layout_and_delete_drawer(client) -> None:
     import os
-    from app import db, repository
 
     connection = db.connect(os.environ["IPAM_DB_PATH"])
     try:
@@ -946,7 +921,6 @@ def test_ip_asset_detail_uses_enhanced_layout_and_delete_drawer(client) -> None:
 
 def test_ip_asset_detail_shows_no_tags_and_no_notes_defaults(client) -> None:
     import os
-    from app import db, repository
 
     connection = db.connect(os.environ["IPAM_DB_PATH"])
     try:

@@ -338,7 +338,7 @@ def test_round_trip_bundle_import(tmp_path) -> None:
         vendor = repository.create_vendor(source_connection, "HPE")
         project = repository.create_project(source_connection, "Core", "Core project", "#1d4ed8")
         host = repository.create_host(source_connection, "node-03", "notes", vendor.name)
-        asset = repository.create_ip_asset(
+        repository.create_ip_asset(
             source_connection,
             ip_address="10.0.0.30",
             asset_type=IPAssetType.VM,

@@ -7,7 +7,7 @@ import sqlite3
 from typing import Optional
 from urllib.parse import urlencode
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from fastapi.responses import HTMLResponse, RedirectResponse, Response
 
 from app import repository
@@ -79,7 +79,6 @@ def ui_list_projects(
         "projects.html",
         {
             "title": "ipocket - Projects",
-                "active_tab": "projects",
             "projects": projects,
             "project_ip_counts": repository.list_project_ip_counts(connection),
             "errors": [],

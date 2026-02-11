@@ -4,7 +4,7 @@ from typing import Optional
 
 from app.imports.applier import apply_bundle
 from app.imports.importers import Importer
-from app.imports.models import ImportApplyResult, ImportBundle, ImportIssue, ImportParseError, ImportSummary
+from app.imports.models import ImportApplyResult, ImportIssue, ImportParseError, ImportSummary
 from app.imports.validator import validate_bundle
 
 

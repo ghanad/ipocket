@@ -410,7 +410,7 @@ async def ui_add_ip_submit(
         )
 
     try:
-        asset = repository.create_ip_asset(
+        repository.create_ip_asset(
             connection,
             ip_address=ip_address,
             asset_type=normalized_asset_type,

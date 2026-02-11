@@ -1,10 +1,8 @@
 from __future__ import annotations
 
-from pathlib import Path
 
-from app import db, repository
 from app.main import app
-from app.models import IPAsset, IPAssetType, User, UserRole
+from app.models import User, UserRole
 from app.routes import ui
 
 

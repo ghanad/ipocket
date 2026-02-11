@@ -1,16 +1,14 @@
 from __future__ import annotations
 
-from pathlib import Path
 
 from app import db, repository
 from app.main import app
-from app.models import IPAsset, IPAssetType, User, UserRole
+from app.models import IPAssetType, User, UserRole
 from app.routes import ui
 
 
 def test_hosts_page_renders_edit_drawer_and_actions(client) -> None:
     import os
-    from app import db, repository
 
     connection = db.connect(os.environ["IPAM_DB_PATH"])
     try:
@@ -43,7 +41,6 @@ def test_hosts_page_renders_edit_drawer_and_actions(client) -> None:
 
 def test_hosts_list_renders_project_color_tag(client) -> None:
     import os
-    from app import db, repository
 
     connection = db.connect(os.environ["IPAM_DB_PATH"])
     try:
@@ -69,7 +66,6 @@ def test_hosts_list_renders_project_color_tag(client) -> None:
 
 def test_hosts_list_uses_edit_drawer_actions(client) -> None:
     import os
-    from app import db, repository
 
     connection = db.connect(os.environ["IPAM_DB_PATH"])
     try:
@@ -107,7 +103,6 @@ def test_hosts_add_uses_side_panel(client) -> None:
 
 def test_hosts_list_search_trims_whitespace(client) -> None:
     import os
-    from app import db, repository
 
     connection = db.connect(os.environ["IPAM_DB_PATH"])
     try:
@@ -125,7 +120,6 @@ def test_hosts_list_search_trims_whitespace(client) -> None:
 
 def test_hosts_list_paginates_with_default_page_size(client) -> None:
     import os
-    from app import db, repository
 
     connection = db.connect(os.environ["IPAM_DB_PATH"])
     try:
@@ -146,7 +140,6 @@ def test_hosts_list_paginates_with_default_page_size(client) -> None:
 
 def test_hosts_list_paginates_with_custom_page_size(client) -> None:
     import os
-    from app import db, repository
 
     connection = db.connect(os.environ["IPAM_DB_PATH"])
     try:
@@ -167,7 +160,6 @@ def test_hosts_list_paginates_with_custom_page_size(client) -> None:
 
 def test_hosts_list_pagination_with_search(client) -> None:
     import os
-    from app import db, repository
 
     connection = db.connect(os.environ["IPAM_DB_PATH"])
     try:
@@ -188,7 +180,6 @@ def test_hosts_list_pagination_with_search(client) -> None:
 
 def test_hosts_list_pagination_navigation(client) -> None:
     import os
-    from app import db, repository
 
     connection = db.connect(os.environ["IPAM_DB_PATH"])
     try:
@@ -210,7 +201,6 @@ def test_hosts_list_pagination_navigation(client) -> None:
 
 def test_hosts_edit_updates_project_assignments(client) -> None:
     import os
-    from app import db, repository
 
     connection = db.connect(os.environ["IPAM_DB_PATH"])
     try:
@@ -251,7 +241,6 @@ def test_hosts_edit_updates_project_assignments(client) -> None:
 
 def test_ui_edit_host_updates_name_vendor_and_notes(client) -> None:
     import os
-    from app import db, repository
 
     connection = db.connect(os.environ["IPAM_DB_PATH"])
     try:
@@ -287,7 +276,6 @@ def test_ui_edit_host_updates_name_vendor_and_notes(client) -> None:
 
 def test_ui_create_host_with_os_and_bmc_ips(client) -> None:
     import os
-    from app import db, repository
 
     connection = db.connect(os.environ["IPAM_DB_PATH"])
     try:
@@ -330,7 +318,6 @@ def test_ui_create_host_with_os_and_bmc_ips(client) -> None:
 
 def test_ui_create_host_with_project_assigns_linked_ips(client) -> None:
     import os
-    from app import db, repository
 
     connection = db.connect(os.environ["IPAM_DB_PATH"])
     try:
@@ -370,7 +357,6 @@ def test_ui_create_host_with_project_assigns_linked_ips(client) -> None:
 
 def test_ui_edit_host_adds_os_and_bmc_ips(client) -> None:
     import os
-    from app import db, repository
 
     connection = db.connect(os.environ["IPAM_DB_PATH"])
     try:
@@ -407,7 +393,6 @@ def test_ui_edit_host_adds_os_and_bmc_ips(client) -> None:
 
 def test_ui_edit_host_requires_name(client) -> None:
     import os
-    from app import db, repository
 
     connection = db.connect(os.environ["IPAM_DB_PATH"])
     try:
@@ -430,7 +415,6 @@ def test_ui_edit_host_requires_name(client) -> None:
 
 def test_ui_delete_host_requires_confirmation_text(client) -> None:
     import os
-    from app import db, repository
 
     connection = db.connect(os.environ["IPAM_DB_PATH"])
     try:
@@ -457,7 +441,6 @@ def test_ui_delete_host_requires_confirmation_text(client) -> None:
 
 def test_ui_delete_host_with_confirmation_text(client) -> None:
     import os
-    from app import db, repository
 
     connection = db.connect(os.environ["IPAM_DB_PATH"])
     try:
@@ -488,7 +471,6 @@ def test_ui_delete_host_with_confirmation_text(client) -> None:
 
 def test_ui_delete_host_allows_when_linked_ips_exist_and_unlinks_ips(client) -> None:
     import os
-    from app import db, repository
 
     connection = db.connect(os.environ["IPAM_DB_PATH"])
     try:
@@ -524,18 +506,13 @@ def test_ui_delete_host_allows_when_linked_ips_exist_and_unlinks_ips(client) -> 
 def test_ui_create_host_links_existing_ips(client) -> None:
     """Test that creating a host with existing IPs links them instead of throwing an error."""
     import os
-    from app import db, repository
 
     connection = db.connect(os.environ["IPAM_DB_PATH"])
     try:
         db.init_db(connection)
         # Create existing IP assets without a host
-        existing_os = repository.create_ip_asset(
-            connection, ip_address="10.30.0.10", asset_type=IPAssetType.OS
-        )
-        existing_bmc = repository.create_ip_asset(
-            connection, ip_address="10.30.0.20", asset_type=IPAssetType.BMC
-        )
+        repository.create_ip_asset(connection, ip_address="10.30.0.10", asset_type=IPAssetType.OS)
+        repository.create_ip_asset(connection, ip_address="10.30.0.20", asset_type=IPAssetType.BMC)
     finally:
         connection.close()
 
@@ -574,19 +551,14 @@ def test_ui_create_host_links_existing_ips(client) -> None:
 def test_ui_edit_host_links_existing_ips(client) -> None:
     """Test that editing a host to add existing IPs links them instead of throwing an error."""
     import os
-    from app import db, repository
 
     connection = db.connect(os.environ["IPAM_DB_PATH"])
     try:
         db.init_db(connection)
         host = repository.create_host(connection, name="edge-edit-existing")
         # Create existing IP assets without a host
-        existing_os = repository.create_ip_asset(
-            connection, ip_address="10.40.0.10", asset_type=IPAssetType.OS
-        )
-        existing_bmc = repository.create_ip_asset(
-            connection, ip_address="10.40.0.20", asset_type=IPAssetType.BMC
-        )
+        repository.create_ip_asset(connection, ip_address="10.40.0.10", asset_type=IPAssetType.OS)
+        repository.create_ip_asset(connection, ip_address="10.40.0.20", asset_type=IPAssetType.BMC)
     finally:
         connection.close()
 
@@ -623,7 +595,6 @@ def test_ui_edit_host_links_existing_ips(client) -> None:
 
 def test_ui_edit_host_unlinks_removed_os_and_bmc_ips(client) -> None:
     import os
-    from app import db, repository
 
     connection = db.connect(os.environ["IPAM_DB_PATH"])
     try:
@@ -677,7 +648,6 @@ def test_ui_edit_host_unlinks_removed_os_and_bmc_ips(client) -> None:
 def test_ui_delete_host_open_delete_redirect_shows_drawer(client) -> None:
     """Test that opening host delete redirects to hosts page with delete drawer open."""
     import os
-    from app import db, repository
 
     connection = db.connect(os.environ["IPAM_DB_PATH"])
     try:
@@ -706,7 +676,6 @@ def test_ui_delete_host_open_delete_redirect_shows_drawer(client) -> None:
 def test_ui_delete_host_shows_success_flash_message(client) -> None:
     """Test that successful deletion sets a flash message cookie."""
     import os
-    from app import db, repository
     from app.routes.ui.utils import FLASH_COOKIE
 
     connection = db.connect(os.environ["IPAM_DB_PATH"])

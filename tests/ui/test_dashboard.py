@@ -4,7 +4,7 @@ from pathlib import Path
 
 from app import db, repository
 from app.main import app
-from app.models import IPAsset, IPAssetType, User, UserRole
+from app.models import IPAssetType, User, UserRole
 from app.routes import ui
 
 
@@ -24,7 +24,6 @@ def test_needs_assignment_links_removed_from_ui(client) -> None:
 
 def test_management_page_shows_summary_counts(client) -> None:
     import os
-    from app import db, repository
 
     connection = db.connect(os.environ["IPAM_DB_PATH"])
     try:
@@ -89,7 +88,6 @@ def test_flash_messages_render_once(client) -> None:
 
 def test_audit_log_page_lists_ip_entries(client) -> None:
     import os
-    from app import db, repository
 
     connection = db.connect(os.environ["IPAM_DB_PATH"])
     try:
@@ -109,7 +107,6 @@ def test_audit_log_page_lists_ip_entries(client) -> None:
 
 def test_audit_log_page_pagination(client) -> None:
     import os
-    from app import db, repository
 
     connection = db.connect(os.environ["IPAM_DB_PATH"])
     try:

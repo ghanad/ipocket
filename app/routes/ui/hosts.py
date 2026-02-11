@@ -7,14 +7,12 @@ from typing import Optional
 from urllib.parse import urlencode
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
-from fastapi.responses import HTMLResponse, RedirectResponse, Response
+from fastapi.responses import HTMLResponse, Response
 
 from app import repository
 from app.dependencies import get_connection
 from app.models import IPAssetType
-from app.utils import normalize_tag_names, validate_ip_address
 from .utils import (
-    _build_asset_view_models,
     _is_auto_host_for_bmc_enabled,
     _collect_inline_ip_errors,
     _parse_form_data,
@@ -24,7 +22,6 @@ from .utils import (
     _parse_positive_int_query,
     _redirect_with_flash,
     _render_template,
-    get_current_ui_user,
     require_ui_editor,
 )
 

@@ -4,8 +4,7 @@ import sqlite3
 from typing import Iterable, Optional
 
 from app.models import Host, IPAsset, IPAssetType
-from app.utils import DEFAULT_PROJECT_COLOR
-from .mappers import _ip_address_sort_key, _row_to_host, _row_to_ip_asset
+from .mappers import _row_to_host, _row_to_ip_asset
 
 
 def _resolve_vendor_id(connection: sqlite3.Connection, vendor_name: Optional[str]) -> Optional[int]:

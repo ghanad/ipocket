@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import ipaddress
-from typing import Optional
 
 from app import repository
 from app.imports.models import ImportBundle, ImportIssue, ImportValidationResult

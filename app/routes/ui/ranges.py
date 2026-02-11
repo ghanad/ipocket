@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import sqlite3
 
-from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 
 from app import repository
@@ -10,15 +10,11 @@ from app.dependencies import get_connection
 from app.models import IPAssetType
 from app.utils import normalize_cidr, normalize_tag_names, validate_ip_address
 from .utils import (
-    _build_asset_view_models,
     _is_auto_host_for_bmc_enabled,
-    _collect_inline_ip_errors,
     _normalize_asset_type,
     _parse_optional_int,
     _parse_optional_str,
-    _parse_positive_int_query,
     _render_template,
-    _redirect_with_flash,
     require_ui_editor,
 )
 
