@@ -137,6 +137,19 @@ def list_tags(connection: sqlite3.Connection) -> Iterable[Tag]:
     return [_row_to_tag(row) for row in rows]
 
 
+def list_tag_ip_counts(connection: sqlite3.Connection) -> dict[int, int]:
+    rows = connection.execute(
+        """
+        SELECT ip_asset_tags.tag_id AS tag_id, COUNT(*) AS total
+        FROM ip_asset_tags
+        JOIN ip_assets ON ip_assets.id = ip_asset_tags.ip_asset_id
+        WHERE ip_assets.archived = 0
+        GROUP BY ip_asset_tags.tag_id
+        """
+    ).fetchall()
+    return {int(row["tag_id"]): int(row["total"]) for row in rows}
+
+
 
 def get_tag_by_id(connection: sqlite3.Connection, tag_id: int) -> Optional[Tag]:
     row = connection.execute("SELECT id, name, color FROM tags WHERE id = ?", (tag_id,)).fetchone()

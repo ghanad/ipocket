@@ -118,6 +118,12 @@ def test_tags_page_uses_drawers_for_create_edit_delete(client) -> None:
     try:
         db.init_db(connection)
         tag = repository.create_tag(connection, name="prod", color="#22c55e")
+        repository.create_ip_asset(
+            connection,
+            ip_address="10.200.0.10",
+            asset_type=IPAssetType.VM,
+            tags=["prod"],
+        )
     finally:
         connection.close()
 
@@ -141,6 +147,8 @@ def test_tags_page_uses_drawers_for_create_edit_delete(client) -> None:
     assert f'data-tag-delete-name="{tag.name}"' in response.text
     assert f'data-tag-name="{tag.name}"' in response.text
     assert f'data-tag-color="{tag.color}"' in response.text
+    assert "<th>IPs</th>" in response.text
+    assert ">1</td>" in response.text
     tags_js = Path(__file__).resolve().parents[2] / "app/static/js/tags.js"
     tags_js_content = tags_js.read_text(encoding="utf-8")
     assert "data-tag-create-overlay" in tags_js_content

@@ -26,6 +26,7 @@
           <th>Name</th>
           <th>Color</th>
           <th>Preview</th>
+          <th>IPs</th>
           <th>Actions</th>
         </tr>
       </thead>
@@ -38,6 +39,7 @@
           <td>
             <span class="tag tag-color" style="--tag-color: {{ tag.color }}">{{ tag.name }}</span>
           </td>
+          <td>{{ tag_ip_counts.get(tag.id, 0) }}</td>
           <td class="asset-actions-cell">
             <div class="table-actions">
               <button
@@ -63,7 +65,7 @@
         {% endfor %}
         {% else %}
         <tr>
-          <td colspan="4" class="empty-state">No tags yet.</td>
+          <td colspan="5" class="empty-state">No tags yet.</td>
         </tr>
         {% endif %}
       </tbody>

@@ -569,6 +569,7 @@ def _tags_template_context(
     return {
         "title": "ipocket - Tags",
         "tags": list(repository.list_tags(connection)),
+        "tag_ip_counts": repository.list_tag_ip_counts(connection),
         "errors": errors or [],
         "form_state": form_state or {"name": "", "color": DEFAULT_TAG_COLOR},
         "edit_errors": edit_errors or [],
