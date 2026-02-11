@@ -8,13 +8,12 @@ from fastapi.responses import HTMLResponse, RedirectResponse
 from app import repository
 from app.dependencies import get_connection
 from app.models import IPAssetType
-from app.utils import normalize_cidr, normalize_tag_names, split_tag_string, validate_ip_address
+from app.utils import normalize_cidr, normalize_tag_names, validate_ip_address
 from .utils import (
     _build_asset_view_models,
     _is_auto_host_for_bmc_enabled,
     _collect_inline_ip_errors,
     _normalize_asset_type,
-    _parse_form_data,
     _parse_optional_int,
     _parse_optional_str,
     _parse_positive_int_query,
@@ -24,6 +23,18 @@ from .utils import (
 )
 
 router = APIRouter()
+
+
+def _parse_selected_tags(connection, raw_tags: list[str]) -> tuple[list[str], list[str]]:
+    try:
+        selected_tags = normalize_tag_names(raw_tags) if raw_tags else []
+    except ValueError as exc:
+        return [], [str(exc)]
+    existing_tags = {tag.name for tag in repository.list_tags(connection)}
+    missing_tags = [tag for tag in selected_tags if tag not in existing_tags]
+    if missing_tags:
+        return [], [f"Selected tags do not exist: {', '.join(missing_tags)}."]
+    return selected_tags, []
 
 
 def _build_range_table_rows(
@@ -89,7 +100,7 @@ async def ui_create_range(
     connection=Depends(get_connection),
     _user=Depends(require_ui_editor),
 ) -> HTMLResponse:
-    form_data = await _parse_form_data(request)
+    form_data = await request.form()
     name = (form_data.get("name") or "").strip()
     cidr = (form_data.get("cidr") or "").strip()
     notes = _parse_optional_str(form_data.get("notes"))
@@ -178,7 +189,7 @@ async def ui_update_range(
     if ip_range is None:
         raise HTTPException(status_code=404, detail="IP range not found.")
 
-    form_data = await _parse_form_data(request)
+    form_data = await request.form()
     name = (form_data.get("name") or "").strip()
     cidr = (form_data.get("cidr") or "").strip()
     notes = _parse_optional_str(form_data.get("notes"))
@@ -275,7 +286,7 @@ async def ui_delete_range(
     if ip_range is None:
         raise HTTPException(status_code=404, detail="IP range not found.")
 
-    form_data = await _parse_form_data(request)
+    form_data = await request.form()
     confirm_name = (form_data.get("confirm_name") or "").strip()
     if confirm_name != ip_range.name:
         ranges = list(repository.list_ip_ranges(connection))
@@ -331,6 +342,7 @@ def ui_range_addresses(
             "address_display": addresses[:display_limit],
             "address_overflow": len(addresses) > display_limit,
             "projects": list(repository.list_projects(connection)),
+            "tags": list(repository.list_tags(connection)),
             "types": [asset.value for asset in IPAssetType],
             "errors": [],
         },
@@ -344,13 +356,14 @@ async def ui_range_quick_add_address(
     connection=Depends(get_connection),
     user=Depends(require_ui_editor),
 ) -> HTMLResponse:
-    form_data = await _parse_form_data(request)
+    form_data = await request.form()
     ip_address = form_data.get("ip_address")
     asset_type = form_data.get("type")
     project_id = _parse_optional_int(form_data.get("project_id"))
     notes = _parse_optional_str(form_data.get("notes"))
-    tags_raw = form_data.get("tags") or ""
+    tags_raw = [str(tag) for tag in form_data.getlist("tags")]
     projects = list(repository.list_projects(connection))
+    tags_catalog = list(repository.list_tags(connection))
 
     errors: list[str] = []
     if not ip_address:
@@ -371,11 +384,8 @@ async def ui_range_quick_add_address(
 
     if project_id is not None and not any(project.id == project_id for project in projects):
         errors.append("Selected project does not exist.")
-    try:
-        tags = normalize_tag_names(split_tag_string(tags_raw)) if tags_raw else []
-    except ValueError as exc:
-        tags = []
-        errors.append(str(exc))
+    tags, tag_errors = _parse_selected_tags(connection, tags_raw)
+    errors.extend(tag_errors)
 
     breakdown = repository.get_ip_range_address_breakdown(connection, range_id)
     if breakdown is None:
@@ -406,6 +416,7 @@ async def ui_range_quick_add_address(
                 "address_display": addresses[:display_limit],
                 "address_overflow": len(addresses) > display_limit,
                 "projects": projects,
+                "tags": tags_catalog,
                 "types": [asset.value for asset in IPAssetType],
                 "errors": errors,
             },
@@ -444,6 +455,7 @@ async def ui_range_quick_add_address(
                 "address_display": addresses[:display_limit],
                 "address_overflow": len(addresses) > display_limit,
                 "projects": projects,
+                "tags": tags_catalog,
                 "types": [asset.value for asset in IPAssetType],
                 "errors": errors,
             },
@@ -477,12 +489,13 @@ async def ui_range_quick_edit_address(
     if range_entry is None:
         raise HTTPException(status_code=404, detail="IP asset not found in this range.")
 
-    form_data = await _parse_form_data(request)
+    form_data = await request.form()
     asset_type = form_data.get("type")
     project_id = _parse_optional_int(form_data.get("project_id"))
     notes = _parse_optional_str(form_data.get("notes"))
-    tags_raw = form_data.get("tags") or ""
+    tags_raw = [str(tag) for tag in form_data.getlist("tags")]
     projects = list(repository.list_projects(connection))
+    tags_catalog = list(repository.list_tags(connection))
 
     errors: list[str] = []
     normalized_asset_type = None
@@ -494,11 +507,8 @@ async def ui_range_quick_edit_address(
         errors.append("Asset type is required.")
     if project_id is not None and not any(project.id == project_id for project in projects):
         errors.append("Selected project does not exist.")
-    try:
-        tags = normalize_tag_names(split_tag_string(tags_raw)) if tags_raw else []
-    except ValueError as exc:
-        tags = []
-        errors.append(str(exc))
+    tags, tag_errors = _parse_selected_tags(connection, tags_raw)
+    errors.extend(tag_errors)
 
     if errors:
         addresses = breakdown["addresses"]
@@ -517,6 +527,7 @@ async def ui_range_quick_edit_address(
                 "address_display": addresses[:display_limit],
                 "address_overflow": len(addresses) > display_limit,
                 "projects": projects,
+                "tags": tags_catalog,
                 "types": [asset_type_item.value for asset_type_item in IPAssetType],
                 "errors": errors,
             },

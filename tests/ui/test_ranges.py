@@ -144,6 +144,7 @@ def test_range_addresses_quick_add_creates_asset(client) -> None:
         user = repository.create_user(connection, username="editor", hashed_password="x", role=UserRole.EDITOR)
         ip_range = repository.create_ip_range(connection, name="Edge Range", cidr="10.60.0.0/29")
         project = repository.create_project(connection, name="Edge")
+        repository.create_tag(connection, name="edge")
     finally:
         connection.close()
 
@@ -156,7 +157,7 @@ def test_range_addresses_quick_add_creates_asset(client) -> None:
                 "type": "VM",
                 "project_id": str(project.id),
                 "notes": "allocated from range",
-                "tags": "edge",
+                "tags": ["edge"],
             },
             follow_redirects=False,
         )
@@ -186,6 +187,7 @@ def test_range_addresses_quick_edit_updates_asset(client) -> None:
         user = repository.create_user(connection, username="editor", hashed_password="x", role=UserRole.EDITOR)
         ip_range = repository.create_ip_range(connection, name="Edge Range", cidr="10.61.0.0/29")
         project = repository.create_project(connection, name="Core")
+        repository.create_tag(connection, name="mgmt")
         asset = repository.create_ip_asset(
             connection,
             ip_address="10.61.0.2",
@@ -198,7 +200,7 @@ def test_range_addresses_quick_edit_updates_asset(client) -> None:
     try:
         response = client.post(
             f"/ui/ranges/{ip_range.id}/addresses/{asset.id}/edit",
-            data={"type": "BMC", "project_id": str(project.id), "notes": "updated", "tags": "mgmt"},
+            data={"type": "BMC", "project_id": str(project.id), "notes": "updated", "tags": ["mgmt"]},
             follow_redirects=False,
         )
     finally:
@@ -217,6 +219,38 @@ def test_range_addresses_quick_edit_updates_asset(client) -> None:
         assert repository.list_tags_for_ip_assets(connection, [updated.id])[updated.id] == ["mgmt"]
     finally:
         connection.close()
+
+
+def test_range_addresses_quick_add_rejects_nonexistent_tag_selection(client) -> None:
+    import os
+    from app import db, repository
+
+    connection = db.connect(os.environ["IPAM_DB_PATH"])
+    try:
+        db.init_db(connection)
+        user = repository.create_user(connection, username="editor", hashed_password="x", role=UserRole.EDITOR)
+        ip_range = repository.create_ip_range(connection, name="Fail Range", cidr="10.62.0.0/29")
+    finally:
+        connection.close()
+
+    app.dependency_overrides[ui.require_ui_editor] = lambda: user
+    try:
+        response = client.post(
+            f"/ui/ranges/{ip_range.id}/addresses/add",
+            data={
+                "ip_address": "10.62.0.2",
+                "type": "VM",
+                "project_id": "",
+                "notes": "",
+                "tags": "ghost",
+            },
+            follow_redirects=False,
+        )
+    finally:
+        app.dependency_overrides.pop(ui.require_ui_editor, None)
+
+    assert response.status_code == 400
+    assert "Selected tags do not exist: ghost." in response.text
 
 def test_ranges_edit_and_delete_flow(client) -> None:
     import os

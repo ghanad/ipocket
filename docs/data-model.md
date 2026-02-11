@@ -29,6 +29,7 @@
 
 Tag names are normalized by trimming whitespace and lowercasing. Allowed characters are letters, digits, dashes, and
 underscores (`^[a-z0-9_-]+$`).
+UI assignment flows only allow selecting from existing tags; they do not create new tags during IP assignment.
 
 
 ## IPAssetTag
