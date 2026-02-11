@@ -23,11 +23,12 @@ def create_ip_range(
         (name, normalized_cidr, notes),
     )
     connection.commit()
-    row = connection.execute("SELECT * FROM ip_ranges WHERE id = ?", (cursor.lastrowid,)).fetchone()
+    row = connection.execute(
+        "SELECT * FROM ip_ranges WHERE id = ?", (cursor.lastrowid,)
+    ).fetchone()
     if row is None:
         raise RuntimeError("Failed to fetch newly created IP range.")
     return _row_to_ip_range(row)
-
 
 
 def list_ip_ranges(connection: sqlite3.Connection) -> Iterable[IPRange]:
@@ -35,13 +36,13 @@ def list_ip_ranges(connection: sqlite3.Connection) -> Iterable[IPRange]:
     return [_row_to_ip_range(row) for row in rows]
 
 
-
 def get_ip_range_by_id(connection: sqlite3.Connection, range_id: int) -> IPRange | None:
-    row = connection.execute("SELECT * FROM ip_ranges WHERE id = ?", (range_id,)).fetchone()
+    row = connection.execute(
+        "SELECT * FROM ip_ranges WHERE id = ?", (range_id,)
+    ).fetchone()
     if row is None:
         return None
     return _row_to_ip_range(row)
-
 
 
 def update_ip_range(
@@ -60,12 +61,10 @@ def update_ip_range(
     return get_ip_range_by_id(connection, range_id)
 
 
-
 def delete_ip_range(connection: sqlite3.Connection, range_id: int) -> bool:
     cursor = connection.execute("DELETE FROM ip_ranges WHERE id = ?", (range_id,))
     connection.commit()
     return cursor.rowcount > 0
-
 
 
 def _total_usable_addresses(network: ipaddress.IPv4Network) -> int:
@@ -74,7 +73,6 @@ def _total_usable_addresses(network: ipaddress.IPv4Network) -> int:
     if network.prefixlen == 31:
         return 2
     return max(int(network.num_addresses) - 2, 0)
-
 
 
 def get_ip_range_utilization(connection: sqlite3.Connection) -> list[dict[str, object]]:
@@ -113,7 +111,6 @@ def get_ip_range_utilization(connection: sqlite3.Connection) -> list[dict[str, o
             }
         )
     return utilization
-
 
 
 def get_ip_range_address_breakdown(
@@ -180,10 +177,18 @@ def get_ip_range_address_breakdown(
         host_id = entry.get("host_id")
         asset_type = entry.get("asset_type")
         if host_id and asset_type in (IPAssetType.OS.value, IPAssetType.BMC.value):
-            pair_type = IPAssetType.BMC.value if asset_type == IPAssetType.OS.value else IPAssetType.OS.value
-            entry["host_pair"] = ", ".join(host_pair_lookup.get(host_id, {}).get(pair_type, []))
+            pair_type = (
+                IPAssetType.BMC.value
+                if asset_type == IPAssetType.OS.value
+                else IPAssetType.OS.value
+            )
+            entry["host_pair"] = ", ".join(
+                host_pair_lookup.get(host_id, {}).get(pair_type, [])
+            )
 
-    used_sorted = sorted(used_entries, key=lambda entry: int(ipaddress.ip_address(entry["ip_address"])))
+    used_sorted = sorted(
+        used_entries, key=lambda entry: int(ipaddress.ip_address(entry["ip_address"]))
+    )
     usable_addresses = list(network.hosts())
     free_entries = [
         {

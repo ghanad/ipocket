@@ -8,7 +8,9 @@ from app.models import User, UserRole
 from app.routes import ui
 
 
-def test_create_host_with_vendor_catalog_selection(client, _create_user, _login, _auth_headers) -> None:
+def test_create_host_with_vendor_catalog_selection(
+    client, _create_user, _login, _auth_headers
+) -> None:
     _create_user("editor", "editor-pass", UserRole.EDITOR)
     headers = _auth_headers(_login("editor", "editor-pass"))
 
@@ -18,14 +20,20 @@ def test_create_host_with_vendor_catalog_selection(client, _create_user, _login,
     response = client.post(
         "/hosts",
         headers=headers,
-        json={"name": "host-a", "vendor_id": vendor_response.json()["id"], "notes": "rack-a"},
+        json={
+            "name": "host-a",
+            "vendor_id": vendor_response.json()["id"],
+            "notes": "rack-a",
+        },
     )
 
     assert response.status_code == 200
     assert response.json()["vendor"] == "HPE"
 
 
-def test_update_host_vendor_by_vendor_id(client, _create_user, _login, _auth_headers) -> None:
+def test_update_host_vendor_by_vendor_id(
+    client, _create_user, _login, _auth_headers
+) -> None:
     _create_user("editor", "editor-pass", UserRole.EDITOR)
     headers = _auth_headers(_login("editor", "editor-pass"))
 
@@ -33,7 +41,9 @@ def test_update_host_vendor_by_vendor_id(client, _create_user, _login, _auth_hea
     created = client.post("/hosts", headers=headers, json={"name": "host-b"})
     host_id = created.json()["id"]
 
-    updated = client.patch(f"/hosts/{host_id}", headers=headers, json={"vendor_id": dell.json()["id"]})
+    updated = client.patch(
+        f"/hosts/{host_id}", headers=headers, json={"vendor_id": dell.json()["id"]}
+    )
 
     assert updated.status_code == 200
     assert updated.json()["vendor"] == "Dell"
@@ -78,13 +88,21 @@ def test_vendors_ui_edit_and_delete_flow(client, _setup_connection) -> None:
     finally:
         connection.close()
 
-    app.dependency_overrides[ui.get_current_ui_user] = lambda: User(1, "editor", "x", UserRole.EDITOR, True)
-    app.dependency_overrides[ui.require_ui_editor] = lambda: User(1, "editor", "x", UserRole.EDITOR, True)
+    app.dependency_overrides[ui.get_current_ui_user] = lambda: User(
+        1, "editor", "x", UserRole.EDITOR, True
+    )
+    app.dependency_overrides[ui.require_ui_editor] = lambda: User(
+        1, "editor", "x", UserRole.EDITOR, True
+    )
 
     try:
-        edit_redirect = client.get(f"/ui/vendors/{vendor.id}/edit", follow_redirects=False)
+        edit_redirect = client.get(
+            f"/ui/vendors/{vendor.id}/edit", follow_redirects=False
+        )
         assert edit_redirect.status_code == 303
-        assert edit_redirect.headers["location"].endswith(f"/ui/projects?tab=vendors&edit={vendor.id}")
+        assert edit_redirect.headers["location"].endswith(
+            f"/ui/projects?tab=vendors&edit={vendor.id}"
+        )
 
         edit_response = client.post(
             f"/ui/vendors/{vendor.id}/edit",
@@ -93,9 +111,13 @@ def test_vendors_ui_edit_and_delete_flow(client, _setup_connection) -> None:
         )
         assert edit_response.status_code == 303
 
-        delete_redirect = client.get(f"/ui/vendors/{vendor.id}/delete", follow_redirects=False)
+        delete_redirect = client.get(
+            f"/ui/vendors/{vendor.id}/delete", follow_redirects=False
+        )
         assert delete_redirect.status_code == 303
-        assert delete_redirect.headers["location"].endswith(f"/ui/projects?tab=vendors&delete={vendor.id}")
+        assert delete_redirect.headers["location"].endswith(
+            f"/ui/projects?tab=vendors&delete={vendor.id}"
+        )
 
         delete_error = client.post(
             f"/ui/vendors/{vendor.id}/delete",
@@ -142,7 +164,9 @@ def test_init_db_migrates_host_vendor_text_to_vendor_catalog(tmp_path) -> None:
             )
             """
         )
-        connection.execute("INSERT INTO hosts (name, notes, vendor) VALUES ('host-legacy', 'x', 'Cisco')")
+        connection.execute(
+            "INSERT INTO hosts (name, notes, vendor) VALUES ('host-legacy', 'x', 'Cisco')"
+        )
         connection.execute(
             """
             CREATE TABLE projects (
@@ -183,10 +207,16 @@ def test_init_db_migrates_host_vendor_text_to_vendor_catalog(tmp_path) -> None:
         db.init_db(connection)
         db.init_db(connection)
 
-        host_columns = {row["name"] for row in connection.execute("PRAGMA table_info(hosts)").fetchall()}
+        host_columns = {
+            row["name"]
+            for row in connection.execute("PRAGMA table_info(hosts)").fetchall()
+        }
         assert "vendor_id" in host_columns
 
-        vendor_names = [row["name"] for row in connection.execute("SELECT name FROM vendors").fetchall()]
+        vendor_names = [
+            row["name"]
+            for row in connection.execute("SELECT name FROM vendors").fetchall()
+        ]
         assert "Cisco" in vendor_names
 
         host = repository.get_host_by_name(connection, "host-legacy")

@@ -19,7 +19,12 @@ def is_auto_host_for_bmc_enabled() -> bool:
 
 
 def host_payload(host: Host) -> dict:
-    return {"id": host.id, "name": host.name, "notes": host.notes, "vendor": host.vendor}
+    return {
+        "id": host.id,
+        "name": host.name,
+        "notes": host.notes,
+        "vendor": host.vendor,
+    }
 
 
 def asset_payload(asset: IPAsset, tags: Optional[list[str]] = None) -> dict:
@@ -90,7 +95,9 @@ def expand_csv_query_values(values: Optional[list[str]]) -> list[str]:
     return expanded
 
 
-def require_sd_token_if_configured(sd_token: Optional[str], expected_token: Optional[str]) -> None:
+def require_sd_token_if_configured(
+    sd_token: Optional[str], expected_token: Optional[str]
+) -> None:
     if not expected_token:
         return
     if sd_token != expected_token:

@@ -27,6 +27,7 @@ from .utils import (
 
 router = APIRouter()
 
+
 @router.get("/ui/hosts", response_class=HTMLResponse)
 def ui_list_hosts(
     request: Request,
@@ -58,17 +59,23 @@ def ui_list_hosts(
             or q_lower in (host["bmc_ips"] or "").lower()
         ]
         total_count = len(filtered_hosts)
-        total_pages = max(1, math.ceil(total_count / per_page_value)) if total_count else 1
+        total_pages = (
+            max(1, math.ceil(total_count / per_page_value)) if total_count else 1
+        )
         page_value = max(1, min(page_value, total_pages))
         offset = (page_value - 1) * per_page_value if total_count else 0
-        hosts = filtered_hosts[offset:offset + per_page_value]
+        hosts = filtered_hosts[offset : offset + per_page_value]
     else:
         # No search: use paginated query
         total_count = repository.count_hosts(connection)
-        total_pages = max(1, math.ceil(total_count / per_page_value)) if total_count else 1
+        total_pages = (
+            max(1, math.ceil(total_count / per_page_value)) if total_count else 1
+        )
         page_value = max(1, min(page_value, total_pages))
         offset = (page_value - 1) * per_page_value if total_count else 0
-        hosts = repository.list_hosts_with_ip_counts_paginated(connection, limit=per_page_value, offset=offset)
+        hosts = repository.list_hosts_with_ip_counts_paginated(
+            connection, limit=per_page_value, offset=offset
+        )
 
     start_index = (page_value - 1) * per_page_value + 1 if total_count else 0
     end_index = min(page_value * per_page_value, total_count) if total_count else 0
@@ -76,14 +83,18 @@ def ui_list_hosts(
     if q_value:
         query_params["q"] = q_value
     base_query = urlencode(query_params)
-    delete_host = repository.get_host_by_id(connection, delete) if delete is not None else None
+    delete_host = (
+        repository.get_host_by_id(connection, delete) if delete is not None else None
+    )
     if delete is not None and delete_host is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
 
     delete_linked_count = 0
     if delete_host is not None:
         linked = repository.get_host_linked_assets_grouped(connection, delete_host.id)
-        delete_linked_count = len(linked["os"]) + len(linked["bmc"]) + len(linked["other"])
+        delete_linked_count = (
+            len(linked["os"]) + len(linked["bmc"]) + len(linked["other"])
+        )
 
     return _render_template(
         request,
@@ -94,7 +105,13 @@ def ui_list_hosts(
             "errors": [],
             "vendors": list(repository.list_vendors(connection)),
             "projects": list(repository.list_projects(connection)),
-            "form_state": {"name": "", "notes": "", "vendor_id": "", "os_ips": "", "bmc_ips": ""},
+            "form_state": {
+                "name": "",
+                "notes": "",
+                "vendor_id": "",
+                "os_ips": "",
+                "bmc_ips": "",
+            },
             "filters": {"q": q_value},
             "show_search": bool(q_value),
             "show_add_host": False,
@@ -116,6 +133,7 @@ def ui_list_hosts(
         },
         active_nav="hosts",
     )
+
 
 @router.post("/ui/hosts", response_class=HTMLResponse)
 async def ui_create_host(
@@ -150,7 +168,9 @@ async def ui_create_host(
 
     if not name:
         errors.append("Host name is required.")
-    inline_errors, inline_assets_to_create, inline_assets_to_update = _collect_inline_ip_errors(connection, None, os_ips, bmc_ips)
+    inline_errors, inline_assets_to_create, inline_assets_to_update = (
+        _collect_inline_ip_errors(connection, None, os_ips, bmc_ips)
+    )
     errors.extend(inline_errors)
 
     if errors:
@@ -181,10 +201,16 @@ async def ui_create_host(
         )
 
     try:
-        vendor = repository.get_vendor_by_id(connection, vendor_id) if vendor_id is not None else None
+        vendor = (
+            repository.get_vendor_by_id(connection, vendor_id)
+            if vendor_id is not None
+            else None
+        )
         if vendor_id is not None and vendor is None:
             raise sqlite3.IntegrityError("Selected vendor does not exist.")
-        host = repository.create_host(connection, name=name, notes=notes, vendor=vendor.name if vendor else None)
+        host = repository.create_host(
+            connection, name=name, notes=notes, vendor=vendor.name if vendor else None
+        )
         # Create new IP assets
         for ip_address, asset_type in inline_assets_to_create:
             repository.create_ip_asset(
@@ -242,6 +268,7 @@ async def ui_create_host(
         status_code=303,
     )
 
+
 @router.post("/ui/hosts/{host_id}/edit", response_class=HTMLResponse)
 async def ui_edit_host(
     host_id: int,
@@ -269,7 +296,9 @@ async def ui_edit_host(
             {
                 "title": "ipocket - Hosts",
                 "errors": ["Host name is required."],
-                "toast_messages": [{"type": "error", "message": "Host name is required."}],
+                "toast_messages": [
+                    {"type": "error", "message": "Host name is required."}
+                ],
                 "hosts": repository.list_hosts_with_ip_counts(connection),
                 "vendors": list(repository.list_vendors(connection)),
                 "projects": list(repository.list_projects(connection)),
@@ -282,7 +311,11 @@ async def ui_edit_host(
             active_nav="hosts",
         )
 
-    vendor = repository.get_vendor_by_id(connection, vendor_id) if vendor_id is not None else None
+    vendor = (
+        repository.get_vendor_by_id(connection, vendor_id)
+        if vendor_id is not None
+        else None
+    )
     if vendor_id is not None and vendor is None:
         return _render_template(
             request,
@@ -290,7 +323,9 @@ async def ui_edit_host(
             {
                 "title": "ipocket - Hosts",
                 "errors": ["Selected vendor does not exist."],
-                "toast_messages": [{"type": "error", "message": "Selected vendor does not exist."}],
+                "toast_messages": [
+                    {"type": "error", "message": "Selected vendor does not exist."}
+                ],
                 "hosts": repository.list_hosts_with_ip_counts(connection),
                 "vendors": list(repository.list_vendors(connection)),
                 "projects": list(repository.list_projects(connection)),
@@ -303,9 +338,13 @@ async def ui_edit_host(
             active_nav="hosts",
         )
 
-    inline_errors, inline_assets_to_create, inline_assets_to_update = _collect_inline_ip_errors(connection, host_id, os_ips, bmc_ips)
+    inline_errors, inline_assets_to_create, inline_assets_to_update = (
+        _collect_inline_ip_errors(connection, host_id, os_ips, bmc_ips)
+    )
     if inline_errors:
-        toast_messages = [{"type": "error", "message": error} for error in inline_errors]
+        toast_messages = [
+            {"type": "error", "message": error} for error in inline_errors
+        ]
         return _render_template(
             request,
             "hosts.html",
@@ -316,7 +355,13 @@ async def ui_edit_host(
                 "hosts": repository.list_hosts_with_ip_counts(connection),
                 "vendors": list(repository.list_vendors(connection)),
                 "projects": list(repository.list_projects(connection)),
-                "form_state": {"name": "", "notes": "", "vendor_id": "", "os_ips": "", "bmc_ips": ""},
+                "form_state": {
+                    "name": "",
+                    "notes": "",
+                    "vendor_id": "",
+                    "os_ips": "",
+                    "bmc_ips": "",
+                },
                 "filters": {"q": ""},
                 "show_search": False,
                 "show_add_host": False,
@@ -339,7 +384,9 @@ async def ui_edit_host(
         current_os_ips = {asset.ip_address for asset in linked["os"]}
         current_bmc_ips = {asset.ip_address for asset in linked["bmc"]}
         removed_os_ips = sorted(current_os_ips - set(os_ips)) if os_ips_provided else []
-        removed_bmc_ips = sorted(current_bmc_ips - set(bmc_ips)) if bmc_ips_provided else []
+        removed_bmc_ips = (
+            sorted(current_bmc_ips - set(bmc_ips)) if bmc_ips_provided else []
+        )
         for removed_ips, asset_type in (
             (removed_os_ips, IPAssetType.OS),
             (removed_bmc_ips, IPAssetType.BMC),
@@ -362,14 +409,21 @@ async def ui_edit_host(
         set_project_id = project_raw is not None
         if set_project_id:
             projects = repository.list_projects(connection)
-            if project_id is not None and all(project.id != project_id for project in projects):
+            if project_id is not None and all(
+                project.id != project_id for project in projects
+            ):
                 return _render_template(
                     request,
                     "hosts.html",
                     {
                         "title": "ipocket - Hosts",
                         "errors": ["Selected project does not exist."],
-                        "toast_messages": [{"type": "error", "message": "Selected project does not exist."}],
+                        "toast_messages": [
+                            {
+                                "type": "error",
+                                "message": "Selected project does not exist.",
+                            }
+                        ],
                         "hosts": repository.list_hosts_with_ip_counts(connection),
                         "vendors": list(repository.list_vendors(connection)),
                         "projects": list(projects),
@@ -384,7 +438,11 @@ async def ui_edit_host(
             linked = repository.get_host_linked_assets_grouped(connection, host_id)
             asset_ids = [asset.id for group in linked.values() for asset in group]
             if asset_ids:
-                should_update = any(asset.project_id != project_id for group in linked.values() for asset in group)
+                should_update = any(
+                    asset.project_id != project_id
+                    for group in linked.values()
+                    for asset in group
+                )
                 if should_update:
                     repository.bulk_update_ip_assets(
                         connection,
@@ -418,7 +476,9 @@ async def ui_edit_host(
             {
                 "title": "ipocket - Hosts",
                 "errors": ["Host name already exists."],
-                "toast_messages": [{"type": "error", "message": "Host name already exists."}],
+                "toast_messages": [
+                    {"type": "error", "message": "Host name already exists."}
+                ],
                 "hosts": repository.list_hosts_with_ip_counts(connection),
                 "vendors": list(repository.list_vendors(connection)),
                 "projects": list(repository.list_projects(connection)),
@@ -441,6 +501,7 @@ async def ui_edit_host(
         message_type="success",
         status_code=303,
     )
+
 
 @router.get("/ui/hosts/{host_id}", response_class=HTMLResponse)
 def ui_host_detail(
@@ -466,6 +527,7 @@ def ui_host_detail(
         active_nav="hosts",
     )
 
+
 @router.get("/ui/hosts/{host_id}/delete", response_class=HTMLResponse)
 def ui_delete_host_confirm(
     request: Request,
@@ -478,6 +540,7 @@ def ui_delete_host_confirm(
         "",
         status_code=303,
     )
+
 
 @router.post("/ui/hosts/{host_id}/delete", response_class=HTMLResponse)
 async def ui_delete_host(
@@ -496,7 +559,9 @@ async def ui_delete_host(
     form_data = await _parse_form_data(request)
     confirm_name = (form_data.get("confirm_name") or "").strip()
     if confirm_name != host.name:
-        hosts = repository.list_hosts_with_ip_counts_paginated(connection, limit=20, offset=0)
+        hosts = repository.list_hosts_with_ip_counts_paginated(
+            connection, limit=20, offset=0
+        )
         total_count = repository.count_hosts(connection)
         return _render_template(
             request,
@@ -507,7 +572,13 @@ async def ui_delete_host(
                 "errors": [],
                 "vendors": list(repository.list_vendors(connection)),
                 "projects": list(repository.list_projects(connection)),
-                "form_state": {"name": "", "notes": "", "vendor_id": "", "os_ips": "", "bmc_ips": ""},
+                "form_state": {
+                    "name": "",
+                    "notes": "",
+                    "vendor_id": "",
+                    "os_ips": "",
+                    "bmc_ips": "",
+                },
                 "filters": {"q": ""},
                 "show_search": False,
                 "show_add_host": False,

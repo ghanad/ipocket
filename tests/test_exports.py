@@ -63,8 +63,12 @@ def _seed_export_data(db_path) -> None:
     try:
         db.init_db(connection)
         vendor = repository.create_vendor(connection, "Dell")
-        project = repository.create_project(connection, "core", "Core systems", color="#123456")
-        host = repository.create_host(connection, name="node-01", notes="primary", vendor=vendor.name)
+        project = repository.create_project(
+            connection, "core", "Core systems", color="#123456"
+        )
+        host = repository.create_host(
+            connection, name="node-01", notes="primary", vendor=vendor.name
+        )
         repository.create_ip_asset(
             connection,
             ip_address="10.0.0.10",
@@ -98,7 +102,9 @@ def test_export_content_types_and_archived_filter(client) -> None:
     _seed_export_data(db_path)
     session_cookie = _login_ui(test_client, "exporter", "export-pass")
 
-    response = test_client.get("/export/ip-assets.csv", headers=_auth_headers(session_cookie))
+    response = test_client.get(
+        "/export/ip-assets.csv", headers=_auth_headers(session_cookie)
+    )
     assert response.status_code == 200
     assert response.headers["content-type"].startswith("text/csv")
     ip_rows = _parse_csv_rows(response.text)
@@ -134,9 +140,13 @@ def test_export_content_types_and_archived_filter(client) -> None:
         assert csv_response.status_code == 200
         assert csv_response.headers["content-type"].startswith("text/csv")
 
-    projects_response = test_client.get("/export/projects.csv", headers=_auth_headers(session_cookie))
+    projects_response = test_client.get(
+        "/export/projects.csv", headers=_auth_headers(session_cookie)
+    )
     project_rows = _parse_csv_rows(projects_response.text)
-    assert project_rows == [{"name": "core", "description": "Core systems", "color": "#123456"}]
+    assert project_rows == [
+        {"name": "core", "description": "Core systems", "color": "#123456"}
+    ]
 
 
 def test_bundle_json_schema(client) -> None:
@@ -145,7 +155,9 @@ def test_bundle_json_schema(client) -> None:
     _seed_export_data(db_path)
     session_cookie = _login_ui(test_client, "bundle-user", "bundle-pass")
 
-    response = test_client.get("/export/bundle.json", headers=_auth_headers(session_cookie))
+    response = test_client.get(
+        "/export/bundle.json", headers=_auth_headers(session_cookie)
+    )
     assert response.status_code == 200
     payload = response.json()
     assert payload["schema_version"] == "1"

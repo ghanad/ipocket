@@ -17,6 +17,7 @@ from .utils import (
 
 router = APIRouter()
 
+
 @router.get("/ui/login", response_class=HTMLResponse)
 def ui_login_form(request: Request, return_to: Optional[str] = None) -> HTMLResponse:
     return _render_template(
@@ -25,6 +26,7 @@ def ui_login_form(request: Request, return_to: Optional[str] = None) -> HTMLResp
         {"title": "ipocket - Login", "error_message": "", "return_to": return_to or ""},
         show_nav=False,
     )
+
 
 @router.post("/ui/login", response_class=HTMLResponse)
 async def ui_login_submit(
@@ -69,6 +71,7 @@ async def ui_login_submit(
         samesite="lax",
     )
     return response
+
 
 @router.post("/ui/logout")
 def ui_logout(request: Request) -> Response:

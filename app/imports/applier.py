@@ -11,12 +11,18 @@ from app.models import IPAssetType
 from app.utils import normalize_tag_names
 
 
-def apply_bundle(connection, bundle: ImportBundle, dry_run: bool = False) -> ImportApplyResult:
+def apply_bundle(
+    connection, bundle: ImportBundle, dry_run: bool = False
+) -> ImportApplyResult:
     summary = ImportSummary()
     warnings: list[ImportIssue] = []
 
-    vendor_id_map, vendor_updates = _upsert_vendors(connection, bundle, summary, dry_run=dry_run)
-    project_id_map, project_updates = _upsert_projects(connection, bundle, summary, dry_run=dry_run)
+    vendor_id_map, vendor_updates = _upsert_vendors(
+        connection, bundle, summary, dry_run=dry_run
+    )
+    project_id_map, project_updates = _upsert_projects(
+        connection, bundle, summary, dry_run=dry_run
+    )
     host_id_map, host_updates = _upsert_hosts(
         connection,
         bundle,
@@ -45,7 +51,9 @@ def apply_bundle(connection, bundle: ImportBundle, dry_run: bool = False) -> Imp
     return ImportApplyResult(summary=summary, warnings=warnings)
 
 
-def _upsert_vendors(connection, bundle: ImportBundle, summary: ImportSummary, dry_run: bool) -> tuple[dict[str, int], bool]:
+def _upsert_vendors(
+    connection, bundle: ImportBundle, summary: ImportSummary, dry_run: bool
+) -> tuple[dict[str, int], bool]:
     existing = {vendor.name: vendor for vendor in repository.list_vendors(connection)}
     id_map = {name: vendor.id for name, vendor in existing.items()}
     updated_any = False
@@ -69,8 +77,12 @@ def _upsert_vendors(connection, bundle: ImportBundle, summary: ImportSummary, dr
     return id_map, updated_any
 
 
-def _upsert_projects(connection, bundle: ImportBundle, summary: ImportSummary, dry_run: bool) -> tuple[dict[str, int], bool]:
-    existing = {project.name: project for project in repository.list_projects(connection)}
+def _upsert_projects(
+    connection, bundle: ImportBundle, summary: ImportSummary, dry_run: bool
+) -> tuple[dict[str, int], bool]:
+    existing = {
+        project.name: project for project in repository.list_projects(connection)
+    }
     id_map = {name: project.id for name, project in existing.items()}
     updated_any = False
     temp_id = -100
@@ -95,9 +107,18 @@ def _upsert_projects(connection, bundle: ImportBundle, summary: ImportSummary, d
             id_map[name] = created.id
             continue
 
-        target_description = project.description if project.description is not None else existing_project.description
-        target_color = project.color if project.color is not None else existing_project.color
-        if target_description == existing_project.description and target_color == existing_project.color:
+        target_description = (
+            project.description
+            if project.description is not None
+            else existing_project.description
+        )
+        target_color = (
+            project.color if project.color is not None else existing_project.color
+        )
+        if (
+            target_description == existing_project.description
+            and target_color == existing_project.color
+        ):
             summary.projects.would_skip += 1
             continue
         summary.projects.would_update += 1
@@ -127,7 +148,9 @@ def _upsert_hosts(
     updated_any = False
     temp_id = -200
 
-    vendor_lookup = {vendor.name: vendor for vendor in repository.list_vendors(connection)}
+    vendor_lookup = {
+        vendor.name: vendor for vendor in repository.list_vendors(connection)
+    }
 
     for host in bundle.hosts:
         name = host.name.strip()
@@ -157,7 +180,10 @@ def _upsert_hosts(
 
         target_notes = host.notes if host.notes is not None else existing_host.notes
         target_vendor = vendor_name if vendor_name is not None else existing_host.vendor
-        if target_notes == existing_host.notes and target_vendor == existing_host.vendor:
+        if (
+            target_notes == existing_host.notes
+            and target_vendor == existing_host.vendor
+        ):
             summary.hosts.would_skip += 1
             continue
         summary.hosts.would_update += 1
@@ -189,7 +215,9 @@ def _upsert_ip_assets(
             continue
         existing = repository.get_ip_asset_by_ip(connection, ip_address)
         asset_type = IPAssetType.normalize(asset.asset_type)
-        project_id = project_id_map.get(asset.project_name) if asset.project_name else None
+        project_id = (
+            project_id_map.get(asset.project_name) if asset.project_name else None
+        )
         host_id = host_id_map.get(asset.host_name) if asset.host_name else None
 
         if existing is None:
@@ -206,17 +234,25 @@ def _upsert_ip_assets(
                 tags=asset.tags,
             )
             if asset.archived is True:
-                repository.set_ip_asset_archived(connection, created.ip_address, archived=True)
+                repository.set_ip_asset_archived(
+                    connection, created.ip_address, archived=True
+                )
             continue
 
-        existing_tags = repository.list_tags_for_ip_assets(connection, [existing.id]).get(existing.id, [])
+        existing_tags = repository.list_tags_for_ip_assets(
+            connection, [existing.id]
+        ).get(existing.id, [])
         target_tags = (
             normalize_tag_names(asset.tags) if asset.tags is not None else existing_tags
         )
         target_notes = asset.notes if asset.notes is not None else existing.notes
-        target_project_id = project_id if asset.project_name is not None else existing.project_id
+        target_project_id = (
+            project_id if asset.project_name is not None else existing.project_id
+        )
         target_host_id = host_id if asset.host_name is not None else existing.host_id
-        target_archived = asset.archived if asset.archived is not None else existing.archived
+        target_archived = (
+            asset.archived if asset.archived is not None else existing.archived
+        )
 
         if (
             target_notes == existing.notes
@@ -244,4 +280,6 @@ def _upsert_ip_assets(
             notes_provided=True,
         )
         if asset.archived is not None:
-            repository.set_ip_asset_archived(connection, ip_address, archived=asset.archived)
+            repository.set_ip_asset_archived(
+                connection, ip_address, archived=asset.archived
+            )

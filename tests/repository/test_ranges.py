@@ -21,7 +21,9 @@ from app.repository import (
 def test_create_ip_range_valid_and_invalid(_setup_connection) -> None:
     connection = _setup_connection()
 
-    ip_range = create_ip_range(connection, name="Corp LAN", cidr="192.168.10.0/24", notes="main")
+    ip_range = create_ip_range(
+        connection, name="Corp LAN", cidr="192.168.10.0/24", notes="main"
+    )
 
     assert ip_range.cidr == "192.168.10.0/24"
     assert ip_range.name == "Corp LAN"
@@ -29,10 +31,13 @@ def test_create_ip_range_valid_and_invalid(_setup_connection) -> None:
     with pytest.raises(ValueError):
         create_ip_range(connection, name="Bad range", cidr="192.168.10.999/24")
 
+
 def test_update_and_delete_ip_range(_setup_connection) -> None:
     connection = _setup_connection()
 
-    ip_range = create_ip_range(connection, name="Corp LAN", cidr="192.168.10.0/24", notes="main")
+    ip_range = create_ip_range(
+        connection, name="Corp LAN", cidr="192.168.10.0/24", notes="main"
+    )
 
     updated = update_ip_range(
         connection,
@@ -54,6 +59,7 @@ def test_update_and_delete_ip_range(_setup_connection) -> None:
     assert delete_ip_range(connection, ip_range.id) is True
     assert get_ip_range_by_id(connection, ip_range.id) is None
 
+
 def test_ip_range_utilization_counts(_setup_connection) -> None:
     connection = _setup_connection()
     create_ip_range(connection, name="Corp LAN", cidr="192.168.10.0/24")
@@ -61,7 +67,9 @@ def test_ip_range_utilization_counts(_setup_connection) -> None:
     create_ip_range(connection, name="Loopback", cidr="10.0.0.5/32")
 
     create_ip_asset(connection, ip_address="192.168.10.10", asset_type=IPAssetType.VM)
-    archived_asset = create_ip_asset(connection, ip_address="192.168.10.11", asset_type=IPAssetType.OS)
+    archived_asset = create_ip_asset(
+        connection, ip_address="192.168.10.11", asset_type=IPAssetType.OS
+    )
     archive_ip_asset(connection, archived_asset.ip_address)
     create_ip_asset(connection, ip_address="192.168.11.1", asset_type=IPAssetType.VM)
     create_ip_asset(connection, ip_address="10.0.0.0", asset_type=IPAssetType.VM)
@@ -84,6 +92,7 @@ def test_ip_range_utilization_counts(_setup_connection) -> None:
     assert loopback["total_usable"] == 1
     assert loopback["used"] == 1
     assert loopback["free"] == 0
+
 
 def test_ip_range_address_breakdown(_setup_connection) -> None:
     connection = _setup_connection()
@@ -127,4 +136,3 @@ def test_ip_range_address_breakdown(_setup_connection) -> None:
     assert addresses[1]["status"] == "free"
     assert addresses[2]["status"] == "used"
     assert addresses[2]["host_pair"] == "192.168.20.1"
-

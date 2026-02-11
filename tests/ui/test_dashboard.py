@@ -9,7 +9,9 @@ from app.routes import ui
 
 
 def test_needs_assignment_route_removed(client) -> None:
-    app.dependency_overrides[ui.get_current_ui_user] = lambda: User(1, "viewer", "x", UserRole.VIEWER, True)
+    app.dependency_overrides[ui.get_current_ui_user] = lambda: User(
+        1, "viewer", "x", UserRole.VIEWER, True
+    )
     try:
         response = client.get("/ui/ip-assets/needs-assignment?filter=project")
         assert response.status_code == 422
@@ -21,6 +23,7 @@ def test_needs_assignment_links_removed_from_ui(client) -> None:
     response = client.get("/ui/ip-assets")
     assert response.status_code == 200
     assert "/ui/ip-assets/needs-assignment" not in response.text
+
 
 def test_management_page_shows_summary_counts(client) -> None:
     import os
@@ -43,8 +46,12 @@ def test_management_page_shows_summary_counts(client) -> None:
         )
         repository.archive_ip_asset(connection, archived_asset.ip_address)
         repository.create_ip_range(connection, name="Corp LAN", cidr="192.168.10.0/24")
-        repository.create_ip_asset(connection, ip_address="192.168.10.10", asset_type=IPAssetType.VM)
-        repository.create_ip_asset(connection, ip_address="192.168.10.11", asset_type=IPAssetType.VM)
+        repository.create_ip_asset(
+            connection, ip_address="192.168.10.10", asset_type=IPAssetType.VM
+        )
+        repository.create_ip_asset(
+            connection, ip_address="192.168.10.11", asset_type=IPAssetType.VM
+        )
     finally:
         connection.close()
 
@@ -69,6 +76,7 @@ def test_management_page_shows_summary_counts(client) -> None:
     assert 'addresses#used">2</a>' in response.text
     assert 'addresses#free">252</a>' in response.text
 
+
 def test_flash_messages_render_once(client) -> None:
     payload = [{"type": "success", "message": "Saved successfully."}]
     encoded = ui._encode_flash_payload(payload)
@@ -86,17 +94,22 @@ def test_flash_messages_render_once(client) -> None:
     followup = client.get("/ui/management")
     assert "Saved successfully." not in followup.text
 
+
 def test_audit_log_page_lists_ip_entries(client) -> None:
     import os
 
     connection = db.connect(os.environ["IPAM_DB_PATH"])
     try:
         db.init_db(connection)
-        repository.create_ip_asset(connection, ip_address="10.40.0.10", asset_type=IPAssetType.VM)
+        repository.create_ip_asset(
+            connection, ip_address="10.40.0.10", asset_type=IPAssetType.VM
+        )
     finally:
         connection.close()
 
-    app.dependency_overrides[ui.get_current_ui_user] = lambda: User(1, "viewer", "x", UserRole.VIEWER, True)
+    app.dependency_overrides[ui.get_current_ui_user] = lambda: User(
+        1, "viewer", "x", UserRole.VIEWER, True
+    )
     try:
         response = client.get("/ui/audit-log")
         assert response.status_code == 200
@@ -105,6 +118,7 @@ def test_audit_log_page_lists_ip_entries(client) -> None:
     finally:
         app.dependency_overrides.pop(ui.get_current_ui_user, None)
 
+
 def test_audit_log_page_pagination(client) -> None:
     import os
 
@@ -112,11 +126,15 @@ def test_audit_log_page_pagination(client) -> None:
     try:
         db.init_db(connection)
         for i in range(25):
-            repository.create_ip_asset(connection, ip_address=f"10.45.0.{i}", asset_type=IPAssetType.VM)
+            repository.create_ip_asset(
+                connection, ip_address=f"10.45.0.{i}", asset_type=IPAssetType.VM
+            )
     finally:
         connection.close()
 
-    app.dependency_overrides[ui.get_current_ui_user] = lambda: User(1, "viewer", "x", UserRole.VIEWER, True)
+    app.dependency_overrides[ui.get_current_ui_user] = lambda: User(
+        1, "viewer", "x", UserRole.VIEWER, True
+    )
     try:
         response = client.get("/ui/audit-log?page=1&per-page=10")
         assert response.status_code == 200
@@ -133,8 +151,8 @@ def test_audit_log_page_pagination(client) -> None:
     finally:
         app.dependency_overrides.pop(ui.get_current_ui_user, None)
 
+
 def test_row_actions_panel_hidden_style_present() -> None:
     css = Path("app/static/app.css").read_text(encoding="utf-8")
     assert ".row-actions-panel[hidden]" in css
     assert "display: none" in css
-

@@ -25,11 +25,16 @@ def test_delete_host_removes_record_when_unlinked(_setup_connection) -> None:
     assert deleted is True
     assert get_host_by_name(connection, "host-delete-1") is None
 
+
 def test_delete_host_unlinks_linked_ip_assets_before_delete(_setup_connection) -> None:
     connection = _setup_connection()
     host = create_host(connection, name="host-delete-2")
-    create_ip_asset(connection, ip_address="10.0.3.10", asset_type=IPAssetType.OS, host_id=host.id)
-    create_ip_asset(connection, ip_address="10.0.3.11", asset_type=IPAssetType.BMC, host_id=host.id)
+    create_ip_asset(
+        connection, ip_address="10.0.3.10", asset_type=IPAssetType.OS, host_id=host.id
+    )
+    create_ip_asset(
+        connection, ip_address="10.0.3.11", asset_type=IPAssetType.BMC, host_id=host.id
+    )
 
     deleted = delete_host(connection, host.id)
     os_asset = get_ip_asset_by_ip(connection, "10.0.3.10")
@@ -42,12 +47,14 @@ def test_delete_host_unlinks_linked_ip_assets_before_delete(_setup_connection) -
     assert os_asset.host_id is None
     assert bmc_asset.host_id is None
 
+
 def test_delete_host_returns_false_for_unknown_host(_setup_connection) -> None:
     connection = _setup_connection()
 
     deleted = delete_host(connection, 9999)
 
     assert deleted is False
+
 
 def test_list_hosts_with_ip_counts_includes_os_and_bmc_ips(_setup_connection) -> None:
     connection = _setup_connection()
@@ -74,7 +81,9 @@ def test_list_hosts_with_ip_counts_includes_os_and_bmc_ips(_setup_connection) ->
         host_id=host.id,
         project_id=project.id,
     )
-    create_ip_asset(connection, ip_address="10.20.0.30", asset_type=IPAssetType.VM, host_id=host.id)
+    create_ip_asset(
+        connection, ip_address="10.20.0.30", asset_type=IPAssetType.VM, host_id=host.id
+    )
 
     hosts = list_hosts_with_ip_counts(connection)
 
@@ -84,6 +93,7 @@ def test_list_hosts_with_ip_counts_includes_os_and_bmc_ips(_setup_connection) ->
     assert hosts[0]["project_count"] == 1
     assert hosts[0]["project_name"] == "Edge"
     assert hosts[0]["project_color"] == "#1d4ed8"
+
 
 def test_list_host_pair_ips_for_hosts_maps_os_and_bmc(_setup_connection) -> None:
     connection = _setup_connection()
@@ -122,6 +132,7 @@ def test_list_host_pair_ips_for_hosts_maps_os_and_bmc(_setup_connection) -> None
     assert pairs[other_host.id]["OS"] == ["10.50.0.20"]
     assert pairs[other_host.id]["BMC"] == []
 
+
 def test_count_hosts_returns_total(_setup_connection) -> None:
     connection = _setup_connection()
     create_host(connection, name="host-1")
@@ -132,12 +143,14 @@ def test_count_hosts_returns_total(_setup_connection) -> None:
 
     assert total == 3
 
+
 def test_count_hosts_returns_zero_when_empty(_setup_connection) -> None:
     connection = _setup_connection()
 
     total = count_hosts(connection)
 
     assert total == 0
+
 
 def test_list_hosts_with_ip_counts_paginated_returns_subset(_setup_connection) -> None:
     connection = _setup_connection()
@@ -153,6 +166,7 @@ def test_list_hosts_with_ip_counts_paginated_returns_subset(_setup_connection) -
     assert [h["name"] for h in page1] == ["alpha", "beta"]
     assert [h["name"] for h in page2] == ["delta", "gamma"]
 
+
 def test_list_hosts_with_ip_counts_paginated_respects_offset(_setup_connection) -> None:
     connection = _setup_connection()
     create_host(connection, name="host-a")
@@ -164,7 +178,10 @@ def test_list_hosts_with_ip_counts_paginated_respects_offset(_setup_connection) 
     assert len(hosts) == 2
     assert [h["name"] for h in hosts] == ["host-b", "host-c"]
 
-def test_list_hosts_with_ip_counts_paginated_returns_empty_for_large_offset(_setup_connection) -> None:
+
+def test_list_hosts_with_ip_counts_paginated_returns_empty_for_large_offset(
+    _setup_connection,
+) -> None:
     connection = _setup_connection()
     create_host(connection, name="solo")
 

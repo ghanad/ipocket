@@ -1,4 +1,3 @@
-
 from __future__ import annotations
 
 import math
@@ -12,7 +11,12 @@ from fastapi.responses import HTMLResponse, RedirectResponse, Response
 
 from app import repository
 from app.dependencies import get_connection
-from app.utils import DEFAULT_PROJECT_COLOR, DEFAULT_TAG_COLOR, normalize_hex_color, normalize_tag_name
+from app.utils import (
+    DEFAULT_PROJECT_COLOR,
+    DEFAULT_TAG_COLOR,
+    normalize_hex_color,
+    normalize_tag_name,
+)
 from .utils import (
     _normalize_project_color,
     _parse_form_data,
@@ -26,6 +30,7 @@ from .utils import (
 
 router = APIRouter()
 
+
 @router.get("/ui/projects", response_class=HTMLResponse)
 def ui_list_projects(
     request: Request,
@@ -35,8 +40,12 @@ def ui_list_projects(
     connection=Depends(get_connection),
 ) -> HTMLResponse:
     if tab == "tags":
-        edit_tag = repository.get_tag_by_id(connection, edit) if edit is not None else None
-        delete_tag = repository.get_tag_by_id(connection, delete) if delete is not None else None
+        edit_tag = (
+            repository.get_tag_by_id(connection, edit) if edit is not None else None
+        )
+        delete_tag = (
+            repository.get_tag_by_id(connection, delete) if delete is not None else None
+        )
         if edit is not None and edit_tag is None:
             raise HTTPException(status_code=404, detail="Tag not found")
         if delete is not None and delete_tag is None:
@@ -44,13 +53,21 @@ def ui_list_projects(
         return _render_template(
             request,
             "projects.html",
-            _tags_template_context(connection, edit_tag=edit_tag, delete_tag=delete_tag),
+            _tags_template_context(
+                connection, edit_tag=edit_tag, delete_tag=delete_tag
+            ),
             active_nav="library",
         )
 
     if tab == "vendors":
-        edit_vendor = repository.get_vendor_by_id(connection, edit) if edit is not None else None
-        delete_vendor = repository.get_vendor_by_id(connection, delete) if delete is not None else None
+        edit_vendor = (
+            repository.get_vendor_by_id(connection, edit) if edit is not None else None
+        )
+        delete_vendor = (
+            repository.get_vendor_by_id(connection, delete)
+            if delete is not None
+            else None
+        )
         if edit is not None and edit_vendor is None:
             raise HTTPException(status_code=404, detail="Vendor not found")
         if delete is not None and delete_vendor is None:
@@ -58,7 +75,9 @@ def ui_list_projects(
         return _render_template(
             request,
             "projects.html",
-            _vendors_template_context(connection, edit_vendor=edit_vendor, delete_vendor=delete_vendor),
+            _vendors_template_context(
+                connection, edit_vendor=edit_vendor, delete_vendor=delete_vendor
+            ),
             active_nav="library",
         )
 
@@ -82,12 +101,18 @@ def ui_list_projects(
             "projects": projects,
             "project_ip_counts": repository.list_project_ip_counts(connection),
             "errors": [],
-            "form_state": {"name": "", "description": "", "color": DEFAULT_PROJECT_COLOR},
+            "form_state": {
+                "name": "",
+                "description": "",
+                "color": DEFAULT_PROJECT_COLOR,
+            },
             "edit_errors": [],
             "edit_project": edit_project,
             "edit_form_state": {
                 "name": edit_project.name if edit_project else "",
-                "description": edit_project.description if edit_project and edit_project.description else "",
+                "description": edit_project.description
+                if edit_project and edit_project.description
+                else "",
                 "color": edit_project.color if edit_project else DEFAULT_PROJECT_COLOR,
             },
             "delete_errors": [],
@@ -164,7 +189,11 @@ async def ui_update_project(
                 "projects": projects,
                 "project_ip_counts": repository.list_project_ip_counts(connection),
                 "errors": [],
-                "form_state": {"name": "", "description": "", "color": DEFAULT_PROJECT_COLOR},
+                "form_state": {
+                    "name": "",
+                    "description": "",
+                    "color": DEFAULT_PROJECT_COLOR,
+                },
                 "edit_errors": errors,
                 "edit_project": edit_project,
                 "edit_form_state": {
@@ -202,7 +231,11 @@ async def ui_update_project(
                 "projects": projects,
                 "project_ip_counts": repository.list_project_ip_counts(connection),
                 "errors": [],
-                "form_state": {"name": "", "description": "", "color": DEFAULT_PROJECT_COLOR},
+                "form_state": {
+                    "name": "",
+                    "description": "",
+                    "color": DEFAULT_PROJECT_COLOR,
+                },
                 "edit_errors": ["Project name already exists."],
                 "edit_project": edit_project,
                 "edit_form_state": {
@@ -254,10 +287,18 @@ async def ui_delete_project(
                 "projects": list(repository.list_projects(connection)),
                 "project_ip_counts": repository.list_project_ip_counts(connection),
                 "errors": [],
-                "form_state": {"name": "", "description": "", "color": DEFAULT_PROJECT_COLOR},
+                "form_state": {
+                    "name": "",
+                    "description": "",
+                    "color": DEFAULT_PROJECT_COLOR,
+                },
                 "edit_errors": [],
                 "edit_project": None,
-                "edit_form_state": {"name": "", "description": "", "color": DEFAULT_PROJECT_COLOR},
+                "edit_form_state": {
+                    "name": "",
+                    "description": "",
+                    "color": DEFAULT_PROJECT_COLOR,
+                },
                 "delete_errors": ["Project name confirmation does not match."],
                 "delete_project": project,
                 "delete_confirm_value": confirm_name,
@@ -312,10 +353,18 @@ async def ui_create_project(
                 "projects": projects,
                 "project_ip_counts": repository.list_project_ip_counts(connection),
                 "errors": errors,
-                "form_state": {"name": name, "description": description or "", "color": color or DEFAULT_PROJECT_COLOR},
+                "form_state": {
+                    "name": name,
+                    "description": description or "",
+                    "color": color or DEFAULT_PROJECT_COLOR,
+                },
                 "edit_errors": [],
                 "edit_project": None,
-                "edit_form_state": {"name": "", "description": "", "color": DEFAULT_PROJECT_COLOR},
+                "edit_form_state": {
+                    "name": "",
+                    "description": "",
+                    "color": DEFAULT_PROJECT_COLOR,
+                },
                 "delete_errors": [],
                 "delete_project": None,
                 "delete_confirm_value": "",
@@ -325,7 +374,9 @@ async def ui_create_project(
         )
 
     try:
-        repository.create_project(connection, name=name, description=description, color=normalized_color)
+        repository.create_project(
+            connection, name=name, description=description, color=normalized_color
+        )
     except sqlite3.IntegrityError:
         errors.append("Project name already exists.")
         projects = list(repository.list_projects(connection))
@@ -338,10 +389,18 @@ async def ui_create_project(
                 "projects": projects,
                 "project_ip_counts": repository.list_project_ip_counts(connection),
                 "errors": errors,
-                "form_state": {"name": name, "description": description or "", "color": color or DEFAULT_PROJECT_COLOR},
+                "form_state": {
+                    "name": name,
+                    "description": description or "",
+                    "color": color or DEFAULT_PROJECT_COLOR,
+                },
                 "edit_errors": [],
                 "edit_project": None,
-                "edit_form_state": {"name": "", "description": "", "color": DEFAULT_PROJECT_COLOR},
+                "edit_form_state": {
+                    "name": "",
+                    "description": "",
+                    "color": DEFAULT_PROJECT_COLOR,
+                },
                 "delete_errors": [],
                 "delete_project": None,
                 "delete_confirm_value": "",
@@ -412,6 +471,7 @@ def ui_open_tag_delete(
         status_code=303,
     )
 
+
 @router.post("/ui/tags", response_class=HTMLResponse)
 async def ui_create_tag(
     request: Request,
@@ -475,6 +535,7 @@ async def ui_create_tag(
         status_code=303,
     )
 
+
 @router.post("/ui/tags/{tag_id}/edit", response_class=HTMLResponse)
 async def ui_edit_tag(
     tag_id: int,
@@ -521,7 +582,9 @@ async def ui_edit_tag(
         )
 
     try:
-        updated = repository.update_tag(connection, tag_id, normalized_name, normalized_color)
+        updated = repository.update_tag(
+            connection, tag_id, normalized_name, normalized_color
+        )
     except sqlite3.IntegrityError:
         edit_tag = repository.get_tag_by_id(connection, tag_id)
         if edit_tag is None:
@@ -548,6 +611,7 @@ async def ui_edit_tag(
         message_type="success",
         status_code=303,
     )
+
 
 @router.post("/ui/tags/{tag_id}/delete", response_class=HTMLResponse)
 async def ui_delete_tag(
@@ -620,6 +684,7 @@ def _tags_template_context(
         "delete_confirm_value": delete_confirm_value,
     }
 
+
 @router.get("/ui/vendors", response_class=HTMLResponse)
 def ui_list_vendors(
     request: Request,
@@ -641,7 +706,9 @@ def ui_list_vendors(
     return _render_template(
         request,
         "projects.html",
-        _vendors_template_context(connection, edit_vendor=edit_vendor, delete_vendor=delete_vendor),
+        _vendors_template_context(
+            connection, edit_vendor=edit_vendor, delete_vendor=delete_vendor
+        ),
         active_nav="library",
     )
 
@@ -667,7 +734,8 @@ def _vendors_template_context(
         "form_state": form_state or {"name": ""},
         "edit_errors": edit_errors or [],
         "edit_vendor": edit_vendor,
-        "edit_form_state": edit_form_state or {"name": edit_vendor.name if edit_vendor else ""},
+        "edit_form_state": edit_form_state
+        or {"name": edit_vendor.name if edit_vendor else ""},
         "delete_errors": delete_errors or [],
         "delete_vendor": delete_vendor,
         "delete_confirm_value": delete_confirm_value,
@@ -701,6 +769,7 @@ def ui_open_vendor_delete(
         status_code=303,
     )
 
+
 @router.post("/ui/vendors", response_class=HTMLResponse)
 async def ui_create_vendor(
     request: Request,
@@ -712,8 +781,12 @@ async def ui_create_vendor(
     form_data = await _parse_form_data(request)
     name = (form_data.get("name") or "").strip()
 
-    edit_vendor = repository.get_vendor_by_id(connection, edit) if edit is not None else None
-    delete_vendor = repository.get_vendor_by_id(connection, delete) if delete is not None else None
+    edit_vendor = (
+        repository.get_vendor_by_id(connection, edit) if edit is not None else None
+    )
+    delete_vendor = (
+        repository.get_vendor_by_id(connection, delete) if delete is not None else None
+    )
 
     if not name:
         return _render_template(
@@ -753,8 +826,14 @@ async def ui_create_vendor(
         status_code=303,
     )
 
+
 @router.post("/ui/vendors/{vendor_id}/edit", response_class=HTMLResponse)
-async def ui_edit_vendor(vendor_id: int, request: Request, connection=Depends(get_connection), _user=Depends(require_ui_editor)) -> HTMLResponse:
+async def ui_edit_vendor(
+    vendor_id: int,
+    request: Request,
+    connection=Depends(get_connection),
+    _user=Depends(require_ui_editor),
+) -> HTMLResponse:
     form_data = await _parse_form_data(request)
     name = (form_data.get("name") or "").strip()
     if not name:
@@ -840,6 +919,7 @@ async def ui_delete_vendor(
         message_type="success",
         status_code=303,
     )
+
 
 @router.get("/ui/audit-log", response_class=HTMLResponse)
 def ui_audit_log(

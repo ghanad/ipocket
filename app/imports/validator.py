@@ -12,11 +12,17 @@ def validate_bundle(connection, bundle: ImportBundle) -> ImportValidationResult:
     result = ImportValidationResult()
 
     vendor_names = {vendor.name.strip() for vendor in bundle.vendors if vendor.name}
-    project_names = {project.name.strip() for project in bundle.projects if project.name}
+    project_names = {
+        project.name.strip() for project in bundle.projects if project.name
+    }
     host_names = {host.name.strip() for host in bundle.hosts if host.name}
 
-    existing_vendor_names = {vendor.name for vendor in repository.list_vendors(connection)}
-    existing_project_names = {project.name for project in repository.list_projects(connection)}
+    existing_vendor_names = {
+        vendor.name for vendor in repository.list_vendors(connection)
+    }
+    existing_project_names = {
+        project.name for project in repository.list_projects(connection)
+    }
     existing_host_names = {host.name for host in repository.list_hosts(connection)}
 
     for vendor in bundle.vendors:
@@ -30,15 +36,23 @@ def validate_bundle(connection, bundle: ImportBundle) -> ImportValidationResult:
             try:
                 normalize_hex_color(project.color)
             except ValueError as exc:
-                result.errors.append(_issue(_with_field(project.source, "color"), str(exc)))
+                result.errors.append(
+                    _issue(_with_field(project.source, "color"), str(exc))
+                )
 
     for host in bundle.hosts:
         if not host.name.strip():
             result.errors.append(_issue(host.source, "Host name is required."))
         if host.vendor_name:
-            if host.vendor_name not in vendor_names and host.vendor_name not in existing_vendor_names:
+            if (
+                host.vendor_name not in vendor_names
+                and host.vendor_name not in existing_vendor_names
+            ):
                 result.errors.append(
-                    _issue(_with_field(host.source, "vendor_name"), "Vendor does not exist.")
+                    _issue(
+                        _with_field(host.source, "vendor_name"),
+                        "Vendor does not exist.",
+                    )
                 )
 
     for asset in bundle.ip_assets:
@@ -46,9 +60,15 @@ def validate_bundle(connection, bundle: ImportBundle) -> ImportValidationResult:
             result.errors.append(_issue(asset.source, "IP address is required."))
         else:
             if not _is_valid_ip(asset.ip_address):
-                result.errors.append(_issue(_with_field(asset.source, "ip_address"), "Invalid IP address."))
+                result.errors.append(
+                    _issue(
+                        _with_field(asset.source, "ip_address"), "Invalid IP address."
+                    )
+                )
         if not asset.asset_type.strip():
-            result.errors.append(_issue(_with_field(asset.source, "type"), "Asset type is required."))
+            result.errors.append(
+                _issue(_with_field(asset.source, "type"), "Asset type is required.")
+            )
         else:
             if not _is_valid_asset_type(asset.asset_type):
                 result.errors.append(
@@ -58,21 +78,34 @@ def validate_bundle(connection, bundle: ImportBundle) -> ImportValidationResult:
                     )
                 )
         if asset.project_name:
-            if asset.project_name not in project_names and asset.project_name not in existing_project_names:
+            if (
+                asset.project_name not in project_names
+                and asset.project_name not in existing_project_names
+            ):
                 result.errors.append(
-                    _issue(_with_field(asset.source, "project_name"), "Project does not exist.")
+                    _issue(
+                        _with_field(asset.source, "project_name"),
+                        "Project does not exist.",
+                    )
                 )
         if asset.host_name:
-            if asset.host_name not in host_names and asset.host_name not in existing_host_names:
+            if (
+                asset.host_name not in host_names
+                and asset.host_name not in existing_host_names
+            ):
                 result.errors.append(
-                    _issue(_with_field(asset.source, "host_name"), "Host does not exist.")
+                    _issue(
+                        _with_field(asset.source, "host_name"), "Host does not exist."
+                    )
                 )
         if asset.tags is not None:
             for tag in asset.tags:
                 try:
                     normalize_tag_name(tag)
                 except ValueError as exc:
-                    result.errors.append(_issue(_with_field(asset.source, "tags"), str(exc)))
+                    result.errors.append(
+                        _issue(_with_field(asset.source, "tags"), str(exc))
+                    )
 
     return result
 

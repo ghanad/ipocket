@@ -4,7 +4,12 @@ from typing import Optional
 
 from app.imports.applier import apply_bundle
 from app.imports.importers import Importer
-from app.imports.models import ImportApplyResult, ImportIssue, ImportParseError, ImportSummary
+from app.imports.models import (
+    ImportApplyResult,
+    ImportIssue,
+    ImportParseError,
+    ImportSummary,
+)
 from app.imports.validator import validate_bundle
 
 
@@ -26,7 +31,11 @@ def run_import(
 
     validation = validate_bundle(connection, bundle)
     if not validation.is_valid:
-        return ImportApplyResult(summary=ImportSummary(), errors=validation.errors, warnings=validation.warnings)
+        return ImportApplyResult(
+            summary=ImportSummary(),
+            errors=validation.errors,
+            warnings=validation.warnings,
+        )
 
     applied = apply_bundle(connection, bundle, dry_run=dry_run)
     applied.warnings = validation.warnings + applied.warnings

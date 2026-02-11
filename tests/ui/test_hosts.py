@@ -14,7 +14,9 @@ def test_hosts_page_renders_edit_drawer_and_actions(client) -> None:
     try:
         db.init_db(connection)
         vendor = repository.create_vendor(connection, name="Dell")
-        host = repository.create_host(connection, name="edge-01", vendor=vendor.name, notes="rack-a")
+        host = repository.create_host(
+            connection, name="edge-01", vendor=vendor.name, notes="rack-a"
+        )
         repository.create_ip_asset(
             connection,
             ip_address="10.50.0.10",
@@ -38,6 +40,7 @@ def test_hosts_page_renders_edit_drawer_and_actions(client) -> None:
     assert "Edit Host" in response.text
     assert "Save changes" in response.text
     assert "host-edit-row-" not in response.text
+
 
 def test_hosts_list_renders_project_color_tag(client) -> None:
     import os
@@ -64,6 +67,7 @@ def test_hosts_list_renders_project_color_tag(client) -> None:
     assert "--project-color: #2563eb" in response.text
     assert "Core" in response.text
 
+
 def test_hosts_list_uses_edit_drawer_actions(client) -> None:
     import os
 
@@ -85,6 +89,7 @@ def test_hosts_list_uses_edit_drawer_actions(client) -> None:
     assert "data-host-drawer" in response.text
     assert "Save changes" in response.text
 
+
 def test_hosts_add_uses_side_panel(client) -> None:
     """Test that Add Host uses the side panel drawer instead of inline form."""
     response = client.get("/ui/hosts")
@@ -97,9 +102,13 @@ def test_hosts_add_uses_side_panel(client) -> None:
     assert "data-host-drawer" in response.text
     # Should have "Create Host" button text in the drawer (set by JS)
     # The drawer title is dynamically set by JS, but the form action should be /ui/hosts for add
-    assert 'formaction="/ui/hosts"' in response.text or 'action="/ui/hosts"' in response.text
+    assert (
+        'formaction="/ui/hosts"' in response.text
+        or 'action="/ui/hosts"' in response.text
+    )
     # Should NOT have the old inline add form
     assert 'id="add-host-card"' not in response.text
+
 
 def test_hosts_list_search_trims_whitespace(client) -> None:
     import os
@@ -117,6 +126,7 @@ def test_hosts_list_search_trims_whitespace(client) -> None:
     assert response.status_code == 200
     assert "edge-01" in response.text
     assert "core-02" not in response.text
+
 
 def test_hosts_list_paginates_with_default_page_size(client) -> None:
     import os
@@ -138,6 +148,7 @@ def test_hosts_list_paginates_with_default_page_size(client) -> None:
     assert "Page 1 of 2" in response.text
     assert "Showing 1-20 of 25" in response.text
 
+
 def test_hosts_list_paginates_with_custom_page_size(client) -> None:
     import os
 
@@ -158,6 +169,7 @@ def test_hosts_list_paginates_with_custom_page_size(client) -> None:
     assert "Page 1 of 2" in response.text
     assert "Showing 1-10 of 15" in response.text
 
+
 def test_hosts_list_pagination_with_search(client) -> None:
     import os
 
@@ -177,6 +189,7 @@ def test_hosts_list_pagination_with_search(client) -> None:
     assert "special-host" not in response.text
     assert "Page 1 of 3" in response.text
     assert "Showing 1-10 of 25" in response.text
+
 
 def test_hosts_list_pagination_navigation(client) -> None:
     import os
@@ -199,6 +212,7 @@ def test_hosts_list_pagination_navigation(client) -> None:
     assert "Page 2 of 3" in response.text
     assert "Showing 11-20 of 30" in response.text
 
+
 def test_hosts_edit_updates_project_assignments(client) -> None:
     import os
 
@@ -219,7 +233,9 @@ def test_hosts_edit_updates_project_assignments(client) -> None:
     from app.models import User
     from app.routes import ui
 
-    app.dependency_overrides[ui.require_ui_editor] = lambda: User(1, "editor", "x", UserRole.EDITOR, True)
+    app.dependency_overrides[ui.require_ui_editor] = lambda: User(
+        1, "editor", "x", UserRole.EDITOR, True
+    )
     try:
         response = client.post(
             f"/ui/hosts/{host.id}/edit",
@@ -239,6 +255,7 @@ def test_hosts_edit_updates_project_assignments(client) -> None:
     finally:
         connection.close()
 
+
 def test_ui_edit_host_updates_name_vendor_and_notes(client) -> None:
     import os
 
@@ -247,15 +264,23 @@ def test_ui_edit_host_updates_name_vendor_and_notes(client) -> None:
         db.init_db(connection)
         vendor_old = repository.create_vendor(connection, "Dell")
         vendor_new = repository.create_vendor(connection, "HP")
-        host = repository.create_host(connection, name="node-01", notes="old", vendor=vendor_old.name)
+        host = repository.create_host(
+            connection, name="node-01", notes="old", vendor=vendor_old.name
+        )
     finally:
         connection.close()
 
-    app.dependency_overrides[ui.require_ui_editor] = lambda: User(1, "editor", "x", UserRole.EDITOR, True)
+    app.dependency_overrides[ui.require_ui_editor] = lambda: User(
+        1, "editor", "x", UserRole.EDITOR, True
+    )
     try:
         response = client.post(
             f"/ui/hosts/{host.id}/edit",
-            data={"name": "node-01-renamed", "notes": "updated notes", "vendor_id": str(vendor_new.id)},
+            data={
+                "name": "node-01-renamed",
+                "notes": "updated notes",
+                "vendor_id": str(vendor_new.id),
+            },
             follow_redirects=False,
         )
     finally:
@@ -274,6 +299,7 @@ def test_ui_edit_host_updates_name_vendor_and_notes(client) -> None:
     assert updated_host.notes == "updated notes"
     assert updated_host.vendor == "HP"
 
+
 def test_ui_create_host_with_os_and_bmc_ips(client) -> None:
     import os
 
@@ -283,7 +309,9 @@ def test_ui_create_host_with_os_and_bmc_ips(client) -> None:
     finally:
         connection.close()
 
-    app.dependency_overrides[ui.require_ui_editor] = lambda: User(1, "editor", "x", UserRole.EDITOR, True)
+    app.dependency_overrides[ui.require_ui_editor] = lambda: User(
+        1, "editor", "x", UserRole.EDITOR, True
+    )
     try:
         response = client.post(
             "/ui/hosts",
@@ -316,6 +344,7 @@ def test_ui_create_host_with_os_and_bmc_ips(client) -> None:
     assert os_asset.host_id == host.id
     assert bmc_asset.host_id == host.id
 
+
 def test_ui_create_host_with_project_assigns_linked_ips(client) -> None:
     import os
 
@@ -326,7 +355,9 @@ def test_ui_create_host_with_project_assigns_linked_ips(client) -> None:
     finally:
         connection.close()
 
-    app.dependency_overrides[ui.require_ui_editor] = lambda: User(1, "editor", "x", UserRole.EDITOR, True)
+    app.dependency_overrides[ui.require_ui_editor] = lambda: User(
+        1, "editor", "x", UserRole.EDITOR, True
+    )
     try:
         response = client.post(
             "/ui/hosts",
@@ -355,6 +386,7 @@ def test_ui_create_host_with_project_assigns_linked_ips(client) -> None:
     assert os_asset.project_id == project.id
     assert bmc_asset.project_id == project.id
 
+
 def test_ui_edit_host_adds_os_and_bmc_ips(client) -> None:
     import os
 
@@ -365,11 +397,18 @@ def test_ui_edit_host_adds_os_and_bmc_ips(client) -> None:
     finally:
         connection.close()
 
-    app.dependency_overrides[ui.require_ui_editor] = lambda: User(1, "editor", "x", UserRole.EDITOR, True)
+    app.dependency_overrides[ui.require_ui_editor] = lambda: User(
+        1, "editor", "x", UserRole.EDITOR, True
+    )
     try:
         response = client.post(
             f"/ui/hosts/{host.id}/edit",
-            data={"name": "edge-03", "notes": "", "os_ips": "10.10.1.10", "bmc_ips": "10.10.1.20"},
+            data={
+                "name": "edge-03",
+                "notes": "",
+                "os_ips": "10.10.1.10",
+                "bmc_ips": "10.10.1.20",
+            },
             follow_redirects=False,
         )
     finally:
@@ -391,6 +430,7 @@ def test_ui_edit_host_adds_os_and_bmc_ips(client) -> None:
     assert os_asset.host_id == host.id
     assert bmc_asset.host_id == host.id
 
+
 def test_ui_edit_host_requires_name(client) -> None:
     import os
 
@@ -401,7 +441,9 @@ def test_ui_edit_host_requires_name(client) -> None:
     finally:
         connection.close()
 
-    app.dependency_overrides[ui.require_ui_editor] = lambda: User(1, "editor", "x", UserRole.EDITOR, True)
+    app.dependency_overrides[ui.require_ui_editor] = lambda: User(
+        1, "editor", "x", UserRole.EDITOR, True
+    )
     try:
         response = client.post(
             f"/ui/hosts/{host.id}/edit",
@@ -413,6 +455,7 @@ def test_ui_edit_host_requires_name(client) -> None:
     assert response.status_code == 400
     assert "Host name is required." in response.text
 
+
 def test_ui_delete_host_requires_confirmation_text(client) -> None:
     import os
 
@@ -423,7 +466,9 @@ def test_ui_delete_host_requires_confirmation_text(client) -> None:
     finally:
         connection.close()
 
-    app.dependency_overrides[ui.require_ui_editor] = lambda: User(1, "editor", "x", UserRole.EDITOR, True)
+    app.dependency_overrides[ui.require_ui_editor] = lambda: User(
+        1, "editor", "x", UserRole.EDITOR, True
+    )
     try:
         form_response = client.get(f"/ui/hosts/{host.id}/delete")
         response = client.post(
@@ -435,9 +480,12 @@ def test_ui_delete_host_requires_confirmation_text(client) -> None:
         app.dependency_overrides.pop(ui.require_ui_editor, None)
 
     assert form_response.status_code == 303
-    assert form_response.headers.get("location", "").endswith(f"/ui/hosts?delete={host.id}")
+    assert form_response.headers.get("location", "").endswith(
+        f"/ui/hosts?delete={host.id}"
+    )
     assert response.status_code == 400
     assert "برای حذف کامل" in response.text
+
 
 def test_ui_delete_host_with_confirmation_text(client) -> None:
     import os
@@ -449,7 +497,9 @@ def test_ui_delete_host_with_confirmation_text(client) -> None:
     finally:
         connection.close()
 
-    app.dependency_overrides[ui.require_ui_editor] = lambda: User(1, "editor", "x", UserRole.EDITOR, True)
+    app.dependency_overrides[ui.require_ui_editor] = lambda: User(
+        1, "editor", "x", UserRole.EDITOR, True
+    )
     try:
         response = client.post(
             f"/ui/hosts/{host.id}/delete",
@@ -469,6 +519,7 @@ def test_ui_delete_host_with_confirmation_text(client) -> None:
 
     assert deleted is None
 
+
 def test_ui_delete_host_allows_when_linked_ips_exist_and_unlinks_ips(client) -> None:
     import os
 
@@ -476,11 +527,18 @@ def test_ui_delete_host_allows_when_linked_ips_exist_and_unlinks_ips(client) -> 
     try:
         db.init_db(connection)
         host = repository.create_host(connection, name="node-delete-03", notes="temp")
-        repository.create_ip_asset(connection, ip_address="10.20.0.31", asset_type=IPAssetType.OS, host_id=host.id)
+        repository.create_ip_asset(
+            connection,
+            ip_address="10.20.0.31",
+            asset_type=IPAssetType.OS,
+            host_id=host.id,
+        )
     finally:
         connection.close()
 
-    app.dependency_overrides[ui.require_ui_editor] = lambda: User(1, "editor", "x", UserRole.EDITOR, True)
+    app.dependency_overrides[ui.require_ui_editor] = lambda: User(
+        1, "editor", "x", UserRole.EDITOR, True
+    )
     try:
         response = client.post(
             f"/ui/hosts/{host.id}/delete",
@@ -503,6 +561,7 @@ def test_ui_delete_host_allows_when_linked_ips_exist_and_unlinks_ips(client) -> 
     assert linked_asset is not None
     assert linked_asset.host_id is None
 
+
 def test_ui_create_host_links_existing_ips(client) -> None:
     """Test that creating a host with existing IPs links them instead of throwing an error."""
     import os
@@ -511,12 +570,18 @@ def test_ui_create_host_links_existing_ips(client) -> None:
     try:
         db.init_db(connection)
         # Create existing IP assets without a host
-        repository.create_ip_asset(connection, ip_address="10.30.0.10", asset_type=IPAssetType.OS)
-        repository.create_ip_asset(connection, ip_address="10.30.0.20", asset_type=IPAssetType.BMC)
+        repository.create_ip_asset(
+            connection, ip_address="10.30.0.10", asset_type=IPAssetType.OS
+        )
+        repository.create_ip_asset(
+            connection, ip_address="10.30.0.20", asset_type=IPAssetType.BMC
+        )
     finally:
         connection.close()
 
-    app.dependency_overrides[ui.require_ui_editor] = lambda: User(1, "editor", "x", UserRole.EDITOR, True)
+    app.dependency_overrides[ui.require_ui_editor] = lambda: User(
+        1, "editor", "x", UserRole.EDITOR, True
+    )
     try:
         response = client.post(
             "/ui/hosts",
@@ -548,6 +613,7 @@ def test_ui_create_host_links_existing_ips(client) -> None:
     assert os_asset.host_id == host.id
     assert bmc_asset.host_id == host.id
 
+
 def test_ui_edit_host_links_existing_ips(client) -> None:
     """Test that editing a host to add existing IPs links them instead of throwing an error."""
     import os
@@ -557,12 +623,18 @@ def test_ui_edit_host_links_existing_ips(client) -> None:
         db.init_db(connection)
         host = repository.create_host(connection, name="edge-edit-existing")
         # Create existing IP assets without a host
-        repository.create_ip_asset(connection, ip_address="10.40.0.10", asset_type=IPAssetType.OS)
-        repository.create_ip_asset(connection, ip_address="10.40.0.20", asset_type=IPAssetType.BMC)
+        repository.create_ip_asset(
+            connection, ip_address="10.40.0.10", asset_type=IPAssetType.OS
+        )
+        repository.create_ip_asset(
+            connection, ip_address="10.40.0.20", asset_type=IPAssetType.BMC
+        )
     finally:
         connection.close()
 
-    app.dependency_overrides[ui.require_ui_editor] = lambda: User(1, "editor", "x", UserRole.EDITOR, True)
+    app.dependency_overrides[ui.require_ui_editor] = lambda: User(
+        1, "editor", "x", UserRole.EDITOR, True
+    )
     try:
         response = client.post(
             f"/ui/hosts/{host.id}/edit",
@@ -615,7 +687,9 @@ def test_ui_edit_host_unlinks_removed_os_and_bmc_ips(client) -> None:
     finally:
         connection.close()
 
-    app.dependency_overrides[ui.require_ui_editor] = lambda: User(1, "editor", "x", UserRole.EDITOR, True)
+    app.dependency_overrides[ui.require_ui_editor] = lambda: User(
+        1, "editor", "x", UserRole.EDITOR, True
+    )
     try:
         response = client.post(
             f"/ui/hosts/{host.id}/edit",
@@ -656,7 +730,9 @@ def test_ui_delete_host_open_delete_redirect_shows_drawer(client) -> None:
     finally:
         connection.close()
 
-    app.dependency_overrides[ui.require_ui_editor] = lambda: User(1, "editor", "x", UserRole.EDITOR, True)
+    app.dependency_overrides[ui.require_ui_editor] = lambda: User(
+        1, "editor", "x", UserRole.EDITOR, True
+    )
     try:
         response = client.get(f"/ui/hosts/{host.id}/delete")
         list_response = client.get(f"/ui/hosts?delete={host.id}")
@@ -685,7 +761,9 @@ def test_ui_delete_host_shows_success_flash_message(client) -> None:
     finally:
         connection.close()
 
-    app.dependency_overrides[ui.require_ui_editor] = lambda: User(1, "editor", "x", UserRole.EDITOR, True)
+    app.dependency_overrides[ui.require_ui_editor] = lambda: User(
+        1, "editor", "x", UserRole.EDITOR, True
+    )
     try:
         response = client.post(
             f"/ui/hosts/{host.id}/delete",

@@ -27,7 +27,12 @@ def upgrade() -> None:
         sa.Column("target_label", sa.Text(), nullable=False),
         sa.Column("action", sa.Text(), nullable=False),
         sa.Column("changes", sa.Text(), nullable=True),
-        sa.Column("created_at", sa.Text(), nullable=False, server_default=sa.text("CURRENT_TIMESTAMP")),
+        sa.Column(
+            "created_at",
+            sa.Text(),
+            nullable=False,
+            server_default=sa.text("CURRENT_TIMESTAMP"),
+        ),
     )
 
 

@@ -41,8 +41,9 @@ def create_audit_log(
     )
 
 
-
-def get_audit_logs_for_ip(connection: sqlite3.Connection, ip_asset_id: int) -> list[AuditLog]:
+def get_audit_logs_for_ip(
+    connection: sqlite3.Connection, ip_asset_id: int
+) -> list[AuditLog]:
     rows = connection.execute(
         """
         SELECT *
@@ -54,7 +55,6 @@ def get_audit_logs_for_ip(connection: sqlite3.Connection, ip_asset_id: int) -> l
         (ip_asset_id,),
     ).fetchall()
     return [_row_to_audit_log(row) for row in rows]
-
 
 
 def list_audit_logs(
@@ -75,7 +75,6 @@ def list_audit_logs(
     return [_row_to_audit_log(row) for row in rows]
 
 
-
 def count_audit_logs(
     connection: sqlite3.Connection,
     target_type: str = "IP_ASSET",
@@ -89,7 +88,6 @@ def count_audit_logs(
         (target_type,),
     ).fetchone()
     return row["count"] if row else 0
-
 
 
 def list_audit_logs_paginated(

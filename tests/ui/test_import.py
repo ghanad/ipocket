@@ -7,7 +7,9 @@ from app.routes import ui
 
 
 def test_import_page_includes_sample_csv_links(client) -> None:
-    app.dependency_overrides[ui.get_current_ui_user] = lambda: User(1, "viewer", "x", UserRole.VIEWER, True)
+    app.dependency_overrides[ui.get_current_ui_user] = lambda: User(
+        1, "viewer", "x", UserRole.VIEWER, True
+    )
     try:
         response = client.get("/ui/import")
     finally:
@@ -31,7 +33,9 @@ def test_import_page_includes_sample_csv_links(client) -> None:
 
 
 def test_export_tab_renders_from_import_page(client) -> None:
-    app.dependency_overrides[ui.get_current_ui_user] = lambda: User(1, "viewer", "x", UserRole.VIEWER, True)
+    app.dependency_overrides[ui.get_current_ui_user] = lambda: User(
+        1, "viewer", "x", UserRole.VIEWER, True
+    )
     try:
         response = client.get("/ui/import?tab=export")
     finally:
@@ -49,7 +53,9 @@ def test_export_tab_renders_from_import_page(client) -> None:
 
 
 def test_export_route_renders_unified_data_ops_page(client) -> None:
-    app.dependency_overrides[ui.get_current_ui_user] = lambda: User(1, "viewer", "x", UserRole.VIEWER, True)
+    app.dependency_overrides[ui.get_current_ui_user] = lambda: User(
+        1, "viewer", "x", UserRole.VIEWER, True
+    )
     try:
         response = client.get("/ui/export")
     finally:

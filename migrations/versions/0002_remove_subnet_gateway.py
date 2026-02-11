@@ -24,5 +24,9 @@ def upgrade() -> None:
 
 def downgrade() -> None:
     with op.batch_alter_table("ip_assets") as batch:
-        batch.add_column(sa.Column("subnet", sa.Text(), nullable=False, server_default=""))
-        batch.add_column(sa.Column("gateway", sa.Text(), nullable=False, server_default=""))
+        batch.add_column(
+            sa.Column("subnet", sa.Text(), nullable=False, server_default="")
+        )
+        batch.add_column(
+            sa.Column("gateway", sa.Text(), nullable=False, server_default="")
+        )

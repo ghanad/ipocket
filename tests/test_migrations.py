@@ -38,7 +38,10 @@ def test_ip_assets_table_excludes_subnet_and_gateway(tmp_path) -> None:
     connection.row_factory = sqlite3.Row
     try:
         db.init_db(connection)
-        columns = {row["name"] for row in connection.execute("PRAGMA table_info(ip_assets)").fetchall()}
+        columns = {
+            row["name"]
+            for row in connection.execute("PRAGMA table_info(ip_assets)").fetchall()
+        }
         assert "subnet" not in columns
         assert "gateway" not in columns
     finally:

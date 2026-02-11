@@ -21,6 +21,7 @@ def test_tag_normalization_rules() -> None:
     with pytest.raises(ValueError):
         normalize_tag_name("bad tag")
 
+
 def test_create_update_delete_tag(_setup_connection) -> None:
     connection = _setup_connection()
     tag = create_tag(connection, name="prod", color="#22c55e")

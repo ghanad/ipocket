@@ -56,7 +56,9 @@ def test_list_project_ip_counts_returns_active_counts(_setup_connection) -> None
             asset_type=IPAssetType.VM,
         )
 
-        repository.set_ip_asset_archived(connection, archived_asset.ip_address, archived=True)
+        repository.set_ip_asset_archived(
+            connection, archived_asset.ip_address, archived=True
+        )
 
         counts = repository.list_project_ip_counts(connection)
 

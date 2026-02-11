@@ -18,12 +18,15 @@ from app.utils import split_tag_string
 
 
 class Importer(Protocol):
-    def parse(self, inputs: dict[str, bytes], options: Optional[dict[str, object]] = None) -> ImportBundle:
-        ...
+    def parse(
+        self, inputs: dict[str, bytes], options: Optional[dict[str, object]] = None
+    ) -> ImportBundle: ...
 
 
 class BundleImporter:
-    def parse(self, inputs: dict[str, bytes], options: Optional[dict[str, object]] = None) -> ImportBundle:
+    def parse(
+        self, inputs: dict[str, bytes], options: Optional[dict[str, object]] = None
+    ) -> ImportBundle:
         if "bundle" not in inputs:
             raise ImportParseError("Missing bundle.json input.")
         try:
@@ -32,7 +35,9 @@ class BundleImporter:
             raise ImportParseError("Invalid JSON payload.") from exc
 
         if payload.get("schema_version") != "1":
-            raise ImportParseError("Unsupported schema_version (expected '1').", location="schema_version")
+            raise ImportParseError(
+                "Unsupported schema_version (expected '1').", location="schema_version"
+            )
         data = payload.get("data")
         if not isinstance(data, dict):
             raise ImportParseError("Missing data section.", location="data")
@@ -53,7 +58,9 @@ def _parse_named_entities(section: object, base_path: str) -> list[ImportVendor]
     vendors: list[ImportVendor] = []
     for index, entry in enumerate(section):
         if not isinstance(entry, dict):
-            raise ImportParseError("Expected object entries.", location=f"{base_path}[{index}]")
+            raise ImportParseError(
+                "Expected object entries.", location=f"{base_path}[{index}]"
+            )
         vendors.append(
             ImportVendor(
                 name=str(entry.get("name") or ""),
@@ -71,7 +78,9 @@ def _parse_projects(section: object, base_path: str) -> list[ImportProject]:
     projects: list[ImportProject] = []
     for index, entry in enumerate(section):
         if not isinstance(entry, dict):
-            raise ImportParseError("Expected object entries.", location=f"{base_path}[{index}]")
+            raise ImportParseError(
+                "Expected object entries.", location=f"{base_path}[{index}]"
+            )
         projects.append(
             ImportProject(
                 name=str(entry.get("name") or ""),
@@ -91,7 +100,9 @@ def _parse_hosts(section: object, base_path: str) -> list[ImportHost]:
     hosts: list[ImportHost] = []
     for index, entry in enumerate(section):
         if not isinstance(entry, dict):
-            raise ImportParseError("Expected object entries.", location=f"{base_path}[{index}]")
+            raise ImportParseError(
+                "Expected object entries.", location=f"{base_path}[{index}]"
+            )
         hosts.append(
             ImportHost(
                 name=str(entry.get("name") or ""),
@@ -111,7 +122,9 @@ def _parse_ip_assets(section: object, base_path: str) -> list[ImportIPAsset]:
     assets: list[ImportIPAsset] = []
     for index, entry in enumerate(section):
         if not isinstance(entry, dict):
-            raise ImportParseError("Expected object entries.", location=f"{base_path}[{index}]")
+            raise ImportParseError(
+                "Expected object entries.", location=f"{base_path}[{index}]"
+            )
         assets.append(
             ImportIPAsset(
                 ip_address=str(entry.get("ip_address") or ""),
@@ -128,12 +141,22 @@ def _parse_ip_assets(section: object, base_path: str) -> list[ImportIPAsset]:
 
 
 class CsvImporter:
-    def parse(self, inputs: dict[str, bytes], options: Optional[dict[str, object]] = None) -> ImportBundle:
+    def parse(
+        self, inputs: dict[str, bytes], options: Optional[dict[str, object]] = None
+    ) -> ImportBundle:
         if "hosts" not in inputs and "ip_assets" not in inputs:
-            raise ImportParseError("CSV import requires hosts.csv and/or ip-assets.csv input.")
+            raise ImportParseError(
+                "CSV import requires hosts.csv and/or ip-assets.csv input."
+            )
 
-        hosts = _parse_hosts_csv(inputs["hosts"], "hosts.csv") if "hosts" in inputs else []
-        ip_assets = _parse_ip_assets_csv(inputs["ip_assets"], "ip-assets.csv") if "ip_assets" in inputs else []
+        hosts = (
+            _parse_hosts_csv(inputs["hosts"], "hosts.csv") if "hosts" in inputs else []
+        )
+        ip_assets = (
+            _parse_ip_assets_csv(inputs["ip_assets"], "ip-assets.csv")
+            if "ip_assets" in inputs
+            else []
+        )
         derived_assets = _derive_ip_assets_from_hosts(hosts)
         vendors = _derive_vendors_from_hosts(hosts)
         projects = _derive_projects_from_ip_assets([*derived_assets, *ip_assets])
@@ -200,14 +223,18 @@ def _derive_vendors_from_hosts(hosts: list[ImportHost]) -> list[ImportVendor]:
     return vendors
 
 
-def _derive_projects_from_ip_assets(ip_assets: list[ImportIPAsset]) -> list[ImportProject]:
+def _derive_projects_from_ip_assets(
+    ip_assets: list[ImportIPAsset],
+) -> list[ImportProject]:
     seen: set[str] = set()
     projects: list[ImportProject] = []
     for asset in ip_assets:
         if asset.project_name:
             if asset.project_name not in seen:
                 seen.add(asset.project_name)
-                projects.append(ImportProject(name=asset.project_name, source=asset.source))
+                projects.append(
+                    ImportProject(name=asset.project_name, source=asset.source)
+                )
     return projects
 
 
@@ -249,7 +276,9 @@ def _ip_assets_from_host(host: ImportHost, host_name: str) -> list[ImportIPAsset
     return assets
 
 
-def _with_host_field(source: Optional[ImportSource], field: str) -> Optional[ImportSource]:
+def _with_host_field(
+    source: Optional[ImportSource], field: str
+) -> Optional[ImportSource]:
     if source is None:
         return None
     return ImportSource(location=f"{source.location}.{field}")
