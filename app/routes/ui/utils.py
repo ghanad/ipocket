@@ -476,7 +476,7 @@ def _build_asset_view_models(
 
 async def _parse_form_data(request: Request) -> dict:
     body = await request.body()
-    parsed = parse_qs(body.decode())
+    parsed = parse_qs(body.decode(), keep_blank_values=True)
     return {key: values[0] for key, values in parsed.items()}
 
 async def _parse_multipart_form(request: Request) -> dict:

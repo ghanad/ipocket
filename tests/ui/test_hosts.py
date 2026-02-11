@@ -621,6 +621,59 @@ def test_ui_edit_host_links_existing_ips(client) -> None:
     assert bmc_asset.host_id == host.id
 
 
+def test_ui_edit_host_unlinks_removed_os_and_bmc_ips(client) -> None:
+    import os
+    from app import db, repository
+
+    connection = db.connect(os.environ["IPAM_DB_PATH"])
+    try:
+        db.init_db(connection)
+        host = repository.create_host(connection, name="edge-edit-unlink")
+        repository.create_ip_asset(
+            connection,
+            ip_address="10.41.0.10",
+            asset_type=IPAssetType.OS,
+            host_id=host.id,
+        )
+        repository.create_ip_asset(
+            connection,
+            ip_address="10.41.0.20",
+            asset_type=IPAssetType.BMC,
+            host_id=host.id,
+        )
+    finally:
+        connection.close()
+
+    app.dependency_overrides[ui.require_ui_editor] = lambda: User(1, "editor", "x", UserRole.EDITOR, True)
+    try:
+        response = client.post(
+            f"/ui/hosts/{host.id}/edit",
+            data={
+                "name": "edge-edit-unlink",
+                "notes": "",
+                "os_ips": "",
+                "bmc_ips": "",
+            },
+            follow_redirects=False,
+        )
+    finally:
+        app.dependency_overrides.pop(ui.require_ui_editor, None)
+
+    assert response.status_code == 303
+
+    connection = db.connect(os.environ["IPAM_DB_PATH"])
+    try:
+        os_asset = repository.get_ip_asset_by_ip(connection, "10.41.0.10")
+        bmc_asset = repository.get_ip_asset_by_ip(connection, "10.41.0.20")
+    finally:
+        connection.close()
+
+    assert os_asset is not None
+    assert bmc_asset is not None
+    assert os_asset.host_id is None
+    assert bmc_asset.host_id is None
+
+
 def test_ui_delete_host_open_delete_redirect_shows_drawer(client) -> None:
     """Test that opening host delete redirects to hosts page with delete drawer open."""
     import os

@@ -258,6 +258,8 @@ async def ui_edit_host(
     vendor_id = _parse_optional_int(form_data.get("vendor_id"))
     os_ips_raw = form_data.get("os_ips")
     bmc_ips_raw = form_data.get("bmc_ips")
+    os_ips_provided = os_ips_raw is not None
+    bmc_ips_provided = bmc_ips_raw is not None
     project_raw = form_data.get("project_id")
     project_id = _parse_optional_int(project_raw)
     os_ips = _parse_inline_ip_list(os_ips_raw)
@@ -334,6 +336,32 @@ async def ui_edit_host(
             notes=notes,
             vendor=vendor.name if vendor else None,
         )
+        # Keep host OS/BMC links in sync with the edit form:
+        # omitted IPs should be unlinked from this host.
+        linked = repository.get_host_linked_assets_grouped(connection, host_id)
+        current_os_ips = {asset.ip_address for asset in linked["os"]}
+        current_bmc_ips = {asset.ip_address for asset in linked["bmc"]}
+        removed_os_ips = sorted(current_os_ips - set(os_ips)) if os_ips_provided else []
+        removed_bmc_ips = sorted(current_bmc_ips - set(bmc_ips)) if bmc_ips_provided else []
+        for removed_ips, asset_type in (
+            (removed_os_ips, IPAssetType.OS),
+            (removed_bmc_ips, IPAssetType.BMC),
+        ):
+            if not removed_ips:
+                continue
+            placeholders = ",".join(["?"] * len(removed_ips))
+            connection.execute(
+                f"""
+                UPDATE ip_assets
+                SET host_id = NULL, updated_at = CURRENT_TIMESTAMP
+                WHERE host_id = ?
+                  AND type = ?
+                  AND ip_address IN ({placeholders})
+                """,
+                [host_id, asset_type.value, *removed_ips],
+            )
+        if removed_os_ips or removed_bmc_ips:
+            connection.commit()
         set_project_id = project_raw is not None
         if set_project_id:
             projects = repository.list_projects(connection)
