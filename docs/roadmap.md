@@ -2,7 +2,7 @@
 
 ## Phase 1 (MVP)
 - CRUD IP inventory + roles
-- Needs Assignment view
+- Assignment workflow integrated into IP Assets list filters and quick edit actions
 - Prometheus /metrics
 
 ## Phase 2

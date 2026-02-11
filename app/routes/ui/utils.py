@@ -378,11 +378,6 @@ def _normalize_project_color(value: Optional[str]) -> Optional[str]:
         return None
     return normalize_hex_color(normalized_value)
 
-def _normalize_assignment_filter(value: Optional[str]) -> str:
-    if value == "project":
-        return value
-    return "project"
-
 def _normalize_asset_type(value: Optional[str]) -> Optional[IPAssetType]:
     normalized_value = _parse_optional_str(value)
     if normalized_value is None:

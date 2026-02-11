@@ -361,14 +361,6 @@ def list_sd_targets(connection: sqlite3.Connection, port: int, only_assigned: bo
 
 
 
-def list_ip_assets_needing_assignment(connection: sqlite3.Connection, filter_mode: str) -> Iterable[IPAsset]:
-    if filter_mode != "project":
-        raise ValueError("Invalid assignment filter mode.")
-    rows = connection.execute("SELECT * FROM ip_assets WHERE archived = 0 AND project_id IS NULL ORDER BY ip_address").fetchall()
-    return [_row_to_ip_asset(row) for row in rows]
-
-
-
 def list_ip_assets_for_export(
     connection: sqlite3.Connection,
     include_archived: bool = False,

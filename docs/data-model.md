@@ -67,3 +67,7 @@ underscores (`^[a-z0-9_-]+$`).
 ## Host deletion rule
 - Host permanent delete is allowed only when no IP assets are linked to it.
 - UI delete requires typing the exact host name as confirmation (two-step flow).
+
+## Assignment workflow
+- Project assignment is managed from the main **IP Assets** list using filters and edit actions.
+- There is no separate "Needs Assignment" page in the current UI.

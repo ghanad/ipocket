@@ -10,3 +10,5 @@ The app exposes Prometheus metrics at `GET /metrics`:
 
 
 Note: Vendor catalog/host vendor selection does not introduce new Prometheus metrics in this release.
+
+UI note: unassigned-related metrics are still available even though the dedicated **Needs Assignment** page was removed; use the IP Assets list filters for assignment workflows.
