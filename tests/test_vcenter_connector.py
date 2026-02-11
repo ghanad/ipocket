@@ -2,10 +2,13 @@ from __future__ import annotations
 
 from types import SimpleNamespace
 
+from app.connectors import vcenter
 from app.connectors.vcenter import (
     VCenterHostRecord,
     VCenterVmRecord,
+    _build_import_url,
     build_import_bundle,
+    import_bundle_via_api,
     parse_host_systems,
     parse_virtual_machines,
 )
@@ -109,3 +112,58 @@ def test_build_import_bundle_skips_duplicate_ips() -> None:
     assert len(bundle["data"]["ip_assets"]) == 1
     assert len(warnings) == 1
     assert "Duplicate IP '10.0.0.11'" in warnings[0]
+
+
+def test_build_import_url_supports_dry_run_and_apply() -> None:
+    assert (
+        _build_import_url("http://127.0.0.1:8000/", dry_run=True)
+        == "http://127.0.0.1:8000/import/bundle?dry_run=1"
+    )
+    assert (
+        _build_import_url("http://127.0.0.1:8000", dry_run=False)
+        == "http://127.0.0.1:8000/import/bundle?dry_run=0"
+    )
+
+
+def test_import_bundle_via_api_posts_multipart_and_parses_response(monkeypatch) -> None:
+    captured: dict[str, object] = {}
+
+    class _FakeResponse:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, exc_type, exc_val, exc_tb):
+            return False
+
+        def read(self) -> bytes:
+            return (
+                b'{"summary":{"total":{"would_create":2,"would_update":0,"would_skip":1}},'
+                b'"errors":[],"warnings":[]}'
+            )
+
+    def _fake_urlopen(request, timeout, context):
+        captured["url"] = request.full_url
+        captured["timeout"] = timeout
+        header_map = dict(request.header_items())
+        captured["auth"] = header_map.get("Authorization")
+        captured["content_type"] = header_map.get("Content-type")
+        captured["body"] = request.data
+        return _FakeResponse()
+
+    monkeypatch.setattr(vcenter.urllib_request, "urlopen", _fake_urlopen)
+
+    result = import_bundle_via_api(
+        bundle={"app": "ipocket", "schema_version": "1", "data": {}},
+        ipocket_url="http://127.0.0.1:8000/",
+        token="test-token",
+        dry_run=True,
+    )
+
+    assert captured["url"] == "http://127.0.0.1:8000/import/bundle?dry_run=1"
+    assert captured["timeout"] == 30
+    assert captured["auth"] == "Bearer test-token"
+    assert "multipart/form-data; boundary=" in str(captured["content_type"])
+    body = captured["body"]
+    assert isinstance(body, bytes)
+    assert b'name="file"; filename="bundle.json"' in body
+    assert result["summary"]["total"]["would_create"] == 2

@@ -7,6 +7,8 @@ import ipaddress
 import json
 import ssl
 from typing import Any, Optional, Sequence
+from urllib import error as urllib_error
+from urllib import request as urllib_request
 
 
 class VCenterConnectorError(Exception):
@@ -201,13 +203,16 @@ def build_import_bundle(
 
 
 def _collect_inventory(
-    service_instance: Any, vim: Any
+    service_instance: Any,
+    vim: Any,
 ) -> tuple[list[VCenterHostRecord], list[VCenterVmRecord], list[str]]:
     content = service_instance.RetrieveContent()
     view_manager = content.viewManager
 
     host_view = view_manager.CreateContainerView(
-        content.rootFolder, [vim.HostSystem], True
+        content.rootFolder,
+        [vim.HostSystem],
+        True,
     )
     try:
         host_systems = list(host_view.view)
@@ -215,7 +220,9 @@ def _collect_inventory(
         host_view.Destroy()
 
     vm_view = view_manager.CreateContainerView(
-        content.rootFolder, [vim.VirtualMachine], True
+        content.rootFolder,
+        [vim.VirtualMachine],
+        True,
     )
     try:
         vms = list(vm_view.view)
@@ -227,27 +234,23 @@ def _collect_inventory(
     return hosts, vm_records, [*host_warnings, *vm_warnings]
 
 
-def export_vcenter_bundle(
+def fetch_vcenter_inventory(
     *,
     server: str,
     username: str,
     password: str,
-    output_path: str,
     port: int = 443,
     insecure: bool = False,
-) -> tuple[int, int, list[str]]:
+) -> tuple[list[VCenterHostRecord], list[VCenterVmRecord], list[str]]:
     try:
         from pyVim.connect import Disconnect, SmartConnect
         from pyVmomi import vim
     except ImportError as exc:
         raise VCenterConnectorError(
-            "Missing dependency 'pyvmomi'. Install it with: pip install pyvmomi"
+            "Missing dependency 'pyvmomi'. Install it with: pip install -r requirements.txt"
         ) from exc
 
-    ssl_context = None
-    if insecure:
-        ssl_context = ssl._create_unverified_context()
-
+    ssl_context = ssl._create_unverified_context() if insecure else None
     try:
         service_instance = SmartConnect(
             host=server,
@@ -256,69 +259,223 @@ def export_vcenter_bundle(
             port=port,
             sslContext=ssl_context,
         )
-    except Exception as exc:  # pragma: no cover - depends on external vCenter
+    except Exception as exc:  # pragma: no cover
         raise VCenterConnectorError(
             f"Failed to connect to vCenter '{server}': {exc}"
         ) from exc
 
     try:
-        hosts, vm_records, parse_warnings = _collect_inventory(service_instance, vim)
+        return _collect_inventory(service_instance, vim)
     finally:
         Disconnect(service_instance)
 
-    bundle, bundle_warnings = build_import_bundle(hosts, vm_records)
+
+def write_bundle_json(bundle: dict[str, object], output_path: str) -> None:
     with open(output_path, "w", encoding="utf-8") as output_file:
         json.dump(bundle, output_file, indent=2)
         output_file.write("\n")
 
-    return len(hosts), len(vm_records), [*parse_warnings, *bundle_warnings]
+
+def _build_import_url(base_url: str, dry_run: bool) -> str:
+    normalized = base_url.rstrip("/")
+    query = "dry_run=1" if dry_run else "dry_run=0"
+    return f"{normalized}/import/bundle?{query}"
+
+
+def import_bundle_via_api(
+    *,
+    bundle: dict[str, object],
+    ipocket_url: str,
+    token: str,
+    dry_run: bool,
+    insecure: bool = False,
+    timeout_seconds: int = 30,
+) -> dict[str, object]:
+    boundary = "----ipocket-vcenter-boundary"
+    bundle_payload = json.dumps(bundle, ensure_ascii=False).encode("utf-8")
+    body = b"".join(
+        [
+            f"--{boundary}\r\n".encode("utf-8"),
+            b'Content-Disposition: form-data; name="file"; filename="bundle.json"\r\n',
+            b"Content-Type: application/json\r\n\r\n",
+            bundle_payload,
+            b"\r\n",
+            f"--{boundary}--\r\n".encode("utf-8"),
+        ]
+    )
+
+    request = urllib_request.Request(
+        _build_import_url(ipocket_url, dry_run=dry_run),
+        data=body,
+        method="POST",
+        headers={
+            "Authorization": f"Bearer {token}",
+            "Accept": "application/json",
+            "Content-Type": f"multipart/form-data; boundary={boundary}",
+        },
+    )
+
+    ssl_context = ssl._create_unverified_context() if insecure else None
+    try:
+        with urllib_request.urlopen(
+            request,
+            timeout=timeout_seconds,
+            context=ssl_context,
+        ) as response:
+            response_payload = response.read()
+    except urllib_error.HTTPError as exc:
+        details = exc.read().decode("utf-8", errors="replace")
+        raise VCenterConnectorError(
+            f"ipocket import request failed with HTTP {exc.code}: {details}"
+        ) from exc
+    except urllib_error.URLError as exc:
+        raise VCenterConnectorError(
+            f"Failed to call ipocket import API: {exc}"
+        ) from exc
+
+    try:
+        parsed = json.loads(response_payload.decode("utf-8"))
+    except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+        raise VCenterConnectorError(
+            "ipocket import API returned invalid JSON."
+        ) from exc
+
+    if not isinstance(parsed, dict):
+        raise VCenterConnectorError(
+            "ipocket import API returned an unexpected payload."
+        )
+    return parsed
 
 
 def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
-        description=(
-            "Export vCenter hosts/VMs into ipocket bundle.json for manual import."
-        )
+        description="Export vCenter hosts/VMs and optionally import directly into ipocket."
     )
     parser.add_argument("--server", required=True, help="vCenter server hostname or IP")
     parser.add_argument("--username", required=True, help="vCenter username")
     parser.add_argument("--password", required=True, help="vCenter password")
     parser.add_argument(
-        "--output",
-        required=True,
-        help="Output path for bundle.json (import later from ipocket UI)",
+        "--mode",
+        choices=("file", "dry-run", "apply"),
+        default="file",
+        help="file=write bundle only, dry-run/apply=call ipocket import API.",
     )
     parser.add_argument(
-        "--port", type=int, default=443, help="vCenter port (default: 443)"
+        "--output",
+        required=False,
+        help="Path to save bundle.json (required in file mode).",
+    )
+    parser.add_argument(
+        "--ipocket-url",
+        required=False,
+        help="ipocket base URL (example: http://127.0.0.1:8000)",
+    )
+    parser.add_argument(
+        "--token",
+        required=False,
+        help="Bearer token for ipocket API auth.",
+    )
+    parser.add_argument(
+        "--ipocket-insecure",
+        action="store_true",
+        help="Disable TLS verification for ipocket API HTTPS calls.",
+    )
+    parser.add_argument(
+        "--port",
+        type=int,
+        default=443,
+        help="vCenter port (default: 443)",
     )
     parser.add_argument(
         "--insecure",
         action="store_true",
-        help="Disable TLS certificate verification when connecting to vCenter.",
+        help="Disable TLS certificate verification for vCenter connection.",
     )
     return parser
+
+
+def _validate_cli_args(
+    parser: argparse.ArgumentParser, args: argparse.Namespace
+) -> None:
+    if args.mode == "file" and not args.output:
+        parser.error("--output is required when --mode=file")
+    if args.mode in {"dry-run", "apply"} and not args.ipocket_url:
+        parser.error("--ipocket-url is required when --mode is dry-run/apply")
+    if args.mode in {"dry-run", "apply"} and not args.token:
+        parser.error("--token is required when --mode is dry-run/apply")
+
+
+def _print_import_result(payload: dict[str, object]) -> None:
+    summary = payload.get("summary")
+    if isinstance(summary, dict):
+        total = summary.get("total")
+        if isinstance(total, dict):
+            created = int(total.get("would_create", 0))
+            updated = int(total.get("would_update", 0))
+            skipped = int(total.get("would_skip", 0))
+            print(f"Import summary: create={created}, update={updated}, skip={skipped}")
+
+    errors = payload.get("errors")
+    if isinstance(errors, list) and errors:
+        print("Import errors:")
+        for issue in errors:
+            if not isinstance(issue, dict):
+                continue
+            print(f"- {issue.get('location', 'import')}: {issue.get('message', '')}")
+
+    warnings = payload.get("warnings")
+    if isinstance(warnings, list) and warnings:
+        print("Import warnings:")
+        for issue in warnings:
+            if not isinstance(issue, dict):
+                continue
+            print(f"- {issue.get('location', 'import')}: {issue.get('message', '')}")
 
 
 def main(argv: Optional[Sequence[str]] = None) -> int:
     parser = _build_parser()
     args = parser.parse_args(argv)
+    _validate_cli_args(parser, args)
+
     try:
-        host_count, vm_count, warnings = export_vcenter_bundle(
+        hosts, vms, inventory_warnings = fetch_vcenter_inventory(
             server=args.server,
             username=args.username,
             password=args.password,
-            output_path=args.output,
             port=args.port,
             insecure=args.insecure,
         )
     except VCenterConnectorError as exc:
         parser.exit(status=1, message=f"error: {exc}\n")
 
-    print(f"Exported {host_count} hosts and {vm_count} VMs to {args.output}")
-    if warnings:
+    bundle, bundle_warnings = build_import_bundle(hosts, vms)
+    all_warnings = [*inventory_warnings, *bundle_warnings]
+
+    if args.output:
+        write_bundle_json(bundle, args.output)
+        print(f"Bundle written to {args.output}")
+
+    print(f"Collected {len(hosts)} hosts and {len(vms)} VMs from vCenter")
+    if all_warnings:
         print("Warnings:")
-        for warning in warnings:
+        for warning in all_warnings:
             print(f"- {warning}")
+
+    if args.mode in {"dry-run", "apply"}:
+        try:
+            result = import_bundle_via_api(
+                bundle=bundle,
+                ipocket_url=args.ipocket_url,
+                token=args.token,
+                dry_run=args.mode == "dry-run",
+                insecure=args.ipocket_insecure,
+            )
+        except VCenterConnectorError as exc:
+            parser.exit(status=1, message=f"error: {exc}\n")
+
+        print(f"ipocket import mode: {args.mode}")
+        _print_import_result(result)
+
     return 0
 
 
