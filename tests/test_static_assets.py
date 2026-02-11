@@ -49,6 +49,7 @@ def test_refactored_templates_load_external_page_assets() -> None:
     assert '<script src="/static/js/range-addresses.js" defer></script>' in templates["range_addresses"].read_text(encoding="utf-8")
     assert "<style>" not in templates["range_addresses"].read_text(encoding="utf-8")
 
+    assert '<script src="/static/js/drawer.js" defer></script>' in templates["tags"].read_text(encoding="utf-8")
     assert '<script src="/static/js/tags.js" defer></script>' in templates["tags"].read_text(encoding="utf-8")
     assert "<script>" not in templates["tags"].read_text(encoding="utf-8")
 

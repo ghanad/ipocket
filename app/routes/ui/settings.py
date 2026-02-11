@@ -26,6 +26,44 @@ from .utils import (
 
 router = APIRouter()
 
+
+def _render_tags_page(
+    request: Request,
+    connection,
+    *,
+    status_code: int = 200,
+    errors: Optional[list[str]] = None,
+    form_state: Optional[dict[str, str]] = None,
+    edit_errors: Optional[list[str]] = None,
+    edit_form_state: Optional[dict[str, str]] = None,
+    edit_tag=None,
+    delete_errors: Optional[list[str]] = None,
+    delete_tag=None,
+    delete_confirm_value: str = "",
+) -> HTMLResponse:
+    return _render_template(
+        request,
+        "tags.html",
+        {
+            "title": "ipocket - Tags",
+            "tags": list(repository.list_tags(connection)),
+            "errors": errors or [],
+            "form_state": form_state or {"name": "", "color": DEFAULT_TAG_COLOR},
+            "edit_errors": edit_errors or [],
+            "edit_form_state": edit_form_state
+            or {
+                "name": edit_tag.name if edit_tag else "",
+                "color": edit_tag.color if edit_tag else DEFAULT_TAG_COLOR,
+            },
+            "edit_tag": edit_tag,
+            "delete_errors": delete_errors or [],
+            "delete_tag": delete_tag,
+            "delete_confirm_value": delete_confirm_value,
+        },
+        status_code=status_code,
+        active_nav="tags",
+    )
+
 @router.get("/ui/projects", response_class=HTMLResponse)
 def ui_list_projects(
     request: Request,
@@ -184,18 +222,13 @@ def ui_list_tags(
     request: Request,
     connection=Depends(get_connection),
 ) -> HTMLResponse:
-    tags = list(repository.list_tags(connection))
-    return _render_template(
-        request,
-        "tags.html",
-        {
-            "title": "ipocket - Tags",
-            "tags": tags,
-            "errors": [],
-            "form_state": {"name": "", "color": DEFAULT_TAG_COLOR},
-        },
-        active_nav="tags",
-    )
+    edit_param = request.query_params.get("edit")
+    edit_tag_id = int(edit_param) if edit_param and edit_param.isdigit() else None
+    edit_tag = repository.get_tag_by_id(connection, edit_tag_id) if edit_tag_id else None
+    delete_param = request.query_params.get("delete")
+    delete_tag_id = int(delete_param) if delete_param and delete_param.isdigit() else None
+    delete_tag = repository.get_tag_by_id(connection, delete_tag_id) if delete_tag_id else None
+    return _render_tags_page(request, connection, edit_tag=edit_tag, delete_tag=delete_tag)
 
 @router.post("/ui/tags", response_class=HTMLResponse)
 async def ui_create_tag(
@@ -225,33 +258,23 @@ async def ui_create_tag(
             errors.append("Tag color must be a valid hex color (example: #1a2b3c).")
 
     if errors:
-        return _render_template(
+        return _render_tags_page(
             request,
-            "tags.html",
-            {
-                "title": "ipocket - Tags",
-                "tags": list(repository.list_tags(connection)),
-                "errors": errors,
-                "form_state": {"name": name, "color": color or DEFAULT_TAG_COLOR},
-            },
+            connection,
             status_code=400,
-            active_nav="tags",
+            errors=errors,
+            form_state={"name": name, "color": color or DEFAULT_TAG_COLOR},
         )
 
     try:
         repository.create_tag(connection, name=normalized_name, color=normalized_color)
     except sqlite3.IntegrityError:
-        return _render_template(
+        return _render_tags_page(
             request,
-            "tags.html",
-            {
-                "title": "ipocket - Tags",
-                "tags": list(repository.list_tags(connection)),
-                "errors": ["Tag name already exists."],
-                "form_state": {"name": name, "color": color or DEFAULT_TAG_COLOR},
-            },
+            connection,
             status_code=409,
-            active_nav="tags",
+            errors=["Tag name already exists."],
+            form_state={"name": name, "color": color or DEFAULT_TAG_COLOR},
         )
 
     return RedirectResponse(url="/ui/tags", status_code=303)
@@ -263,6 +286,10 @@ async def ui_edit_tag(
     connection=Depends(get_connection),
     _user=Depends(require_ui_editor),
 ) -> HTMLResponse:
+    tag = repository.get_tag_by_id(connection, tag_id)
+    if tag is None:
+        return Response(status_code=404)
+
     form_data = await _parse_form_data(request)
     name = (form_data.get("name") or "").strip()
     color = form_data.get("color")
@@ -285,38 +312,54 @@ async def ui_edit_tag(
             errors.append("Tag color must be a valid hex color (example: #1a2b3c).")
 
     if errors:
-        return _render_template(
+        return _render_tags_page(
             request,
-            "tags.html",
-            {
-                "title": "ipocket - Tags",
-                "tags": list(repository.list_tags(connection)),
-                "errors": errors,
-                "form_state": {"name": "", "color": DEFAULT_TAG_COLOR},
-            },
+            connection,
             status_code=400,
-            active_nav="tags",
+            edit_errors=errors,
+            edit_form_state={"name": name, "color": color or DEFAULT_TAG_COLOR},
+            edit_tag=tag,
         )
 
     try:
         updated = repository.update_tag(connection, tag_id, normalized_name, normalized_color)
     except sqlite3.IntegrityError:
-        return _render_template(
+        return _render_tags_page(
             request,
-            "tags.html",
-            {
-                "title": "ipocket - Tags",
-                "tags": list(repository.list_tags(connection)),
-                "errors": ["Tag name already exists."],
-                "form_state": {"name": "", "color": DEFAULT_TAG_COLOR},
-            },
+            connection,
             status_code=409,
-            active_nav="tags",
+            edit_errors=["Tag name already exists."],
+            edit_form_state={"name": name, "color": color or DEFAULT_TAG_COLOR},
+            edit_tag=tag,
         )
 
     if updated is None:
         return Response(status_code=404)
     return RedirectResponse(url="/ui/tags", status_code=303)
+
+
+@router.get("/ui/tags/{tag_id}/edit", response_class=HTMLResponse)
+def ui_edit_tag_confirm(
+    tag_id: int,
+    request: Request,
+    connection=Depends(get_connection),
+    _user=Depends(require_ui_editor),
+) -> HTMLResponse:
+    if repository.get_tag_by_id(connection, tag_id) is None:
+        return Response(status_code=404)
+    return RedirectResponse(url=f"/ui/tags?edit={tag_id}", status_code=303)
+
+
+@router.get("/ui/tags/{tag_id}/delete", response_class=HTMLResponse)
+def ui_delete_tag_confirm(
+    tag_id: int,
+    request: Request,
+    connection=Depends(get_connection),
+    _user=Depends(require_ui_editor),
+) -> HTMLResponse:
+    if repository.get_tag_by_id(connection, tag_id) is None:
+        return Response(status_code=404)
+    return RedirectResponse(url=f"/ui/tags?delete={tag_id}", status_code=303)
 
 @router.post("/ui/tags/{tag_id}/delete", response_class=HTMLResponse)
 async def ui_delete_tag(
@@ -325,6 +368,22 @@ async def ui_delete_tag(
     connection=Depends(get_connection),
     _user=Depends(require_ui_editor),
 ) -> HTMLResponse:
+    tag = repository.get_tag_by_id(connection, tag_id)
+    if tag is None:
+        return Response(status_code=404)
+
+    form_data = await _parse_form_data(request)
+    confirm_name = (form_data.get("confirm_name") or "").strip()
+    if confirm_name != tag.name:
+        return _render_tags_page(
+            request,
+            connection,
+            status_code=400,
+            delete_errors=["برای حذف کامل، نام تگ را دقیقاً وارد کنید."],
+            delete_tag=tag,
+            delete_confirm_value=confirm_name,
+        )
+
     deleted = repository.delete_tag(connection, tag_id)
     if not deleted:
         return Response(status_code=404)
