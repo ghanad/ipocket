@@ -3,7 +3,12 @@ from __future__ import annotations
 import pytest
 from fastapi import HTTPException
 
-from app.imports.models import ImportApplyResult, ImportEntitySummary, ImportIssue, ImportSummary
+from app.imports.models import (
+    ImportApplyResult,
+    ImportEntitySummary,
+    ImportIssue,
+    ImportSummary,
+)
 from app.models import Host, IPAsset, IPAssetType
 from app.routes.api import utils as api_utils
 

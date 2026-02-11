@@ -15,7 +15,9 @@ def test_list_hosts_endpoint_returns_payload_shape(
     connection = _setup_connection()
     try:
         repository.create_vendor(connection, "Dell")
-        repository.create_host(connection, name="edge-01", notes="rack-a", vendor="Dell")
+        repository.create_host(
+            connection, name="edge-01", notes="rack-a", vendor="Dell"
+        )
     finally:
         connection.close()
 
@@ -68,14 +70,12 @@ def test_get_host_returns_linked_assets_grouped(
     assert [asset["type"] for asset in payload["linked_assets"]["other"]] == ["VM"]
 
 
-
 def test_get_host_returns_404_for_missing_host(
     client, _create_user, _login, _auth_headers
 ) -> None:
     headers = _editor_headers(_create_user, _login, _auth_headers)
     response = client.get("/hosts/9999", headers=headers)
     assert response.status_code == 404
-
 
 
 def test_create_and_update_host_validate_vendor_and_missing_host(

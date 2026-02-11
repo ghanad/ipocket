@@ -4,7 +4,12 @@ import pytest
 from pydantic import ValidationError
 
 from app.models import IPAssetType
-from app.routes.api.schemas import IPAssetCreate, IPAssetUpdate, ProjectCreate, ProjectUpdate
+from app.routes.api.schemas import (
+    IPAssetCreate,
+    IPAssetUpdate,
+    ProjectCreate,
+    ProjectUpdate,
+)
 
 
 def test_ip_asset_create_tags_and_type_validation_paths() -> None:
@@ -21,8 +26,9 @@ def test_ip_asset_create_tags_and_type_validation_paths() -> None:
 
     with pytest.raises(ValidationError) as invalid_tag_name:
         IPAssetCreate(ip_address="10.1.1.4", type="VM", tags=["bad tag"])
-    assert "Tag name may include letters, digits, dash, and underscore only." in str(invalid_tag_name.value)
-
+    assert "Tag name may include letters, digits, dash, and underscore only." in str(
+        invalid_tag_name.value
+    )
 
 
 def test_ip_asset_update_optional_type_and_tags_validation_paths() -> None:
@@ -40,8 +46,9 @@ def test_ip_asset_update_optional_type_and_tags_validation_paths() -> None:
 
     with pytest.raises(ValidationError) as invalid_tag_name:
         IPAssetUpdate(tags=["bad tag"])
-    assert "Tag name may include letters, digits, dash, and underscore only." in str(invalid_tag_name.value)
-
+    assert "Tag name may include letters, digits, dash, and underscore only." in str(
+        invalid_tag_name.value
+    )
 
 
 def test_project_color_validators_raise_clean_errors() -> None:

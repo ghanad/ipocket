@@ -107,7 +107,11 @@ def test_render_template_with_templates_deletes_flash_cookie(monkeypatch) -> Non
             return HTMLResponse("ok", status_code=status_code)
 
     monkeypatch.setattr(ui_module, "_is_authenticated_request", lambda _req: False)
-    monkeypatch.setattr(ui_utils, "_load_flash_messages", lambda _req: [{"type": "info", "message": "x"}])
+    monkeypatch.setattr(
+        ui_utils,
+        "_load_flash_messages",
+        lambda _req: [{"type": "info", "message": "x"}],
+    )
     monkeypatch.setattr(app.state, "templates", _Templates(), raising=False)
 
     request = _request()
@@ -121,7 +125,9 @@ def test_flash_helpers_and_cookie_roundtrip() -> None:
     assert ui_utils._normalize_flash_type(None) == "info"
     assert ui_utils._normalize_flash_type("  BAD  ") == "info"
 
-    bad_b64 = ui_utils._decode_flash_payload(base64.urlsafe_b64encode(b"\xff").decode("utf-8"))
+    bad_b64 = ui_utils._decode_flash_payload(
+        base64.urlsafe_b64encode(b"\xff").decode("utf-8")
+    )
     assert bad_b64 is None
 
     encoded = ui_utils._encode_flash_payload(
@@ -152,7 +158,9 @@ def test_flash_helpers_and_cookie_roundtrip() -> None:
     bad_json_request = _request(cookie=f"{ui_utils.FLASH_COOKIE}={bad_json}")
     assert ui_utils._load_flash_messages(bad_json_request) == []
 
-    non_list_json = base64.urlsafe_b64encode(json.dumps({"message": "x"}).encode("utf-8")).decode("utf-8")
+    non_list_json = base64.urlsafe_b64encode(
+        json.dumps({"message": "x"}).encode("utf-8")
+    ).decode("utf-8")
     not_list_payload = ui_utils._sign_session_value(non_list_json)
     request2 = _request(cookie=f"{ui_utils.FLASH_COOKIE}={not_list_payload}")
     assert ui_utils._load_flash_messages(request2) == []
@@ -260,7 +268,9 @@ def test_export_type_csv_json_zip_and_view_models_helpers() -> None:
     assert csv_response.headers["Content-Disposition"] == 'attachment; filename="x.csv"'
 
     json_response = ui_utils._json_response("x.json", {"ok": True})
-    assert json_response.headers["Content-Disposition"] == 'attachment; filename="x.json"'
+    assert (
+        json_response.headers["Content-Disposition"] == 'attachment; filename="x.json"'
+    )
 
     zip_response = ui_utils._zip_response("x.zip", {"one.txt": "1"})
     assert zip_response.headers["Content-Disposition"] == 'attachment; filename="x.zip"'

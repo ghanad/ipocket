@@ -26,7 +26,9 @@ def test_friendly_audit_changes_and_tag_validation_helper(_setup_connection) -> 
 
     assert empty == {"summary": "No additional details.", "raw": ""}
     assert plain == {"summary": "updated fields", "raw": "updated fields"}
-    assert errors == ["Tag name may include letters, digits, dash, and underscore only."]
+    assert errors == [
+        "Tag name may include letters, digits, dash, and underscore only."
+    ]
 
 
 def test_ip_assets_list_handles_invalid_filters_and_delete_toasts(
@@ -90,7 +92,10 @@ def test_bulk_edit_validates_invalid_ids_type_and_project_selection(
     connection = _setup_connection()
     try:
         editor = repository.create_user(
-            connection, username="editor-bulk", hashed_password="x", role=UserRole.EDITOR
+            connection,
+            username="editor-bulk",
+            hashed_password="x",
+            role=UserRole.EDITOR,
         )
         asset = repository.create_ip_asset(
             connection, ip_address="10.81.1.10", asset_type=IPAssetType.VM
@@ -129,13 +134,16 @@ def test_bulk_edit_validates_invalid_ids_type_and_project_selection(
     assert "bulk-error=Select+a+valid+type." in bad_type.headers["location"]
     assert missing_project.status_code == 303
     assert (
-        "bulk-error=Selected+project+does+not+exist." in missing_project.headers["location"]
+        "bulk-error=Selected+project+does+not+exist."
+        in missing_project.headers["location"]
     )
     assert unassign_project.status_code == 303
     assert "bulk-success=Updated+1+IP+assets." in unassign_project.headers["location"]
 
 
-def test_create_ip_validation_paths_and_duplicate_conflict(client, _setup_connection) -> None:
+def test_create_ip_validation_paths_and_duplicate_conflict(
+    client, _setup_connection
+) -> None:
     connection = _setup_connection()
     try:
         host = repository.create_host(connection, name="host-a")
@@ -182,7 +190,9 @@ def test_create_ip_validation_paths_and_duplicate_conflict(client, _setup_connec
     assert "IP address already exists." in duplicate.text
 
 
-def test_detail_edit_auto_host_and_edit_submit_edge_paths(client, _setup_connection) -> None:
+def test_detail_edit_auto_host_and_edit_submit_edge_paths(
+    client, _setup_connection
+) -> None:
     connection = _setup_connection()
     try:
         editor = repository.create_user(
@@ -234,7 +244,10 @@ def test_detail_edit_auto_host_and_edit_submit_edge_paths(client, _setup_connect
     assert edit_archived.status_code == 404
     assert auto_host_archived.status_code == 404
     assert auto_host_non_bmc.status_code == 400
-    assert auto_host_non_bmc.json()["error"] == "Auto-host creation is only available for BMC assets."
+    assert (
+        auto_host_non_bmc.json()["error"]
+        == "Auto-host creation is only available for BMC assets."
+    )
     assert edit_missing.status_code == 404
     assert edit_invalid.status_code == 400
     assert "Asset type is required." in edit_invalid.text
@@ -263,7 +276,9 @@ def test_delete_and_archive_non_json_redirect_and_not_found_paths(
     app.dependency_overrides[ui.require_ui_editor] = lambda: editor
     try:
         delete_confirm_missing = client.get("/ui/ip-assets/999/delete")
-        delete_missing = client.post("/ui/ip-assets/999/delete", data={"confirm_delete_ack": "on"})
+        delete_missing = client.post(
+            "/ui/ip-assets/999/delete", data={"confirm_delete_ack": "on"}
+        )
 
         delete_error_redirect = client.post(
             f"/ui/ip-assets/{low_risk.id}/delete",
@@ -295,19 +310,30 @@ def test_delete_and_archive_non_json_redirect_and_not_found_paths(
     assert delete_confirm_missing.status_code == 404
     assert delete_missing.status_code == 404
     assert delete_error_redirect.status_code == 303
-    assert "delete-error=Confirm+that+this+delete+cannot+be+undone." in delete_error_redirect.headers["location"]
+    assert (
+        "delete-error=Confirm+that+this+delete+cannot+be+undone."
+        in delete_error_redirect.headers["location"]
+    )
     assert delete_success_redirect.status_code == 303
-    assert "delete-success=Deleted+10.81.4.10." in delete_success_redirect.headers["location"]
+    assert (
+        "delete-success=Deleted+10.81.4.10."
+        in delete_success_redirect.headers["location"]
+    )
     assert archive_missing.status_code == 404
     assert archive_success.status_code == 303
     assert archive_success.headers["location"] == "/ui/ip-assets"
 
 
-def test_delete_confirm_page_renders_for_existing_asset(client, _setup_connection) -> None:
+def test_delete_confirm_page_renders_for_existing_asset(
+    client, _setup_connection
+) -> None:
     connection = _setup_connection()
     try:
         repository.create_user(
-            connection, username="editor-confirm", hashed_password="x", role=UserRole.EDITOR
+            connection,
+            username="editor-confirm",
+            hashed_password="x",
+            role=UserRole.EDITOR,
         )
         asset = repository.create_ip_asset(
             connection, ip_address="10.81.5.10", asset_type=IPAssetType.VM
@@ -325,7 +351,9 @@ def test_delete_confirm_page_renders_for_existing_asset(client, _setup_connectio
     assert "Confirm IP Delete" in response.text
 
 
-def test_bulk_edit_project_id_parse_none_branch(client, _setup_connection, monkeypatch) -> None:
+def test_bulk_edit_project_id_parse_none_branch(
+    client, _setup_connection, monkeypatch
+) -> None:
     connection = _setup_connection()
     try:
         asset = repository.create_ip_asset(

@@ -83,12 +83,14 @@ def test_nmap_import_validation_and_apply_branches(client, monkeypatch) -> None:
     assert apply_with_errors.status_code == 200
     assert "Discovered up hosts: 2" in apply_with_errors.text
     assert "invalid host" in apply_with_errors.text
-    assert '/ui/ip-assets/99' in apply_with_errors.text
+    assert "/ui/ip-assets/99" in apply_with_errors.text
     assert apply_success.status_code == 200
     assert "Discovered up hosts: 1" in apply_success.text
 
 
-def test_bundle_import_validation_and_result_payload_rendering(client, monkeypatch) -> None:
+def test_bundle_import_validation_and_result_payload_rendering(
+    client, monkeypatch
+) -> None:
     app.dependency_overrides[ui.get_current_ui_user] = lambda: _user(UserRole.VIEWER)
     try:
         viewer_forbidden = client.post(
@@ -129,7 +131,9 @@ def test_bundle_import_validation_and_result_payload_rendering(client, monkeypat
     assert "bundle.hosts[0]: warn" in rendered.text
 
 
-def test_csv_import_validation_and_result_payload_rendering(client, monkeypatch) -> None:
+def test_csv_import_validation_and_result_payload_rendering(
+    client, monkeypatch
+) -> None:
     app.dependency_overrides[ui.get_current_ui_user] = lambda: _user(UserRole.VIEWER)
     try:
         viewer_forbidden = client.post(
@@ -243,9 +247,7 @@ def test_bundle_import_apply_success_shows_success_message(client, monkeypatch) 
     assert "Bundle import applied successfully." in response.text
 
 
-def test_csv_import_apply_success_with_ip_assets_file_only(
-    client, monkeypatch
-) -> None:
+def test_csv_import_apply_success_with_ip_assets_file_only(client, monkeypatch) -> None:
     captured_inputs: dict[str, bytes] = {}
 
     def _fake_run_import(_connection, _importer, inputs, dry_run):
@@ -259,7 +261,13 @@ def test_csv_import_apply_success_with_ip_assets_file_only(
         response = client.post(
             "/ui/import/csv",
             data={"mode": "apply"},
-            files={"ip_assets_file": ("ip-assets.csv", b"ip_address,type\n10.1.1.1,VM\n", "text/csv")},
+            files={
+                "ip_assets_file": (
+                    "ip-assets.csv",
+                    b"ip_address,type\n10.1.1.1,VM\n",
+                    "text/csv",
+                )
+            },
         )
     finally:
         app.dependency_overrides.pop(ui.get_current_ui_user, None)

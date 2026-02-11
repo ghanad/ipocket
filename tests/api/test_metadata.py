@@ -3,7 +3,9 @@ from __future__ import annotations
 from app.models import UserRole
 
 
-def test_projects_crud_and_list_flow(client, _create_user, _login, _auth_headers) -> None:
+def test_projects_crud_and_list_flow(
+    client, _create_user, _login, _auth_headers
+) -> None:
     _create_user("editor", "editor-pass", UserRole.EDITOR)
     headers = _auth_headers(_login("editor", "editor-pass"))
 
@@ -39,7 +41,9 @@ def test_projects_crud_and_list_flow(client, _create_user, _login, _auth_headers
     assert missing.status_code == 404
 
 
-def test_vendors_crud_and_list_flow(client, _create_user, _login, _auth_headers) -> None:
+def test_vendors_crud_and_list_flow(
+    client, _create_user, _login, _auth_headers
+) -> None:
     _create_user("editor", "editor-pass", UserRole.EDITOR)
     headers = _auth_headers(_login("editor", "editor-pass"))
 
@@ -68,7 +72,9 @@ def test_vendors_crud_and_list_flow(client, _create_user, _login, _auth_headers)
     assert missing.status_code == 404
 
 
-def test_ranges_create_and_list_flow(client, _create_user, _login, _auth_headers) -> None:
+def test_ranges_create_and_list_flow(
+    client, _create_user, _login, _auth_headers
+) -> None:
     _create_user("editor", "editor-pass", UserRole.EDITOR)
     headers = _auth_headers(_login("editor", "editor-pass"))
 
@@ -96,8 +102,14 @@ def test_metadata_writes_require_editor_role(
     _create_user("viewer", "viewer-pass", UserRole.VIEWER)
     headers = _auth_headers(_login("viewer", "viewer-pass"))
 
-    assert client.post("/projects", headers=headers, json={"name": "Core"}).status_code == 403
-    assert client.post("/vendors", headers=headers, json={"name": "Dell"}).status_code == 403
+    assert (
+        client.post("/projects", headers=headers, json={"name": "Core"}).status_code
+        == 403
+    )
+    assert (
+        client.post("/vendors", headers=headers, json={"name": "Dell"}).status_code
+        == 403
+    )
     assert (
         client.post(
             "/ranges",

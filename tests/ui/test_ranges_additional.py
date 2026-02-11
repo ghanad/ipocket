@@ -21,7 +21,9 @@ def test_parse_selected_tags_reports_invalid_tag_name(_setup_connection) -> None
         connection.close()
 
     assert tags == []
-    assert errors == ["Tag name may include letters, digits, dash, and underscore only."]
+    assert errors == [
+        "Tag name may include letters, digits, dash, and underscore only."
+    ]
 
 
 def test_create_range_invalid_cidr_and_duplicate(client, _setup_connection) -> None:
@@ -89,7 +91,9 @@ def test_update_range_invalid_cidr_duplicate_and_not_found_after_update(
 ) -> None:
     connection = _setup_connection()
     try:
-        first = repository.create_ip_range(connection, name="First", cidr="10.20.0.0/24")
+        first = repository.create_ip_range(
+            connection, name="First", cidr="10.20.0.0/24"
+        )
         repository.create_ip_range(connection, name="Second", cidr="10.21.0.0/24")
     finally:
         connection.close()
@@ -105,7 +109,9 @@ def test_update_range_invalid_cidr_duplicate_and_not_found_after_update(
             data={"name": "First", "cidr": "10.21.0.0/24", "notes": ""},
         )
 
-        monkeypatch.setattr(ranges_routes.repository, "update_ip_range", lambda *_args, **_kwargs: None)
+        monkeypatch.setattr(
+            ranges_routes.repository, "update_ip_range", lambda *_args, **_kwargs: None
+        )
         missing_after_update = client.post(
             f"/ui/ranges/{first.id}/edit",
             data={"name": "First", "cidr": "10.22.0.0/24", "notes": ""},
@@ -125,11 +131,15 @@ def test_delete_range_returns_404_when_delete_repo_returns_false(
 ) -> None:
     connection = _setup_connection()
     try:
-        ip_range = repository.create_ip_range(connection, name="ToDelete", cidr="10.30.0.0/24")
+        ip_range = repository.create_ip_range(
+            connection, name="ToDelete", cidr="10.30.0.0/24"
+        )
     finally:
         connection.close()
 
-    monkeypatch.setattr(ranges_routes.repository, "delete_ip_range", lambda *_args, **_kwargs: False)
+    monkeypatch.setattr(
+        ranges_routes.repository, "delete_ip_range", lambda *_args, **_kwargs: False
+    )
     app.dependency_overrides[ui.require_ui_editor] = _editor
     try:
         response = client.post(
@@ -145,7 +155,9 @@ def test_delete_range_returns_404_when_delete_repo_returns_false(
 def test_range_addresses_and_add_validation_branches(client, _setup_connection) -> None:
     connection = _setup_connection()
     try:
-        ip_range = repository.create_ip_range(connection, name="Lab", cidr="10.40.0.0/29")
+        ip_range = repository.create_ip_range(
+            connection, name="Lab", cidr="10.40.0.0/29"
+        )
         project = repository.create_project(connection, name="Core")
         used_asset = repository.create_ip_asset(
             connection, ip_address="10.40.0.2", asset_type=IPAssetType.VM
@@ -180,11 +192,19 @@ def test_range_addresses_and_add_validation_branches(client, _setup_connection) 
         )
         outside_range = client.post(
             f"/ui/ranges/{ip_range.id}/addresses/add",
-            data={"ip_address": "10.99.0.3", "type": "VM", "project_id": str(project.id)},
+            data={
+                "ip_address": "10.99.0.3",
+                "type": "VM",
+                "project_id": str(project.id),
+            },
         )
         already_assigned = client.post(
             f"/ui/ranges/{ip_range.id}/addresses/add",
-            data={"ip_address": used_asset.ip_address, "type": "VM", "project_id": str(project.id)},
+            data={
+                "ip_address": used_asset.ip_address,
+                "type": "VM",
+                "project_id": str(project.id),
+            },
         )
     finally:
         app.dependency_overrides.pop(ui.require_ui_editor, None)
@@ -210,7 +230,9 @@ def test_range_add_handles_missing_range_and_integrity_conflict(
 ) -> None:
     connection = _setup_connection()
     try:
-        ip_range = repository.create_ip_range(connection, name="Lab2", cidr="10.50.0.0/29")
+        ip_range = repository.create_ip_range(
+            connection, name="Lab2", cidr="10.50.0.0/29"
+        )
     finally:
         connection.close()
 
@@ -224,7 +246,9 @@ def test_range_add_handles_missing_range_and_integrity_conflict(
         def _raise_integrity(*_args, **_kwargs):
             raise sqlite3.IntegrityError("duplicate")
 
-        monkeypatch.setattr(ranges_routes.repository, "create_ip_asset", _raise_integrity)
+        monkeypatch.setattr(
+            ranges_routes.repository, "create_ip_asset", _raise_integrity
+        )
         conflict = client.post(
             f"/ui/ranges/{ip_range.id}/addresses/add",
             data={"ip_address": "10.50.0.2", "type": "VM", "project_id": ""},
@@ -237,10 +261,14 @@ def test_range_add_handles_missing_range_and_integrity_conflict(
     assert "IP address already exists." in conflict.text
 
 
-def test_range_quick_edit_not_found_and_validation_branches(client, _setup_connection) -> None:
+def test_range_quick_edit_not_found_and_validation_branches(
+    client, _setup_connection
+) -> None:
     connection = _setup_connection()
     try:
-        ip_range = repository.create_ip_range(connection, name="EditLab", cidr="10.60.0.0/29")
+        ip_range = repository.create_ip_range(
+            connection, name="EditLab", cidr="10.60.0.0/29"
+        )
         outside_asset = repository.create_ip_asset(
             connection, ip_address="10.70.0.2", asset_type=IPAssetType.VM
         )

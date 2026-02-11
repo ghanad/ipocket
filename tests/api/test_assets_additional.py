@@ -71,7 +71,6 @@ def test_list_and_get_ip_assets_include_tags_and_filters(
     assert fetched.json()["tags"] == ["edge", "prod"]
 
 
-
 def test_update_ip_asset_rejects_unknown_host_and_missing_asset(
     client, _create_user, _login, _auth_headers
 ) -> None:

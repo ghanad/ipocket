@@ -32,7 +32,9 @@ def test_projects_returns_404_for_missing_resources(client, _setup_connection) -
     assert response_vendor.json()["detail"] == "Vendor not found"
 
 
-def test_create_project_validation_and_duplicate_errors(client, _setup_connection) -> None:
+def test_create_project_validation_and_duplicate_errors(
+    client, _setup_connection
+) -> None:
     connection = _setup_connection()
     try:
         user = repository.create_user(
@@ -64,7 +66,9 @@ def test_create_project_validation_and_duplicate_errors(client, _setup_connectio
     assert "Project name already exists." in duplicate.text
 
 
-def test_update_project_handles_404_and_duplicate_name(client, _setup_connection) -> None:
+def test_update_project_handles_404_and_duplicate_name(
+    client, _setup_connection
+) -> None:
     connection = _setup_connection()
     try:
         user = repository.create_user(
@@ -139,13 +143,18 @@ def test_tag_routes_redirect_and_validation_paths(client, _setup_connection) -> 
         f"/ui/projects?tab=tags&delete={tag.id}"
     )
     assert invalid_name.status_code == 400
-    assert "Tag name may include letters, digits, dash, and underscore only." in invalid_name.text
+    assert (
+        "Tag name may include letters, digits, dash, and underscore only."
+        in invalid_name.text
+    )
     assert duplicate.status_code == 409
     assert "Tag name already exists." in duplicate.text
     assert edit_missing_tag.status_code == 404
 
 
-def test_vendor_routes_cover_redirect_validation_and_delete_404(client, _setup_connection) -> None:
+def test_vendor_routes_cover_redirect_validation_and_delete_404(
+    client, _setup_connection
+) -> None:
     connection = _setup_connection()
     try:
         user = repository.create_user(
@@ -198,7 +207,9 @@ def test_vendor_routes_cover_redirect_validation_and_delete_404(client, _setup_c
     assert delete_missing.status_code == 404
 
 
-def test_audit_log_pagination_defaults_and_system_user_label(client, _setup_connection) -> None:
+def test_audit_log_pagination_defaults_and_system_user_label(
+    client, _setup_connection
+) -> None:
     connection = _setup_connection()
     try:
         user = repository.create_user(
@@ -257,7 +268,9 @@ def test_create_project_success_and_delete_guard_paths(
 
         connection = _setup_connection()
         try:
-            project = next(p for p in repository.list_projects(connection) if p.name == "platform")
+            project = next(
+                p for p in repository.list_projects(connection) if p.name == "platform"
+            )
         finally:
             connection.close()
 
@@ -268,7 +281,9 @@ def test_create_project_success_and_delete_guard_paths(
         assert mismatch.status_code == 400
         assert "Project name confirmation does not match." in mismatch.text
 
-        monkeypatch.setattr(settings_routes.repository, "delete_project", lambda *_: False)
+        monkeypatch.setattr(
+            settings_routes.repository, "delete_project", lambda *_: False
+        )
         blocked = client.post(
             f"/ui/projects/{project.id}/delete",
             data={"confirm_name": "platform"},
@@ -279,7 +294,9 @@ def test_create_project_success_and_delete_guard_paths(
     assert blocked.status_code == 404
 
 
-def test_tags_listing_and_edit_delete_branches(client, _setup_connection, monkeypatch) -> None:
+def test_tags_listing_and_edit_delete_branches(
+    client, _setup_connection, monkeypatch
+) -> None:
     connection = _setup_connection()
     try:
         user = repository.create_user(
@@ -354,7 +371,9 @@ def test_vendor_listing_create_edit_delete_branches(
         )
         assert created.status_code == 303
 
-        monkeypatch.setattr(settings_routes.repository, "update_vendor", lambda *_: None)
+        monkeypatch.setattr(
+            settings_routes.repository, "update_vendor", lambda *_: None
+        )
         update_missing = client.post(
             f"/ui/vendors/{vendor.id}/edit",
             data={"name": "Cisco-updated"},
@@ -363,7 +382,9 @@ def test_vendor_listing_create_edit_delete_branches(
             f"/ui/vendors/{vendor.id}/delete",
             data={"confirm_name": "wrong"},
         )
-        monkeypatch.setattr(settings_routes.repository, "delete_vendor", lambda *_: False)
+        monkeypatch.setattr(
+            settings_routes.repository, "delete_vendor", lambda *_: False
+        )
         delete_blocked = client.post(
             f"/ui/vendors/{vendor.id}/delete",
             data={"confirm_name": "Cisco"},
