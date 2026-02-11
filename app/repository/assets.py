@@ -239,6 +239,7 @@ def list_ip_assets_by_ids(
 def list_active_ip_assets(
     connection: sqlite3.Connection,
     project_id: Optional[int] = None,
+    project_unassigned_only: bool = False,
     asset_type: Optional[IPAssetType] = None,
     unassigned_only: bool = False,
     archived_only: bool = False,
@@ -246,7 +247,9 @@ def list_active_ip_assets(
     query = "SELECT * FROM ip_assets WHERE archived = ?"
     params: list[object] = []
     params.append(1 if archived_only else 0)
-    if project_id is not None:
+    if project_unassigned_only:
+        query += " AND project_id IS NULL"
+    elif project_id is not None:
         query += " AND project_id = ?"
         params.append(project_id)
     if asset_type is not None:
@@ -263,6 +266,7 @@ def list_active_ip_assets(
 def count_active_ip_assets(
     connection: sqlite3.Connection,
     project_id: Optional[int] = None,
+    project_unassigned_only: bool = False,
     asset_type: Optional[IPAssetType] = None,
     unassigned_only: bool = False,
     query_text: Optional[str] = None,
@@ -272,7 +276,9 @@ def count_active_ip_assets(
     query = "SELECT COUNT(*) FROM ip_assets WHERE archived = ?"
     params: list[object] = []
     params.append(1 if archived_only else 0)
-    if project_id is not None:
+    if project_unassigned_only:
+        query += " AND project_id IS NULL"
+    elif project_id is not None:
         query += " AND project_id = ?"
         params.append(project_id)
     if asset_type is not None:
@@ -305,6 +311,7 @@ def count_active_ip_assets(
 def list_active_ip_assets_paginated(
     connection: sqlite3.Connection,
     project_id: Optional[int] = None,
+    project_unassigned_only: bool = False,
     asset_type: Optional[IPAssetType] = None,
     unassigned_only: bool = False,
     query_text: Optional[str] = None,
@@ -316,7 +323,9 @@ def list_active_ip_assets_paginated(
     query = "SELECT * FROM ip_assets WHERE archived = ?"
     params: list[object] = []
     params.append(1 if archived_only else 0)
-    if project_id is not None:
+    if project_unassigned_only:
+        query += " AND project_id IS NULL"
+    elif project_id is not None:
         query += " AND project_id = ?"
         params.append(project_id)
     if asset_type is not None:

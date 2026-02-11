@@ -656,6 +656,35 @@ def test_ip_assets_list_search_trims_whitespace(client) -> None:
     assert "10.30.0.22" not in response.text
 
 
+def test_ip_assets_list_project_filter_supports_unassigned_option(client) -> None:
+    import os
+
+    connection = db.connect(os.environ["IPAM_DB_PATH"])
+    try:
+        db.init_db(connection)
+        project = repository.create_project(connection, name="Core")
+        repository.create_ip_asset(
+            connection,
+            ip_address="10.32.0.10",
+            asset_type=IPAssetType.VM,
+            project_id=project.id,
+        )
+        repository.create_ip_asset(
+            connection,
+            ip_address="10.32.0.11",
+            asset_type=IPAssetType.OS,
+        )
+    finally:
+        connection.close()
+
+    response = client.get("/ui/ip-assets", params={"project_id": "unassigned"})
+
+    assert response.status_code == 200
+    assert 'option value="unassigned" selected' in response.text
+    assert "10.32.0.11" in response.text
+    assert "10.32.0.10" not in response.text
+
+
 def test_ip_assets_list_supports_multi_tag_filter_and_clickable_filter_chips(
     client,
 ) -> None:

@@ -301,3 +301,27 @@ def test_count_ip_assets_with_archived_only_filter(_setup_connection) -> None:
     assert total_archived == 1
     assert len(archived_assets) == 1
     assert archived_assets[0].ip_address == "10.70.0.11"
+
+
+def test_list_ip_assets_with_project_unassigned_only_filter(_setup_connection) -> None:
+    connection = _setup_connection()
+    project = create_project(connection, name="Core")
+    create_ip_asset(
+        connection,
+        ip_address="10.71.0.10",
+        asset_type=IPAssetType.VM,
+        project_id=project.id,
+    )
+    create_ip_asset(connection, ip_address="10.71.0.11", asset_type=IPAssetType.OS)
+
+    total_unassigned = count_active_ip_assets(connection, project_unassigned_only=True)
+    unassigned_assets = list_active_ip_assets_paginated(
+        connection,
+        project_unassigned_only=True,
+        limit=10,
+        offset=0,
+    )
+
+    assert total_unassigned == 1
+    assert len(unassigned_assets) == 1
+    assert unassigned_assets[0].ip_address == "10.71.0.11"
