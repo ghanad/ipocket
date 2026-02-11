@@ -242,6 +242,53 @@ def test_ip_assets_list_uses_drawer_actions_for_edit_and_delete(client) -> None:
 
 
 
+def test_ip_assets_edit_can_clear_project_assignment(client) -> None:
+    import os
+    from app import db, repository
+
+    connection = db.connect(os.environ["IPAM_DB_PATH"])
+    try:
+        db.init_db(connection)
+        user = repository.create_user(connection, username="editor", hashed_password="x", role=UserRole.EDITOR)
+        project = repository.create_project(connection, name="Core")
+        asset = repository.create_ip_asset(
+            connection,
+            ip_address="10.30.0.33",
+            asset_type=IPAssetType.VM,
+            project_id=project.id,
+            notes="keep-note",
+        )
+    finally:
+        connection.close()
+
+    app.dependency_overrides[ui.require_ui_editor] = lambda: user
+    try:
+        response = client.post(
+            f"/ui/ip-assets/{asset.id}/edit",
+            data={
+                "return_to": "/ui/ip-assets",
+                "type": "VM",
+                "project_id": "",
+                "host_id": "",
+                "notes": "keep-note",
+            },
+            follow_redirects=False,
+        )
+    finally:
+        app.dependency_overrides.pop(ui.require_ui_editor, None)
+
+    assert response.status_code == 303
+    assert response.headers["location"] == "/ui/ip-assets"
+
+    connection = db.connect(os.environ["IPAM_DB_PATH"])
+    try:
+        updated = repository.get_ip_asset_by_ip(connection, "10.30.0.33")
+        assert updated is not None
+        assert updated.project_id is None
+    finally:
+        connection.close()
+
+
 def test_ip_assets_list_collapses_tag_chips_and_renders_more_popover_trigger(client) -> None:
     import os
     from app import db, repository

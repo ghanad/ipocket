@@ -541,6 +541,7 @@ async def ui_range_quick_edit_address(
         ip_address=asset.ip_address,
         asset_type=normalized_asset_type,
         project_id=project_id,
+        project_id_provided=True,
         notes=notes,
         tags=tags,
         current_user=user,

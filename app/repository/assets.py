@@ -486,7 +486,9 @@ def update_ip_asset(
     ip_address: str,
     asset_type: Optional[IPAssetType] = None,
     project_id: Optional[int] = None,
+    project_id_provided: bool = False,
     host_id: Optional[int] = None,
+    host_id_provided: bool = False,
     notes: Optional[str] = None,
     tags: Optional[list[str]] = None,
     current_user: Optional[User] = None,
@@ -503,9 +505,11 @@ def update_ip_asset(
     if normalized_tags is not None:
         existing_tags = list_tags_for_ip_assets(connection, [existing.id]).get(existing.id, [])
         tags_changed = sorted(existing_tags) != sorted(normalized_tags)
+    project_should_update = project_id_provided or project_id is not None
+    host_should_update = host_id_provided or host_id is not None
     updated_type = asset_type or existing.asset_type
-    updated_project_id = project_id if project_id is not None else existing.project_id
-    updated_host_id = host_id if host_id is not None else existing.host_id
+    updated_project_id = project_id if project_should_update else existing.project_id
+    updated_host_id = host_id if host_should_update else existing.host_id
     updated_notes = normalized_notes if notes_should_update else existing.notes
     fields_changed = (
         existing.asset_type != updated_type
@@ -521,15 +525,17 @@ def update_ip_asset(
                 """
                 UPDATE ip_assets
                 SET type = COALESCE(?, type),
-                    project_id = COALESCE(?, project_id),
-                    host_id = COALESCE(?, host_id),
+                    project_id = CASE WHEN ? THEN ? ELSE project_id END,
+                    host_id = CASE WHEN ? THEN ? ELSE host_id END,
                     notes = CASE WHEN ? THEN ? ELSE notes END,
                     updated_at = CURRENT_TIMESTAMP
                 WHERE ip_address = ?
                 """,
                 (
                     asset_type.value if asset_type else None,
+                    project_should_update,
                     project_id,
+                    host_should_update,
                     host_id,
                     notes_should_update,
                     normalized_notes,
