@@ -41,6 +41,8 @@ ipocket is a lightweight IP inventory app to track addresses and their project a
 - Range delete drawer now reliably displays CIDR/usage context from the selected row (including when opened inline), reducing confirmation mistakes.
 - IP ranges now render in a single unified table card (name/CIDR/usable/used/free/utilization/actions), with Used/Free counts staying clickable for address drill-down and row-level Edit/Delete actions kept compact.
 - Drawer open/close behavior is shared through `app/static/js/drawer.js` so Hosts and Ranges follow the same interaction pattern.
+- Projects page now follows the same right-side drawer UX as Ranges for create/edit/delete actions, including destructive confirmation by typing the exact project name.
+- Projects table now shows an **IPs** count column so you can quickly see how many active IP assets are currently assigned to each project.
 - Export data as CSV, JSON, or bundle (JSON/ZIP) for round-trip workflows.
 - Import data from bundle.json or CSV with dry-run support and upserts.
 - Upload Nmap XML from the Import page to discover reachable IPs and add them as `OTHER` assets, with inline example commands.
