@@ -217,3 +217,53 @@ def test_export_bundle_zip_contains_expected_files(client, _setup_connection) ->
         "vendors.csv",
     }
     assert "10.1.1.10" in archive.read("ip-assets.csv").decode("utf-8")
+
+
+def test_bundle_import_apply_success_shows_success_message(client, monkeypatch) -> None:
+    app.dependency_overrides[ui.get_current_ui_user] = lambda: _user(UserRole.EDITOR)
+    try:
+        monkeypatch.setattr(
+            data_ops_routes,
+            "run_import",
+            lambda *_args, **_kwargs: ImportApplyResult(
+                summary=_summary(),
+                errors=[],
+                warnings=[],
+            ),
+        )
+        response = client.post(
+            "/ui/import/bundle",
+            data={"mode": "apply"},
+            files={"bundle_file": ("bundle.json", b"{}", "application/json")},
+        )
+    finally:
+        app.dependency_overrides.pop(ui.get_current_ui_user, None)
+
+    assert response.status_code == 200
+    assert "Bundle import applied successfully." in response.text
+
+
+def test_csv_import_apply_success_with_ip_assets_file_only(
+    client, monkeypatch
+) -> None:
+    captured_inputs: dict[str, bytes] = {}
+
+    def _fake_run_import(_connection, _importer, inputs, dry_run):
+        captured_inputs.update(inputs)
+        assert dry_run is False
+        return ImportApplyResult(summary=_summary(), errors=[], warnings=[])
+
+    app.dependency_overrides[ui.get_current_ui_user] = lambda: _user(UserRole.EDITOR)
+    try:
+        monkeypatch.setattr(data_ops_routes, "run_import", _fake_run_import)
+        response = client.post(
+            "/ui/import/csv",
+            data={"mode": "apply"},
+            files={"ip_assets_file": ("ip-assets.csv", b"ip_address,type\n10.1.1.1,VM\n", "text/csv")},
+        )
+    finally:
+        app.dependency_overrides.pop(ui.get_current_ui_user, None)
+
+    assert response.status_code == 200
+    assert "CSV import applied successfully." in response.text
+    assert "ip_assets" in captured_inputs
