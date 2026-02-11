@@ -167,10 +167,10 @@ def test_vendors_tab_shows_vendor_ip_counts(client, _setup_connection) -> None:
     assert ">1</td>" in response.text
 
 
-def test_tags_tab_create_drawer_uses_random_suggested_color(client, monkeypatch) -> None:
-    monkeypatch.setattr(
-        settings_routes, "suggest_random_tag_color", lambda: "#123abc"
-    )
+def test_tags_tab_create_drawer_uses_random_suggested_color(
+    client, monkeypatch
+) -> None:
+    monkeypatch.setattr(settings_routes, "suggest_random_tag_color", lambda: "#123abc")
 
     response = client.get("/ui/projects?tab=tags")
 
