@@ -515,6 +515,66 @@ p {
   margin-top: 16px;
 }
 
+.import-options-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+  align-items: stretch;
+}
+
+.export-options-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+  align-items: stretch;
+}
+
+.import-option-card,
+.export-option-card {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.import-option-card .card-body,
+.export-option-card .card-body {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.import-option-form {
+  display: grid;
+  gap: 16px;
+}
+
+.import-option-footer {
+  margin-top: auto;
+  position: sticky;
+  bottom: 0;
+  padding-top: 12px;
+  border-top: 1px solid var(--color-border);
+  background: linear-gradient(to bottom, rgba(255, 255, 255, 0), #fff 28px);
+}
+
+.import-option-footer .form-actions {
+  margin: 0;
+}
+
+.export-option-footer {
+  margin-top: auto;
+  position: sticky;
+  bottom: 0;
+  padding-top: 12px;
+  border-top: 1px solid var(--color-border);
+  background: linear-gradient(to bottom, rgba(255, 255, 255, 0), #fff 28px);
+}
+
+.export-option-footer .form-actions {
+  margin: 0;
+}
+
 .filters-grid,
 .form-grid {
   display: grid;
@@ -1180,6 +1240,13 @@ p {
   padding: 0;
 }
 
+@media (max-width: 1100px) {
+  .import-options-grid,
+  .export-options-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
 @media (max-width: 900px) {
   .sidebar {
     display: none;
@@ -1187,6 +1254,13 @@ p {
 
   .content {
     padding: 24px;
+  }
+}
+
+@media (max-width: 700px) {
+  .import-options-grid,
+  .export-options-grid {
+    grid-template-columns: 1fr;
   }
 }
 

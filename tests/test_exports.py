@@ -162,3 +162,7 @@ def test_ui_export_page_has_bundle_link(client) -> None:
     response = test_client.get("/ui/export", headers=_auth_headers(session_cookie))
     assert response.status_code == 200
     assert "/export/bundle.json" in response.text
+    assert "/export/ip-assets.csv" in response.text
+    assert "/export/hosts.csv" in response.text
+    assert "/export/vendors.csv" not in response.text
+    assert "/export/projects.csv" not in response.text

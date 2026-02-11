@@ -1,53 +1,55 @@
-<section class="card">
-  <div class="card-header">
-    <div>
-      <h2>Export all data</h2>
-      <p class="subtitle">Bundle every entity into a single JSON package.</p>
+<div class="export-options-grid">
+  <section class="card export-option-card">
+    <div class="card-header">
+      <div>
+        <h2>Export All Data</h2>
+        <p class="subtitle">Bundle every entity into a single package.</p>
+      </div>
     </div>
-  </div>
-  <div class="card-body">
-    <a class="btn btn-primary" href="/export/bundle.json" data-toast-message="Bundle export started." data-toast-type="info">Export All (bundle.json)</a>
-    <a class="btn btn-secondary" href="/export/bundle.zip" data-toast-message="Bundle export started." data-toast-type="info">Export All (bundle.zip)</a>
-  </div>
-</section>
+    <div class="card-body">
+      <p class="subtitle">Use bundle export for backup, migration, or full re-import workflows.</p>
+      <div class="export-option-footer">
+        <div class="form-actions">
+          <a class="btn btn-secondary" href="/export/bundle.zip" data-toast-message="Bundle export started." data-toast-type="info">bundle.zip</a>
+          <a class="btn btn-primary" href="/export/bundle.json" data-toast-message="Bundle export started." data-toast-type="info">bundle.json</a>
+        </div>
+      </div>
+    </div>
+  </section>
 
-<section class="card">
-  <div class="card-header">
-    <div>
-      <h2>Per-entity exports</h2>
-      <p class="subtitle">Download CSV or JSON for a single entity.</p>
+  <section class="card export-option-card">
+    <div class="card-header">
+      <div>
+        <h2>Export IP Assets</h2>
+        <p class="subtitle">Download IP records only.</p>
+      </div>
     </div>
-  </div>
-  <div class="card-body">
-    <div class="export-grid">
-      <div class="export-item">
-        <h3>IP Assets</h3>
-        <div class="export-actions">
+    <div class="card-body">
+      <p class="subtitle">Includes address, type, host/project references, tags, and archive state.</p>
+      <div class="export-option-footer">
+        <div class="form-actions">
           <a class="btn btn-secondary" href="/export/ip-assets.csv" data-toast-message="IP assets export started." data-toast-type="info">CSV</a>
-          <a class="btn btn-secondary" href="/export/ip-assets.json" data-toast-message="IP assets export started." data-toast-type="info">JSON</a>
-        </div>
-      </div>
-      <div class="export-item">
-        <h3>Hosts</h3>
-        <div class="export-actions">
-          <a class="btn btn-secondary" href="/export/hosts.csv" data-toast-message="Hosts export started." data-toast-type="info">CSV</a>
-          <a class="btn btn-secondary" href="/export/hosts.json" data-toast-message="Hosts export started." data-toast-type="info">JSON</a>
-        </div>
-      </div>
-      <div class="export-item">
-        <h3>Vendors</h3>
-        <div class="export-actions">
-          <a class="btn btn-secondary" href="/export/vendors.csv" data-toast-message="Vendors export started." data-toast-type="info">CSV</a>
-          <a class="btn btn-secondary" href="/export/vendors.json" data-toast-message="Vendors export started." data-toast-type="info">JSON</a>
-        </div>
-      </div>
-      <div class="export-item">
-        <h3>Projects</h3>
-        <div class="export-actions">
-          <a class="btn btn-secondary" href="/export/projects.csv" data-toast-message="Projects export started." data-toast-type="info">CSV</a>
-          <a class="btn btn-secondary" href="/export/projects.json" data-toast-message="Projects export started." data-toast-type="info">JSON</a>
+          <a class="btn btn-primary" href="/export/ip-assets.json" data-toast-message="IP assets export started." data-toast-type="info">JSON</a>
         </div>
       </div>
     </div>
-  </div>
-</section>
+  </section>
+
+  <section class="card export-option-card">
+    <div class="card-header">
+      <div>
+        <h2>Export Hosts</h2>
+        <p class="subtitle">Download host inventory only.</p>
+      </div>
+    </div>
+    <div class="card-body">
+      <p class="subtitle">Includes host name, notes, and vendor relation fields.</p>
+      <div class="export-option-footer">
+        <div class="form-actions">
+          <a class="btn btn-secondary" href="/export/hosts.csv" data-toast-message="Hosts export started." data-toast-type="info">CSV</a>
+          <a class="btn btn-primary" href="/export/hosts.json" data-toast-message="Hosts export started." data-toast-type="info">JSON</a>
+        </div>
+      </div>
+    </div>
+  </section>
+</div>

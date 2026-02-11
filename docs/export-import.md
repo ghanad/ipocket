@@ -16,7 +16,9 @@ ipocket supports round-trip workflows: export data (CSV/JSON/bundle) and re-impo
 Open `/ui/import` and use the tabs:
 
 - `Import` tab for uploads
-- `Export` tab for downloads
+- `Export` tab for downloads (bundle plus per-entity IP Assets/Hosts links)
+
+The Export tab uses the same responsive multi-card layout pattern as Import.
 
 On the `Import` tab upload:
 
@@ -24,10 +26,14 @@ On the `Import` tab upload:
 - CSV section: `hosts.csv` and/or `ip-assets.csv` (empty uploads are ignored)
 - Nmap XML section: `ipocket.xml` from your Nmap scan
 
+The Import tab renders these three sections as equal-sized cards in a responsive grid (3 columns on wide screens, then 2 and 1 on smaller screens).
+Each card keeps a dedicated action footer so `Dry-run`/`Apply` stay aligned at the bottom of the card.
+
 Sample CSVs are available for download on the import page (or directly via `/static/samples/hosts.csv` and
 `/static/samples/ip-assets.csv`) to illustrate the required columns and formatting.
 
 Dry-run runs validation and returns a summary without writing to the database. Apply performs upserts.
+All three import sections (Bundle, CSV, Nmap XML) use the same `Dry-run` and `Apply` button pattern in the UI.
 
 ## Permissions
 

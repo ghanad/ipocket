@@ -24,6 +24,12 @@ def test_import_page_includes_sample_csv_links(client) -> None:
     assert "Run Nmap" in response.text
     assert "nmap -sn -oX ipocket.xml" in response.text
     assert "nmap -sn -PS80,443 -oX ipocket.xml" in response.text
+    assert 'class="import-options-grid"' in response.text
+    assert response.text.count('class="card import-option-card"') == 3
+    assert response.text.count('class="import-option-footer"') == 3
+    assert response.text.count('name="mode" value="dry-run"') == 3
+    assert response.text.count('name="mode" value="apply"') == 3
+    assert 'name="dry_run"' not in response.text
 
 
 def test_export_tab_renders_from_import_page(client) -> None:
@@ -35,7 +41,13 @@ def test_export_tab_renders_from_import_page(client) -> None:
 
     assert response.status_code == 200
     assert "/export/bundle.json" in response.text
-    assert "Per-entity exports" in response.text
+    assert 'class="export-options-grid"' in response.text
+    assert response.text.count('class="card export-option-card"') == 3
+    assert response.text.count('class="export-option-footer"') == 3
+    assert "/export/ip-assets.csv" in response.text
+    assert "/export/hosts.csv" in response.text
+    assert "/export/vendors.csv" not in response.text
+    assert "/export/projects.csv" not in response.text
 
 
 def test_export_route_renders_unified_data_ops_page(client) -> None:
