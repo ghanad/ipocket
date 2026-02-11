@@ -42,7 +42,8 @@ ipocket is a lightweight IP inventory app to track addresses and their project a
 - Range delete drawer now reliably displays CIDR/usage context from the selected row (including when opened inline), reducing confirmation mistakes.
 - IP ranges now render in a single unified table card (name/CIDR/usable/used/free/utilization/actions), with Used/Free counts staying clickable for address drill-down and row-level Edit/Delete actions kept compact.
 - Drawer open/close behavior is shared through `app/static/js/drawer.js` so Hosts and Ranges follow the same interaction pattern.
-- Projects page now follows the same right-side drawer UX as Ranges for create/edit/delete actions, including destructive confirmation by typing the exact project name.
+- Projects management is part of the shared Library page and follows the same right-side drawer UX for create/edit/delete actions, including destructive confirmation by typing the exact project name.
+- The Library page uses one shared "Catalog Settings" header with compact segmented tabs (Projects/Tags/Vendors) and a tab-aware primary action button (New Project/Tag/Vendor) to keep controls in one place.
 - Projects table now shows an **IPs** count column so you can quickly see how many active IP assets are currently assigned to each project.
 - Export data as CSV, JSON, or bundle (JSON/ZIP) for round-trip workflows.
 - Import data from bundle.json or CSV with dry-run support and upserts.
@@ -72,9 +73,9 @@ Hosts can be linked to a vendor from the shared **Vendors** catalog.
 
 ## Vendors
 
-Vendors are managed as a dedicated list and are selectable when creating or editing Hosts (API and UI).
+Vendors are managed in the shared Library page tabs and are selectable when creating or editing Hosts (API and UI).
 
-- Vendors page now uses the same right-side drawer pattern as Projects for create/edit/delete, including destructive confirmation by typing the exact vendor name.
+- Vendor management uses the same right-side drawer pattern for create/edit/delete, including destructive confirmation by typing the exact vendor name.
 
 - UI route handlers are now organized as a modular package under `app/routes/ui/` (`auth.py`, `dashboard.py`, `ip_assets.py`, `hosts.py`, `ranges.py`, `settings.py`, `data_ops.py`) with shared helpers in `utils.py` and a single aggregated `router` exported from `app/routes/ui/__init__.py`.
 - Developer compatibility note: `app/routes/ui/__init__.py` re-exports UI auth/session helpers (including `SESSION_COOKIE`) so existing integrations and tests continue working after modularization.

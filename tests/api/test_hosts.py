@@ -84,7 +84,7 @@ def test_vendors_ui_edit_and_delete_flow(client, _setup_connection) -> None:
     try:
         edit_redirect = client.get(f"/ui/vendors/{vendor.id}/edit", follow_redirects=False)
         assert edit_redirect.status_code == 303
-        assert edit_redirect.headers["location"].endswith(f"/ui/vendors?edit={vendor.id}")
+        assert edit_redirect.headers["location"].endswith(f"/ui/projects?tab=vendors&edit={vendor.id}")
 
         edit_response = client.post(
             f"/ui/vendors/{vendor.id}/edit",
@@ -95,7 +95,7 @@ def test_vendors_ui_edit_and_delete_flow(client, _setup_connection) -> None:
 
         delete_redirect = client.get(f"/ui/vendors/{vendor.id}/delete", follow_redirects=False)
         assert delete_redirect.status_code == 303
-        assert delete_redirect.headers["location"].endswith(f"/ui/vendors?delete={vendor.id}")
+        assert delete_redirect.headers["location"].endswith(f"/ui/projects?tab=vendors&delete={vendor.id}")
 
         delete_error = client.post(
             f"/ui/vendors/{vendor.id}/delete",
