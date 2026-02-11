@@ -212,8 +212,8 @@
         <p class="ip-drawer-delete-warning">This action permanently removes the range.</p>
         <dl class="ip-drawer-delete-details">
           <div><dt>Name</dt><dd data-range-delete-name-display>{{ delete_ip_range.name if delete_ip_range else '—' }}</dd></div>
-          <div><dt>CIDR</dt><dd class="mono" data-range-delete-cidr>{{ delete_ip_range.cidr if delete_ip_range else '—' }}</dd></div>
-          <div><dt>Used addresses</dt><dd data-range-delete-used>—</dd></div>
+          <div><dt>CIDR</dt><dd class="mono" data-range-delete-cidr-display>{{ delete_ip_range.cidr if delete_ip_range else '—' }}</dd></div>
+          <div><dt>Used addresses</dt><dd data-range-delete-used-display>—</dd></div>
         </dl>
         <label class="field field-inline">
           <input class="checkbox" type="checkbox" data-range-delete-ack />

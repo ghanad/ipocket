@@ -112,8 +112,8 @@
   const subtitle = document.querySelector('[data-range-delete-subtitle]');
   const nameDisplay = document.querySelector('[data-range-delete-name-display]');
   const nameInline = document.querySelector('[data-range-delete-name-inline]');
-  const cidrDisplay = document.querySelector('[data-range-delete-cidr]');
-  const usedDisplay = document.querySelector('[data-range-delete-used]');
+  const cidrDisplay = document.querySelector('[data-range-delete-cidr-display]');
+  const usedDisplay = document.querySelector('[data-range-delete-used-display]');
   const ackInput = document.querySelector('[data-range-delete-ack]');
   const confirmInput = document.querySelector('[data-range-delete-confirm]');
 

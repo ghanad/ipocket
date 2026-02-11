@@ -41,6 +41,9 @@ def test_ranges_page_renders_single_combined_ranges_table(client) -> None:
     assert 'class="btn btn-danger btn-small"' in response.text
     assert "data-range-edit" in response.text
     assert "data-range-delete" in response.text
+    assert "data-range-delete-cidr=\"192.168.10.0/24\"" in response.text
+    assert "data-range-delete-cidr-display" in response.text
+    assert "data-range-delete-used-display" in response.text
     assert "data-range-delete-drawer" in response.text
 
 
