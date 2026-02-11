@@ -233,6 +233,44 @@ def test_ip_assets_list_uses_drawer_actions_for_edit_and_delete(client) -> None:
     assert "/static/js/ip-assets.js" in response.text
     assert "data-ip-host-field" in response.text
 
+
+
+def test_ip_assets_list_collapses_tag_chips_and_renders_more_popover_trigger(client) -> None:
+    import os
+    from app import db, repository
+
+    connection = db.connect(os.environ["IPAM_DB_PATH"])
+    try:
+        db.init_db(connection)
+        repository.create_ip_asset(
+            connection,
+            ip_address="10.30.0.21",
+            asset_type=IPAssetType.VM,
+            tags=["alpha", "beta", "gamma", "delta", "epsilon"],
+        )
+        repository.create_ip_asset(
+            connection,
+            ip_address="10.30.0.22",
+            asset_type=IPAssetType.VM,
+        )
+    finally:
+        connection.close()
+
+    response = client.get("/ui/ip-assets")
+
+    assert response.status_code == 200
+    assert 'data-tags-more-toggle' in response.text
+    assert 'data-tags-ip="10.30.0.21"' in response.text
+    assert '+2 more' in response.text
+    assert 'aria-label="Tags for 10.30.0.21"' in response.text
+    assert '<td class="ip-tags-cell">' in response.text
+    assert response.text.count('<span class="muted">—</span>') >= 1
+    ip_assets_js = Path(__file__).resolve().parents[2] / "app/static/js/ip-assets.js"
+    js_source = ip_assets_js.read_text(encoding="utf-8")
+    assert "data-tags-popover-search" in js_source
+    assert "data-tags-more-toggle" in js_source
+    assert "closeTagsPopover" in js_source
+
 def test_ip_assets_list_htmx_response_renders_table_partial(client) -> None:
     import os
     from app import db, repository
