@@ -192,7 +192,11 @@
         <h3>Notes & tags</h3>
         <label class="field">
           <span>Tags</span>
-          <input class="input" type="text" name="tags" placeholder="comma,separated" data-ip-input="tags" />
+          <select class="select" name="tags" data-ip-input="tags" multiple size="6" data-tag-picker data-tag-picker-placeholder="Add tags...">
+            {% for tag in tags %}
+            <option value="{{ tag.name }}" data-tag-color="{{ tag.color }}">{{ tag.name }}</option>
+            {% endfor %}
+          </select>
         </label>
         <label class="field">
           <span>Notes</span>

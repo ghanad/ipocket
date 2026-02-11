@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 from pathlib import Path
 
 from app import db, repository
@@ -89,6 +90,8 @@ def test_ip_asset_form_includes_tags_field_and_prefill(client) -> None:
     connection = db.connect(os.environ["IPAM_DB_PATH"])
     try:
         db.init_db(connection)
+        repository.create_tag(connection, name="prod")
+        repository.create_tag(connection, name="edge")
         asset = repository.create_ip_asset(
             connection,
             ip_address="10.70.0.10",
@@ -108,7 +111,10 @@ def test_ip_asset_form_includes_tags_field_and_prefill(client) -> None:
     assert create_response.status_code == 200
     assert edit_response.status_code == 200
     assert 'name="tags"' in create_response.text
-    assert 'value="edge, prod"' in edit_response.text
+    assert 'name="tags" multiple' in create_response.text
+    assert 'data-tag-picker' in create_response.text
+    assert re.search(r'<option value="edge"[^>]*selected', edit_response.text)
+    assert re.search(r'<option value="prod"[^>]*selected', edit_response.text)
 
 def test_tags_page_uses_drawers_for_create_edit_delete(client) -> None:
     import os
@@ -232,6 +238,7 @@ def test_ip_assets_list_uses_drawer_actions_for_edit_and_delete(client) -> None:
     assert "Save" in response.text
     assert "/static/js/ip-assets.js" in response.text
     assert "data-ip-host-field" in response.text
+    assert "data-tag-picker" in response.text
 
 
 
@@ -299,6 +306,8 @@ def test_ip_assets_bulk_edit_updates_selected_assets(client) -> None:
         db.init_db(connection)
         user = repository.create_user(connection, username="editor", hashed_password="x", role=UserRole.EDITOR)
         project = repository.create_project(connection, name="Core")
+        repository.create_tag(connection, name="edge")
+        repository.create_tag(connection, name="core")
         asset_one = repository.create_ip_asset(
             connection,
             ip_address="10.70.0.10",
@@ -322,7 +331,8 @@ def test_ip_assets_bulk_edit_updates_selected_assets(client) -> None:
                 ("asset_ids", str(asset_two.id)),
                 ("type", "VIP"),
                 ("project_id", str(project.id)),
-                ("tags", "edge, core"),
+                ("tags", "edge"),
+                ("tags", "core"),
                 ("return_to", "/ui/ip-assets"),
             ],
             follow_redirects=False,
@@ -452,6 +462,70 @@ def test_ip_assets_bulk_edit_shows_error_toast_for_missing_selection(client) -> 
     assert follow_response.status_code == 200
     assert "toast-error" in follow_response.text
     assert "Select at least one IP asset." in follow_response.text
+
+
+def test_ip_assets_create_rejects_nonexistent_tag_selection(client) -> None:
+    import os
+    from app import db, repository
+
+    connection = db.connect(os.environ["IPAM_DB_PATH"])
+    try:
+        db.init_db(connection)
+        user = repository.create_user(connection, username="editor", hashed_password="x", role=UserRole.EDITOR)
+    finally:
+        connection.close()
+
+    app.dependency_overrides[ui.require_ui_editor] = lambda: user
+    try:
+        response = client.post(
+            "/ui/ip-assets/new",
+            data={
+                "ip_address": "10.90.0.30",
+                "type": "VM",
+                "project_id": "",
+                "host_id": "",
+                "tags": "ghost",
+                "notes": "",
+            },
+            follow_redirects=False,
+        )
+    finally:
+        app.dependency_overrides.pop(ui.require_ui_editor, None)
+
+    assert response.status_code == 400
+    assert "Selected tags do not exist: ghost." in response.text
+
+
+def test_ip_assets_bulk_edit_rejects_nonexistent_tag_selection(client) -> None:
+    import os
+    from app import db, repository
+
+    connection = db.connect(os.environ["IPAM_DB_PATH"])
+    try:
+        db.init_db(connection)
+        user = repository.create_user(connection, username="editor", hashed_password="x", role=UserRole.EDITOR)
+        asset = repository.create_ip_asset(connection, ip_address="10.70.0.55", asset_type=IPAssetType.VM)
+    finally:
+        connection.close()
+
+    app.dependency_overrides[ui.require_ui_editor] = lambda: user
+    try:
+        response = client.post(
+            "/ui/ip-assets/bulk-edit",
+            data=[
+                ("asset_ids", str(asset.id)),
+                ("tags", "ghost"),
+                ("return_to", "/ui/ip-assets"),
+            ],
+            follow_redirects=False,
+        )
+    finally:
+        app.dependency_overrides.pop(ui.require_ui_editor, None)
+
+    assert response.status_code == 303
+    follow_response = client.get(response.headers["location"])
+    assert follow_response.status_code == 200
+    assert "Selected tags do not exist: ghost." in follow_response.text
 
 def test_ip_assets_list_renders_project_color_tag(client) -> None:
     import os

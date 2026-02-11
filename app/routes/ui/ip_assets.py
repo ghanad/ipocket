@@ -11,13 +11,12 @@ from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 from app import repository
 from app.dependencies import get_connection
 from app.models import IPAssetType
-from app.utils import normalize_tag_names, split_tag_string, validate_ip_address
+from app.utils import normalize_tag_names, validate_ip_address
 from .utils import (
     _append_query_param,
     _build_asset_view_models,
     _is_auto_host_for_bmc_enabled,
     _normalize_asset_type,
-    _parse_form_data,
     _parse_optional_int,
     _parse_optional_int_query,
     _parse_optional_str,
@@ -73,6 +72,19 @@ def _delete_requires_exact_ip(asset, tag_names: list[str]) -> bool:
         or asset.asset_type == IPAssetType.VIP
         or normalized_tags.intersection(_HIGH_RISK_DELETE_TAGS)
     )
+
+
+def _parse_selected_tags(connection, raw_tags: list[str]) -> tuple[list[str], list[str]]:
+    cleaned_tags = [str(tag).strip() for tag in raw_tags if str(tag).strip()]
+    try:
+        selected_tags = normalize_tag_names(cleaned_tags) if cleaned_tags else []
+    except ValueError as exc:
+        return [], [str(exc)]
+    existing_tags = {tag.name for tag in repository.list_tags(connection)}
+    missing_tags = [tag for tag in selected_tags if tag not in existing_tags]
+    if missing_tags:
+        return [], [f"Selected tags do not exist: {', '.join(missing_tags)}."]
+    return selected_tags, []
 
 @router.get("/ui/ip-assets", response_class=HTMLResponse)
 def ui_list_ip_assets(
@@ -266,13 +278,9 @@ async def ui_bulk_edit_ip_assets(
             elif repository.get_project_by_id(connection, project_id_value) is None:
                 errors.append("Selected project does not exist.")
 
-    tags_raw = (form.get("tags") or "").strip()
-    tags_to_add: list[str] = []
-    if tags_raw:
-        try:
-            tags_to_add = normalize_tag_names(split_tag_string(tags_raw))
-        except ValueError as exc:
-            errors.append(str(exc))
+    tags_to_add_raw = [str(tag) for tag in form.getlist("tags")]
+    tags_to_add, tag_errors = _parse_selected_tags(connection, tags_to_add_raw)
+    errors.extend(tag_errors)
 
     if not asset_type_enum and not set_project_id and not tags_to_add:
         errors.append("Choose at least one bulk update action.")
@@ -307,6 +315,7 @@ def ui_add_ip_form(
 ):
     projects = list(repository.list_projects(connection))
     hosts = list(repository.list_hosts(connection))
+    tags = list(repository.list_tags(connection))
     return _render_template(
         request,
         "ip_asset_form.html",
@@ -319,10 +328,11 @@ def ui_add_ip_form(
                 "project_id": "",
                 "host_id": "",
                 "notes": "",
-                "tags": "",
+                "tags": [],
             },
             "projects": projects,
             "hosts": hosts,
+            "tags": tags,
             "types": [asset.value for asset in IPAssetType],
             "errors": [],
             "mode": "create",
@@ -338,14 +348,14 @@ async def ui_add_ip_submit(
     connection=Depends(get_connection),
     user=Depends(require_ui_editor),
 ):
-    form_data = await _parse_form_data(request)
-    return_to = (form_data.get("return_to") or "").strip()
+    form_data = await request.form()
+    return_to = (str(form_data.get("return_to") or "")).strip()
     ip_address = form_data.get("ip_address")
     asset_type = form_data.get("type")
     project_id = _parse_optional_int(form_data.get("project_id"))
     host_id = _parse_optional_int(form_data.get("host_id"))
     notes = _parse_optional_str(form_data.get("notes"))
-    tags_raw = form_data.get("tags") or ""
+    tags_raw = form_data.getlist("tags")
 
     errors = []
     if not ip_address:
@@ -365,15 +375,13 @@ async def ui_add_ip_submit(
             validate_ip_address(ip_address)
         except HTTPException as exc:
             errors.append(exc.detail)
-    try:
-        tags = normalize_tag_names(split_tag_string(tags_raw)) if tags_raw else []
-    except ValueError as exc:
-        tags = []
-        errors.append(str(exc))
+    tags, tag_errors = _parse_selected_tags(connection, [str(tag) for tag in tags_raw])
+    errors.extend(tag_errors)
 
     if errors:
         projects = list(repository.list_projects(connection))
         hosts = list(repository.list_hosts(connection))
+        tags_catalog = list(repository.list_tags(connection))
         return _render_template(
             request,
             "ip_asset_form.html",
@@ -386,10 +394,11 @@ async def ui_add_ip_submit(
                     "project_id": project_id or "",
                     "host_id": host_id or "",
                     "notes": notes or "",
-                    "tags": tags_raw,
+                    "tags": tags,
                 },
                 "projects": projects,
                 "hosts": hosts,
+                "tags": tags_catalog,
                 "types": [asset.value for asset in IPAssetType],
                 "errors": errors,
                 "mode": "create",
@@ -416,6 +425,7 @@ async def ui_add_ip_submit(
         errors.append("IP address already exists.")
         projects = list(repository.list_projects(connection))
         hosts = list(repository.list_hosts(connection))
+        tags_catalog = list(repository.list_tags(connection))
         return _render_template(
             request,
             "ip_asset_form.html",
@@ -428,10 +438,11 @@ async def ui_add_ip_submit(
                     "project_id": project_id or "",
                     "host_id": host_id or "",
                     "notes": notes or "",
-                    "tags": tags_raw,
+                    "tags": tags,
                 },
                 "projects": projects,
                 "hosts": hosts,
+                "tags": tags_catalog,
                 "types": [asset.value for asset in IPAssetType],
                 "errors": errors,
                 "mode": "create",
@@ -497,8 +508,9 @@ def ui_edit_ip_form(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
     projects = list(repository.list_projects(connection))
     hosts = list(repository.list_hosts(connection))
+    tags_catalog = list(repository.list_tags(connection))
     tag_lookup = repository.list_tags_for_ip_assets(connection, [asset.id])
-    tags_value = ", ".join(tag_lookup.get(asset.id, []))
+    selected_tags = tag_lookup.get(asset.id, [])
     return _render_template(
         request,
         "ip_asset_form.html",
@@ -511,10 +523,11 @@ def ui_edit_ip_form(
                 "project_id": asset.project_id or "",
                 "host_id": asset.host_id or "",
                 "notes": asset.notes or "",
-                "tags": tags_value,
+                "tags": selected_tags,
             },
             "projects": projects,
             "hosts": hosts,
+            "tags": tags_catalog,
             "types": [asset.value for asset in IPAssetType],
             "errors": [],
             "mode": "edit",
@@ -563,13 +576,13 @@ async def ui_edit_ip_submit(
     if asset is None or asset.archived:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
 
-    form_data = await _parse_form_data(request)
-    return_to = (form_data.get("return_to") or "").strip()
+    form_data = await request.form()
+    return_to = (str(form_data.get("return_to") or "")).strip()
     asset_type = form_data.get("type")
     project_id = _parse_optional_int(form_data.get("project_id"))
     host_id = _parse_optional_int(form_data.get("host_id"))
     notes = _parse_optional_str(form_data.get("notes"))
-    tags_raw = form_data.get("tags") or ""
+    tags_raw = form_data.getlist("tags")
 
     errors = []
     normalized_asset_type = None
@@ -581,15 +594,13 @@ async def ui_edit_ip_submit(
         errors.append("Asset type is required.")
     if host_id is not None and repository.get_host_by_id(connection, host_id) is None:
         errors.append("Selected host does not exist.")
-    try:
-        tags = normalize_tag_names(split_tag_string(tags_raw)) if tags_raw else []
-    except ValueError as exc:
-        tags = []
-        errors.append(str(exc))
+    tags, tag_errors = _parse_selected_tags(connection, [str(tag) for tag in tags_raw])
+    errors.extend(tag_errors)
 
     if errors:
         projects = list(repository.list_projects(connection))
         hosts = list(repository.list_hosts(connection))
+        tags_catalog = list(repository.list_tags(connection))
         return _render_template(
             request,
             "ip_asset_form.html",
@@ -602,10 +613,11 @@ async def ui_edit_ip_submit(
                     "project_id": project_id or "",
                     "host_id": host_id or "",
                     "notes": notes or "",
-                    "tags": tags_raw,
+                    "tags": tags,
                 },
                 "projects": projects,
                 "hosts": hosts,
+                "tags": tags_catalog,
                 "types": [asset.value for asset in IPAssetType],
                 "errors": errors,
                 "mode": "edit",

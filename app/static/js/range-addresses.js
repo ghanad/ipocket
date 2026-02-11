@@ -18,10 +18,45 @@
 
   const getInput = (name) => form.querySelector(`[data-range-input="${name}"]`);
 
+  const readInputValue = (input) => {
+    if (!input) {
+      return "";
+    }
+    if (input.tagName === "SELECT" && input.multiple) {
+      return Array.from(input.selectedOptions)
+        .map((option) => option.value.trim())
+        .filter(Boolean)
+        .sort()
+        .join(",");
+    }
+    return (input.value || "").trim();
+  };
+
+  const writeInputValue = (input, value) => {
+    if (!input) {
+      return;
+    }
+    if (input.tagName === "SELECT" && input.multiple) {
+      const selected = Array.isArray(value)
+        ? value.map((item) => String(item).trim()).filter(Boolean)
+        : String(value || "")
+            .split(",")
+            .map((item) => item.trim())
+            .filter(Boolean);
+      Array.from(input.options).forEach((option) => {
+        option.selected = selected.includes(option.value);
+      });
+      input.dispatchEvent(new Event("change", { bubbles: true }));
+      input.dispatchEvent(new Event("input", { bubbles: true }));
+      return;
+    }
+    input.value = value || "";
+  };
+
   const updateSaveState = () => {
     const isDirty = Array.from(inputs).some((input) => {
       const key = input.dataset.rangeInput;
-      return (input.value || "").trim() !== (state.initialValues[key] || "");
+      return readInputValue(input) !== (state.initialValues[key] || "");
     });
     saveButton.disabled = !isDirty;
     statusLabel.textContent = isDirty ? "Unsaved changes" : "No changes";
@@ -52,15 +87,15 @@
       type: assetType || "VM",
       project_id: projectId || "",
       notes: notes || "",
-      tags: tags || "",
+      tags: Array.isArray(tags) ? tags.join(",") : (tags || ""),
     };
 
-    ipInput.value = values.ip_address;
-    ipDisplay.value = values.ip_display;
-    typeInput.value = values.type;
-    projectInput.value = values.project_id;
-    notesInput.value = values.notes;
-    tagsInput.value = values.tags;
+    writeInputValue(ipInput, values.ip_address);
+    writeInputValue(ipDisplay, values.ip_display);
+    writeInputValue(typeInput, values.type);
+    writeInputValue(projectInput, values.project_id);
+    writeInputValue(notesInput, values.notes);
+    writeInputValue(tagsInput, values.tags);
 
     const rangeId = window.location.pathname.split("/")[3];
     if (mode === "edit") {
@@ -94,6 +129,13 @@
 
   document.querySelectorAll("[data-range-address-edit]").forEach((button) => {
     button.addEventListener("click", () => {
+      let tags = [];
+      try {
+        const parsed = JSON.parse(button.dataset.tagsJson || "[]");
+        tags = Array.isArray(parsed) ? parsed : [];
+      } catch (error) {
+        tags = [];
+      }
       openDrawer({
         mode: "edit",
         assetId: button.dataset.assetId,
@@ -101,7 +143,7 @@
         assetType: button.dataset.type,
         projectId: button.dataset.projectId,
         notes: button.dataset.notes,
-        tags: button.dataset.tags,
+        tags,
       });
     });
   });

@@ -79,6 +79,39 @@
     window.setTimeout(() => toast.remove(), 4000);
   };
 
+  const readInputValue = (input) => {
+    if (!input) {
+      return '';
+    }
+    if (input.tagName === 'SELECT' && input.multiple) {
+      return Array.from(input.selectedOptions)
+        .map((option) => option.value.trim())
+        .filter(Boolean)
+        .sort()
+        .join(',');
+    }
+    return (input.value || '').trim();
+  };
+
+  const writeInputValue = (input, value) => {
+    if (!input) {
+      return;
+    }
+    if (input.tagName === 'SELECT' && input.multiple) {
+      const selected = String(value || '')
+        .split(',')
+        .map((tag) => tag.trim())
+        .filter(Boolean);
+      Array.from(input.options).forEach((option) => {
+        option.selected = selected.includes(option.value);
+      });
+      input.dispatchEvent(new Event('change', { bubbles: true }));
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+      return;
+    }
+    input.value = value || '';
+  };
+
   const ensureTagsPopover = () => {
     if (tagsPopover) {
       return tagsPopover;
@@ -293,7 +326,7 @@
     }
     const dirty = Array.from(inputs).some((input) => {
       const key = input.dataset.ipInput;
-      return (input.value || '').trim() !== (initialValues[key] || '');
+      return readInputValue(input) !== (initialValues[key] || '');
     });
     saveButton.disabled = !dirty;
     if (isAddMode) {
@@ -321,7 +354,7 @@
     currentAsset = assetData;
     inputs.forEach((input) => {
       const key = input.dataset.ipInput;
-      input.value = assetData[key] || '';
+      writeInputValue(input, assetData[key] || '');
     });
     form.action = `/ui/ip-assets/${assetData.id}/edit`;
     if (ipAddressInput) {
@@ -338,7 +371,12 @@
       type: assetData.type || '',
       project_id: assetData.project_id || '',
       host_id: assetData.host_id || '',
-      tags: assetData.tags || '',
+      tags: String(assetData.tags || '')
+        .split(',')
+        .map((tag) => tag.trim())
+        .filter(Boolean)
+        .sort()
+        .join(','),
       notes: assetData.notes || '',
     };
     updateSaveState();
@@ -412,7 +450,7 @@
         input.value = 'VM';
         return;
       }
-      input.value = '';
+      writeInputValue(input, '');
     });
     if (ipAddressInput) {
       ipAddressInput.readOnly = false;
@@ -463,7 +501,7 @@
     }
     const dirty = Array.from(inputs).some((input) => {
       const key = input.dataset.ipInput;
-      return (input.value || '').trim() !== (initialValues[key] || '');
+      return readInputValue(input) !== (initialValues[key] || '');
     });
     if (!dirty) {
       closeDrawer();

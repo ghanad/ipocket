@@ -31,7 +31,11 @@
         </label>
         <label class="field field-inline">
           <span class="muted">Add tags</span>
-          <input class="input" type="text" name="tags" placeholder="comma,separated">
+          <select class="select" name="tags" multiple size="4" data-tag-picker data-tag-picker-placeholder="Add tags...">
+            {% for tag in tags %}
+            <option value="{{ tag.name }}" data-tag-color="{{ tag.color }}">{{ tag.name }}</option>
+            {% endfor %}
+          </select>
         </label>
         <button class="btn btn-primary btn-small" type="submit" data-bulk-submit disabled>Apply changes</button>
       </div>

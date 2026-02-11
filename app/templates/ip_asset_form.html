@@ -56,13 +56,11 @@
     </label>
     <label class="field field-span">
       <span>Tags</span>
-      <input
-        class="input"
-        type="text"
-        name="tags"
-        value="{{ asset.tags }}"
-        placeholder="prod, edge-router"
-      />
+      <select class="select" name="tags" multiple size="6" data-tag-picker data-tag-picker-placeholder="Add tags...">
+        {% for tag in tags %}
+        <option value="{{ tag.name }}" data-tag-color="{{ tag.color }}"{% if tag.name in asset.tags %} selected{% endif %}>{{ tag.name }}</option>
+        {% endfor %}
+      </select>
     </label>
     <label class="field field-span">
       <span>Notes</span>
