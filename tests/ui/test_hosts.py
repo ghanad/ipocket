@@ -569,3 +569,60 @@ def test_ui_edit_host_links_existing_ips(client) -> None:
     assert os_asset.host_id == host.id
     assert bmc_asset.host_id == host.id
 
+
+def test_ui_delete_host_confirm_page_has_cancel_link_to_detail(client) -> None:
+    """Test that the delete confirmation page has Cancel link pointing to host detail page."""
+    import os
+    from app import db, repository
+
+    connection = db.connect(os.environ["IPAM_DB_PATH"])
+    try:
+        db.init_db(connection)
+        host = repository.create_host(connection, name="node-cancel-test", notes="temp")
+    finally:
+        connection.close()
+
+    app.dependency_overrides[ui.require_ui_editor] = lambda: User(1, "editor", "x", UserRole.EDITOR, True)
+    try:
+        response = client.get(f"/ui/hosts/{host.id}/delete")
+    finally:
+        app.dependency_overrides.pop(ui.require_ui_editor, None)
+
+    assert response.status_code == 200
+    # Cancel link should go to host detail page, not the hosts list
+    assert f'href="/ui/hosts/{host.id}"' in response.text
+    # Should NOT link to hosts list as cancel action
+    assert 'href="/ui/hosts">Cancel' not in response.text
+
+
+def test_ui_delete_host_shows_success_flash_message(client) -> None:
+    """Test that successful deletion sets a flash message cookie."""
+    import os
+    from app import db, repository
+    from app.routes.ui.utils import FLASH_COOKIE
+
+    connection = db.connect(os.environ["IPAM_DB_PATH"])
+    try:
+        db.init_db(connection)
+        host = repository.create_host(connection, name="node-flash-test", notes="temp")
+    finally:
+        connection.close()
+
+    app.dependency_overrides[ui.require_ui_editor] = lambda: User(1, "editor", "x", UserRole.EDITOR, True)
+    try:
+        response = client.post(
+            f"/ui/hosts/{host.id}/delete",
+            data={"confirm_name": "node-flash-test"},
+            follow_redirects=False,
+        )
+    finally:
+        app.dependency_overrides.pop(ui.require_ui_editor, None)
+
+    assert response.status_code == 303
+    # Redirect should go to hosts list
+    location = response.headers.get("location", "")
+    assert "/ui/hosts" in location
+    # Flash message should be set in cookie (via Set-Cookie header)
+    set_cookie = response.headers.get("set-cookie", "")
+    assert FLASH_COOKIE in set_cookie
+
