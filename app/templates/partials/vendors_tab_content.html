@@ -7,12 +7,13 @@
   </div>
   <div class="table-wrapper">
     <table class="table">
-      <thead><tr><th>Name</th><th>Actions</th></tr></thead>
+      <thead><tr><th>Name</th><th>IPs</th><th>Actions</th></tr></thead>
       <tbody>
         {% if vendors %}
         {% for vendor in vendors %}
         <tr>
           <td>{{ vendor.name }}</td>
+          <td>{{ vendor_ip_counts.get(vendor.id, 0) }}</td>
           <td class="asset-actions-cell">
             <div class="table-actions">
               <button
@@ -35,7 +36,7 @@
           </td>
         </tr>
         {% endfor %}
-        {% else %}<tr><td colspan="2" class="empty-state">No vendors yet.</td></tr>{% endif %}
+        {% else %}<tr><td colspan="3" class="empty-state">No vendors yet.</td></tr>{% endif %}
       </tbody>
     </table>
   </div>

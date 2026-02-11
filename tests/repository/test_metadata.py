@@ -80,3 +80,44 @@ def test_delete_vendor_unassigns_linked_hosts(_setup_connection) -> None:
         assert updated_host.vendor is None
     finally:
         connection.close()
+
+
+def test_list_vendor_ip_counts_returns_active_counts(_setup_connection) -> None:
+    connection = _setup_connection()
+    try:
+        vendor_a = repository.create_vendor(connection, name="Dell")
+        vendor_b = repository.create_vendor(connection, name="Cisco")
+        host_a = repository.create_host(connection, name="node-a", vendor=vendor_a.name)
+        host_b = repository.create_host(connection, name="node-b", vendor=vendor_b.name)
+        repository.create_host(connection, name="node-novendor")
+
+        repository.create_ip_asset(
+            connection,
+            ip_address="10.0.2.10",
+            asset_type=IPAssetType.VM,
+            host_id=host_a.id,
+        )
+        repository.create_ip_asset(
+            connection,
+            ip_address="10.0.2.11",
+            asset_type=IPAssetType.BMC,
+            host_id=host_a.id,
+        )
+        archived = repository.create_ip_asset(
+            connection,
+            ip_address="10.0.2.12",
+            asset_type=IPAssetType.OS,
+            host_id=host_b.id,
+        )
+        repository.create_ip_asset(
+            connection,
+            ip_address="10.0.2.13",
+            asset_type=IPAssetType.OTHER,
+        )
+        repository.set_ip_asset_archived(connection, archived.ip_address, archived=True)
+
+        counts = repository.list_vendor_ip_counts(connection)
+
+        assert counts == {vendor_a.id: 2}
+    finally:
+        connection.close()

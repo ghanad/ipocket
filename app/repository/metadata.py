@@ -90,6 +90,19 @@ def list_vendors(connection: sqlite3.Connection) -> Iterable[Vendor]:
     return [_row_to_vendor(row) for row in rows]
 
 
+def list_vendor_ip_counts(connection: sqlite3.Connection) -> dict[int, int]:
+    rows = connection.execute(
+        """
+        SELECT hosts.vendor_id AS vendor_id, COUNT(*) AS total
+        FROM ip_assets
+        JOIN hosts ON hosts.id = ip_assets.host_id
+        WHERE hosts.vendor_id IS NOT NULL AND ip_assets.archived = 0
+        GROUP BY hosts.vendor_id
+        """
+    ).fetchall()
+    return {int(row["vendor_id"]): int(row["total"]) for row in rows}
+
+
 
 def get_vendor_by_id(connection: sqlite3.Connection, vendor_id: int) -> Optional[Vendor]:
     row = connection.execute("SELECT id, name FROM vendors WHERE id = ?", (vendor_id,)).fetchone()
