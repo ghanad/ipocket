@@ -55,6 +55,9 @@ def ui_list_ranges(request: Request, connection=Depends(get_connection)) -> HTML
     edit_param = request.query_params.get("edit")
     edit_range_id = _parse_optional_int(edit_param)
     edit_ip_range = repository.get_ip_range_by_id(connection, edit_range_id) if edit_range_id else None
+    delete_param = request.query_params.get("delete")
+    delete_range_id = _parse_optional_int(delete_param)
+    delete_ip_range = repository.get_ip_range_by_id(connection, delete_range_id) if delete_range_id else None
     ranges = list(repository.list_ip_ranges(connection))
     utilization = repository.get_ip_range_utilization(connection)
     range_rows = _build_range_table_rows(ranges, utilization)
@@ -73,6 +76,9 @@ def ui_list_ranges(request: Request, connection=Depends(get_connection)) -> HTML
                 "notes": edit_ip_range.notes if edit_ip_range else "",
             },
             "edit_ip_range": edit_ip_range,
+            "delete_errors": [],
+            "delete_confirm_value": "",
+            "delete_ip_range": delete_ip_range,
         },
         active_nav="ranges",
     )
@@ -115,6 +121,9 @@ async def ui_create_range(
                 "edit_errors": [],
                 "edit_form_state": {"name": "", "cidr": "", "notes": ""},
                 "edit_ip_range": None,
+                "delete_errors": [],
+                "delete_confirm_value": "",
+                "delete_ip_range": None,
             },
             status_code=400,
             active_nav="ranges",
@@ -137,6 +146,9 @@ async def ui_create_range(
                 "edit_errors": [],
                 "edit_form_state": {"name": "", "cidr": "", "notes": ""},
                 "edit_ip_range": None,
+                "delete_errors": [],
+                "delete_confirm_value": "",
+                "delete_ip_range": None,
             },
             status_code=409,
             active_nav="ranges",
@@ -197,6 +209,9 @@ async def ui_update_range(
                 "edit_errors": errors,
                 "edit_form_state": {"name": name, "cidr": cidr, "notes": notes or ""},
                 "edit_ip_range": ip_range,
+                "delete_errors": [],
+                "delete_confirm_value": "",
+                "delete_ip_range": None,
             },
             status_code=400,
             active_nav="ranges",
@@ -224,6 +239,9 @@ async def ui_update_range(
                 "edit_errors": ["CIDR already exists."],
                 "edit_form_state": {"name": name, "cidr": cidr, "notes": notes or ""},
                 "edit_ip_range": ip_range,
+                "delete_errors": [],
+                "delete_confirm_value": "",
+                "delete_ip_range": None,
             },
             status_code=409,
             active_nav="ranges",
@@ -244,17 +262,7 @@ def ui_delete_range_confirm(
     ip_range = repository.get_ip_range_by_id(connection, range_id)
     if ip_range is None:
         raise HTTPException(status_code=404, detail="IP range not found.")
-    return _render_template(
-        request,
-        "range_delete_confirm.html",
-        {
-            "title": "ipocket - Confirm Range Delete",
-            "ip_range": ip_range,
-            "errors": [],
-            "confirm_value": "",
-        },
-        active_nav="ranges",
-    )
+    return RedirectResponse(url=f"/ui/ranges?delete={range_id}", status_code=303)
 
 @router.post("/ui/ranges/{range_id}/delete", response_class=HTMLResponse)
 async def ui_delete_range(
@@ -270,14 +278,22 @@ async def ui_delete_range(
     form_data = await _parse_form_data(request)
     confirm_name = (form_data.get("confirm_name") or "").strip()
     if confirm_name != ip_range.name:
+        ranges = list(repository.list_ip_ranges(connection))
+        utilization = repository.get_ip_range_utilization(connection)
         return _render_template(
             request,
-            "range_delete_confirm.html",
+            "ranges.html",
             {
-                "title": "ipocket - Confirm Range Delete",
-                "ip_range": ip_range,
-                "errors": ["برای حذف کامل، نام رنج را دقیقاً وارد کنید."],
-                "confirm_value": confirm_name,
+                "title": "ipocket - IP Ranges",
+                "range_rows": _build_range_table_rows(ranges, utilization),
+                "errors": [],
+                "form_state": {"name": "", "cidr": "", "notes": ""},
+                "edit_errors": [],
+                "edit_form_state": {"name": "", "cidr": "", "notes": ""},
+                "edit_ip_range": None,
+                "delete_errors": ["برای حذف کامل، نام رنج را دقیقاً وارد کنید."],
+                "delete_confirm_value": confirm_name,
+                "delete_ip_range": ip_range,
             },
             status_code=400,
             active_nav="ranges",
