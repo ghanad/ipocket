@@ -14,6 +14,7 @@ ipocket is a lightweight IP inventory app to track addresses and their project a
 - IP assets list includes pagination with a user-selectable page size (default 20) to keep large inventories manageable.
 - IP assets list uses a right-side drawer for both adding and editing IPs without leaving the list view.
 - Saving an IP edit from the drawer returns to the list view instead of navigating to the detail page.
+- Clearing Project in the IP edit drawer now correctly unassigns the IP (`project_id` becomes null) instead of keeping the previous project.
 - Creating an IP from the drawer now also returns to the list view (preserving active filters/query state) instead of navigating to a detail URL.
 - After saving in the drawer, the list view restores the prior scroll position.
 - Host assignment in the drawer only appears when the IP type is OS or BMC.
