@@ -1,0 +1,187 @@
+<section class="page-header">
+  <div>
+    <p class="eyebrow">Library</p>
+    <h1>Vendors</h1>
+    <p class="subtitle">Manage host vendor choices.</p>
+  </div>
+  <div class="page-header-actions">
+    <button class="btn btn-primary" type="button" data-vendor-add>New Vendor</button>
+  </div>
+</section>
+
+<section class="card table-card projects-existing-card">
+  <div class="card-header">
+    <div>
+      <h2>Existing vendors</h2>
+      <p class="subtitle">Keep host vendor values consistent.</p>
+    </div>
+  </div>
+  <div class="table-wrapper">
+    <table class="table">
+      <thead><tr><th>Name</th><th>Actions</th></tr></thead>
+      <tbody>
+        {% if vendors %}
+        {% for vendor in vendors %}
+        <tr>
+          <td>{{ vendor.name }}</td>
+          <td class="asset-actions-cell">
+            <div class="table-actions">
+              <button
+                class="btn btn-secondary btn-small"
+                type="button"
+                data-vendor-edit="{{ vendor.id }}"
+                data-vendor-name="{{ vendor.name }}"
+              >
+                Edit
+              </button>
+              <button
+                class="btn btn-danger btn-small"
+                type="button"
+                data-vendor-delete="{{ vendor.id }}"
+                data-vendor-delete-name="{{ vendor.name }}"
+              >
+                Delete
+              </button>
+            </div>
+          </td>
+        </tr>
+        {% endfor %}
+        {% else %}<tr><td colspan="2" class="empty-state">No vendors yet.</td></tr>{% endif %}
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<div class="ip-drawer-overlay" data-vendor-create-overlay aria-hidden="true"></div>
+<aside class="ip-drawer" data-vendor-create-drawer data-vendor-open="{{ 'true' if errors else 'false' }}" role="dialog" aria-modal="true" aria-label="Add vendor">
+  <div class="ip-drawer-header">
+    <div class="ip-drawer-header-row">
+      <div>
+        <h2 class="ip-drawer-title">Create Vendor</h2>
+        <p class="ip-drawer-subtitle">Add vendor names for host selection.</p>
+      </div>
+      <button class="ip-drawer-close" type="button" aria-label="Close drawer" data-vendor-create-close>✕</button>
+    </div>
+  </div>
+  <div class="ip-drawer-body">
+    {% if errors %}
+    <div class="alert alert-error">
+      <ul>{% for error in errors %}<li>{{ error }}</li>{% endfor %}</ul>
+    </div>
+    {% endif %}
+    <form class="ip-drawer-form" method="post" action="/ui/vendors" data-vendor-create-form id="vendor-create-form">
+      <section class="ip-drawer-section">
+        <h3>Vendor details</h3>
+        <label class="field">
+          <span>Name</span>
+          <input class="input" type="text" name="name" value="{{ form_state.name }}" data-vendor-input="name" required />
+        </label>
+      </section>
+    </form>
+  </div>
+  <div class="ip-drawer-footer">
+    <span class="ip-drawer-footer-status" data-vendor-create-dirty>Enter details</span>
+    <div class="ip-drawer-footer-actions">
+      <button class="btn btn-secondary" type="button" data-vendor-create-cancel>Cancel</button>
+      <button class="btn btn-primary" type="submit" form="vendor-create-form" data-vendor-create-save disabled>Create vendor</button>
+    </div>
+  </div>
+</aside>
+
+<div class="ip-drawer-overlay" data-vendor-edit-overlay aria-hidden="true"></div>
+<aside class="ip-drawer" data-vendor-edit-drawer data-vendor-edit-open="{{ 'true' if (edit_errors or edit_vendor) else 'false' }}" role="dialog" aria-modal="true" aria-label="Edit vendor">
+  <div class="ip-drawer-header">
+    <div class="ip-drawer-header-row">
+      <div>
+        <h2 class="ip-drawer-title">Edit Vendor</h2>
+        <p class="ip-drawer-subtitle">Update vendor name used in host forms.</p>
+      </div>
+      <button class="ip-drawer-close" type="button" aria-label="Close drawer" data-vendor-edit-close>✕</button>
+    </div>
+  </div>
+  <div class="ip-drawer-body">
+    {% if edit_errors %}
+    <div class="alert alert-error">
+      <ul>{% for error in edit_errors %}<li>{{ error }}</li>{% endfor %}</ul>
+    </div>
+    {% endif %}
+    <form
+      class="ip-drawer-form"
+      method="post"
+      action="{% if edit_vendor %}/ui/vendors/{{ edit_vendor.id }}/edit{% else %}#{% endif %}"
+      data-vendor-edit-form
+      id="vendor-edit-form"
+      data-vendor-edit-id="{{ edit_vendor.id if edit_vendor else '' }}"
+    >
+      <section class="ip-drawer-section">
+        <h3>Vendor details</h3>
+        <label class="field">
+          <span>Name</span>
+          <input class="input" type="text" name="name" value="{{ edit_form_state.name }}" data-vendor-edit-input="name" required />
+        </label>
+      </section>
+    </form>
+  </div>
+  <div class="ip-drawer-footer">
+    <span class="ip-drawer-footer-status" data-vendor-edit-dirty>Choose vendor</span>
+    <div class="ip-drawer-footer-actions">
+      <button class="btn btn-secondary" type="button" data-vendor-edit-cancel>Cancel</button>
+      <button class="btn btn-primary" type="submit" form="vendor-edit-form" data-vendor-edit-save disabled>Save changes</button>
+    </div>
+  </div>
+</aside>
+
+<div class="ip-drawer-overlay" data-vendor-delete-overlay aria-hidden="true"></div>
+<aside class="ip-drawer" data-vendor-delete-drawer data-vendor-delete-open="{{ 'true' if delete_vendor else 'false' }}" role="dialog" aria-modal="true" aria-label="Delete vendor">
+  <div class="ip-drawer-header">
+    <div class="ip-drawer-header-row">
+      <div>
+        <h2 class="ip-drawer-title">Delete Vendor</h2>
+        <p class="ip-drawer-subtitle" data-vendor-delete-subtitle>Permanent removal</p>
+      </div>
+      <button class="ip-drawer-close" type="button" aria-label="Close drawer" data-vendor-delete-close>✕</button>
+    </div>
+  </div>
+  <div class="ip-drawer-body">
+    {% if delete_errors %}
+    <div class="alert alert-error">
+      <ul>{% for error in delete_errors %}<li>{{ error }}</li>{% endfor %}</ul>
+    </div>
+    {% endif %}
+    <form
+      class="ip-drawer-form ip-drawer-delete-form"
+      method="post"
+      action="{% if delete_vendor %}/ui/vendors/{{ delete_vendor.id }}/delete{% else %}#{% endif %}"
+      data-vendor-delete-form
+      id="vendor-delete-form"
+      data-vendor-delete-id="{{ delete_vendor.id if delete_vendor else '' }}"
+      data-vendor-delete-name="{{ delete_vendor.name if delete_vendor else '' }}"
+    >
+      <section class="ip-drawer-section">
+        <h3 class="ip-drawer-delete-heading">Delete this vendor?</h3>
+        <p class="ip-drawer-delete-warning">Linked hosts will have no vendor selected.</p>
+        <dl class="ip-drawer-delete-details">
+          <div><dt>Name</dt><dd data-vendor-delete-name-display>{{ delete_vendor.name if delete_vendor else '—' }}</dd></div>
+        </dl>
+        <label class="field field-inline">
+          <input class="checkbox" type="checkbox" data-vendor-delete-ack />
+          <span>I understand this cannot be undone</span>
+        </label>
+        <label class="field">
+          <span>Type the vendor name to confirm: <strong data-vendor-delete-name-inline>{{ delete_vendor.name if delete_vendor else '—' }}</strong></span>
+          <input class="input" type="text" name="confirm_name" autocomplete="off" data-vendor-delete-confirm value="{{ delete_confirm_value }}" />
+        </label>
+      </section>
+    </form>
+  </div>
+  <div class="ip-drawer-footer">
+    <span class="ip-drawer-footer-status" data-vendor-delete-dirty>Choose vendor</span>
+    <div class="ip-drawer-footer-actions">
+      <button class="btn btn-secondary" type="button" data-vendor-delete-cancel>Cancel</button>
+      <button class="btn btn-danger" type="submit" form="vendor-delete-form" data-vendor-delete-submit disabled>Delete permanently</button>
+    </div>
+  </div>
+</aside>
+
+<script src="/static/js/drawer.js" defer></script>
+<script src="/static/js/vendors.js" defer></script>

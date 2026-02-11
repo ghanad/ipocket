@@ -151,8 +151,7 @@ UI design reference templates live in `/ui_template` for layout and styling guid
 ## First-time setup checklist
 1) Bootstrap an admin user (env vars above).
 2) Login at `/ui/login`.
-3) Create Projects from the **Projects** page.
-4) Create Vendors from the **Vendors** page.
+3) Open **Library** from the sidebar and use tabs to create Projects, Tags, and Vendors.
 5) Create Hosts from the **Hosts** page and pick a Vendor when needed.
 6) Add IPs from the **IP Assets** page.
 

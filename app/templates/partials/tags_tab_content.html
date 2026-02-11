@@ -1,0 +1,213 @@
+<section class="page-header">
+  <div>
+    <p class="eyebrow">Library</p>
+    <h1>Tags</h1>
+    <p class="subtitle">Create tags first, then assign them to IP assets.</p>
+  </div>
+  <div class="page-header-actions">
+    <button class="btn btn-primary" type="button" data-tag-add>New Tag</button>
+  </div>
+</section>
+
+<section class="card table-card tags-existing-card">
+  <div class="card-header">
+    <div>
+      <h2>Existing tags</h2>
+      <p class="subtitle">Edit, recolor, or remove tags as needed.</p>
+    </div>
+  </div>
+  <div class="table-wrapper">
+    <table class="table">
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Color</th>
+          <th>Preview</th>
+          <th>IPs</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% if tags %}
+        {% for tag in tags %}
+        <tr>
+          <td>{{ tag.name }}</td>
+          <td><input class="input input-color" type="color" value="{{ tag.color }}" disabled /></td>
+          <td>
+            <span class="tag tag-color" style="--tag-color: {{ tag.color }}">{{ tag.name }}</span>
+          </td>
+          <td>{{ tag_ip_counts.get(tag.id, 0) }}</td>
+          <td class="asset-actions-cell">
+            <div class="table-actions">
+              <button
+                class="btn btn-secondary btn-small"
+                type="button"
+                data-tag-edit="{{ tag.id }}"
+                data-tag-name="{{ tag.name }}"
+                data-tag-color="{{ tag.color }}"
+              >
+                Edit
+              </button>
+              <button
+                class="btn btn-danger btn-small"
+                type="button"
+                data-tag-delete="{{ tag.id }}"
+                data-tag-delete-name="{{ tag.name }}"
+              >
+                Delete
+              </button>
+            </div>
+          </td>
+        </tr>
+        {% endfor %}
+        {% else %}
+        <tr>
+          <td colspan="5" class="empty-state">No tags yet.</td>
+        </tr>
+        {% endif %}
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<div class="ip-drawer-overlay" data-tag-create-overlay aria-hidden="true"></div>
+<aside class="ip-drawer" data-tag-create-drawer data-tag-open="{{ 'true' if errors else 'false' }}" role="dialog" aria-modal="true" aria-label="Add tag">
+  <div class="ip-drawer-header">
+    <div class="ip-drawer-header-row">
+      <div>
+        <h2 class="ip-drawer-title">Create Tag</h2>
+        <p class="ip-drawer-subtitle">Add reusable labels for IP assets.</p>
+      </div>
+      <button class="ip-drawer-close" type="button" aria-label="Close drawer" data-tag-create-close>✕</button>
+    </div>
+  </div>
+  <div class="ip-drawer-body">
+    {% if errors %}
+    <div class="alert alert-error">
+      <ul>{% for error in errors %}<li>{{ error }}</li>{% endfor %}</ul>
+    </div>
+    {% endif %}
+    <form class="ip-drawer-form" method="post" action="/ui/tags" data-tag-create-form id="tag-create-form">
+      <section class="ip-drawer-section">
+        <h3>Tag details</h3>
+        <label class="field">
+          <span>Name</span>
+          <input class="input" type="text" name="name" value="{{ form_state.name }}" data-tag-input="name" required />
+        </label>
+        <label class="field">
+          <span>Color</span>
+          <input class="input input-color" type="color" name="color" value="{{ form_state.color }}" data-tag-input="color" />
+        </label>
+      </section>
+    </form>
+  </div>
+  <div class="ip-drawer-footer">
+    <span class="ip-drawer-footer-status" data-tag-create-dirty>Enter details</span>
+    <div class="ip-drawer-footer-actions">
+      <button class="btn btn-secondary" type="button" data-tag-create-cancel>Cancel</button>
+      <button class="btn btn-primary" type="submit" form="tag-create-form" data-tag-create-save disabled>Create tag</button>
+    </div>
+  </div>
+</aside>
+
+<div class="ip-drawer-overlay" data-tag-edit-overlay aria-hidden="true"></div>
+<aside class="ip-drawer" data-tag-edit-drawer data-tag-edit-open="{{ 'true' if (edit_errors or edit_tag) else 'false' }}" role="dialog" aria-modal="true" aria-label="Edit tag">
+  <div class="ip-drawer-header">
+    <div class="ip-drawer-header-row">
+      <div>
+        <h2 class="ip-drawer-title">Edit Tag</h2>
+        <p class="ip-drawer-subtitle">Update tag label and color.</p>
+      </div>
+      <button class="ip-drawer-close" type="button" aria-label="Close drawer" data-tag-edit-close>✕</button>
+    </div>
+  </div>
+  <div class="ip-drawer-body">
+    {% if edit_errors %}
+    <div class="alert alert-error">
+      <ul>{% for error in edit_errors %}<li>{{ error }}</li>{% endfor %}</ul>
+    </div>
+    {% endif %}
+    <form
+      class="ip-drawer-form"
+      method="post"
+      action="{% if edit_tag %}/ui/tags/{{ edit_tag.id }}/edit{% else %}#{% endif %}"
+      data-tag-edit-form
+      id="tag-edit-form"
+      data-tag-edit-id="{{ edit_tag.id if edit_tag else '' }}"
+    >
+      <section class="ip-drawer-section">
+        <h3>Tag details</h3>
+        <label class="field">
+          <span>Name</span>
+          <input class="input" type="text" name="name" value="{{ edit_form_state.name }}" data-tag-edit-input="name" required />
+        </label>
+        <label class="field">
+          <span>Color</span>
+          <input class="input input-color" type="color" name="color" value="{{ edit_form_state.color }}" data-tag-edit-input="color" />
+        </label>
+      </section>
+    </form>
+  </div>
+  <div class="ip-drawer-footer">
+    <span class="ip-drawer-footer-status" data-tag-edit-dirty>Choose tag</span>
+    <div class="ip-drawer-footer-actions">
+      <button class="btn btn-secondary" type="button" data-tag-edit-cancel>Cancel</button>
+      <button class="btn btn-primary" type="submit" form="tag-edit-form" data-tag-edit-save disabled>Save changes</button>
+    </div>
+  </div>
+</aside>
+
+<div class="ip-drawer-overlay" data-tag-delete-overlay aria-hidden="true"></div>
+<aside class="ip-drawer" data-tag-delete-drawer data-tag-delete-open="{{ 'true' if delete_tag else 'false' }}" role="dialog" aria-modal="true" aria-label="Delete tag">
+  <div class="ip-drawer-header">
+    <div class="ip-drawer-header-row">
+      <div>
+        <h2 class="ip-drawer-title">Delete Tag</h2>
+        <p class="ip-drawer-subtitle" data-tag-delete-subtitle>Permanent removal</p>
+      </div>
+      <button class="ip-drawer-close" type="button" aria-label="Close drawer" data-tag-delete-close>✕</button>
+    </div>
+  </div>
+  <div class="ip-drawer-body">
+    {% if delete_errors %}
+    <div class="alert alert-error">
+      <ul>{% for error in delete_errors %}<li>{{ error }}</li>{% endfor %}</ul>
+    </div>
+    {% endif %}
+    <form
+      class="ip-drawer-form ip-drawer-delete-form"
+      method="post"
+      action="{% if delete_tag %}/ui/tags/{{ delete_tag.id }}/delete{% else %}#{% endif %}"
+      data-tag-delete-form
+      id="tag-delete-form"
+      data-tag-delete-id="{{ delete_tag.id if delete_tag else '' }}"
+      data-tag-delete-name="{{ delete_tag.name if delete_tag else '' }}"
+    >
+      <section class="ip-drawer-section">
+        <h3 class="ip-drawer-delete-heading">Delete this tag?</h3>
+        <p class="ip-drawer-delete-warning">The tag will be removed from all linked IP assets.</p>
+        <dl class="ip-drawer-delete-details">
+          <div><dt>Name</dt><dd data-tag-delete-name-display>{{ delete_tag.name if delete_tag else '—' }}</dd></div>
+        </dl>
+        <label class="field field-inline">
+          <input class="checkbox" type="checkbox" data-tag-delete-ack />
+          <span>I understand this cannot be undone</span>
+        </label>
+        <label class="field">
+          <span>Type the tag name to confirm: <strong data-tag-delete-name-inline>{{ delete_tag.name if delete_tag else '—' }}</strong></span>
+          <input class="input" type="text" name="confirm_name" autocomplete="off" data-tag-delete-confirm value="{{ delete_confirm_value }}" />
+        </label>
+      </section>
+    </form>
+  </div>
+  <div class="ip-drawer-footer">
+    <span class="ip-drawer-footer-status" data-tag-delete-dirty>Choose tag</span>
+    <div class="ip-drawer-footer-actions">
+      <button class="btn btn-secondary" type="button" data-tag-delete-cancel>Cancel</button>
+      <button class="btn btn-danger" type="submit" form="tag-delete-form" data-tag-delete-submit disabled>Delete permanently</button>
+    </div>
+  </div>
+</aside>
+
+<script src="/static/js/drawer.js" defer></script>
+<script src="/static/js/tags.js" defer></script>

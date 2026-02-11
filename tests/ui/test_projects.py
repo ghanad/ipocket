@@ -102,3 +102,30 @@ def test_projects_edit_and_delete_flow(client) -> None:
         assert asset.project_id is None
     finally:
         connection.close()
+
+
+def test_library_tabs_render_tag_and_vendor_content(client, _setup_connection) -> None:
+    connection = _setup_connection()
+    try:
+        repository.create_tag(connection, name="critical")
+        repository.create_vendor(connection, name="Cisco")
+    finally:
+        connection.close()
+
+    tags_response = client.get("/ui/projects?tab=tags")
+    assert tags_response.status_code == 200
+    assert "Catalog Settings" in tags_response.text
+    assert 'href="/ui/projects?tab=tags"' in tags_response.text
+    assert "data-tag-add" in tags_response.text
+
+    vendors_response = client.get("/ui/projects?tab=vendors")
+    assert vendors_response.status_code == 200
+    assert "data-vendor-add" in vendors_response.text
+
+
+def test_tags_route_renders_unified_library_page(client) -> None:
+    response = client.get("/ui/tags")
+
+    assert response.status_code == 200
+    assert "Catalog Settings" in response.text
+    assert "data-tag-add" in response.text

@@ -29,10 +29,39 @@ router = APIRouter()
 @router.get("/ui/projects", response_class=HTMLResponse)
 def ui_list_projects(
     request: Request,
+    tab: Optional[str] = Query(default=None),
     edit: Optional[int] = Query(default=None),
     delete: Optional[int] = Query(default=None),
     connection=Depends(get_connection),
 ) -> HTMLResponse:
+    if tab == "tags":
+        edit_tag = repository.get_tag_by_id(connection, edit) if edit is not None else None
+        delete_tag = repository.get_tag_by_id(connection, delete) if delete is not None else None
+        if edit is not None and edit_tag is None:
+            raise HTTPException(status_code=404, detail="Tag not found")
+        if delete is not None and delete_tag is None:
+            raise HTTPException(status_code=404, detail="Tag not found")
+        return _render_template(
+            request,
+            "projects.html",
+            _tags_template_context(connection, edit_tag=edit_tag, delete_tag=delete_tag),
+            active_nav="library",
+        )
+
+    if tab == "vendors":
+        edit_vendor = repository.get_vendor_by_id(connection, edit) if edit is not None else None
+        delete_vendor = repository.get_vendor_by_id(connection, delete) if delete is not None else None
+        if edit is not None and edit_vendor is None:
+            raise HTTPException(status_code=404, detail="Vendor not found")
+        if delete is not None and delete_vendor is None:
+            raise HTTPException(status_code=404, detail="Vendor not found")
+        return _render_template(
+            request,
+            "projects.html",
+            _vendors_template_context(connection, edit_vendor=edit_vendor, delete_vendor=delete_vendor),
+            active_nav="library",
+        )
+
     projects = list(repository.list_projects(connection))
     edit_project = None
     delete_project = None
@@ -50,6 +79,7 @@ def ui_list_projects(
         "projects.html",
         {
             "title": "ipocket - Projects",
+                "active_tab": "projects",
             "projects": projects,
             "project_ip_counts": repository.list_project_ip_counts(connection),
             "errors": [],
@@ -64,8 +94,9 @@ def ui_list_projects(
             "delete_errors": [],
             "delete_project": delete_project,
             "delete_confirm_value": "",
+            "active_tab": "projects",
         },
-        active_nav="projects",
+        active_nav="library",
     )
 
 
@@ -130,6 +161,7 @@ async def ui_update_project(
             "projects.html",
             {
                 "title": "ipocket - Projects",
+                "active_tab": "projects",
                 "projects": projects,
                 "project_ip_counts": repository.list_project_ip_counts(connection),
                 "errors": [],
@@ -146,7 +178,7 @@ async def ui_update_project(
                 "delete_confirm_value": "",
             },
             status_code=400,
-            active_nav="projects",
+            active_nav="library",
         )
 
     try:
@@ -167,6 +199,7 @@ async def ui_update_project(
             "projects.html",
             {
                 "title": "ipocket - Projects",
+                "active_tab": "projects",
                 "projects": projects,
                 "project_ip_counts": repository.list_project_ip_counts(connection),
                 "errors": [],
@@ -183,7 +216,7 @@ async def ui_update_project(
                 "delete_confirm_value": "",
             },
             status_code=409,
-            active_nav="projects",
+            active_nav="library",
         )
 
     if updated is None:
@@ -218,6 +251,7 @@ async def ui_delete_project(
             "projects.html",
             {
                 "title": "ipocket - Projects",
+                "active_tab": "projects",
                 "projects": list(repository.list_projects(connection)),
                 "project_ip_counts": repository.list_project_ip_counts(connection),
                 "errors": [],
@@ -230,7 +264,7 @@ async def ui_delete_project(
                 "delete_confirm_value": confirm_name,
             },
             status_code=400,
-            active_nav="projects",
+            active_nav="library",
         )
 
     deleted = repository.delete_project(connection, project_id)
@@ -275,6 +309,7 @@ async def ui_create_project(
             "projects.html",
             {
                 "title": "ipocket - Projects",
+                "active_tab": "projects",
                 "projects": projects,
                 "project_ip_counts": repository.list_project_ip_counts(connection),
                 "errors": errors,
@@ -287,7 +322,7 @@ async def ui_create_project(
                 "delete_confirm_value": "",
             },
             status_code=400,
-            active_nav="projects",
+            active_nav="library",
         )
 
     try:
@@ -300,6 +335,7 @@ async def ui_create_project(
             "projects.html",
             {
                 "title": "ipocket - Projects",
+                "active_tab": "projects",
                 "projects": projects,
                 "project_ip_counts": repository.list_project_ip_counts(connection),
                 "errors": errors,
@@ -312,7 +348,7 @@ async def ui_create_project(
                 "delete_confirm_value": "",
             },
             status_code=409,
-            active_nav="projects",
+            active_nav="library",
         )
 
     return _redirect_with_flash(
@@ -344,9 +380,9 @@ def ui_list_tags(
 
     return _render_template(
         request,
-        "tags.html",
+        "projects.html",
         _tags_template_context(connection, edit_tag=edit_tag, delete_tag=delete_tag),
-        active_nav="tags",
+        active_nav="library",
     )
 
 
@@ -358,7 +394,7 @@ def ui_open_tag_edit(
 ) -> RedirectResponse:
     return _redirect_with_flash(
         request,
-        f"/ui/tags?{urlencode({'edit': tag_id})}",
+        f"/ui/projects?{urlencode({'tab': 'tags', 'edit': tag_id})}",
         "",
         status_code=303,
     )
@@ -372,7 +408,7 @@ def ui_open_tag_delete(
 ) -> RedirectResponse:
     return _redirect_with_flash(
         request,
-        f"/ui/tags?{urlencode({'delete': tag_id})}",
+        f"/ui/projects?{urlencode({'tab': 'tags', 'delete': tag_id})}",
         "",
         status_code=303,
     )
@@ -407,14 +443,14 @@ async def ui_create_tag(
     if errors:
         return _render_template(
             request,
-            "tags.html",
+            "projects.html",
             _tags_template_context(
                 connection,
                 errors=errors,
                 form_state={"name": name, "color": color or DEFAULT_TAG_COLOR},
             ),
             status_code=400,
-            active_nav="tags",
+            active_nav="library",
         )
 
     try:
@@ -422,19 +458,19 @@ async def ui_create_tag(
     except sqlite3.IntegrityError:
         return _render_template(
             request,
-            "tags.html",
+            "projects.html",
             _tags_template_context(
                 connection,
                 errors=["Tag name already exists."],
                 form_state={"name": name, "color": color or DEFAULT_TAG_COLOR},
             ),
             status_code=409,
-            active_nav="tags",
+            active_nav="library",
         )
 
     return _redirect_with_flash(
         request,
-        "/ui/tags",
+        "/ui/projects?tab=tags",
         "Tag created.",
         message_type="success",
         status_code=303,
@@ -474,7 +510,7 @@ async def ui_edit_tag(
             return Response(status_code=404)
         return _render_template(
             request,
-            "tags.html",
+            "projects.html",
             _tags_template_context(
                 connection,
                 edit_errors=errors,
@@ -482,7 +518,7 @@ async def ui_edit_tag(
                 edit_form_state={"name": name, "color": color or DEFAULT_TAG_COLOR},
             ),
             status_code=400,
-            active_nav="tags",
+            active_nav="library",
         )
 
     try:
@@ -493,7 +529,7 @@ async def ui_edit_tag(
             return Response(status_code=404)
         return _render_template(
             request,
-            "tags.html",
+            "projects.html",
             _tags_template_context(
                 connection,
                 edit_errors=["Tag name already exists."],
@@ -501,14 +537,14 @@ async def ui_edit_tag(
                 edit_form_state={"name": name, "color": color or DEFAULT_TAG_COLOR},
             ),
             status_code=409,
-            active_nav="tags",
+            active_nav="library",
         )
 
     if updated is None:
         return Response(status_code=404)
     return _redirect_with_flash(
         request,
-        "/ui/tags",
+        "/ui/projects?tab=tags",
         "Tag updated.",
         message_type="success",
         status_code=303,
@@ -531,7 +567,7 @@ async def ui_delete_tag(
     if confirm_name != tag.name:
         return _render_template(
             request,
-            "tags.html",
+            "projects.html",
             _tags_template_context(
                 connection,
                 delete_errors=["Tag name confirmation does not match."],
@@ -539,7 +575,7 @@ async def ui_delete_tag(
                 delete_confirm_value=confirm_name,
             ),
             status_code=400,
-            active_nav="tags",
+            active_nav="library",
         )
 
     deleted = repository.delete_tag(connection, tag_id)
@@ -547,7 +583,7 @@ async def ui_delete_tag(
         return Response(status_code=404)
     return _redirect_with_flash(
         request,
-        "/ui/tags",
+        "/ui/projects?tab=tags",
         "Tag deleted.",
         message_type="success",
         status_code=303,
@@ -568,6 +604,7 @@ def _tags_template_context(
 ) -> dict:
     return {
         "title": "ipocket - Tags",
+        "active_tab": "tags",
         "tags": list(repository.list_tags(connection)),
         "tag_ip_counts": repository.list_tag_ip_counts(connection),
         "errors": errors or [],
@@ -604,9 +641,9 @@ def ui_list_vendors(
 
     return _render_template(
         request,
-        "vendors.html",
+        "projects.html",
         _vendors_template_context(connection, edit_vendor=edit_vendor, delete_vendor=delete_vendor),
-        active_nav="vendors",
+        active_nav="library",
     )
 
 
@@ -624,6 +661,7 @@ def _vendors_template_context(
 ) -> dict:
     return {
         "title": "ipocket - Vendors",
+        "active_tab": "vendors",
         "vendors": list(repository.list_vendors(connection)),
         "errors": errors or [],
         "form_state": form_state or {"name": ""},
@@ -644,7 +682,7 @@ def ui_open_vendor_edit(
 ) -> RedirectResponse:
     return _redirect_with_flash(
         request,
-        f"/ui/vendors?{urlencode({'edit': vendor_id})}",
+        f"/ui/projects?{urlencode({'tab': 'vendors', 'edit': vendor_id})}",
         "",
         status_code=303,
     )
@@ -658,7 +696,7 @@ def ui_open_vendor_delete(
 ) -> RedirectResponse:
     return _redirect_with_flash(
         request,
-        f"/ui/vendors?{urlencode({'delete': vendor_id})}",
+        f"/ui/projects?{urlencode({'tab': 'vendors', 'delete': vendor_id})}",
         "",
         status_code=303,
     )
@@ -680,7 +718,7 @@ async def ui_create_vendor(
     if not name:
         return _render_template(
             request,
-            "vendors.html",
+            "projects.html",
             _vendors_template_context(
                 connection,
                 errors=["Vendor name is required."],
@@ -689,14 +727,14 @@ async def ui_create_vendor(
                 delete_vendor=delete_vendor,
             ),
             status_code=400,
-            active_nav="vendors",
+            active_nav="library",
         )
     try:
         repository.create_vendor(connection, name=name)
     except sqlite3.IntegrityError:
         return _render_template(
             request,
-            "vendors.html",
+            "projects.html",
             _vendors_template_context(
                 connection,
                 errors=["Vendor name already exists."],
@@ -705,11 +743,11 @@ async def ui_create_vendor(
                 delete_vendor=delete_vendor,
             ),
             status_code=409,
-            active_nav="vendors",
+            active_nav="library",
         )
     return _redirect_with_flash(
         request,
-        "/ui/vendors",
+        "/ui/projects?tab=vendors",
         "Vendor created.",
         message_type="success",
         status_code=303,
@@ -725,7 +763,7 @@ async def ui_edit_vendor(vendor_id: int, request: Request, connection=Depends(ge
             return Response(status_code=404)
         return _render_template(
             request,
-            "vendors.html",
+            "projects.html",
             _vendors_template_context(
                 connection,
                 edit_errors=["Vendor name is required."],
@@ -733,7 +771,7 @@ async def ui_edit_vendor(vendor_id: int, request: Request, connection=Depends(ge
                 edit_form_state={"name": name},
             ),
             status_code=400,
-            active_nav="vendors",
+            active_nav="library",
         )
     try:
         updated = repository.update_vendor(connection, vendor_id, name)
@@ -743,7 +781,7 @@ async def ui_edit_vendor(vendor_id: int, request: Request, connection=Depends(ge
             return Response(status_code=404)
         return _render_template(
             request,
-            "vendors.html",
+            "projects.html",
             _vendors_template_context(
                 connection,
                 edit_errors=["Vendor name already exists."],
@@ -751,13 +789,13 @@ async def ui_edit_vendor(vendor_id: int, request: Request, connection=Depends(ge
                 edit_form_state={"name": name},
             ),
             status_code=409,
-            active_nav="vendors",
+            active_nav="library",
         )
     if updated is None:
         return Response(status_code=404)
     return _redirect_with_flash(
         request,
-        "/ui/vendors",
+        "/ui/projects?tab=vendors",
         "Vendor updated.",
         message_type="success",
         status_code=303,
@@ -780,7 +818,7 @@ async def ui_delete_vendor(
     if confirm_name != vendor.name:
         return _render_template(
             request,
-            "vendors.html",
+            "projects.html",
             _vendors_template_context(
                 connection,
                 delete_errors=["Vendor name confirmation does not match."],
@@ -788,7 +826,7 @@ async def ui_delete_vendor(
                 delete_confirm_value=confirm_name,
             ),
             status_code=400,
-            active_nav="vendors",
+            active_nav="library",
         )
 
     deleted = repository.delete_vendor(connection, vendor_id)
@@ -797,7 +835,7 @@ async def ui_delete_vendor(
 
     return _redirect_with_flash(
         request,
-        "/ui/vendors",
+        "/ui/projects?tab=vendors",
         "Vendor deleted.",
         message_type="success",
         status_code=303,
