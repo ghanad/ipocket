@@ -31,9 +31,9 @@
         </label>
         <label class="field field-inline">
           <span class="muted">Add tags</span>
-          <select class="select" name="tags" multiple size="4">
+          <select class="select" name="tags" multiple size="4" data-tag-picker data-tag-picker-placeholder="Add tags...">
             {% for tag in tags %}
-            <option value="{{ tag.name }}">{{ tag.name }}</option>
+            <option value="{{ tag.name }}" data-tag-color="{{ tag.color }}">{{ tag.name }}</option>
             {% endfor %}
           </select>
         </label>

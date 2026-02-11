@@ -10,6 +10,7 @@ def test_ui_assets_are_local() -> None:
     assert "unpkg.com/htmx.org" in base_html
     assert "{% if not use_local_assets %}" in base_html
     assert "fonts.googleapis.com" in base_html
+    assert '<script src="/static/js/tag-picker.js" defer></script>' in base_html
 
     css = (repo_root / "app/static/app.css").read_text(encoding="utf-8")
     assert "fonts.googleapis.com" not in css
@@ -60,6 +61,9 @@ def test_refactored_templates_load_external_page_assets() -> None:
     assert (repo_root / "app/static/js/ip-assets.js").exists()
     assert (repo_root / "app/static/js/range-addresses.js").exists()
     assert (repo_root / "app/static/js/tags.js").exists()
+    assert (repo_root / "app/static/js/tag-picker.js").exists()
+    tag_picker_js = (repo_root / "app/static/js/tag-picker.js").read_text(encoding="utf-8")
+    assert "picker.append(inputWrap, selectedWrap);" in tag_picker_js
 
 
 def test_hosts_drawer_css_matches_ip_drawer_layout_baseline() -> None:

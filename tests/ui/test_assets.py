@@ -111,6 +111,7 @@ def test_ip_asset_form_includes_tags_field_and_prefill(client) -> None:
     assert edit_response.status_code == 200
     assert 'name="tags"' in create_response.text
     assert 'name="tags" multiple' in create_response.text
+    assert 'data-tag-picker' in create_response.text
     assert '<option value="edge" selected>' in edit_response.text
     assert '<option value="prod" selected>' in edit_response.text
 
@@ -236,6 +237,7 @@ def test_ip_assets_list_uses_drawer_actions_for_edit_and_delete(client) -> None:
     assert "Save" in response.text
     assert "/static/js/ip-assets.js" in response.text
     assert "data-ip-host-field" in response.text
+    assert "data-tag-picker" in response.text
 
 
 

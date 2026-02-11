@@ -132,6 +132,7 @@ def test_range_addresses_page_shows_tags(client) -> None:
     assert "Add…" in response.text
     assert "Edit" in response.text
     assert "data-range-drawer" in response.text
+    assert "data-tag-picker" in response.text
     assert "Allocate next" not in response.text
 
 def test_range_addresses_quick_add_creates_asset(client) -> None:

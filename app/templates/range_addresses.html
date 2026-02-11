@@ -198,9 +198,9 @@
         <h3>Notes & tags</h3>
         <label class="field">
           <span>Tags</span>
-          <select class="select" name="tags" data-range-input="tags" multiple size="6">
+          <select class="select" name="tags" data-range-input="tags" multiple size="6" data-tag-picker data-tag-picker-placeholder="Add tags...">
             {% for tag in tags %}
-            <option value="{{ tag.name }}">{{ tag.name }}</option>
+            <option value="{{ tag.name }}" data-tag-color="{{ tag.color }}">{{ tag.name }}</option>
             {% endfor %}
           </select>
         </label>

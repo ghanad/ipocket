@@ -155,7 +155,7 @@ UI design reference templates live in `/ui_template` for layout and styling guid
 5) Create Hosts from the **Hosts** page and pick a Vendor when needed.
 6) Add IPs from the **IP Assets** page.
 7) Open **Data Ops** from the sidebar to import or export data using one unified page with tabs.
-8) When assigning tags on IP Assets or Range Address drawers, select from existing tags only (create new tag names first in **Library → Tags**).
+8) When assigning tags on IP Assets or Range Address drawers, use the chip picker (`Add tags...`) to search and select existing tags only (create new tag names first in **Library → Tags**).
 
 Assignment workflow note: use **IP Assets → Assignment = Unassigned only** to review and update records that still need a project. The old dedicated **Needs Assignment** page is removed.
 

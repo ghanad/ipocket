@@ -105,6 +105,8 @@
       Array.from(input.options).forEach((option) => {
         option.selected = selected.includes(option.value);
       });
+      input.dispatchEvent(new Event('change', { bubbles: true }));
+      input.dispatchEvent(new Event('input', { bubbles: true }));
       return;
     }
     input.value = value || '';
