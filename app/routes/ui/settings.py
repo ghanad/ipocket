@@ -663,6 +663,7 @@ def _vendors_template_context(
         "title": "ipocket - Vendors",
         "active_tab": "vendors",
         "vendors": list(repository.list_vendors(connection)),
+        "vendor_ip_counts": repository.list_vendor_ip_counts(connection),
         "errors": errors or [],
         "form_state": form_state or {"name": ""},
         "edit_errors": edit_errors or [],

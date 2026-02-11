@@ -123,6 +123,35 @@ def test_library_tabs_render_tag_and_vendor_content(client, _setup_connection) -
     assert "data-vendor-add" in vendors_response.text
 
 
+def test_vendors_tab_shows_vendor_ip_counts(client, _setup_connection) -> None:
+    connection = _setup_connection()
+    try:
+        vendor = repository.create_vendor(connection, name="Cisco")
+        host = repository.create_host(connection, name="edge-01", vendor=vendor.name)
+        repository.create_ip_asset(
+            connection,
+            ip_address="10.30.0.10",
+            asset_type=IPAssetType.OS,
+            host_id=host.id,
+        )
+        archived = repository.create_ip_asset(
+            connection,
+            ip_address="10.30.0.11",
+            asset_type=IPAssetType.BMC,
+            host_id=host.id,
+        )
+        repository.set_ip_asset_archived(connection, archived.ip_address, archived=True)
+    finally:
+        connection.close()
+
+    response = client.get("/ui/projects?tab=vendors")
+
+    assert response.status_code == 200
+    assert "<th>IPs</th>" in response.text
+    assert ">Cisco</td>" in response.text
+    assert ">1</td>" in response.text
+
+
 def test_tags_route_renders_unified_library_page(client) -> None:
     response = client.get("/ui/tags")
 
