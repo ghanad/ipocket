@@ -8,6 +8,8 @@ def test_dockerfile_exists_and_runs_app():
     assert "uvicorn app.main:app" in content
     assert "alembic upgrade head" in content
     assert "requirements.txt" in content
+    assert "ARG IPOCKET_VERSION=dev" in content
+    assert "ENV IPOCKET_VERSION=${IPOCKET_VERSION}" in content
 
 
 def test_docker_compose_configures_database_and_admin():
