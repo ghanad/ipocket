@@ -129,13 +129,16 @@ def test_tags_page_uses_drawers_for_create_edit_delete(client) -> None:
 
     assert response.status_code == 200
     assert 'data-tag-add' in response.text
+    assert 'href="/ui/tags?create=1"' in response.text
     assert 'data-tag-create-drawer' in response.text
     assert 'data-tag-edit-drawer' in response.text
     assert 'data-tag-delete-drawer' in response.text
     assert 'action="/ui/tags"' in response.text
     assert 'type="color"' in response.text
     assert f'data-tag-edit="{tag.id}"' in response.text
+    assert f'href="/ui/tags/{tag.id}/edit"' in response.text
     assert f'data-tag-delete="{tag.id}"' in response.text
+    assert f'href="/ui/tags/{tag.id}/delete"' in response.text
     assert f'data-tag-name="{tag.name}"' in response.text
     assert f'data-tag-color="{tag.color}"' in response.text
     tags_js = Path(__file__).resolve().parents[2] / "app/static/js/tags.js"
@@ -146,6 +149,13 @@ def test_tags_page_uses_drawers_for_create_edit_delete(client) -> None:
     assert '/static/js/tags.js' in response.text
     assert '/static/js/drawer.js' in response.text
     assert 'class="card table-card tags-existing-card"' in response.text
+
+
+def test_tags_page_create_query_opens_create_drawer(client) -> None:
+    response = client.get("/ui/tags?create=1")
+
+    assert response.status_code == 200
+    assert 'data-tag-open="true"' in response.text
 
 
 def test_tag_delete_requires_exact_name_confirmation(client) -> None:

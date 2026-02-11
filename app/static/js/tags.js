@@ -66,7 +66,10 @@
     drawerController?.requestClose();
   };
 
-  addButton.addEventListener('click', openDrawer);
+  addButton.addEventListener('click', (event) => {
+    event.preventDefault();
+    openDrawer();
+  });
   closeButton.addEventListener('click', closeDrawer);
   cancelButton.addEventListener('click', closeDrawer);
   overlay.addEventListener('click', closeDrawer);
@@ -185,7 +188,8 @@
   };
 
   editButtons.forEach((button) => {
-    button.addEventListener('click', () => {
+    button.addEventListener('click', (event) => {
+      event.preventDefault();
       setTagFormData({
         id: button.dataset.tagEdit || '',
         name: button.dataset.tagName || '',
@@ -315,7 +319,8 @@
   };
 
   deleteButtons.forEach((button) => {
-    button.addEventListener('click', () => {
+    button.addEventListener('click', (event) => {
+      event.preventDefault();
       applyTag({
         id: button.dataset.tagDelete || '',
         name: button.dataset.tagDeleteName || '',
