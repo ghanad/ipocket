@@ -13,6 +13,18 @@ def test_projects_page_uses_drawer_actions(client) -> None:
     try:
         db.init_db(connection)
         project = repository.create_project(connection, name="Platform", description="Core workloads")
+        repository.create_ip_asset(
+            connection,
+            ip_address="10.20.0.10",
+            asset_type=IPAssetType.VM,
+            project_id=project.id,
+        )
+        repository.create_ip_asset(
+            connection,
+            ip_address="10.20.0.11",
+            asset_type=IPAssetType.OTHER,
+            project_id=project.id,
+        )
     finally:
         connection.close()
 
@@ -25,6 +37,8 @@ def test_projects_page_uses_drawer_actions(client) -> None:
     assert "data-project-delete-drawer" in response.text
     assert f'data-project-edit="{project.id}"' in response.text
     assert f'data-project-delete="{project.id}"' in response.text
+    assert "<th>IPs</th>" in response.text
+    assert ">2</td>" in response.text
 
 
 def test_projects_edit_and_delete_flow(client) -> None:

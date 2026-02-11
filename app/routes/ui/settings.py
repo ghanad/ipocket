@@ -51,6 +51,7 @@ def ui_list_projects(
         {
             "title": "ipocket - Projects",
             "projects": projects,
+            "project_ip_counts": repository.list_project_ip_counts(connection),
             "errors": [],
             "form_state": {"name": "", "description": "", "color": DEFAULT_PROJECT_COLOR},
             "edit_errors": [],
@@ -130,6 +131,7 @@ async def ui_update_project(
             {
                 "title": "ipocket - Projects",
                 "projects": projects,
+                "project_ip_counts": repository.list_project_ip_counts(connection),
                 "errors": [],
                 "form_state": {"name": "", "description": "", "color": DEFAULT_PROJECT_COLOR},
                 "edit_errors": errors,
@@ -166,6 +168,7 @@ async def ui_update_project(
             {
                 "title": "ipocket - Projects",
                 "projects": projects,
+                "project_ip_counts": repository.list_project_ip_counts(connection),
                 "errors": [],
                 "form_state": {"name": "", "description": "", "color": DEFAULT_PROJECT_COLOR},
                 "edit_errors": ["Project name already exists."],
@@ -216,6 +219,7 @@ async def ui_delete_project(
             {
                 "title": "ipocket - Projects",
                 "projects": list(repository.list_projects(connection)),
+                "project_ip_counts": repository.list_project_ip_counts(connection),
                 "errors": [],
                 "form_state": {"name": "", "description": "", "color": DEFAULT_PROJECT_COLOR},
                 "edit_errors": [],
@@ -272,6 +276,7 @@ async def ui_create_project(
             {
                 "title": "ipocket - Projects",
                 "projects": projects,
+                "project_ip_counts": repository.list_project_ip_counts(connection),
                 "errors": errors,
                 "form_state": {"name": name, "description": description or "", "color": color or DEFAULT_PROJECT_COLOR},
                 "edit_errors": [],
@@ -296,6 +301,7 @@ async def ui_create_project(
             {
                 "title": "ipocket - Projects",
                 "projects": projects,
+                "project_ip_counts": repository.list_project_ip_counts(connection),
                 "errors": errors,
                 "form_state": {"name": name, "description": description or "", "color": color or DEFAULT_PROJECT_COLOR},
                 "edit_errors": [],

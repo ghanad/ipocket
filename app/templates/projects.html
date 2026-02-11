@@ -26,6 +26,7 @@
           <th>Name</th>
           <th>Description</th>
           <th>Color</th>
+          <th>IPs</th>
           <th>Actions</th>
         </tr>
       </thead>
@@ -36,6 +37,7 @@
           <td>{{ project.name }}</td>
           <td>{{ project.description or '—' }}</td>
           <td><input class="input input-color" type="color" value="{{ project.color }}" disabled /></td>
+          <td>{{ project_ip_counts.get(project.id, 0) }}</td>
           <td class="asset-actions-cell">
             <div class="table-actions">
               <button
@@ -63,7 +65,7 @@
         {% endfor %}
         {% else %}
         <tr>
-          <td colspan="4" class="empty-state">No projects yet.</td>
+          <td colspan="5" class="empty-state">No projects yet.</td>
         </tr>
         {% endif %}
       </tbody>

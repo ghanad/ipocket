@@ -65,6 +65,18 @@ def delete_project(connection: sqlite3.Connection, project_id: int) -> bool:
     return cursor.rowcount > 0
 
 
+def list_project_ip_counts(connection: sqlite3.Connection) -> dict[int, int]:
+    rows = connection.execute(
+        """
+        SELECT project_id, COUNT(*) AS total
+        FROM ip_assets
+        WHERE project_id IS NOT NULL AND archived = 0
+        GROUP BY project_id
+        """
+    ).fetchall()
+    return {int(row["project_id"]): int(row["total"]) for row in rows}
+
+
 
 def create_vendor(connection: sqlite3.Connection, name: str) -> Vendor:
     cursor = connection.execute("INSERT INTO vendors (name) VALUES (?)", (name,))

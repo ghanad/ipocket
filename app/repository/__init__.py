@@ -49,6 +49,7 @@ from .metadata import (
     get_tag_by_name,
     get_vendor_by_id,
     get_vendor_by_name,
+    list_project_ip_counts,
     list_projects,
     list_tags,
     list_vendors,
