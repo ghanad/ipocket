@@ -200,6 +200,24 @@ Host UI safety flow: deleting a Host from UI requires opening the host delete co
 pytest
 ```
 
+## Manual vCenter export connector
+
+To export ESXi hosts and VMs from vCenter into an importable ipocket bundle, use:
+
+```bash
+python -m app.connectors.vcenter --server <vcenter> --username <user> --password '<pass>' --output ./vcenter-bundle.json
+```
+
+Then import the generated JSON from **Data Ops → Import**.
+
+To skip manual upload and send directly to ipocket import API:
+
+```bash
+python -m app.connectors.vcenter --server <vcenter> --username <user> --password '<pass>' --mode dry-run --ipocket-url http://127.0.0.1:8000 --token '<token>'
+```
+
+See `/docs/vcenter-connector.md` for full mapping and options.
+
 ## CI (quality + full tests)
 The GitHub Actions workflow runs code quality checks and the full pytest suite
 on each pull request and push to `main`.
