@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Optional
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, field_validator
 
 from app.models import IPAssetType
 from app.utils import normalize_cidr, normalize_hex_color, normalize_tag_names, split_tag_string
@@ -20,13 +20,13 @@ class TokenResponse(BaseModel):
 
 class IPAssetCreate(BaseModel):
     ip_address: str
-    asset_type: IPAssetType = Field(alias="type")
+    type: IPAssetType
     project_id: Optional[int] = None
     notes: Optional[str] = None
     host_id: Optional[int] = None
     tags: Optional[list[str]] = None
 
-    @field_validator("asset_type", mode="before")
+    @field_validator("type", mode="before")
     @classmethod
     def normalize_asset_type(cls, value):
         return IPAssetType.normalize(value)
@@ -51,13 +51,13 @@ class IPAssetCreate(BaseModel):
 
 
 class IPAssetUpdate(BaseModel):
-    asset_type: Optional[IPAssetType] = Field(default=None, alias="type")
+    type: Optional[IPAssetType] = None
     project_id: Optional[int] = None
     notes: Optional[str] = None
     host_id: Optional[int] = None
     tags: Optional[list[str]] = None
 
-    @field_validator("asset_type", mode="before")
+    @field_validator("type", mode="before")
     @classmethod
     def normalize_asset_type(cls, value):
         if value is None:

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 from pathlib import Path
+import warnings
 
 import pytest
 from fastapi.testclient import TestClient as FastAPITestClient
@@ -185,9 +186,29 @@ def test_import_nmap_redirects_to_import_page(client) -> None:
     test_client, _ = client
     app.dependency_overrides[ui.get_current_ui_user] = lambda: User(1, "viewer", "x", UserRole.VIEWER, True)
     try:
-        response = test_client.get("/ui/import-nmap", allow_redirects=False)
+        response = test_client.get("/ui/import-nmap", follow_redirects=False)
     finally:
         app.dependency_overrides.pop(ui.get_current_ui_user, None)
 
     assert response.status_code == 302
     assert response.headers["location"] == "/ui/import"
+
+
+def test_import_nmap_redirect_has_no_redirect_deprecation_warning(client) -> None:
+    test_client, _ = client
+    app.dependency_overrides[ui.get_current_ui_user] = lambda: User(1, "viewer", "x", UserRole.VIEWER, True)
+    try:
+        with warnings.catch_warnings(record=True) as caught:
+            warnings.simplefilter("always", DeprecationWarning)
+            response = test_client.get("/ui/import-nmap", follow_redirects=False)
+    finally:
+        app.dependency_overrides.pop(ui.get_current_ui_user, None)
+
+    assert response.status_code == 302
+    redirect_warnings = [
+        w
+        for w in caught
+        if issubclass(w.category, DeprecationWarning)
+        and "allow_redirects" in str(w.message)
+    ]
+    assert redirect_warnings == []
