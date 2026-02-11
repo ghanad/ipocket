@@ -199,12 +199,21 @@ Host UI safety flow: deleting a Host from UI requires opening the host delete co
 pytest
 ```
 
-## CI (full tests)
-The GitHub Actions workflow runs the full pytest suite on each pull request
-and push to `main` by executing:
+## CI (quality + full tests)
+The GitHub Actions workflow runs code quality checks and the full pytest suite
+on each pull request and push to `main`.
+
+Quality job:
 
 ```bash
-pytest tests
+ruff check .
+ruff format --check .
+```
+
+Test job:
+
+```bash
+pytest tests --cov=app --cov-fail-under=75
 ```
 
 ## Docker Hub release automation
