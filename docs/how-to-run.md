@@ -90,10 +90,13 @@ To explicitly allow remote font loading (even in Docker), set:
 IPOCKET_DOCKER_ASSETS=0
 ```
 
-### Version metadata (recommended for deployments)
-ipocket reads version info from environment variables and includes them in the
-`/health` response and the authenticated UI footer (`ipocket v{version} ({commit}) • built {build_time}`).
-When unset, defaults are shown as `dev/unknown`.
+### Version metadata
+ipocket includes build metadata in `/health` and in the sidebar footer in the UI
+(including signed-out pages that render the sidebar).
+
+In Docker, if no version env vars are provided, ipocket attempts to detect commit
+from the embedded `.git` metadata and uses a Docker-friendly fallback version
+format: `sha-{short_commit}`.
 
 - `IPOCKET_VERSION` (semantic version, e.g. `0.1.0`)
 - `IPOCKET_COMMIT` (git commit SHA, short ok)

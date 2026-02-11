@@ -63,7 +63,7 @@ def _render_template(
         "active_nav": active_nav,
         "use_local_assets": use_local_assets(),
         "is_authenticated": is_authenticated,
-        "build_info": build_info.get_display_build_info() if is_authenticated else None,
+        "build_info": build_info.get_display_build_info(),
         "toast_messages": toast_messages,
         **context,
     }

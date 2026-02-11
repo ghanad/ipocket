@@ -36,6 +36,7 @@ ipocket is a lightweight IP inventory app to track addresses and their project a
 - The old fixed top header has been removed from the main layout to give pages more vertical space; branding remains in the left sidebar.
 - UI templates now keep behavior and page-specific styling in static assets (`app/static/js/*.js` and `app/static/app.css`) to keep Jinja markup focused on structure.
 - The sidebar account section shows Login when signed out and Logout when signed in.
+- The sidebar footer shows build metadata (`version/commit/build time`) whenever the sidebar is visible, including signed-out views.
 - IP ranges page supports editing and deleting saved CIDR ranges for cleanup, with a confirmation step that requires typing the exact range name.
 - Saved ranges now use the same inline Edit/Delete button style as Hosts so table actions stay visually consistent across pages.
 - Range addresses view aligns columns with the IP assets list (plus Status), including Host Pair and Notes for used IPs in subnet drill-downs.
