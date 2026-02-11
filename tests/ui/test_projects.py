@@ -129,3 +129,33 @@ def test_tags_route_renders_unified_library_page(client) -> None:
     assert response.status_code == 200
     assert "Catalog Settings" in response.text
     assert "data-tag-add" in response.text
+
+
+def test_library_page_has_single_header_and_dynamic_primary_action(client) -> None:
+    projects_response = client.get("/ui/projects")
+    assert projects_response.status_code == 200
+    assert projects_response.text.count("<h1>Catalog Settings</h1>") == 1
+    assert "<h1>Projects</h1>" not in projects_response.text
+    assert "data-project-add" in projects_response.text
+    assert "New Project" in projects_response.text
+
+    tags_response = client.get("/ui/projects?tab=tags")
+    assert tags_response.status_code == 200
+    assert "<h1>Tags</h1>" not in tags_response.text
+    assert "data-tag-add" in tags_response.text
+    assert "New Tag" in tags_response.text
+
+    vendors_response = client.get("/ui/projects?tab=vendors")
+    assert vendors_response.status_code == 200
+    assert "<h1>Vendors</h1>" not in vendors_response.text
+    assert "data-vendor-add" in vendors_response.text
+    assert "New Vendor" in vendors_response.text
+
+
+def test_library_tabs_are_not_wrapped_in_card_container(client) -> None:
+    response = client.get("/ui/projects")
+    assert response.status_code == 200
+    tabs_index = response.text.index('class="tabs" role="tablist"')
+    first_table_card_index = response.text.index('class="card table-card')
+    assert tabs_index < first_table_card_index
+    assert '<section class="card" style="margin-bottom: 16px;">' not in response.text

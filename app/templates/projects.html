@@ -7,15 +7,22 @@
     <h1>Catalog Settings</h1>
     <p class="subtitle">Manage Projects, Tags, and Vendors from a single page.</p>
   </div>
-</section>
-
-<section class="card" style="margin-bottom: 16px;">
-  <div class="tabs" role="tablist" aria-label="Catalog sections">
-    <a class="tab{% if active_tab == 'projects' %} tab-active{% endif %}" href="/ui/projects?tab=projects" role="tab" aria-selected="{{ 'true' if active_tab == 'projects' else 'false' }}">Projects</a>
-    <a class="tab{% if active_tab == 'tags' %} tab-active{% endif %}" href="/ui/projects?tab=tags" role="tab" aria-selected="{{ 'true' if active_tab == 'tags' else 'false' }}">Tags</a>
-    <a class="tab{% if active_tab == 'vendors' %} tab-active{% endif %}" href="/ui/projects?tab=vendors" role="tab" aria-selected="{{ 'true' if active_tab == 'vendors' else 'false' }}">Vendors</a>
+  <div class="page-header-actions">
+    {% if active_tab == "tags" %}
+    <button class="btn btn-primary" type="button" data-tag-add>New Tag</button>
+    {% elif active_tab == "vendors" %}
+    <button class="btn btn-primary" type="button" data-vendor-add>New Vendor</button>
+    {% else %}
+    <button class="btn btn-primary" type="button" data-project-add>New Project</button>
+    {% endif %}
   </div>
 </section>
+
+<div class="tabs" role="tablist" aria-label="Catalog sections" style="margin-bottom: 16px;">
+  <a class="tab{% if active_tab == 'projects' %} tab-active{% endif %}" href="/ui/projects?tab=projects" role="tab" aria-selected="{{ 'true' if active_tab == 'projects' else 'false' }}">Projects</a>
+  <a class="tab{% if active_tab == 'tags' %} tab-active{% endif %}" href="/ui/projects?tab=tags" role="tab" aria-selected="{{ 'true' if active_tab == 'tags' else 'false' }}">Tags</a>
+  <a class="tab{% if active_tab == 'vendors' %} tab-active{% endif %}" href="/ui/projects?tab=vendors" role="tab" aria-selected="{{ 'true' if active_tab == 'vendors' else 'false' }}">Vendors</a>
+</div>
 
 {% if active_tab == "tags" %}
   {% include "partials/tags_tab_content.html" %}
