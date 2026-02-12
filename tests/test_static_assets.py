@@ -20,6 +20,14 @@ def test_ui_assets_are_local() -> None:
     assert "overflow-y: auto" in css
     assert ".table.table-ip-assets .tag {" in css
     assert "padding: 3px 9px;" in css
+    assert ".ip-tags-popover {" in css
+    assert "z-index: 120;" in css
+    assert ".ip-tags-popover .tag {" in css
+    assert "font-size: 12px;" in css
+    assert ".ip-tags-inline > .tag-filter-chip {" in css
+    assert "max-width: 72px;" in css
+    assert ".ip-tags-inline > .ip-tags-more {" in css
+    assert "flex-shrink: 0;" in css
 
 
 def test_use_local_assets_env_override(monkeypatch) -> None:
