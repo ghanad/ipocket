@@ -162,7 +162,7 @@ def list_active_ip_assets_paginated(
     offset: int = 0,
     archived_only: bool = False,
 ) -> list[IPAsset]:
-    sorted_assets = list_active_assets(
+    return list_active_assets(
         connection,
         project_id=project_id,
         project_unassigned_only=project_unassigned_only,
@@ -171,8 +171,9 @@ def list_active_ip_assets_paginated(
         query_text=query_text,
         tag_names=tag_names,
         archived_only=archived_only,
+        limit=limit,
+        offset=offset,
     )
-    return sorted_assets[offset : offset + limit]
 
 
 def list_sd_targets(

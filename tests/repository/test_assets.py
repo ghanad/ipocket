@@ -263,6 +263,68 @@ def test_list_active_ip_assets_paginated_sorts_zero_padded_ipv4_numerically(
     ]
 
 
+def test_list_active_ip_assets_paginated_sorts_ipv6_and_fallback_deterministically(
+    _setup_connection,
+) -> None:
+    connection = _setup_connection()
+    create_ip_asset(connection, ip_address="2001:db8::10", asset_type=IPAssetType.VM)
+    create_ip_asset(connection, ip_address="2001:db8::2", asset_type=IPAssetType.VM)
+    create_ip_asset(connection, ip_address="not-an-ip", asset_type=IPAssetType.VM)
+
+    assets = list_active_ip_assets_paginated(connection, limit=10, offset=0)
+
+    assert [asset.ip_address for asset in assets] == [
+        "2001:db8::2",
+        "2001:db8::10",
+        "not-an-ip",
+    ]
+
+
+def test_list_active_ip_assets_paginated_returns_empty_for_out_of_range_page(
+    _setup_connection,
+) -> None:
+    connection = _setup_connection()
+    create_ip_asset(connection, ip_address="10.62.0.10", asset_type=IPAssetType.VM)
+    create_ip_asset(connection, ip_address="10.62.0.11", asset_type=IPAssetType.VM)
+
+    assets = list_active_ip_assets_paginated(connection, limit=2, offset=4)
+
+    assert assets == []
+
+
+def test_list_active_ip_assets_paginated_applies_filters_before_limit_and_offset(
+    _setup_connection,
+) -> None:
+    connection = _setup_connection()
+    create_ip_asset(
+        connection,
+        ip_address="10.63.0.10",
+        asset_type=IPAssetType.VM,
+        notes="db-primary",
+    )
+    create_ip_asset(
+        connection,
+        ip_address="10.63.0.11",
+        asset_type=IPAssetType.VM,
+        notes="db-replica",
+    )
+    create_ip_asset(
+        connection,
+        ip_address="10.63.0.12",
+        asset_type=IPAssetType.VM,
+        notes="web-tier",
+    )
+
+    assets = list_active_ip_assets_paginated(
+        connection,
+        query_text="db",
+        limit=1,
+        offset=1,
+    )
+
+    assert [asset.ip_address for asset in assets] == ["10.63.0.11"]
+
+
 def test_list_active_ip_assets_paginated_with_tag_filter_any(_setup_connection) -> None:
     connection = _setup_connection()
     create_ip_asset(
