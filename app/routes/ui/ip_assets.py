@@ -12,6 +12,12 @@ from app import repository
 from app.dependencies import get_connection
 from app.models import IPAssetType
 from app.utils import normalize_tag_names, validate_ip_address
+from .ip_assets_helpers import (
+    _delete_requires_exact_ip,
+    _friendly_audit_changes,
+    _ip_asset_form_context,
+    _parse_selected_tags,
+)
 from .utils import (
     _append_query_param,
     _build_asset_view_models,
@@ -28,65 +34,6 @@ from .utils import (
 )
 
 router = APIRouter()
-
-_HIGH_RISK_DELETE_TAGS = {"prod", "production", "critical", "flagged"}
-
-
-def _friendly_audit_changes(changes: str) -> dict[str, str]:
-    normalized = (changes or "").strip()
-    if not normalized:
-        return {"summary": "No additional details.", "raw": ""}
-
-    if normalized.startswith("Created IP asset "):
-        raw_payload = normalized.removeprefix("Created IP asset ").strip()
-        compact_payload = raw_payload.strip("()")
-        raw_map: dict[str, str] = {}
-        for chunk in compact_payload.split(","):
-            key, _, value = chunk.strip().partition("=")
-            if key:
-                raw_map[key.strip()] = value.strip()
-        summary_parts = [
-            f"Type: {raw_map.get('type', 'Unknown')}",
-            (
-                "Project: Unassigned"
-                if raw_map.get("project_id") in {None, "", "None"}
-                else f"Project ID: {raw_map.get('project_id')}"
-            ),
-            (
-                "Host: Unassigned"
-                if raw_map.get("host_id") in {None, "", "None"}
-                else f"Host ID: {raw_map.get('host_id')}"
-            ),
-            f"Notes: {(raw_map.get('notes') or 'No notes').strip() or 'No notes'}",
-        ]
-        return {"summary": "; ".join(summary_parts), "raw": normalized}
-
-    return {"summary": normalized, "raw": normalized}
-
-
-def _delete_requires_exact_ip(asset, tag_names: list[str]) -> bool:
-    normalized_tags = {tag.lower() for tag in tag_names}
-    return bool(
-        asset.project_id
-        or asset.host_id
-        or asset.asset_type == IPAssetType.VIP
-        or normalized_tags.intersection(_HIGH_RISK_DELETE_TAGS)
-    )
-
-
-def _parse_selected_tags(
-    connection, raw_tags: list[str]
-) -> tuple[list[str], list[str]]:
-    cleaned_tags = [str(tag).strip() for tag in raw_tags if str(tag).strip()]
-    try:
-        selected_tags = normalize_tag_names(cleaned_tags) if cleaned_tags else []
-    except ValueError as exc:
-        return [], [str(exc)]
-    existing_tags = {tag.name for tag in repository.list_tags(connection)}
-    missing_tags = [tag for tag in selected_tags if tag not in existing_tags]
-    if missing_tags:
-        return [], [f"Selected tags do not exist: {', '.join(missing_tags)}."]
-    return selected_tags, []
 
 
 @router.get("/ui/ip-assets", response_class=HTMLResponse)
@@ -346,26 +293,23 @@ def ui_add_ip_form(
     return _render_template(
         request,
         "ip_asset_form.html",
-        {
-            "title": "ipocket - Add IP",
-            "asset": {
-                "id": None,
-                "ip_address": "",
-                "type": IPAssetType.VM.value,
-                "project_id": "",
-                "host_id": "",
-                "notes": "",
-                "tags": [],
-            },
-            "projects": projects,
-            "hosts": hosts,
-            "tags": tags,
-            "types": [asset.value for asset in IPAssetType],
-            "errors": [],
-            "mode": "create",
-            "action_url": "/ui/ip-assets/new",
-            "submit_label": "Create",
-        },
+        _ip_asset_form_context(
+            title="ipocket - Add IP",
+            asset_id=None,
+            ip_address="",
+            asset_type=IPAssetType.VM.value,
+            project_id=None,
+            host_id=None,
+            notes=None,
+            tags=[],
+            projects=projects,
+            hosts=hosts,
+            tags_catalog=tags,
+            errors=[],
+            mode="create",
+            action_url="/ui/ip-assets/new",
+            submit_label="Create",
+        ),
         active_nav="ip-assets",
     )
 
@@ -413,26 +357,23 @@ async def ui_add_ip_submit(
         return _render_template(
             request,
             "ip_asset_form.html",
-            {
-                "title": "ipocket - Add IP",
-                "asset": {
-                    "id": None,
-                    "ip_address": ip_address or "",
-                    "type": asset_type or "",
-                    "project_id": project_id or "",
-                    "host_id": host_id or "",
-                    "notes": notes or "",
-                    "tags": tags,
-                },
-                "projects": projects,
-                "hosts": hosts,
-                "tags": tags_catalog,
-                "types": [asset.value for asset in IPAssetType],
-                "errors": errors,
-                "mode": "create",
-                "action_url": "/ui/ip-assets/new",
-                "submit_label": "Create",
-            },
+            _ip_asset_form_context(
+                title="ipocket - Add IP",
+                asset_id=None,
+                ip_address=ip_address or "",
+                asset_type=asset_type or "",
+                project_id=project_id,
+                host_id=host_id,
+                notes=notes,
+                tags=tags,
+                projects=projects,
+                hosts=hosts,
+                tags_catalog=tags_catalog,
+                errors=errors,
+                mode="create",
+                action_url="/ui/ip-assets/new",
+                submit_label="Create",
+            ),
             status_code=400,
             active_nav="ip-assets",
         )
@@ -457,26 +398,23 @@ async def ui_add_ip_submit(
         return _render_template(
             request,
             "ip_asset_form.html",
-            {
-                "title": "ipocket - Add IP",
-                "asset": {
-                    "id": None,
-                    "ip_address": ip_address or "",
-                    "type": asset_type or "",
-                    "project_id": project_id or "",
-                    "host_id": host_id or "",
-                    "notes": notes or "",
-                    "tags": tags,
-                },
-                "projects": projects,
-                "hosts": hosts,
-                "tags": tags_catalog,
-                "types": [asset.value for asset in IPAssetType],
-                "errors": errors,
-                "mode": "create",
-                "action_url": "/ui/ip-assets/new",
-                "submit_label": "Create",
-            },
+            _ip_asset_form_context(
+                title="ipocket - Add IP",
+                asset_id=None,
+                ip_address=ip_address or "",
+                asset_type=asset_type or "",
+                project_id=project_id,
+                host_id=host_id,
+                notes=notes,
+                tags=tags,
+                projects=projects,
+                hosts=hosts,
+                tags_catalog=tags_catalog,
+                errors=errors,
+                mode="create",
+                action_url="/ui/ip-assets/new",
+                submit_label="Create",
+            ),
             status_code=409,
             active_nav="ip-assets",
         )
@@ -550,26 +488,23 @@ def ui_edit_ip_form(
     return _render_template(
         request,
         "ip_asset_form.html",
-        {
-            "title": "ipocket - Edit IP",
-            "asset": {
-                "id": asset.id,
-                "ip_address": asset.ip_address,
-                "type": asset.asset_type.value,
-                "project_id": asset.project_id or "",
-                "host_id": asset.host_id or "",
-                "notes": asset.notes or "",
-                "tags": selected_tags,
-            },
-            "projects": projects,
-            "hosts": hosts,
-            "tags": tags_catalog,
-            "types": [asset.value for asset in IPAssetType],
-            "errors": [],
-            "mode": "edit",
-            "action_url": f"/ui/ip-assets/{asset.id}/edit",
-            "submit_label": "Save changes",
-        },
+        _ip_asset_form_context(
+            title="ipocket - Edit IP",
+            asset_id=asset.id,
+            ip_address=asset.ip_address,
+            asset_type=asset.asset_type.value,
+            project_id=asset.project_id,
+            host_id=asset.host_id,
+            notes=asset.notes,
+            tags=selected_tags,
+            projects=projects,
+            hosts=hosts,
+            tags_catalog=tags_catalog,
+            errors=[],
+            mode="edit",
+            action_url=f"/ui/ip-assets/{asset.id}/edit",
+            submit_label="Save changes",
+        ),
         active_nav="ip-assets",
     )
 
@@ -649,26 +584,23 @@ async def ui_edit_ip_submit(
         return _render_template(
             request,
             "ip_asset_form.html",
-            {
-                "title": "ipocket - Edit IP",
-                "asset": {
-                    "id": asset.id,
-                    "ip_address": asset.ip_address,
-                    "type": asset_type or "",
-                    "project_id": project_id or "",
-                    "host_id": host_id or "",
-                    "notes": notes or "",
-                    "tags": tags,
-                },
-                "projects": projects,
-                "hosts": hosts,
-                "tags": tags_catalog,
-                "types": [asset.value for asset in IPAssetType],
-                "errors": errors,
-                "mode": "edit",
-                "action_url": f"/ui/ip-assets/{asset.id}/edit",
-                "submit_label": "Save changes",
-            },
+            _ip_asset_form_context(
+                title="ipocket - Edit IP",
+                asset_id=asset.id,
+                ip_address=asset.ip_address,
+                asset_type=asset_type or "",
+                project_id=project_id,
+                host_id=host_id,
+                notes=notes,
+                tags=tags,
+                projects=projects,
+                hosts=hosts,
+                tags_catalog=tags_catalog,
+                errors=errors,
+                mode="edit",
+                action_url=f"/ui/ip-assets/{asset.id}/edit",
+                submit_label="Save changes",
+            ),
             status_code=400,
             active_nav="ip-assets",
         )

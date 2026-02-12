@@ -285,6 +285,24 @@ def test_list_active_ip_assets_paginated_with_tag_filter_any(_setup_connection) 
     assert [asset.ip_address for asset in assets] == ["10.61.0.10", "10.61.0.11"]
 
 
+def test_tag_filter_is_case_insensitive_for_count_and_list(_setup_connection) -> None:
+    connection = _setup_connection()
+    create_ip_asset(
+        connection, ip_address="10.61.1.10", asset_type=IPAssetType.VM, tags=["Prod"]
+    )
+    create_ip_asset(
+        connection, ip_address="10.61.1.11", asset_type=IPAssetType.VM, tags=["edge"]
+    )
+
+    total = count_active_ip_assets(connection, tag_names=["PROD"])
+    assets = list_active_ip_assets_paginated(
+        connection, tag_names=["PROD"], limit=10, offset=0
+    )
+
+    assert total == 1
+    assert [asset.ip_address for asset in assets] == ["10.61.1.10"]
+
+
 def test_count_ip_assets_with_archived_only_filter(_setup_connection) -> None:
     connection = _setup_connection()
     create_ip_asset(connection, ip_address="10.70.0.10", asset_type=IPAssetType.VM)

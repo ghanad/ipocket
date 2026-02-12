@@ -5,147 +5,19 @@ from typing import Iterable, Optional
 
 from app.models import IPAsset, IPAssetType, User
 from app.utils import normalize_tag_names
+from ._asset_audit import (
+    _host_label as _host_label,
+    _project_label as _project_label,
+    _summarize_ip_asset_changes as _summarize_ip_asset_changes,
+)
+from ._asset_filters import count_active_assets, list_active_assets
+from ._asset_tags import (
+    list_tag_details_for_ip_assets as list_tag_details_for_ip_assets,
+    list_tags_for_ip_assets as list_tags_for_ip_assets,
+    set_ip_asset_tags as set_ip_asset_tags,
+)
 from .audit import create_audit_log
-from .mappers import _ip_address_sort_key, _row_to_ip_asset
-
-
-def _project_label(connection: sqlite3.Connection, project_id: Optional[int]) -> str:
-    if project_id is None:
-        return "Unassigned"
-    project = connection.execute(
-        "SELECT name FROM projects WHERE id = ?", (project_id,)
-    ).fetchone()
-    if project is None:
-        return f"Unknown ({project_id})"
-    return project["name"]
-
-
-def _host_label(connection: sqlite3.Connection, host_id: Optional[int]) -> str:
-    if host_id is None:
-        return "Unassigned"
-    host = connection.execute(
-        "SELECT name FROM hosts WHERE id = ?", (host_id,)
-    ).fetchone()
-    if host is None:
-        return f"Unknown ({host_id})"
-    return host["name"]
-
-
-def _summarize_ip_asset_changes(
-    connection: sqlite3.Connection,
-    existing: IPAsset,
-    updated: IPAsset,
-    *,
-    tags_before: Optional[list[str]] = None,
-    tags_after: Optional[list[str]] = None,
-) -> str:
-    changes: list[str] = []
-    if existing.asset_type != updated.asset_type:
-        changes.append(
-            f"type: {existing.asset_type.value} -> {updated.asset_type.value}"
-        )
-    if existing.project_id != updated.project_id:
-        changes.append(
-            f"project: {_project_label(connection, existing.project_id)} -> {_project_label(connection, updated.project_id)}"
-        )
-    if existing.host_id != updated.host_id:
-        changes.append(
-            f"host: {_host_label(connection, existing.host_id)} -> {_host_label(connection, updated.host_id)}"
-        )
-    if (existing.notes or "") != (updated.notes or ""):
-        changes.append(f"notes: {existing.notes or ''} -> {updated.notes or ''}")
-    if (
-        tags_before is not None
-        and tags_after is not None
-        and sorted(tags_before) != sorted(tags_after)
-    ):
-        before_label = ", ".join(tags_before) if tags_before else "none"
-        after_label = ", ".join(tags_after) if tags_after else "none"
-        changes.append(f"tags: {before_label} -> {after_label}")
-    return "; ".join(changes) if changes else "No changes recorded."
-
-
-def list_tag_details_for_ip_assets(
-    connection: sqlite3.Connection,
-    asset_ids: Iterable[int],
-) -> dict[int, list[dict[str, str]]]:
-    asset_ids_list = list(asset_ids)
-    if not asset_ids_list:
-        return {}
-    placeholders = ",".join(["?"] * len(asset_ids_list))
-    rows = connection.execute(
-        f"""
-        SELECT ip_asset_tags.ip_asset_id AS asset_id,
-               tags.name AS tag_name,
-               tags.color AS tag_color
-        FROM ip_asset_tags
-        JOIN tags ON tags.id = ip_asset_tags.tag_id
-        WHERE ip_asset_tags.ip_asset_id IN ({placeholders})
-        ORDER BY tags.name
-        """,
-        asset_ids_list,
-    ).fetchall()
-    mapping: dict[int, list[dict[str, str]]] = {
-        asset_id: [] for asset_id in asset_ids_list
-    }
-    for row in rows:
-        mapping.setdefault(row["asset_id"], []).append(
-            {"name": row["tag_name"], "color": row["tag_color"]}
-        )
-    return mapping
-
-
-def list_tags_for_ip_assets(
-    connection: sqlite3.Connection, asset_ids: Iterable[int]
-) -> dict[int, list[str]]:
-    asset_ids_list = list(asset_ids)
-    if not asset_ids_list:
-        return {}
-    placeholders = ",".join(["?"] * len(asset_ids_list))
-    rows = connection.execute(
-        f"""
-        SELECT ip_asset_tags.ip_asset_id AS asset_id,
-               tags.name AS tag_name
-        FROM ip_asset_tags
-        JOIN tags ON tags.id = ip_asset_tags.tag_id
-        WHERE ip_asset_tags.ip_asset_id IN ({placeholders})
-        ORDER BY tags.name
-        """,
-        asset_ids_list,
-    ).fetchall()
-    mapping: dict[int, list[str]] = {asset_id: [] for asset_id in asset_ids_list}
-    for row in rows:
-        mapping.setdefault(row["asset_id"], []).append(row["tag_name"])
-    return mapping
-
-
-def set_ip_asset_tags(
-    connection: sqlite3.Connection, asset_id: int, tag_names: Iterable[str]
-) -> list[str]:
-    normalized_tags = normalize_tag_names(list(tag_names))
-    connection.execute("DELETE FROM ip_asset_tags WHERE ip_asset_id = ?", (asset_id,))
-    if not normalized_tags:
-        return []
-    for tag_name in normalized_tags:
-        connection.execute(
-            "INSERT INTO tags (name) VALUES (?) ON CONFLICT(name) DO NOTHING",
-            (tag_name,),
-        )
-    placeholders = ",".join(["?"] * len(normalized_tags))
-    rows = connection.execute(
-        f"SELECT id, name FROM tags WHERE name IN ({placeholders})",
-        normalized_tags,
-    ).fetchall()
-    tag_ids = {row["name"]: row["id"] for row in rows}
-    for tag_name in normalized_tags:
-        tag_id = tag_ids.get(tag_name)
-        if tag_id is None:
-            continue
-        connection.execute(
-            "INSERT INTO ip_asset_tags (ip_asset_id, tag_id) VALUES (?, ?)",
-            (asset_id, tag_id),
-        )
-    return normalized_tags
+from .mappers import _row_to_ip_asset
 
 
 def create_ip_asset(
@@ -244,23 +116,16 @@ def list_active_ip_assets(
     unassigned_only: bool = False,
     archived_only: bool = False,
 ) -> Iterable[IPAsset]:
-    query = "SELECT * FROM ip_assets WHERE archived = ?"
-    params: list[object] = []
-    params.append(1 if archived_only else 0)
-    if project_unassigned_only:
-        query += " AND project_id IS NULL"
-    elif project_id is not None:
-        query += " AND project_id = ?"
-        params.append(project_id)
-    if asset_type is not None:
-        query += " AND type = ?"
-        params.append(asset_type.value)
-    if unassigned_only:
-        query += " AND project_id IS NULL"
-    query += " ORDER BY ip_address"
-    rows = connection.execute(query, params).fetchall()
-    assets = [_row_to_ip_asset(row) for row in rows]
-    return sorted(assets, key=lambda asset: _ip_address_sort_key(asset.ip_address))
+    return list_active_assets(
+        connection,
+        project_id=project_id,
+        project_unassigned_only=project_unassigned_only,
+        asset_type=asset_type,
+        unassigned_only=unassigned_only,
+        query_text=None,
+        tag_names=None,
+        archived_only=archived_only,
+    )
 
 
 def count_active_ip_assets(
@@ -273,39 +138,16 @@ def count_active_ip_assets(
     tag_names: Optional[list[str]] = None,
     archived_only: bool = False,
 ) -> int:
-    query = "SELECT COUNT(*) FROM ip_assets WHERE archived = ?"
-    params: list[object] = []
-    params.append(1 if archived_only else 0)
-    if project_unassigned_only:
-        query += " AND project_id IS NULL"
-    elif project_id is not None:
-        query += " AND project_id = ?"
-        params.append(project_id)
-    if asset_type is not None:
-        query += " AND type = ?"
-        params.append(asset_type.value)
-    if unassigned_only:
-        query += " AND project_id IS NULL"
-    if query_text:
-        query += " AND (LOWER(ip_address) LIKE ? OR LOWER(COALESCE(notes, '')) LIKE ?)"
-        query_value = f"%{query_text.lower()}%"
-        params.extend([query_value, query_value])
-    normalized_tag_names = [
-        tag.strip() for tag in (tag_names or []) if tag and tag.strip()
-    ]
-    if normalized_tag_names:
-        placeholders = ",".join(["?"] * len(normalized_tag_names))
-        query += f"""
-        AND EXISTS (
-            SELECT 1
-            FROM ip_asset_tags
-            JOIN tags ON tags.id = ip_asset_tags.tag_id
-            WHERE ip_asset_tags.ip_asset_id = ip_assets.id
-              AND LOWER(tags.name) IN ({placeholders})
-        )
-        """
-        params.extend([name.lower() for name in normalized_tag_names])
-    return int(connection.execute(query, params).fetchone()[0])
+    return count_active_assets(
+        connection,
+        project_id=project_id,
+        project_unassigned_only=project_unassigned_only,
+        asset_type=asset_type,
+        unassigned_only=unassigned_only,
+        query_text=query_text,
+        tag_names=tag_names,
+        archived_only=archived_only,
+    )
 
 
 def list_active_ip_assets_paginated(
@@ -320,43 +162,15 @@ def list_active_ip_assets_paginated(
     offset: int = 0,
     archived_only: bool = False,
 ) -> list[IPAsset]:
-    query = "SELECT * FROM ip_assets WHERE archived = ?"
-    params: list[object] = []
-    params.append(1 if archived_only else 0)
-    if project_unassigned_only:
-        query += " AND project_id IS NULL"
-    elif project_id is not None:
-        query += " AND project_id = ?"
-        params.append(project_id)
-    if asset_type is not None:
-        query += " AND type = ?"
-        params.append(asset_type.value)
-    if unassigned_only:
-        query += " AND project_id IS NULL"
-    if query_text:
-        query += " AND (LOWER(ip_address) LIKE ? OR LOWER(COALESCE(notes, '')) LIKE ?)"
-        query_value = f"%{query_text.lower()}%"
-        params.extend([query_value, query_value])
-    normalized_tag_names = [
-        tag.strip() for tag in (tag_names or []) if tag and tag.strip()
-    ]
-    if normalized_tag_names:
-        placeholders = ",".join(["?"] * len(normalized_tag_names))
-        query += f"""
-        AND EXISTS (
-            SELECT 1
-            FROM ip_asset_tags
-            JOIN tags ON tags.id = ip_asset_tags.tag_id
-            WHERE ip_asset_tags.ip_asset_id = ip_assets.id
-              AND LOWER(tags.name) IN ({placeholders})
-        )
-        """
-        params.extend([name.lower() for name in normalized_tag_names])
-    query += " ORDER BY ip_address"
-    rows = connection.execute(query, params).fetchall()
-    sorted_assets = sorted(
-        (_row_to_ip_asset(row) for row in rows),
-        key=lambda asset: _ip_address_sort_key(asset.ip_address),
+    sorted_assets = list_active_assets(
+        connection,
+        project_id=project_id,
+        project_unassigned_only=project_unassigned_only,
+        asset_type=asset_type,
+        unassigned_only=unassigned_only,
+        query_text=query_text,
+        tag_names=tag_names,
+        archived_only=archived_only,
     )
     return sorted_assets[offset : offset + limit]
 

@@ -73,6 +73,7 @@ ipocket is a lightweight IP inventory app to track addresses and their project a
 - Audit logging for IP asset create/update/delete actions, surfaced on the IP detail page and a global Audit Log view (both require authentication).
 - Database schema managed through Alembic migrations
 - Repository data-access layer is modularized under `app/repository/` (assets, hosts, ranges, metadata, users, audit, summary), while `app.repository` remains the stable import surface via package re-exports.
+- Internal IP-asset repository logic is further split into focused helpers: `app/repository/_asset_filters.py` (filter query assembly), `app/repository/_asset_tags.py` (tag mappings/persistence), and `app/repository/_asset_audit.py` (audit change summaries); `app/repository/assets.py` remains the backward-compatible public API module.
 
 ## Note
 Owner support has been removed in development phase, so assignment is now project-only.
@@ -100,6 +101,8 @@ Vendors are managed in the shared Library page tabs and are selectable when crea
 - Vendors table now shows an **IPs** count column with how many active IP assets are currently linked through hosts for each vendor.
 
 - UI route handlers are now organized as a modular package under `app/routes/ui/` (`auth.py`, `dashboard.py`, `ip_assets.py`, `hosts.py`, `ranges.py`, `settings.py`, `data_ops.py`, `connectors.py`) with shared helpers in `utils.py` and a single aggregated `router` exported from `app/routes/ui/__init__.py`.
+- UI utility internals are split into `app/routes/ui/_utils/` modules (`session.py`, `rendering.py`, `parsing.py`, `assets.py`, `exporting.py`) and `app/routes/ui/utils.py` now acts as a compatibility facade so existing imports stay stable.
+- IP-assets route helpers were extracted to `app/routes/ui/ip_assets_helpers.py` to keep `app/routes/ui/ip_assets.py` focused on route orchestration without changing endpoint behavior.
 - Developer compatibility note: `app/routes/ui/__init__.py` re-exports UI auth/session helpers (including `SESSION_COOKIE`) so existing integrations and tests continue working after modularization.
 
 - API route handlers are now organized as a modular package under `app/routes/api/` (`auth.py`, `system.py`, `assets.py`, `hosts.py`, `metadata.py`, `imports.py`) with shared schemas/dependencies/helpers and a single aggregated `router` exported from `app/routes/api/__init__.py`.

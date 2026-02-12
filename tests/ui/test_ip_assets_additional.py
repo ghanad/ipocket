@@ -31,6 +31,23 @@ def test_friendly_audit_changes_and_tag_validation_helper(_setup_connection) -> 
     ]
 
 
+def test_delete_requires_exact_ip_for_high_risk_inputs(_setup_connection) -> None:
+    connection = _setup_connection()
+    try:
+        vip_asset = repository.create_ip_asset(
+            connection, ip_address="10.81.0.30", asset_type=IPAssetType.VIP
+        )
+        vm_asset = repository.create_ip_asset(
+            connection, ip_address="10.81.0.31", asset_type=IPAssetType.VM
+        )
+    finally:
+        connection.close()
+
+    assert ip_assets_routes._delete_requires_exact_ip(vip_asset, []) is True
+    assert ip_assets_routes._delete_requires_exact_ip(vm_asset, ["production"]) is True
+    assert ip_assets_routes._delete_requires_exact_ip(vm_asset, []) is False
+
+
 def test_ip_assets_list_handles_invalid_filters_and_delete_toasts(
     client, _setup_connection
 ) -> None:
