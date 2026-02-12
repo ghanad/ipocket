@@ -41,6 +41,8 @@
   let isDeleteMode = false;
   let activeTagsPopoverTrigger = null;
   let tagsPopover = null;
+  let tagsPopoverOpenTimer = null;
+  let tagsPopoverCloseTimer = null;
 
   const shouldShowHostField = (typeValue) => ['OS', 'BMC'].includes((typeValue || '').toUpperCase());
   const shouldShowAutoHost = (typeValue, hostValue) =>
@@ -141,10 +143,60 @@
     if (searchInput) {
       searchInput.addEventListener('input', renderTagsPopoverList);
     }
+    tagsPopover.addEventListener('mouseenter', () => {
+      if (tagsPopoverCloseTimer) {
+        window.clearTimeout(tagsPopoverCloseTimer);
+        tagsPopoverCloseTimer = null;
+      }
+    });
+    tagsPopover.addEventListener('mouseleave', () => {
+      scheduleCloseTagsPopover();
+    });
     return tagsPopover;
   };
 
+  const scheduleOpenTagsPopover = (trigger, delay = 120) => {
+    if (!trigger) {
+      return;
+    }
+    if (tagsPopoverCloseTimer) {
+      window.clearTimeout(tagsPopoverCloseTimer);
+      tagsPopoverCloseTimer = null;
+    }
+    if (tagsPopoverOpenTimer) {
+      window.clearTimeout(tagsPopoverOpenTimer);
+      tagsPopoverOpenTimer = null;
+    }
+    tagsPopoverOpenTimer = window.setTimeout(() => {
+      openTagsPopover(trigger, { focusSearch: false });
+      tagsPopoverOpenTimer = null;
+    }, delay);
+  };
+
+  const scheduleCloseTagsPopover = (delay = 180) => {
+    if (tagsPopoverOpenTimer) {
+      window.clearTimeout(tagsPopoverOpenTimer);
+      tagsPopoverOpenTimer = null;
+    }
+    if (tagsPopoverCloseTimer) {
+      window.clearTimeout(tagsPopoverCloseTimer);
+      tagsPopoverCloseTimer = null;
+    }
+    tagsPopoverCloseTimer = window.setTimeout(() => {
+      closeTagsPopover();
+      tagsPopoverCloseTimer = null;
+    }, delay);
+  };
+
   const closeTagsPopover = () => {
+    if (tagsPopoverOpenTimer) {
+      window.clearTimeout(tagsPopoverOpenTimer);
+      tagsPopoverOpenTimer = null;
+    }
+    if (tagsPopoverCloseTimer) {
+      window.clearTimeout(tagsPopoverCloseTimer);
+      tagsPopoverCloseTimer = null;
+    }
     if (activeTagsPopoverTrigger) {
       activeTagsPopoverTrigger.setAttribute('aria-expanded', 'false');
     }
@@ -221,7 +273,7 @@
     tagsPopover.style.left = `${left + window.scrollX}px`;
   };
 
-  const openTagsPopover = (trigger) => {
+  const openTagsPopover = (trigger, { focusSearch = true } = {}) => {
     if (!trigger) {
       return;
     }
@@ -257,7 +309,7 @@
     tagsPopover.hidden = false;
     renderTagsPopoverList();
     positionTagsPopover();
-    if (searchInput) {
+    if (searchInput && focusSearch) {
       searchInput.focus();
     }
   };
@@ -567,6 +619,46 @@
       button.dataset.ipAddBound = 'true';
       button.addEventListener('click', () => {
         openDrawerForAdd();
+      });
+    });
+  };
+
+  const bindTagsMoreTriggers = (root = document) => {
+    const triggers = root.querySelectorAll('[data-tags-more-toggle]');
+    triggers.forEach((trigger) => {
+      if (trigger.dataset.tagsMoreBound) {
+        return;
+      }
+      trigger.dataset.tagsMoreBound = 'true';
+      trigger.addEventListener('mouseenter', () => {
+        if (activeTagsPopoverTrigger === trigger && tagsPopover && !tagsPopover.hidden) {
+          if (tagsPopoverCloseTimer) {
+            window.clearTimeout(tagsPopoverCloseTimer);
+            tagsPopoverCloseTimer = null;
+          }
+          return;
+        }
+        scheduleOpenTagsPopover(trigger);
+      });
+      trigger.addEventListener('mouseleave', (event) => {
+        const nextTarget = event.relatedTarget;
+        if (
+          nextTarget &&
+          (trigger.contains(nextTarget) || (tagsPopover && tagsPopover.contains(nextTarget)))
+        ) {
+          return;
+        }
+        scheduleCloseTagsPopover();
+      });
+      trigger.addEventListener('focus', () => {
+        openTagsPopover(trigger);
+      });
+      trigger.addEventListener('blur', (event) => {
+        const nextTarget = event.relatedTarget;
+        if (nextTarget && tagsPopover && tagsPopover.contains(nextTarget)) {
+          return;
+        }
+        scheduleCloseTagsPopover(0);
       });
     });
   };
@@ -890,6 +982,7 @@
         bindEditButtons(event.target);
         bindDeleteButtons(event.target);
         bindBulkEdit(event.target);
+        bindTagsMoreTriggers(event.target);
         bindAddButtons();
       }
     });
@@ -927,5 +1020,6 @@
   bindEditButtons();
   bindDeleteButtons();
   bindAddButtons();
+  bindTagsMoreTriggers();
   bindBulkEdit();
 })();

@@ -225,6 +225,7 @@ def test_ip_assets_list_uses_drawer_actions_for_edit_and_delete(client) -> None:
 
     assert response.status_code == 200
     assert 'class="table table-ip-assets"' in response.text
+    assert "Host Pair" not in response.text
     assert "bulk-edit-controls-hidden" in response.text
     assert f'data-ip-edit="{asset.id}"' in response.text
     assert 'data-ip-address="10.30.0.10"' in response.text
@@ -367,7 +368,8 @@ def test_ip_assets_list_collapses_tag_chips_and_renders_more_popover_trigger(
     assert response.status_code == 200
     assert "data-tags-more-toggle" in response.text
     assert 'data-tags-ip="10.30.0.21"' in response.text
-    assert "+2 more" in response.text
+    assert "+3 more" in response.text
+    assert 'title="alpha, beta, gamma, delta, epsilon"' not in response.text
     assert 'aria-label="Tags for 10.30.0.21"' in response.text
     assert '<td class="ip-tags-cell">' in response.text
     assert response.text.count('<span class="muted">—</span>') >= 1
@@ -375,6 +377,10 @@ def test_ip_assets_list_collapses_tag_chips_and_renders_more_popover_trigger(
     js_source = ip_assets_js.read_text(encoding="utf-8")
     assert "data-tags-popover-search" in js_source
     assert "data-tags-more-toggle" in js_source
+    assert "scheduleOpenTagsPopover" in js_source
+    assert "bindTagsMoreTriggers" in js_source
+    assert "trigger.addEventListener('mouseenter'" in js_source
+    assert "trigger.addEventListener('mouseleave'" in js_source
     assert "closeTagsPopover" in js_source
 
 

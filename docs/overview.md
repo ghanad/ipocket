@@ -21,12 +21,12 @@ ipocket is a lightweight IP inventory app to track addresses and their project a
 - After saving in the drawer, the list view restores the prior scroll position.
 - Host assignment in the drawer only appears when the IP type is OS or BMC.
 - BMC IPs without a host assignment show a drawer action to create and assign a host named `server_<ip>`.
-- IP assets list includes a Host Pair column to show the OS or BMC IP linked to the same host.
+- IP assets list hides Host Pair to keep the table focused on assignment and editing fields.
 - IP assets list shows inline Edit/Delete actions side-by-side in the Actions column.
 - Deleting an IP from the list now uses the same right-side drawer shell as Add/Edit but with strict modes: delete mode hides all edit inputs, shows a compact destructive confirmation summary (IP/Project/Type/Host), keeps the acknowledgement checkbox inline with its label, and for high-risk assets requires typing the exact IP before “Delete permanently” is enabled.
 - IP asset detail page now uses the shared card/chip visual language, including metadata chips in the header, a key-value Details card, badge-styled audit actions with optional raw detail expansion, and in-page delete via the same right-side delete drawer mode used on the list view.
 - IP assets list includes bulk edit controls to update type, project assignment, or add tags across multiple IPs at once.
-- IP assets list keeps tag cells compact: up to 3 chips are shown in-row, and extra tags move into a `+N more` popover (with keyboard/outside-click close and inline tag search).
+- IP assets list keeps tag cells compact: up to 3 chips are shown in-row, and extra tags move into a `+N more` popover (open on hover or click, with keyboard/outside-click close and inline tag search).
 - IP assets list keeps Notes cells single-line to preserve row height; full note text appears in a hover/focus tooltip after a short pointer delay.
 - IP assets table uses a fixed responsive layout so long Notes/Tags content does not force horizontal page scrolling.
 - Tags on IP assets are now selected from existing Tag records (no free-text tag creation during assignment), with a dedicated Tags page to manage names and colors.
@@ -42,7 +42,7 @@ ipocket is a lightweight IP inventory app to track addresses and their project a
 - The sidebar footer shows build metadata (`version/commit/build time`) whenever the sidebar is visible, including signed-out views.
 - IP ranges page supports editing and deleting saved CIDR ranges for cleanup, with a confirmation step that requires typing the exact range name.
 - Saved ranges now use the same inline Edit/Delete button style as Hosts so table actions stay visually consistent across pages.
-- Range addresses view aligns columns with the IP assets list (plus Status), including Host Pair and Notes for used IPs in subnet drill-downs.
+- Range addresses view includes Status, Host Pair, and Notes for used IPs in subnet drill-downs.
 - Range addresses view now uses a right-side drawer for both “Add” (free IPs) and “Edit” (used IPs), matching the IP assets page workflow.
 - IP ranges page now opens “Add IP Range” inside a right-side drawer instead of an inline card, keeping create UX consistent with Hosts/IP assets flows.
 - IP ranges page now opens range editing in a right-side drawer too, so Edit keeps users on `/ui/ranges` like Hosts and IP assets.

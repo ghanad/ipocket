@@ -1578,6 +1578,17 @@ p {
     flex: 0 0 auto;
   }
 
+  .ip-tags-inline > .tag-filter-chip {
+    max-width: 72px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .ip-tags-inline > .ip-tags-more {
+    flex-shrink: 0;
+  }
+
   .ip-note-preview {
     position: relative;
     display: block;
@@ -1636,7 +1647,7 @@ p {
 
   .ip-tags-popover {
     position: absolute;
-    z-index: 70;
+    z-index: 120;
     border: 1px solid var(--color-border);
     border-radius: var(--radius-md);
     background: #fff;
@@ -1680,6 +1691,12 @@ p {
     gap: 6px;
     max-height: min(46vh, 260px);
     overflow: auto;
+  }
+
+  .ip-tags-popover .tag {
+    padding: 3px 9px;
+    border-radius: 7px;
+    font-size: 12px;
   }
 
   .ip-tags-popover-empty {

@@ -30,17 +30,11 @@
       {{ asset.type }}
     </button>
   </td>
-  <td>
-    {% if asset.host_pair %}
-    <span class="mono">{{ asset.host_pair }}</span>
-    {% else %}
-    <span class="muted">—</span>
-    {% endif %}
-  </td>
   <td class="ip-tags-cell">
     {% if asset.tags %}
     <div class="ip-tags-inline" aria-label="Tags for {{ asset.ip_address }}">
-      {% for tag in asset.tags[:3] %}
+      {% set visible_tags = asset.tags[:2] if asset.tags|length > 3 else asset.tags %}
+      {% for tag in visible_tags %}
       <button
         class="tag tag-color tag-filter-chip"
         type="button"
@@ -58,7 +52,7 @@
         data-tags-json='{{ asset.tags | tojson | e }}'
         aria-haspopup="dialog"
         aria-expanded="false"
-      >+{{ asset.tags|length - 3 }} more</button>
+      >+{{ asset.tags|length - 2 }} more</button>
       {% endif %}
     </div>
     {% else %}
@@ -114,6 +108,6 @@
 {% endfor %}
 {% else %}
 <tr>
-  <td colspan="8" class="empty-state">No IP assets found.</td>
+  <td colspan="7" class="empty-state">No IP assets found.</td>
 </tr>
 {% endif %}
