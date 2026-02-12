@@ -93,6 +93,7 @@ IPOCKET_DOCKER_ASSETS=0
 ### Version metadata
 ipocket includes build metadata in `/health` and in the sidebar footer in the UI
 (including signed-out pages that render the sidebar).
+The sidebar renders the version value as-is (for example: `ipocket dev (abc1234)`).
 
 In Docker, if no version env vars are provided, ipocket attempts to detect commit
 from the embedded `.git` metadata and uses a Docker-friendly fallback version

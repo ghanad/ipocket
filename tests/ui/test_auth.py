@@ -12,7 +12,7 @@ def test_logout_button_hidden_when_not_authenticated(client) -> None:
     assert response.status_code == 200
     assert "sidebar-logout-button" not in response.text
     assert "sidebar-login-link" in response.text
-    assert "ipocket v" in response.text
+    assert "ipocket dev (" in response.text
 
 
 def test_layout_does_not_render_static_top_header(client) -> None:

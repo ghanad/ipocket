@@ -82,7 +82,7 @@ def test_render_template_fallback_covers_payload_branches(monkeypatch) -> None:
     assert "HP" in body
     assert "7" in body
     assert "boom" in body
-    assert "ipocket v1.2.3 (abc1234)" in body
+    assert "ipocket 1.2.3 (abc1234)" in body
 
     ranges_response = ui_utils._render_template(
         request,
