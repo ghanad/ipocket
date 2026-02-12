@@ -187,9 +187,13 @@ def _run_prometheus_connector(
     logs.append(f"Prepared {len(ip_assets)} IP assets from query results.")
     if dry_run:
         preview_limit = 20
-        preview_ips = [str(asset.get("ip_address")) for asset in ip_assets[:preview_limit]]
+        preview_ips = [
+            str(asset.get("ip_address")) for asset in ip_assets[:preview_limit]
+        ]
         if preview_ips:
-            logs.append(f"Dry-run IP preview ({len(ip_assets)}): {', '.join(preview_ips)}")
+            logs.append(
+                f"Dry-run IP preview ({len(ip_assets)}): {', '.join(preview_ips)}"
+            )
             if len(ip_assets) > preview_limit:
                 logs.append(
                     f"Dry-run IP preview truncated: {len(ip_assets) - preview_limit} more IP(s)."

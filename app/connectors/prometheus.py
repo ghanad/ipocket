@@ -34,7 +34,6 @@ def _build_prometheus_auth_header(auth_value: str) -> str:
     return f"Bearer {candidate}"
 
 
-
 def _normalize_ipv4(value: object) -> Optional[str]:
     if not isinstance(value, str):
         return None
@@ -48,7 +47,6 @@ def _normalize_ipv4(value: object) -> Optional[str]:
     if parsed.version != 4:
         return None
     return str(parsed)
-
 
 
 def _extract_host_candidate(value: str) -> str:
@@ -69,7 +67,6 @@ def _extract_host_candidate(value: str) -> str:
             return host_part
 
     return candidate
-
 
 
 def fetch_prometheus_query_result(
@@ -139,7 +136,9 @@ def fetch_prometheus_query_result(
 
     result = data.get("result")
     if not isinstance(result, list):
-        raise PrometheusConnectorError("Prometheus payload contains invalid result list.")
+        raise PrometheusConnectorError(
+            "Prometheus payload contains invalid result list."
+        )
 
     records: list[PrometheusMetricRecord] = []
     for index, sample in enumerate(result):
@@ -165,7 +164,6 @@ def fetch_prometheus_query_result(
         records.append(PrometheusMetricRecord(labels=label_map, value=str(value[1])))
 
     return records
-
 
 
 def extract_ip_assets_from_result(
@@ -244,7 +242,6 @@ def extract_ip_assets_from_result(
     return ip_assets, warnings
 
 
-
 def build_import_bundle_from_prometheus(
     ip_assets: Sequence[dict[str, object]],
     *,
@@ -284,19 +281,16 @@ def build_import_bundle_from_prometheus(
     return bundle, warnings
 
 
-
 def write_bundle_json(bundle: dict[str, object], output_path: str) -> None:
     with open(output_path, "w", encoding="utf-8") as output_file:
         json.dump(bundle, output_file, indent=2)
         output_file.write("\n")
 
 
-
 def _build_import_url(base_url: str, dry_run: bool) -> str:
     normalized = base_url.rstrip("/")
     query = "dry_run=1" if dry_run else "dry_run=0"
     return f"{normalized}/import/bundle?{query}"
-
 
 
 def import_bundle_via_api(
@@ -346,7 +340,9 @@ def import_bundle_via_api(
             f"ipocket import request failed with HTTP {exc.code}: {details}"
         ) from exc
     except urllib_error.URLError as exc:
-        raise PrometheusConnectorError(f"Failed to call ipocket import API: {exc}") from exc
+        raise PrometheusConnectorError(
+            f"Failed to call ipocket import API: {exc}"
+        ) from exc
 
     try:
         parsed = json.loads(response_payload.decode("utf-8"))
@@ -360,7 +356,6 @@ def import_bundle_via_api(
             "ipocket import API returned an unexpected payload."
         )
     return parsed
-
 
 
 def _print_import_result(payload: dict[str, object]) -> None:
@@ -388,7 +383,6 @@ def _print_import_result(payload: dict[str, object]) -> None:
             if not isinstance(issue, dict):
                 continue
             print(f"- {issue.get('location', 'import')}: {issue.get('message', '')}")
-
 
 
 def _build_parser() -> argparse.ArgumentParser:
@@ -459,7 +453,6 @@ def _build_parser() -> argparse.ArgumentParser:
     return parser
 
 
-
 def _validate_cli_args(
     parser: argparse.ArgumentParser, args: argparse.Namespace
 ) -> None:
@@ -469,7 +462,6 @@ def _validate_cli_args(
         parser.error("--ipocket-url is required when --mode is dry-run/apply")
     if args.mode in {"dry-run", "apply"} and not args.ipocket_token:
         parser.error("--ipocket-token is required when --mode is dry-run/apply")
-
 
 
 def main(argv: Optional[Sequence[str]] = None) -> int:

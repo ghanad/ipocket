@@ -320,23 +320,27 @@ def test_prometheus_connector_dry_run_logs_ip_preview_and_asset_summary(
         ),
     )
 
-    logs, warnings, _warning_count, _error_count = connectors_routes._run_prometheus_connector(
-        connection=None,
-        prometheus_url="http://127.0.0.1:9090",
-        query='up{job="node"}',
-        ip_label="instance",
-        asset_type="OTHER",
-        project_name=None,
-        tags=None,
-        token=None,
-        insecure=False,
-        timeout=30,
-        dry_run=True,
+    logs, warnings, _warning_count, _error_count = (
+        connectors_routes._run_prometheus_connector(
+            connection=None,
+            prometheus_url="http://127.0.0.1:9090",
+            query='up{job="node"}',
+            ip_label="instance",
+            asset_type="OTHER",
+            project_name=None,
+            tags=None,
+            token=None,
+            insecure=False,
+            timeout=30,
+            dry_run=True,
+        )
     )
 
     assert warnings == []
     assert any("Dry-run IP preview (2): 10.0.0.10, 10.0.0.11" in line for line in logs)
-    assert any("IP assets summary: create=1, update=1, skip=0." in line for line in logs)
+    assert any(
+        "IP assets summary: create=1, update=1, skip=0." in line for line in logs
+    )
 
 
 def test_prometheus_connector_ui_validates_required_fields(client) -> None:

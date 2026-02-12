@@ -26,12 +26,11 @@ class _FakeResponse:
         return self._payload
 
 
-
 def test_fetch_prometheus_query_result_parses_vector_payload(monkeypatch) -> None:
     payload = (
         b'{"status":"success","data":{"resultType":"vector","result":['
         b'{"metric":{"__name__":"up","instance":"10.1.1.5:9100"},"value":[1700000000,"1"]}'
-        b']}}'
+        b"]}}"
     )
 
     def _fake_urlopen(request, timeout, context):
@@ -52,6 +51,8 @@ def test_fetch_prometheus_query_result_parses_vector_payload(monkeypatch) -> Non
             value="1",
         )
     ]
+
+
 def test_fetch_prometheus_query_result_uses_bearer_token_header(monkeypatch) -> None:
     payload = b'{"status":"success","data":{"resultType":"vector","result":[]}}'
     captured: dict[str, object] = {}
@@ -115,7 +116,6 @@ def test_fetch_prometheus_query_result_raises_on_non_success_status(
         raise AssertionError("Expected PrometheusConnectorError")
 
 
-
 def test_fetch_prometheus_query_result_raises_on_non_vector_type(monkeypatch) -> None:
     payload = b'{"status":"success","data":{"resultType":"matrix","result":[]}}'
 
@@ -137,15 +137,20 @@ def test_fetch_prometheus_query_result_raises_on_non_vector_type(monkeypatch) ->
         raise AssertionError("Expected PrometheusConnectorError")
 
 
-
 def test_extract_ip_assets_from_result_uses_custom_label_and_deduplicates() -> None:
     records = [
         PrometheusMetricRecord(
-            labels={"__name__": "node_uname_info", "exported_instance": "10.0.0.1:9100"},
+            labels={
+                "__name__": "node_uname_info",
+                "exported_instance": "10.0.0.1:9100",
+            },
             value="1",
         ),
         PrometheusMetricRecord(
-            labels={"__name__": "node_uname_info", "exported_instance": "10.0.0.1:9100"},
+            labels={
+                "__name__": "node_uname_info",
+                "exported_instance": "10.0.0.1:9100",
+            },
             value="1",
         ),
         PrometheusMetricRecord(
@@ -153,7 +158,10 @@ def test_extract_ip_assets_from_result_uses_custom_label_and_deduplicates() -> N
             value="1",
         ),
         PrometheusMetricRecord(
-            labels={"__name__": "node_uname_info", "exported_instance": "127.0.0.1:9100"},
+            labels={
+                "__name__": "node_uname_info",
+                "exported_instance": "127.0.0.1:9100",
+            },
             value="1",
         ),
         PrometheusMetricRecord(labels={"__name__": "node_uname_info"}, value="1"),
@@ -183,7 +191,6 @@ def test_extract_ip_assets_from_result_uses_custom_label_and_deduplicates() -> N
     assert "label 'exported_instance' is missing" in warnings[3]
 
 
-
 def test_build_import_bundle_from_prometheus_builds_schema_v1() -> None:
     ip_assets = [
         {
@@ -206,7 +213,6 @@ def test_build_import_bundle_from_prometheus_builds_schema_v1() -> None:
     assert bundle["data"]["ip_assets"] == ip_assets
 
 
-
 def test_build_import_url_supports_dry_run_and_apply() -> None:
     assert (
         _build_import_url("http://127.0.0.1:8000/", dry_run=True)
@@ -216,7 +222,6 @@ def test_build_import_url_supports_dry_run_and_apply() -> None:
         _build_import_url("http://127.0.0.1:8000", dry_run=False)
         == "http://127.0.0.1:8000/import/bundle?dry_run=0"
     )
-
 
 
 def test_import_bundle_via_api_posts_multipart_and_parses_response(monkeypatch) -> None:
