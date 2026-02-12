@@ -104,16 +104,24 @@
           data-tag-filter-input
         />
       </div>
-      <datalist id="tag-filter-suggestions">
+      <datalist id="tag-filter-suggestions" data-tag-filter-suggestions>
         {% for tag in tags %}
-        <option value="{{ tag.name }}"></option>
+        <option value="{{ tag.name }}" data-tag-color="{{ tag.color }}"></option>
         {% endfor %}
       </datalist>
       <div class="tag-filter-selected" data-tag-filter-selected>
         {% for selected_tag in filters.tag %}
+        {% set selected_tag_obj = (tags | selectattr("name", "equalto", selected_tag) | list | first) %}
         <span class="tag-filter-entry" data-tag-filter-entry="{{ selected_tag }}">
           <input type="hidden" name="tag" value="{{ selected_tag }}" />
-          <button class="tag tag-color tag-filter-chip" type="button" data-remove-tag-filter="{{ selected_tag }}">{{ selected_tag }} ×</button>
+          <button
+            class="tag tag-color tag-filter-chip"
+            type="button"
+            data-remove-tag-filter="{{ selected_tag }}"
+            {% if selected_tag_obj %}
+            style="--tag-color: {{ selected_tag_obj.color }}"
+            {% endif %}
+          >{{ selected_tag }} ×</button>
         </span>
         {% endfor %}
       </div>

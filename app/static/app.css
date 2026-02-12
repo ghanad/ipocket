@@ -721,7 +721,7 @@ p {
   color: var(--color-text);
 }
 
-.field span {
+.field > span {
   font-size: 12px;
   text-transform: uppercase;
   letter-spacing: 0.08em;
@@ -865,7 +865,7 @@ p {
 
 .tag-color {
   background: var(--tag-color, #e2e8f0);
-  color: #0f172a;
+  color: var(--tag-color-text, #0f172a);
   box-shadow: inset 0 0 0 1px rgba(148, 163, 184, 0.3);
 }
 
