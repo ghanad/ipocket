@@ -138,5 +138,5 @@ def _render_fallback_template(
         version = build.get("version", "dev")
         commit = build.get("commit", "unknown")
         build_time = build.get("build_time", "unknown")
-        lines.append(f"ipocket v{version} ({commit}) • built {build_time}")
+        lines.append(f"ipocket {version} ({commit}) • built {build_time}")
     return HTMLResponse(content="\n".join(lines), status_code=status_code)
