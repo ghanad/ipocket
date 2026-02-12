@@ -18,6 +18,7 @@ def test_ui_assets_are_local() -> None:
     assert "height: 100vh" in css
     assert "position: sticky" in css
     assert "overflow-y: auto" in css
+    assert ".field > span {" in css
     assert ".table.table-ip-assets .tag {" in css
     assert "padding: 3px 9px;" in css
     assert ".ip-tags-popover {" in css
@@ -28,6 +29,7 @@ def test_ui_assets_are_local() -> None:
     assert "max-width: 72px;" in css
     assert ".ip-tags-inline > .ip-tags-more {" in css
     assert "flex-shrink: 0;" in css
+    assert "color: var(--tag-color-text, #0f172a);" in css
 
 
 def test_use_local_assets_env_override(monkeypatch) -> None:
@@ -86,6 +88,10 @@ def test_refactored_templates_load_external_page_assets() -> None:
         encoding="utf-8"
     )
     assert "picker.append(inputWrap, selectedWrap);" in tag_picker_js
+    assert "const getTagTextColor = (backgroundColor) => {" in tag_picker_js
+    assert 'element.style.setProperty("--tag-color-text", getTagTextColor(backgroundColor));' in tag_picker_js
+    assert "window.ipocketApplyTagContrast = applyTagContrast;" in tag_picker_js
+    assert "applyTagContrast(root);" in tag_picker_js
 
 
 def test_hosts_drawer_css_matches_ip_drawer_layout_baseline() -> None:

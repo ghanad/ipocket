@@ -11,6 +11,7 @@ ipocket is a lightweight IP inventory app to track addresses and their project a
 - Project assignment review is handled directly in the IP Assets list via the **Assignment** filter (`Unassigned only`); the dedicated Needs Assignment page has been removed.
 - IP assets search results are sorted by numeric IP value (so `192.168.1.2` appears before `192.168.1.11`) instead of plain text ordering.
 - IP assets list supports one-click filtering from table values: clicking a Project/Type chip applies that filter instantly, and Tag filtering now uses an autocomplete textbox with multi-tag ANY matching.
+- Selected tags in the top Tags filter keep each tag's configured catalog color, including chips added live from the autocomplete input.
 - IP assets list includes an archived-only filter for reviewing soft-deleted records when needed.
 - IP assets list includes pagination with a user-selectable page size (default 20) to keep large inventories manageable.
 - IP assets list rows use compact spacing for IP text and Project/Type chips to keep more records visible per page.
@@ -32,6 +33,7 @@ ipocket is a lightweight IP inventory app to track addresses and their project a
 - IP assets table uses a fixed responsive layout so long Notes/Tags content does not force horizontal page scrolling.
 - Tags on IP assets are now selected from existing Tag records (no free-text tag creation during assignment), with a dedicated Tags page to manage names and colors.
 - Tag selection UI now uses a chip-based picker (`Add tags...`) with searchable dropdown suggestions, Enter/click add, chip remove (`×`), and Backspace removal of the last selected chip.
+- Tag chips now auto-pick a high-contrast text color (dark/light) based on each tag background color across the IP edit/add drawers, IP assets table tags, and tag popovers.
 - Tags page now uses the same right-side drawer pattern as Projects/Vendors for create/edit/delete, including destructive confirmation by typing the exact tag name. The tags table also shows an **IPs** count column with how many active IP assets currently use each tag.
 - Tag create drawer suggests a random tag color by default (instead of one fixed color), and users can override it before saving.
 - Management overview dashboard with quick totals for IPs, hosts, vendors, and projects, with cards linking to the relevant detail lists.

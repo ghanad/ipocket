@@ -31,6 +31,9 @@
   const filterForm = document.querySelector('.filters-grid');
   const tagFilterInput = filterForm ? filterForm.querySelector('[data-tag-filter-input]') : null;
   const tagFilterSelected = filterForm ? filterForm.querySelector('[data-tag-filter-selected]') : null;
+  const tagFilterSuggestions = filterForm
+    ? filterForm.querySelector('[data-tag-filter-suggestions]')
+    : null;
   const hostField = form ? form.querySelector('[data-ip-host-field]') : null;
   const ipAddressInput = form ? form.querySelector('[data-ip-input="ip_address"]') : null;
   const toastContainer = document.querySelector('[data-toast-container]');
@@ -248,6 +251,9 @@
       button.dataset.quickFilter = 'tag';
       button.dataset.quickFilterValue = String(item?.name || '');
       button.style.setProperty('--tag-color', String(item?.color || '#94a3b8'));
+      if (typeof window.ipocketApplyTagContrast === 'function') {
+        window.ipocketApplyTagContrast(button);
+      }
       button.textContent = String(item?.name || '');
       list.appendChild(button);
     });
@@ -738,6 +744,33 @@
     return Array.from(tagFilterSelected.querySelectorAll('input[name="tag"]')).map((input) => input.value);
   };
 
+  const getTagColor = (rawValue) => {
+    if (!tagFilterSuggestions) {
+      return '';
+    }
+    const normalizedValue = normalizeTagValue(rawValue);
+    if (!normalizedValue) {
+      return '';
+    }
+    const option = Array.from(tagFilterSuggestions.options).find(
+      (entry) => normalizeTagValue(entry.value) === normalizedValue
+    );
+    return option ? String(option.dataset.tagColor || '').trim() : '';
+  };
+
+  const applyTagFilterChipColor = (chip, rawValue) => {
+    if (!(chip instanceof HTMLElement)) {
+      return;
+    }
+    const color = getTagColor(rawValue);
+    if (color) {
+      chip.style.setProperty('--tag-color', color);
+    }
+    if (typeof window.ipocketApplyTagContrast === 'function') {
+      window.ipocketApplyTagContrast(chip);
+    }
+  };
+
   const addTagFilter = (rawValue) => {
     if (!tagFilterSelected) {
       return false;
@@ -753,6 +786,8 @@
     entry.className = 'tag-filter-entry';
     entry.dataset.tagFilterEntry = value;
     entry.innerHTML = `<input type="hidden" name="tag" value="${value}" /><button class="tag tag-color tag-filter-chip" type="button" data-remove-tag-filter="${value}">${value} ×</button>`;
+    const chip = entry.querySelector(`[data-remove-tag-filter="${value}"]`);
+    applyTagFilterChipColor(chip, value);
     tagFilterSelected.appendChild(entry);
     return true;
   };
@@ -956,6 +991,11 @@
     if (form && window.sessionStorage) {
       form.addEventListener('submit', () => {
         window.sessionStorage.setItem(SCROLL_KEY, String(window.scrollY || 0));
+      });
+    }
+    if (tagFilterSelected) {
+      tagFilterSelected.querySelectorAll('[data-remove-tag-filter]').forEach((chip) => {
+        applyTagFilterChipColor(chip, chip.getAttribute('data-remove-tag-filter') || '');
       });
     }
     if (tagFilterInput) {

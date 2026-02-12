@@ -3,6 +3,87 @@
   const BOUND_ATTR = "tagPickerBound";
 
   const normalize = (value) => String(value || "").trim().toLowerCase();
+  const DEFAULT_TAG_TEXT_COLOR = "#0f172a";
+  const LIGHT_TAG_TEXT_COLOR = "#f8fafc";
+
+  const parseHexColor = (value) => {
+    const normalized = String(value || "").trim();
+    if (!normalized.startsWith("#")) {
+      return null;
+    }
+    const raw = normalized.slice(1);
+    if (raw.length === 3) {
+      const [r, g, b] = raw.split("");
+      return [r + r, g + g, b + b].map((channel) => Number.parseInt(channel, 16));
+    }
+    if (raw.length !== 6) {
+      return null;
+    }
+    const channels = [raw.slice(0, 2), raw.slice(2, 4), raw.slice(4, 6)].map(
+      (channel) => Number.parseInt(channel, 16)
+    );
+    return channels.every((channel) => Number.isFinite(channel)) ? channels : null;
+  };
+
+  const toLinearRgb = (channel) => {
+    const normalized = channel / 255;
+    if (normalized <= 0.03928) {
+      return normalized / 12.92;
+    }
+    return ((normalized + 0.055) / 1.055) ** 2.4;
+  };
+
+  const getLuminance = ([red, green, blue]) =>
+    0.2126 * toLinearRgb(red) + 0.7152 * toLinearRgb(green) + 0.0722 * toLinearRgb(blue);
+
+  const getContrastRatio = (luminanceA, luminanceB) => {
+    const lighter = Math.max(luminanceA, luminanceB);
+    const darker = Math.min(luminanceA, luminanceB);
+    return (lighter + 0.05) / (darker + 0.05);
+  };
+
+  const getTagTextColor = (backgroundColor) => {
+    const rgb = parseHexColor(backgroundColor);
+    if (!rgb) {
+      return DEFAULT_TAG_TEXT_COLOR;
+    }
+    const backgroundLuminance = getLuminance(rgb);
+    const contrastWithDark = getContrastRatio(backgroundLuminance, 0);
+    const contrastWithLight = getContrastRatio(backgroundLuminance, 1);
+    return contrastWithLight > contrastWithDark
+      ? LIGHT_TAG_TEXT_COLOR
+      : DEFAULT_TAG_TEXT_COLOR;
+  };
+
+  const applyTagColor = (element, backgroundColor) => {
+    element.style.setProperty("--tag-color", backgroundColor);
+    element.style.setProperty("--tag-color-text", getTagTextColor(backgroundColor));
+  };
+
+  const applyTagContrast = (root = document) => {
+    if (!(root instanceof Element || root instanceof Document)) {
+      return;
+    }
+    const chips = [];
+    if (root instanceof Element && root.matches(".tag.tag-color")) {
+      chips.push(root);
+    }
+    chips.push(...root.querySelectorAll(".tag.tag-color"));
+    chips.forEach((chip) => {
+      if (!(chip instanceof HTMLElement)) {
+        return;
+      }
+      const backgroundColor =
+        chip.style.getPropertyValue("--tag-color").trim() ||
+        window.getComputedStyle(chip).getPropertyValue("--tag-color").trim();
+      if (!backgroundColor) {
+        return;
+      }
+      chip.style.setProperty("--tag-color-text", getTagTextColor(backgroundColor));
+    });
+  };
+
+  window.ipocketApplyTagContrast = applyTagContrast;
 
   const getOptions = (select) =>
     Array.from(select.options).map((option) => ({
@@ -66,7 +147,7 @@
         const chip = document.createElement("button");
         chip.type = "button";
         chip.className = "tag tag-color tag-picker-chip";
-        chip.style.setProperty("--tag-color", option.color);
+        applyTagColor(chip, option.color);
         chip.setAttribute("aria-label", `Remove ${option.label}`);
         chip.innerHTML = `<span>${option.label}</span><span class="tag-picker-chip-remove">&times;</span>`;
         chip.addEventListener("click", () => {
@@ -100,7 +181,11 @@
         item.className = "tag-picker-option";
         item.dataset.value = option.value;
         item.dataset.index = String(index);
-        item.innerHTML = `<span class="tag tag-color" style="--tag-color: ${option.color}">${option.label}</span>`;
+        item.innerHTML = `<span class="tag tag-color">${option.label}</span>`;
+        const itemChip = item.querySelector(".tag-color");
+        if (itemChip instanceof HTMLElement) {
+          applyTagColor(itemChip, option.color);
+        }
         item.addEventListener("mousedown", (event) => {
           event.preventDefault();
           setSelected(select, option.value, true);
@@ -206,6 +291,7 @@
   };
 
   const init = (root = document) => {
+    applyTagContrast(root);
     const selects = root.querySelectorAll(`select[${ROOT_ATTR}]`);
     selects.forEach((select) => {
       if (!(select instanceof HTMLSelectElement) || !select.multiple || select.dataset[BOUND_ATTR]) {

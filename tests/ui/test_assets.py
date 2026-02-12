@@ -745,6 +745,9 @@ def test_ip_assets_list_supports_multi_tag_filter_and_clickable_filter_chips(
     connection = db.connect(os.environ["IPAM_DB_PATH"])
     try:
         db.init_db(connection)
+        repository.create_tag(connection, name="prod", color="#22c55e")
+        repository.create_tag(connection, name="edge", color="#0ea5e9")
+        repository.create_tag(connection, name="ops", color="#f59e0b")
         project = repository.create_project(connection, name="Chook")
         repository.create_ip_asset(
             connection,
@@ -778,6 +781,9 @@ def test_ip_assets_list_supports_multi_tag_filter_and_clickable_filter_chips(
     assert "data-tag-filter-selected" in list_response.text
     assert "data-tag-filter-input" in list_response.text
     assert "tag-filter-suggestions" in list_response.text
+    assert "data-tag-filter-suggestions" in list_response.text
+    assert '<option value="prod" data-tag-color="#22c55e"></option>' in list_response.text
+    assert '<option value="edge" data-tag-color="#0ea5e9"></option>' in list_response.text
     assert "<span>Tags</span>" in list_response.text
     assert list_response.text.index('name="archived-only"') < list_response.text.index(
         "data-tag-filter-input"
@@ -789,6 +795,8 @@ def test_ip_assets_list_supports_multi_tag_filter_and_clickable_filter_chips(
     assert "10.31.0.21" in filtered_response.text
     assert "10.31.0.22" in filtered_response.text
     assert "10.31.0.23" not in filtered_response.text
+    assert 'data-remove-tag-filter="prod"' in filtered_response.text
+    assert "--tag-color: #22c55e" in filtered_response.text
 
 
 def test_ip_assets_list_includes_archived_filter(client) -> None:
