@@ -419,6 +419,21 @@ p {
   padding-left: 8px;
 }
 
+.table.table-ip-assets th.col-ip-address,
+.table.table-ip-assets td.col-ip-address {
+  width: 136px;
+}
+
+.table.table-ip-assets th.col-project,
+.table.table-ip-assets td.col-project {
+  width: 150px;
+}
+
+.table.table-ip-assets th.col-type,
+.table.table-ip-assets td.col-type {
+  width: 104px;
+}
+
 .table.table-ip-assets .mono {
   font-size: 13px;
 }
