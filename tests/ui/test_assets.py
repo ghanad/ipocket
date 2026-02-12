@@ -280,9 +280,9 @@ def test_ip_assets_list_renders_note_preview_with_hover_content(client) -> None:
     assert 'class="ip-note-preview muted"' in response.text
     assert f'title="{note}"' in response.text
     assert f'data-full-note="{note}"' in response.text
-    css_source = (
-        Path(__file__).resolve().parents[2] / "app/static/app.css"
-    ).read_text(encoding="utf-8")
+    css_source = (Path(__file__).resolve().parents[2] / "app/static/app.css").read_text(
+        encoding="utf-8"
+    )
     assert ".table.table-ip-assets {" in css_source
     assert "table-layout: fixed;" in css_source
     assert ".ip-asset-actions {" in css_source
