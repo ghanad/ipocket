@@ -183,7 +183,7 @@ UI design reference templates live in `/ui_template` for layout and styling guid
 5) Create Hosts from the **Hosts** page and pick a Vendor when needed.
 6) Add IPs from the **IP Assets** page.
 7) Open **Data Ops** from the sidebar to import or export data using one unified page with tabs.
-8) Open **Connectors** from the sidebar and use the **vCenter** tab to run the connector directly from UI (`dry-run` or `apply`) and review execution logs.
+8) Open **Connectors** from the sidebar and use **vCenter** or **Prometheus** tabs to run connectors directly from UI (`dry-run` or `apply`) and review execution logs.
 9) When assigning tags on IP Assets or Range Address drawers, use the chip picker (`Add tags...`) to search and select existing tags only (create new tag names first in **Library → Tags**).
 
 Assignment workflow note: use **IP Assets → Assignment = Unassigned only** to review and update records that still need a project. You can also use **Project = Unassigned** in the search filters for the same project-missing view. The old dedicated **Needs Assignment** page is removed.
@@ -255,6 +255,62 @@ python -m app.connectors.vcenter --server <vcenter> --username <user> --password
 ```
 
 See `/docs/vcenter-connector.md` for full mapping and options.
+
+## Prometheus connector (node_exporter / metric-driven import)
+
+Use the Prometheus connector when you want to pull IPs from Prometheus query results
+and import them as IP assets.
+
+UI flow:
+- Open **Connectors → Prometheus**
+- Fill:
+  - Prometheus URL
+  - PromQL query (example: `up{job="node"}`)
+  - IP label (for node_exporter usually `instance`)
+  - optional auth (Bearer token or `username:password`)
+  - optional project/tags/type override
+- Start with `dry-run`, inspect extracted IP preview + `ip_assets` create/update/skip summary in logs, then run `apply`.
+
+CLI examples:
+
+Write bundle file only:
+
+```bash
+python -m app.connectors.prometheus \
+  --prometheus-url http://127.0.0.1:9090 \
+  --query 'up{job="node"}' \
+  --ip-label instance \
+  --asset-type OTHER \
+  --mode file \
+  --output ./prometheus-bundle.json
+```
+
+Direct dry-run into ipocket API:
+
+```bash
+python -m app.connectors.prometheus \
+  --prometheus-url http://127.0.0.1:9090 \
+  --query 'up{job="node"}' \
+  --ip-label instance \
+  --token 'prom_user:prom_pass' \
+  --mode dry-run \
+  --ipocket-url http://127.0.0.1:8000 \
+  --ipocket-token '<token>'
+```
+
+Direct apply into ipocket API:
+
+```bash
+python -m app.connectors.prometheus \
+  --prometheus-url http://127.0.0.1:9090 \
+  --query 'up{job="node"}' \
+  --ip-label instance \
+  --mode apply \
+  --ipocket-url http://127.0.0.1:8000 \
+  --ipocket-token '<token>'
+```
+
+See `/docs/prometheus-connector.md` for full options and edge-case behavior.
 
 ## CI (quality + full tests)
 The GitHub Actions workflow runs code quality checks and the full pytest suite

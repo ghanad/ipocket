@@ -80,3 +80,8 @@ When a user account is deleted, existing audit logs are preserved by setting `au
 ## Assignment workflow
 - Project assignment is managed from the main **IP Assets** list using filters and edit actions.
 - There is no separate "Needs Assignment" page in the current UI.
+
+## Connector ingestion note
+- Prometheus and vCenter connectors do not introduce new database tables or fields.
+- Connector runs generate standard import bundles (`schema_version=1`) and upsert through the existing IPAsset import pipeline.
+- Upserts only change optional fields (`project_name`, `tags`, `notes`, `type`) when those values are explicitly included in connector output.

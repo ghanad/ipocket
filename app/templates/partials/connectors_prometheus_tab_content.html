@@ -1,0 +1,97 @@
+<section class="card connector-run-card">
+  <div class="card-header card-header-padded">
+    <div>
+      <h2>Run Prometheus Connector</h2>
+      <p class="subtitle">Query Prometheus, extract IPv4 addresses from a label, and import to ipocket in dry-run or apply mode.</p>
+    </div>
+  </div>
+  <div class="card-body">
+    {% if prometheus_errors %}
+    <div class="alert alert-error connector-errors">
+      {% for error in prometheus_errors %}
+      <p>{{ error }}</p>
+      {% endfor %}
+    </div>
+    {% endif %}
+
+    <form class="form-grid form-grid-two connector-form" method="post" action="/ui/connectors/prometheus/run">
+      <label class="field field-span">
+        <span>Prometheus URL</span>
+        <input class="input" type="text" name="prometheus_url" value="{{ prometheus_form_state.prometheus_url }}" placeholder="http://127.0.0.1:9090" required />
+      </label>
+      <label class="field field-span">
+        <span>PromQL Query</span>
+        <input class="input" type="text" name="query" value="{{ prometheus_form_state.query }}" placeholder="up{job=\"node\"}" required />
+      </label>
+      <label class="field">
+        <span>IP label</span>
+        <input class="input" type="text" name="ip_label" value="{{ prometheus_form_state.ip_label }}" placeholder="instance" required />
+      </label>
+      <label class="field">
+        <span>Asset type</span>
+        <select class="select" name="asset_type">
+          {% for choice in ["OS", "BMC", "VM", "VIP", "OTHER"] %}
+          <option value="{{ choice }}"{% if prometheus_form_state.asset_type == choice %} selected{% endif %}>{{ choice }}</option>
+          {% endfor %}
+        </select>
+      </label>
+      <label class="field">
+        <span>Project name (optional)</span>
+        <input class="input" type="text" name="project_name" value="{{ prometheus_form_state.project_name }}" placeholder="Core" />
+      </label>
+      <label class="field">
+        <span>Tags (optional)</span>
+        <input class="input" type="text" name="tags" value="{{ prometheus_form_state.tags }}" placeholder="monitoring,node-exporter" />
+      </label>
+      <label class="field">
+        <span>Prometheus auth (optional)</span>
+        <input class="input" type="password" name="token" value="" autocomplete="new-password" placeholder="token OR username:password" />
+      </label>
+      <label class="field">
+        <span>Timeout (seconds)</span>
+        <input class="input" type="number" min="1" name="timeout" value="{{ prometheus_form_state.timeout }}" required />
+      </label>
+      <label class="field">
+        <span>Mode</span>
+        <select class="select" name="mode">
+          <option value="dry-run"{% if prometheus_form_state.mode == "dry-run" %} selected{% endif %}>dry-run</option>
+          <option value="apply"{% if prometheus_form_state.mode == "apply" %} selected{% endif %}>apply</option>
+        </select>
+      </label>
+      <label class="checkbox-field field-span">
+        <input type="checkbox" name="insecure" value="1"{% if prometheus_form_state.insecure %} checked{% endif %} />
+        Skip TLS verification
+      </label>
+      <div class="form-actions">
+        <button type="submit" class="btn btn-primary">Run Connector</button>
+      </div>
+    </form>
+
+    {% if prometheus_logs %}
+    <div class="connector-log-wrap">
+      <p class="label">Execution log</p>
+      <pre class="connector-log" data-connector-log><code>{% for line in prometheus_logs %}{{ line }}
+{% endfor %}</code></pre>
+    </div>
+    {% endif %}
+  </div>
+</section>
+
+<section class="card">
+  <div class="card-header card-header-padded">
+    <div>
+      <h2>CLI (kept as-is)</h2>
+      <p class="subtitle">You can also run the Prometheus connector manually from terminal.</p>
+    </div>
+  </div>
+  <div class="card-body">
+    <pre class="connector-code-block"><code>python -m app.connectors.prometheus \
+  --prometheus-url http://127.0.0.1:9090 \
+  --query 'up{job="node"}' \
+  --ip-label instance \
+  --mode dry-run \
+  --ipocket-url http://127.0.0.1:8000 \
+  --ipocket-token '&lt;token&gt;'</code></pre>
+    <p>For full mapping/options, see <code>/docs/prometheus-connector.md</code>.</p>
+  </div>
+</section>

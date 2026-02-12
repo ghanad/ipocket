@@ -12,10 +12,13 @@
 <div class="tabs" role="tablist" aria-label="Connector sections" style="margin-bottom: 16px;">
   <a class="tab{% if active_tab == 'overview' %} tab-active{% endif %}" href="/ui/connectors?tab=overview" role="tab" aria-selected="{{ 'true' if active_tab == 'overview' else 'false' }}">Overview</a>
   <a class="tab{% if active_tab == 'vcenter' %} tab-active{% endif %}" href="/ui/connectors?tab=vcenter" role="tab" aria-selected="{{ 'true' if active_tab == 'vcenter' else 'false' }}">vCenter</a>
+  <a class="tab{% if active_tab == 'prometheus' %} tab-active{% endif %}" href="/ui/connectors?tab=prometheus" role="tab" aria-selected="{{ 'true' if active_tab == 'prometheus' else 'false' }}">Prometheus</a>
 </div>
 
 {% if active_tab == "vcenter" %}
   {% include "partials/connectors_vcenter_tab_content.html" %}
+{% elif active_tab == "prometheus" %}
+  {% include "partials/connectors_prometheus_tab_content.html" %}
 {% else %}
   {% include "partials/connectors_overview_tab_content.html" %}
 {% endif %}

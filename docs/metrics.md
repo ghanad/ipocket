@@ -12,3 +12,5 @@ The app exposes Prometheus metrics at `GET /metrics`:
 Note: Vendor catalog/host vendor selection does not introduce new Prometheus metrics in this release.
 
 UI note: unassigned-related metrics are still available even though the dedicated **Needs Assignment** page was removed; use the IP Assets list filters for assignment workflows.
+
+Connector note: the Prometheus connector imports IP assets from Prometheus query results, but it does not add exporter-side Prometheus metrics in ipocket; `/metrics` remains limited to IP inventory counters listed above.
