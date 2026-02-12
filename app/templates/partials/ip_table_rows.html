@@ -4,8 +4,8 @@
   <td>
     <input class="checkbox" type="checkbox" name="asset_ids" value="{{ asset.id }}" data-bulk-select>
   </td>
-  <td class="mono"><a href="/ui/ip-assets/{{ asset.id }}">{{ asset.ip_address }}</a></td>
-  <td>
+  <td class="mono col-ip-address"><a href="/ui/ip-assets/{{ asset.id }}">{{ asset.ip_address }}</a></td>
+  <td class="col-project">
     {% if asset.project_unassigned %}
     <span class="tag tag-warning">Unassigned</span>
     {% else %}
@@ -20,7 +20,7 @@
     </button>
     {% endif %}
   </td>
-  <td>
+  <td class="col-type">
     <button
       class="tag tag-color tag-filter-chip"
       type="button"

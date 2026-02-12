@@ -225,6 +225,12 @@ def test_ip_assets_list_uses_drawer_actions_for_edit_and_delete(client) -> None:
 
     assert response.status_code == 200
     assert 'class="table table-ip-assets"' in response.text
+    assert '<th class="col-ip-address">IP address</th>' in response.text
+    assert '<th class="col-project">Project</th>' in response.text
+    assert '<th class="col-type">Type</th>' in response.text
+    assert 'class="mono col-ip-address"' in response.text
+    assert 'class="col-project"' in response.text
+    assert 'class="col-type"' in response.text
     assert "Host Pair" not in response.text
     assert "bulk-edit-controls-hidden" in response.text
     assert f'data-ip-edit="{asset.id}"' in response.text
@@ -257,6 +263,11 @@ def test_ip_assets_list_uses_drawer_actions_for_edit_and_delete(client) -> None:
     assert "/static/js/ip-assets.js" in response.text
     assert "data-ip-host-field" in response.text
     assert "data-tag-picker" in response.text
+    app_css = Path(__file__).resolve().parents[2] / "app/static/app.css"
+    css_source = app_css.read_text(encoding="utf-8")
+    assert ".table.table-ip-assets th.col-ip-address" in css_source
+    assert ".table.table-ip-assets th.col-project" in css_source
+    assert ".table.table-ip-assets th.col-type" in css_source
 
 
 def test_ip_assets_list_renders_note_preview_with_hover_content(client) -> None:
