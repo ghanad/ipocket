@@ -782,8 +782,12 @@ def test_ip_assets_list_supports_multi_tag_filter_and_clickable_filter_chips(
     assert "data-tag-filter-input" in list_response.text
     assert "tag-filter-suggestions" in list_response.text
     assert "data-tag-filter-suggestions" in list_response.text
-    assert '<option value="prod" data-tag-color="#22c55e"></option>' in list_response.text
-    assert '<option value="edge" data-tag-color="#0ea5e9"></option>' in list_response.text
+    assert (
+        '<option value="prod" data-tag-color="#22c55e"></option>' in list_response.text
+    )
+    assert (
+        '<option value="edge" data-tag-color="#0ea5e9"></option>' in list_response.text
+    )
     assert "<span>Tags</span>" in list_response.text
     assert list_response.text.index('name="archived-only"') < list_response.text.index(
         "data-tag-filter-input"

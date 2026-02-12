@@ -89,7 +89,10 @@ def test_refactored_templates_load_external_page_assets() -> None:
     )
     assert "picker.append(inputWrap, selectedWrap);" in tag_picker_js
     assert "const getTagTextColor = (backgroundColor) => {" in tag_picker_js
-    assert 'element.style.setProperty("--tag-color-text", getTagTextColor(backgroundColor));' in tag_picker_js
+    assert (
+        'element.style.setProperty("--tag-color-text", getTagTextColor(backgroundColor));'
+        in tag_picker_js
+    )
     assert "window.ipocketApplyTagContrast = applyTagContrast;" in tag_picker_js
     assert "applyTagContrast(root);" in tag_picker_js
 
