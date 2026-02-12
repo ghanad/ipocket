@@ -1,0 +1,76 @@
+<section class="card connector-run-card">
+  <div class="card-header card-header-padded">
+    <div>
+      <h2>Run vCenter Connector</h2>
+      <p class="subtitle">Connect to vCenter and run import in dry-run or apply mode directly from UI.</p>
+    </div>
+  </div>
+  <div class="card-body">
+    {% if vcenter_errors %}
+    <div class="alert alert-error connector-errors">
+      {% for error in vcenter_errors %}
+      <p>{{ error }}</p>
+      {% endfor %}
+    </div>
+    {% endif %}
+
+    <form class="form-grid form-grid-two connector-form" method="post" action="/ui/connectors/vcenter/run">
+      <label class="field field-span">
+        <span>vCenter server</span>
+        <input class="input" type="text" name="server" value="{{ vcenter_form_state.server }}" placeholder="vc.example.local" required />
+      </label>
+      <label class="field">
+        <span>Port</span>
+        <input class="input" type="number" min="1" max="65535" name="port" value="{{ vcenter_form_state.port }}" required />
+      </label>
+      <label class="field">
+        <span>Mode</span>
+        <select class="select" name="mode">
+            <option value="dry-run"{% if vcenter_form_state.mode == "dry-run" %} selected{% endif %}>dry-run</option>
+            <option value="apply"{% if vcenter_form_state.mode == "apply" %} selected{% endif %}>apply</option>
+        </select>
+      </label>
+      <label class="field">
+        <span>Username</span>
+        <input class="input" type="text" name="username" value="{{ vcenter_form_state.username }}" placeholder="administrator@vsphere.local" required />
+      </label>
+      <label class="field">
+        <span>Password</span>
+        <input class="input" type="password" name="password" value="" autocomplete="new-password" required />
+      </label>
+      <label class="checkbox-field field-span">
+        <input type="checkbox" name="insecure" value="1"{% if vcenter_form_state.insecure %} checked{% endif %} />
+        Skip TLS verification
+      </label>
+      <div class="form-actions">
+        <button type="submit" class="btn btn-primary">Run Connector</button>
+      </div>
+    </form>
+
+    {% if vcenter_logs %}
+    <div class="connector-log-wrap">
+      <p class="label">Execution log</p>
+      <pre class="connector-log" data-connector-log><code>{% for line in vcenter_logs %}{{ line }}
+{% endfor %}</code></pre>
+    </div>
+    {% endif %}
+  </div>
+</section>
+
+<section class="card">
+  <div class="card-header card-header-padded">
+    <div>
+      <h2>CLI (kept as-is)</h2>
+      <p class="subtitle">You can still run the existing CLI connector manually.</p>
+    </div>
+  </div>
+  <div class="card-body">
+    <p class="subtitle connector-cli-note">The CLI behavior is unchanged and remains available for manual workflows.</p>
+    <pre class="connector-code-block"><code>python -m app.connectors.vcenter \
+  --server &lt;vcenter&gt; \
+  --username &lt;user&gt; \
+  --password '&lt;pass&gt;' \
+  --output ./vcenter-bundle.json</code></pre>
+    <p>For full mapping/options, see <code>/docs/vcenter-connector.md</code>.</p>
+  </div>
+</section>

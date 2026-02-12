@@ -5,6 +5,8 @@ ipocket includes a manual vCenter connector that exports ESXi hosts and VMs into
 ## Why manual
 
 This connector does not run automatically. You run it on demand, then import the generated file from **Data Ops → Import**.
+You can access the same command snippets from the UI at **Connectors → vCenter**.
+That UI also supports direct connector execution with `dry-run`/`apply` modes and shows run logs inline.
 
 ## Install dependencies
 

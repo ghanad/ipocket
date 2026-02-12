@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="page-header">
+  <div>
+    <p class="eyebrow">Connectors</p>
+    <h1>Integrations</h1>
+    <p class="subtitle">Manage external inventory connectors and import flow guidance.</p>
+  </div>
+</section>
+
+<div class="tabs" role="tablist" aria-label="Connector sections" style="margin-bottom: 16px;">
+  <a class="tab{% if active_tab == 'overview' %} tab-active{% endif %}" href="/ui/connectors?tab=overview" role="tab" aria-selected="{{ 'true' if active_tab == 'overview' else 'false' }}">Overview</a>
+  <a class="tab{% if active_tab == 'vcenter' %} tab-active{% endif %}" href="/ui/connectors?tab=vcenter" role="tab" aria-selected="{{ 'true' if active_tab == 'vcenter' else 'false' }}">vCenter</a>
+</div>
+
+{% if active_tab == "vcenter" %}
+  {% include "partials/connectors_vcenter_tab_content.html" %}
+{% else %}
+  {% include "partials/connectors_overview_tab_content.html" %}
+{% endif %}
+{% endblock %}

@@ -9,6 +9,7 @@ def test_ui_router_includes_modular_route_groups() -> None:
     assert "/ui/hosts" in paths
     assert "/ui/ranges" in paths
     assert "/ui/projects" in paths
+    assert "/ui/connectors" in paths
     assert "/ui/users" in paths
     assert "/ui/import" in paths
 
