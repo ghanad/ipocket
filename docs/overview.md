@@ -66,9 +66,10 @@ ipocket is a lightweight IP inventory app to track addresses and their project a
 - Export data as CSV, JSON, or bundle (JSON/ZIP) from the Data Ops Export tab.
 - Import data from bundle.json or CSV with dry-run support and upserts from the Data Ops Import tab.
 - Upload Nmap XML from the Data Ops Import tab to discover reachable IPs and add them as `OTHER` assets, with inline example commands.
-- Sidebar now includes a **Connectors** page with tabs (`Overview` / `vCenter`) so operators can find connector status and run the vCenter connector from UI.
+- Sidebar includes a **Connectors** page with tabs (`Overview` / `vCenter` / `Prometheus`) so operators can run import connectors directly from UI.
 - **Connectors → vCenter** supports both `dry-run` and `apply` execution modes and shows an in-page execution log (inventory summary + warnings/errors) after each run.
 - Manual vCenter connector is available via `python -m app.connectors.vcenter` (ESXi hosts as `OS` + tag `esxi`, VMs as `VM`) with both file export mode and direct API dry-run/apply modes.
+- **Connectors → Prometheus** imports IPs from Prometheus `api/v1/query` vector results by extracting IPv4 values from a chosen label (for node_exporter this is commonly `instance`), supports `dry-run`/`apply` from UI, and keeps a CLI path via `python -m app.connectors.prometheus`.
 - Prometheus metrics on `/metrics`
 - Prometheus SD endpoint on `/sd/node` with project grouping
 - Audit logging for IP asset create/update/delete actions, surfaced on the IP detail page and a global Audit Log view (both require authentication).
