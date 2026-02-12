@@ -18,6 +18,8 @@ def test_ui_assets_are_local() -> None:
     assert "height: 100vh" in css
     assert "position: sticky" in css
     assert "overflow-y: auto" in css
+    assert ".table.table-ip-assets .tag {" in css
+    assert "padding: 3px 9px;" in css
 
 
 def test_use_local_assets_env_override(monkeypatch) -> None:
