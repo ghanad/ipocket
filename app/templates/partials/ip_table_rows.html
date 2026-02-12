@@ -65,7 +65,18 @@
     <span class="muted">—</span>
     {% endif %}
   </td>
-  <td class="muted">{{ asset.notes }}</td>
+  <td class="ip-note-cell">
+    {% if asset.notes %}
+    <span
+      class="ip-note-preview muted"
+      tabindex="0"
+      title="{{ asset.notes }}"
+      data-full-note="{{ asset.notes | e }}"
+    >{{ asset.notes }}</span>
+    {% else %}
+    <span class="muted">—</span>
+    {% endif %}
+  </td>
   <td class="asset-actions-cell">
     <div class="ip-asset-actions">
       <button

@@ -258,6 +258,40 @@ def test_ip_assets_list_uses_drawer_actions_for_edit_and_delete(client) -> None:
     assert "data-tag-picker" in response.text
 
 
+def test_ip_assets_list_renders_note_preview_with_hover_content(client) -> None:
+    import os
+
+    note = "this is a very long note for row height stability checks"
+    connection = db.connect(os.environ["IPAM_DB_PATH"])
+    try:
+        db.init_db(connection)
+        repository.create_ip_asset(
+            connection,
+            ip_address="10.30.0.44",
+            asset_type=IPAssetType.VM,
+            notes=note,
+        )
+    finally:
+        connection.close()
+
+    response = client.get("/ui/ip-assets")
+
+    assert response.status_code == 200
+    assert 'class="ip-note-preview muted"' in response.text
+    assert f'title="{note}"' in response.text
+    assert f'data-full-note="{note}"' in response.text
+    css_source = (Path(__file__).resolve().parents[2] / "app/static/app.css").read_text(
+        encoding="utf-8"
+    )
+    assert ".table.table-ip-assets {" in css_source
+    assert "table-layout: fixed;" in css_source
+    assert ".ip-asset-actions {" in css_source
+    assert "flex-wrap: nowrap;" in css_source
+    assert ".table.table-ip-assets th:first-child," in css_source
+    assert "width: 52px;" in css_source
+    assert "transition-delay: 0.45s, 0.45s;" in css_source
+
+
 def test_ip_assets_edit_can_clear_project_assignment(client) -> None:
     import os
 
