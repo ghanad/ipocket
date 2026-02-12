@@ -111,3 +111,18 @@ def test_range_create_permissions(client, _create_user, _login, _auth_headers) -
         json={"name": "Corp", "cidr": "192.168.10.0/24"},
     )
     assert editor_response.status_code == 200
+
+
+def test_superuser_cannot_write_data_endpoints(
+    client, _create_user, _login, _auth_headers
+) -> None:
+    _create_user("root", "root-pass", UserRole.SUPERUSER)
+    headers = _auth_headers(_login("root", "root-pass"))
+
+    response = client.post(
+        "/ip-assets",
+        headers=headers,
+        json={"ip_address": "10.0.1.10", "type": IPAssetType.VM.value},
+    )
+
+    assert response.status_code == 403

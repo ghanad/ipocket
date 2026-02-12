@@ -19,7 +19,8 @@ from fastapi import Depends, HTTPException, Request, status
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse, Response
 
 from app import build_info, repository
-from app.dependencies import get_connection
+from app.dependencies import get_connection, get_db_path
+from app import db
 from app.environment import use_local_assets
 from app.models import IPAsset, IPAssetType, UserRole
 from app.utils import normalize_hex_color, validate_ip_address
@@ -52,6 +53,7 @@ def _render_template(
     from app.routes import ui as ui_module
 
     is_authenticated = ui_module._is_authenticated_request(request)
+    is_superuser = ui_module._is_superuser_request(request)
     flash_messages = _load_flash_messages(request)
     toast_messages = list(flash_messages)
     extra_toasts = context.pop("toast_messages", None)
@@ -63,6 +65,7 @@ def _render_template(
         "active_nav": active_nav,
         "use_local_assets": use_local_assets(),
         "is_authenticated": is_authenticated,
+        "is_superuser": is_superuser,
         "build_info": build_info.get_display_build_info(),
         "toast_messages": toast_messages,
         **context,
@@ -285,6 +288,23 @@ def _is_authenticated_request(request: Request) -> bool:
     return _verify_session_value(signed_session) is not None
 
 
+def _is_superuser_request(request: Request) -> bool:
+    signed_session = request.cookies.get(SESSION_COOKIE)
+    user_id = _verify_session_value(signed_session)
+    if not user_id:
+        return False
+    try:
+        parsed_user_id = int(user_id)
+    except ValueError:
+        return False
+    connection = db.connect(get_db_path())
+    try:
+        user = repository.get_user_by_id(connection, parsed_user_id)
+    finally:
+        connection.close()
+    return bool(user and user.is_active and user.role == UserRole.SUPERUSER)
+
+
 def get_current_ui_user(request: Request, connection=Depends(get_connection)):
     signed_session = request.cookies.get(SESSION_COOKIE)
     user_id = _verify_session_value(signed_session)
@@ -313,7 +333,13 @@ def get_current_ui_user(request: Request, connection=Depends(get_connection)):
 
 
 def require_ui_editor(user=Depends(get_current_ui_user)):
-    if user.role not in (UserRole.EDITOR, UserRole.ADMIN):
+    if user.role != UserRole.EDITOR:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN)
+    return user
+
+
+def require_ui_superuser(user=Depends(get_current_ui_user)):
+    if user.role != UserRole.SUPERUSER:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN)
     return user
 

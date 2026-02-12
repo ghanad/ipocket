@@ -70,7 +70,18 @@ from .ranges import (
     update_ip_range,
 )
 from .summary import get_management_summary
-from .users import count_users, create_user, get_user_by_id, get_user_by_username
+from .users import (
+    count_active_users_by_role,
+    count_users,
+    create_user,
+    delete_user,
+    get_user_by_id,
+    get_user_by_username,
+    list_users,
+    set_user_active,
+    update_user_password,
+    update_user_role,
+)
 
 __all__ = [
     "archive_ip_asset",
@@ -135,8 +146,14 @@ __all__ = [
     "list_ip_ranges",
     "update_ip_range",
     "get_management_summary",
+    "count_active_users_by_role",
     "count_users",
     "create_user",
+    "delete_user",
     "get_user_by_id",
     "get_user_by_username",
+    "list_users",
+    "set_user_active",
+    "update_user_password",
+    "update_user_role",
 ]
