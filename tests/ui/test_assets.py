@@ -224,6 +224,7 @@ def test_ip_assets_list_uses_drawer_actions_for_edit_and_delete(client) -> None:
     response = client.get("/ui/ip-assets")
 
     assert response.status_code == 200
+    assert 'class="table table-ip-assets"' in response.text
     assert "bulk-edit-controls-hidden" in response.text
     assert f'data-ip-edit="{asset.id}"' in response.text
     assert 'data-ip-address="10.30.0.10"' in response.text
