@@ -19,6 +19,8 @@ Initialize the database (runs migrations):
 alembic upgrade head
 ```
 
+After pulling updates, rerun `alembic upgrade head` to apply the latest indexing migration used by SQL-based IP asset pagination/filtering performance improvements.
+
 The migration runner reads `IPAM_DB_PATH` (defaults to `ipocket.db`) to locate the
 SQLite file.
 
@@ -223,7 +225,7 @@ Host UI safety flow: deleting a Host from UI requires opening the host delete co
 
 ## Run tests
 ```bash
-pytest
+.venv/bin/pytest -q
 ```
 
 ## Manual vCenter export connector

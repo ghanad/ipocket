@@ -14,6 +14,7 @@ ipocket is a lightweight IP inventory app to track addresses and their project a
 - Selected tags in the top Tags filter keep each tag's configured catalog color, including chips added live from the autocomplete input.
 - IP assets list includes an archived-only filter for reviewing soft-deleted records when needed.
 - IP assets list includes pagination with a user-selectable page size (default 20) to keep large inventories manageable.
+- IP assets pagination/filtering/sorting now execute directly in SQL (including `LIMIT/OFFSET`) instead of Python in-memory slicing, so large inventories page efficiently while preserving deterministic IP ordering across IPv4/IPv6/fallback values.
 - IP assets list rows use compact spacing for IP text and Project/Type chips to keep more records visible per page.
 - IP assets table keeps `IP address`, `Project`, and `Type` columns narrow because their values are bounded, leaving more horizontal space for Tags and Notes.
 - IP assets list uses a right-side drawer for both adding and editing IPs without leaving the list view.
@@ -74,6 +75,7 @@ ipocket is a lightweight IP inventory app to track addresses and their project a
 - Database schema managed through Alembic migrations
 - Repository data-access layer is modularized under `app/repository/` (assets, hosts, ranges, metadata, users, audit, summary), while `app.repository` remains the stable import surface via package re-exports.
 - Internal IP-asset repository logic is further split into focused helpers: `app/repository/_asset_filters.py` (filter query assembly), `app/repository/_asset_tags.py` (tag mappings/persistence), and `app/repository/_asset_audit.py` (audit change summaries); `app/repository/assets.py` remains the backward-compatible public API module.
+- The IP asset listing path adds DB indexes (`ip_assets` archived/filter columns plus tag lookup indexes) to keep paginated list and tag-filter queries responsive on larger datasets.
 
 ## Note
 Owner support has been removed in development phase, so assignment is now project-only.
