@@ -180,7 +180,8 @@ UI design reference templates live in `/ui_template` for layout and styling guid
 5) Create Hosts from the **Hosts** page and pick a Vendor when needed.
 6) Add IPs from the **IP Assets** page.
 7) Open **Data Ops** from the sidebar to import or export data using one unified page with tabs.
-8) When assigning tags on IP Assets or Range Address drawers, use the chip picker (`Add tags...`) to search and select existing tags only (create new tag names first in **Library → Tags**).
+8) Open **Connectors** from the sidebar and use the **vCenter** tab to run the connector directly from UI (`dry-run` or `apply`) and review execution logs.
+9) When assigning tags on IP Assets or Range Address drawers, use the chip picker (`Add tags...`) to search and select existing tags only (create new tag names first in **Library → Tags**).
 
 Assignment workflow note: use **IP Assets → Assignment = Unassigned only** to review and update records that still need a project. You can also use **Project = Unassigned** in the search filters for the same project-missing view. The old dedicated **Needs Assignment** page is removed.
 
@@ -233,6 +234,16 @@ python -m app.connectors.vcenter --server <vcenter> --username <user> --password
 ```
 
 Then import the generated JSON from **Data Ops → Import**.
+
+You can also open **Connectors → vCenter** in the UI for the same command examples.
+The UI flow also supports direct execution:
+
+- Fill vCenter server/username/password (and optional TLS-skip + custom port)
+- Choose mode:
+  - `dry-run` (recommended first)
+  - `apply`
+- Click **Run Connector**
+- Review the in-page execution log for collected host/VM counts and any warnings/errors
 
 To skip manual upload and send directly to ipocket import API:
 

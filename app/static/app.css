@@ -647,6 +647,49 @@ p {
   grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
 }
 
+.connector-run-card {
+  margin-bottom: 16px;
+}
+
+.connector-form {
+  max-width: 760px;
+}
+
+.connector-errors {
+  margin-bottom: 12px;
+}
+
+.connector-log-wrap {
+  margin-top: 20px;
+}
+
+.connector-log {
+  margin-top: 8px;
+  padding: 12px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-border);
+  background: #0f172a;
+  color: #e2e8f0;
+  overflow-x: auto;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.connector-code-block {
+  margin: 10px 0 12px;
+  padding: 12px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-border);
+  background: #f8fafc;
+  overflow-x: auto;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.connector-cli-note {
+  margin-bottom: 8px;
+}
+
 .host-add-card .form-grid {
   gap: 12px;
 }

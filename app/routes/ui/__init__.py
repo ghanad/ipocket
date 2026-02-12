@@ -4,7 +4,17 @@ from fastapi import APIRouter
 
 from app import repository as repository
 
-from . import auth, dashboard, data_ops, hosts, ip_assets, ranges, settings, users
+from . import (
+    auth,
+    connectors,
+    dashboard,
+    data_ops,
+    hosts,
+    ip_assets,
+    ranges,
+    settings,
+    users,
+)
 from .utils import (
     FLASH_COOKIE as FLASH_COOKIE,
     SESSION_COOKIE as SESSION_COOKIE,
@@ -20,6 +30,7 @@ from .utils import (
 router = APIRouter()
 router.include_router(dashboard.router)
 router.include_router(auth.router)
+router.include_router(connectors.router)
 router.include_router(ip_assets.router)
 router.include_router(hosts.router)
 router.include_router(ranges.router)
