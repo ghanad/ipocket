@@ -13,6 +13,7 @@ from app import repository
 from app.main import app
 from app.models import IPAsset, IPAssetType, User, UserRole
 from app.routes.ui import utils as ui_utils
+from app.routes.ui._utils import session as ui_session_utils
 
 
 @dataclass
@@ -296,3 +297,9 @@ def test_export_type_csv_json_zip_and_view_models_helpers() -> None:
     )
     assert models[0]["host_pair"] == "10.10.0.2"
     assert models[0]["project_name"] == "Core"
+
+
+def test_utils_module_keeps_legacy_symbols_mapped_to_new_modules() -> None:
+    assert ui_utils._sign_session_value is ui_session_utils._sign_session_value
+    assert ui_utils._verify_session_value is ui_session_utils._verify_session_value
+    assert ui_utils.get_current_ui_user is ui_session_utils.get_current_ui_user
