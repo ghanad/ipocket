@@ -3,7 +3,7 @@
 ipocket is a lightweight IP inventory app to track addresses and their project assignment.
 
 ## Highlights
-- CRUD API for IP records (including permanent delete endpoint for editors/admins)
+- CRUD API for IP records (including permanent delete endpoint for editors only)
 - Project management
 - Project colors to quickly scan ownership in the IP assets list
 - IP assets list supports HTMX-powered live search and filtering (including an assignment dropdown) without full page reloads.
@@ -42,6 +42,10 @@ ipocket is a lightweight IP inventory app to track addresses and their project a
 - The old fixed top header has been removed from the main layout to give pages more vertical space; branding remains in the left sidebar.
 - UI templates now keep behavior and page-specific styling in static assets (`app/static/js/*.js` and `app/static/app.css`) to keep Jinja markup focused on structure.
 - The sidebar account section shows Login when signed out and Logout when signed in.
+- User access model now distinguishes `Editor` (data write) from `Superuser` (user management only); read routes stay public except audit log, which still requires authentication.
+- User management is available on `/ui/users` (superuser-only) and writes user-management actions to audit logs with target type `USER`.
+- The `/ui/users` page is visible and accessible only to authenticated superusers.
+- User create/edit/delete on `/ui/users` uses the same right-side drawer pattern as other management pages.
 - The sidebar footer shows build metadata (`version/commit/build time`) whenever the sidebar is visible, including signed-out views.
 - IP ranges page supports editing and deleting saved CIDR ranges for cleanup, with a confirmation step that requires typing the exact range name.
 - Saved ranges now use the same inline Edit/Delete button style as Hosts so table actions stay visually consistent across pages.

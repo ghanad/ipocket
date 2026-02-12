@@ -19,7 +19,7 @@ async def import_bundle_json(
     connection=Depends(get_connection),
     user=Depends(get_current_user),
 ):
-    if not dry_run and user.role not in (UserRole.EDITOR, UserRole.ADMIN):
+    if not dry_run and user.role != UserRole.EDITOR:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN)
     payload = await file.read()
     result = run_import(
@@ -36,7 +36,7 @@ async def import_csv_files(
     connection=Depends(get_connection),
     user=Depends(get_current_user),
 ):
-    if not dry_run and user.role not in (UserRole.EDITOR, UserRole.ADMIN):
+    if not dry_run and user.role != UserRole.EDITOR:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN)
     if hosts_file is None and ip_assets_file is None:
         raise HTTPException(

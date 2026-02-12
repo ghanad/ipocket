@@ -24,6 +24,7 @@ class IPAssetType(str, Enum):
 class UserRole(str, Enum):
     VIEWER = "Viewer"
     EDITOR = "Editor"
+    SUPERUSER = "Admin"
     ADMIN = "Admin"
 
 

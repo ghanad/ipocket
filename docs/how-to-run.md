@@ -60,7 +60,7 @@ database at `/data/ipocket.db`.
 
 ## Run with Docker Compose
 The provided `docker-compose.yml` mounts the SQLite database directory outside
-the container and sets bootstrap admin credentials.
+the container and sets bootstrap superuser credentials.
 
 ```bash
 mkdir -p data
@@ -70,7 +70,7 @@ docker compose up --build
 The app will persist data in `./data/ipocket.db` and is available at
 http://127.0.0.1:8000.
 
-Defaults for the bootstrap admin user are:
+Defaults for the bootstrap superuser are:
 - `ADMIN_BOOTSTRAP_USERNAME=admin`
 - `ADMIN_BOOTSTRAP_PASSWORD=admin-pass`
 
@@ -137,7 +137,7 @@ Endpoints:
 - Service discovery: http://127.0.0.1:8000/sd/node
 
 ## UI login (browser)
-Bootstrap a local Admin user before startup:
+Bootstrap a local Superuser before startup:
 
 ```bash
 export ADMIN_BOOTSTRAP_USERNAME=admin
@@ -147,12 +147,33 @@ export ADMIN_BOOTSTRAP_PASSWORD=admin-pass
 Start the app and sign in:
 - Visit http://127.0.0.1:8000/ui/login
 - Login with the bootstrap credentials.
-- Editors/Admins can add or edit IPs from the UI.
+- Editors can add or edit IPs from the UI.
+
+## User management
+User management requires the bootstrap superuser env vars.
+
+### UI user management
+After logging in as superuser, open:
+
+```bash
+http://127.0.0.1:8000/ui/users
+```
+
+This page is restricted to superusers and supports:
+- creating users
+- granting/revoking edit access
+- activating/deactivating users
+- rotating user passwords
+- deleting users (with confirmation)
+
+Safety rules:
+- the last active superuser cannot be deleted
+- user-related audit logs are retained when a user is deleted
 
 UI design reference templates live in `/ui_template` for layout and styling guidance.
 
 ## First-time setup checklist
-1) Bootstrap an admin user (env vars above).
+1) Bootstrap a superuser (env vars above).
 2) Login at `/ui/login`.
 3) Open **Library** from the sidebar and use tabs to create Projects, Tags, and Vendors.
 4) In **Library → Tags**, the create drawer now suggests a random color by default; you can keep it or pick another color before saving.
@@ -172,7 +193,7 @@ curl -s -X POST http://127.0.0.1:8000/login \
   -d '{"username":"editor","password":"editor-pass"}'
 ```
 
-Create an IP asset (Editor/Admin):
+Create an IP asset (Editor):
 
 ```bash
 curl -s -X POST http://127.0.0.1:8000/ip-assets \
@@ -187,7 +208,7 @@ List unassigned IPs:
 curl -s "http://127.0.0.1:8000/ip-assets?unassigned-only=true"
 ```
 
-Delete an IP asset (Editor/Admin):
+Delete an IP asset (Editor):
 
 ```bash
 curl -s -X DELETE http://127.0.0.1:8000/ip-assets/10.0.0.50 \

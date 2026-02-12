@@ -28,6 +28,6 @@ def get_current_user(
 
 
 def require_editor(user=Depends(get_current_user)):
-    if user.role not in (UserRole.EDITOR, UserRole.ADMIN):
+    if user.role != UserRole.EDITOR:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN)
     return user

@@ -53,16 +53,24 @@ UI assignment flows only allow selecting from existing tags; they do not create 
 ## Vendor
 - `name` (TEXT, unique)
 
+## User
+- `username` (TEXT, unique)
+- `hashed_password` (TEXT)
+- `role` (`Viewer`, `Editor`, `Admin` where `Admin` is treated as Superuser)
+- `is_active` (INTEGER flag; `1` active, `0` inactive)
+
 
 ## AuditLog
 - `user_id` (INTEGER, nullable; FK to `users.id`)
 - `username` (TEXT, nullable snapshot of username at action time)
-- `target_type` (TEXT, ex: `IP_ASSET`)
+- `target_type` (TEXT, ex: `IP_ASSET`, `USER`)
 - `target_id` (INTEGER)
 - `target_label` (TEXT, ex: IP address)
 - `action` (TEXT, `CREATE`, `UPDATE`, `DELETE`)
 - `changes` (TEXT summary of changes; no-op updates are skipped)
 - `created_at` (TEXT timestamp)
+
+When a user account is deleted, existing audit logs are preserved by setting `audit_logs.user_id` to `NULL` while keeping `username` snapshots intact.
 
 
 ## Host deletion rule

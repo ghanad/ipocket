@@ -131,7 +131,7 @@ async def ui_import_nmap_submit(
         dry_run = bool(form_data.get("dry_run"))
     else:
         dry_run = mode != "apply"
-    if not dry_run and user.role not in (UserRole.EDITOR, UserRole.ADMIN):
+    if not dry_run and user.role != UserRole.EDITOR:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN)
     upload = form_data.get("nmap_file")
     if upload is None:
@@ -177,7 +177,7 @@ async def ui_import_bundle(
     form_data = await _parse_multipart_form(request)
     mode = form_data.get("mode", "dry-run")
     dry_run = mode != "apply"
-    if not dry_run and user.role not in (UserRole.EDITOR, UserRole.ADMIN):
+    if not dry_run and user.role != UserRole.EDITOR:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN)
     upload = form_data.get("bundle_file")
     if upload is None:
@@ -218,7 +218,7 @@ async def ui_import_csv(
     form_data = await _parse_multipart_form(request)
     mode = form_data.get("mode", "dry-run")
     dry_run = mode != "apply"
-    if not dry_run and user.role not in (UserRole.EDITOR, UserRole.ADMIN):
+    if not dry_run and user.role != UserRole.EDITOR:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN)
     hosts_file = form_data.get("hosts_file")
     ip_assets_file = form_data.get("ip_assets_file")

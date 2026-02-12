@@ -1,0 +1,258 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="page-header">
+  <div>
+    <p class="eyebrow">Access</p>
+    <h1>User Management</h1>
+    <p class="subtitle">Create users and manage editor access. This page is restricted to superusers.</p>
+  </div>
+  <div class="page-header-actions">
+    <button class="btn btn-primary" type="button" data-user-add>New User</button>
+  </div>
+</section>
+
+<section class="card table-card">
+  <div class="table-wrapper">
+    <table class="table table-compact">
+      <thead>
+        <tr>
+          <th>Username</th>
+          <th>Role</th>
+          <th>Status</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% if users %}
+        {% for user in users %}
+        <tr>
+          <td>{{ user.username }}</td>
+          <td>
+            {% if user.role.value == 'Admin' %}
+            <span class="pill pill-danger">Superuser</span>
+            {% elif user.role.value == 'Editor' %}
+            <span class="pill pill-success">Editor</span>
+            {% else %}
+            <span class="pill">Viewer</span>
+            {% endif %}
+          </td>
+          <td>
+            {% if user.is_active %}
+            <span class="pill pill-success">Active</span>
+            {% else %}
+            <span class="pill pill-warning">Inactive</span>
+            {% endif %}
+          </td>
+          <td class="asset-actions-cell">
+            <div class="table-actions">
+              <button
+                class="btn btn-secondary btn-small"
+                type="button"
+                data-user-edit="{{ user.id }}"
+                data-user-name="{{ user.username }}"
+                data-user-role="{{ user.role.value }}"
+                data-user-active="{{ '1' if user.is_active else '0' }}"
+              >
+                Edit
+              </button>
+              <button
+                class="btn btn-danger btn-small"
+                type="button"
+                data-user-delete="{{ user.id }}"
+                data-user-delete-name="{{ user.username }}"
+              >
+                Delete
+              </button>
+            </div>
+          </td>
+        </tr>
+        {% endfor %}
+        {% else %}
+        <tr>
+          <td colspan="4" class="empty-state">No users found.</td>
+        </tr>
+        {% endif %}
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<div class="ip-drawer-overlay" data-user-create-overlay aria-hidden="true"></div>
+<aside class="ip-drawer" data-user-create-drawer data-user-create-open="{{ 'true' if create_errors else 'false' }}" role="dialog" aria-modal="true" aria-label="Create user">
+  <div class="ip-drawer-header">
+    <div class="ip-drawer-header-row">
+      <div>
+        <h2 class="ip-drawer-title">Create User</h2>
+        <p class="ip-drawer-subtitle">Add a new account for UI/API login.</p>
+      </div>
+      <button class="ip-drawer-close" type="button" aria-label="Close drawer" data-user-create-close>✕</button>
+    </div>
+  </div>
+  <div class="ip-drawer-body">
+    {% if create_errors %}
+    <div class="alert alert-error">
+      <ul>
+        {% for error in create_errors %}
+        <li>{{ error }}</li>
+        {% endfor %}
+      </ul>
+    </div>
+    {% endif %}
+    <form class="ip-drawer-form" method="post" action="/ui/users" data-user-create-form id="user-create-form">
+      <section class="ip-drawer-section">
+        <h3>User details</h3>
+        <label class="field">
+          <span>Username</span>
+          <input class="input" type="text" name="username" value="{{ create_form.username }}" data-user-create-input="username" required />
+        </label>
+        <label class="field">
+          <span>Password</span>
+          <input class="input" type="password" name="password" data-user-create-input="password" required />
+        </label>
+        <label class="checkbox-field">
+          <input type="checkbox" name="can_edit" value="1" data-user-create-input="can_edit" {% if create_form.can_edit %}checked{% endif %} />
+          Can edit data
+        </label>
+        <label class="checkbox-field">
+          <input type="checkbox" name="is_active" value="1" data-user-create-input="is_active" {% if create_form.is_active %}checked{% endif %} />
+          Active
+        </label>
+      </section>
+    </form>
+  </div>
+  <div class="ip-drawer-footer">
+    <span class="ip-drawer-footer-status" data-user-create-dirty>Enter details</span>
+    <div class="ip-drawer-footer-actions">
+      <button class="btn btn-secondary" type="button" data-user-create-cancel>Cancel</button>
+      <button class="btn btn-primary" type="submit" form="user-create-form" data-user-create-save disabled>Create user</button>
+    </div>
+  </div>
+</aside>
+
+<div class="ip-drawer-overlay" data-user-edit-overlay aria-hidden="true"></div>
+<aside class="ip-drawer" data-user-edit-drawer data-user-edit-open="{{ 'true' if edit_errors else 'false' }}" role="dialog" aria-modal="true" aria-label="Edit user">
+  <div class="ip-drawer-header">
+    <div class="ip-drawer-header-row">
+      <div>
+        <h2 class="ip-drawer-title">Edit User</h2>
+        <p class="ip-drawer-subtitle" data-user-edit-subtitle>Select a user</p>
+      </div>
+      <button class="ip-drawer-close" type="button" aria-label="Close drawer" data-user-edit-close>✕</button>
+    </div>
+  </div>
+  <div class="ip-drawer-body">
+    {% if edit_errors %}
+    <div class="alert alert-error">
+      <ul>
+        {% for error in edit_errors %}
+        <li>{{ error }}</li>
+        {% endfor %}
+      </ul>
+    </div>
+    {% endif %}
+    <form
+      class="ip-drawer-form"
+      method="post"
+      action="{% if edit_form.id %}/ui/users/{{ edit_form.id }}/edit{% else %}#{% endif %}"
+      data-user-edit-form
+      id="user-edit-form"
+      data-user-edit-id="{{ edit_form.id }}"
+      data-user-edit-role="{{ edit_form.role }}"
+    >
+      <section class="ip-drawer-section">
+        <h3>Access controls</h3>
+        <label class="field">
+          <span>Username</span>
+          <input class="input" type="text" value="{{ edit_form.username }}" data-user-edit-username disabled />
+        </label>
+        <label class="checkbox-field">
+          <input type="checkbox" name="can_edit" value="1" data-user-edit-input="can_edit" {% if edit_form.can_edit %}checked{% endif %} />
+          Can edit data
+        </label>
+        <label class="checkbox-field">
+          <input type="checkbox" name="is_active" value="1" data-user-edit-input="is_active" {% if edit_form.is_active %}checked{% endif %} />
+          Active
+        </label>
+        <label class="field">
+          <span>New password (optional)</span>
+          <input class="input" type="password" name="password" data-user-edit-input="password" placeholder="Leave empty to keep current password" />
+        </label>
+      </section>
+    </form>
+  </div>
+  <div class="ip-drawer-footer">
+    <span class="ip-drawer-footer-status" data-user-edit-dirty>Choose user</span>
+    <div class="ip-drawer-footer-actions">
+      <button class="btn btn-secondary" type="button" data-user-edit-cancel>Cancel</button>
+      <button class="btn btn-primary" type="submit" form="user-edit-form" data-user-edit-save disabled>Save changes</button>
+    </div>
+  </div>
+</aside>
+
+<div class="ip-drawer-overlay" data-user-delete-overlay aria-hidden="true"></div>
+<aside class="ip-drawer" data-user-delete-drawer data-user-delete-open="{{ 'true' if delete_errors else 'false' }}" role="dialog" aria-modal="true" aria-label="Delete user">
+  <div class="ip-drawer-header">
+    <div class="ip-drawer-header-row">
+      <div>
+        <h2 class="ip-drawer-title">Delete User</h2>
+        <p class="ip-drawer-subtitle" data-user-delete-subtitle>Permanent removal</p>
+      </div>
+      <button class="ip-drawer-close" type="button" aria-label="Close drawer" data-user-delete-close>✕</button>
+    </div>
+  </div>
+  <div class="ip-drawer-body">
+    {% if delete_errors %}
+    <div class="alert alert-error">
+      <ul>
+        {% for error in delete_errors %}
+        <li>{{ error }}</li>
+        {% endfor %}
+      </ul>
+    </div>
+    {% endif %}
+    <form
+      class="ip-drawer-form ip-drawer-delete-form"
+      method="post"
+      action="{% if delete_form.id %}/ui/users/{{ delete_form.id }}/delete{% else %}#{% endif %}"
+      data-user-delete-form
+      id="user-delete-form"
+      data-user-delete-id="{{ delete_form.id }}"
+      data-user-delete-name="{{ delete_form.username }}"
+    >
+      <section class="ip-drawer-section">
+        <h3 class="ip-drawer-delete-heading">Delete this user?</h3>
+        <p class="ip-drawer-delete-warning">This action cannot be undone.</p>
+        <dl class="ip-drawer-delete-details">
+          <div><dt>Username</dt><dd data-user-delete-name-display>{{ delete_form.username if delete_form.username else '—' }}</dd></div>
+        </dl>
+        <label class="field field-inline">
+          <input class="checkbox" type="checkbox" data-user-delete-ack />
+          <span>I understand this cannot be undone</span>
+        </label>
+        <label class="field">
+          <span>Type username to confirm: <strong data-user-delete-name-inline>{{ delete_form.username if delete_form.username else '—' }}</strong></span>
+          <input
+            class="input"
+            type="text"
+            name="confirm_username"
+            autocomplete="off"
+            data-user-delete-confirm
+            value="{{ delete_form.confirm_username }}"
+          />
+        </label>
+      </section>
+    </form>
+  </div>
+  <div class="ip-drawer-footer">
+    <span class="ip-drawer-footer-status" data-user-delete-dirty>Choose user</span>
+    <div class="ip-drawer-footer-actions">
+      <button class="btn btn-secondary" type="button" data-user-delete-cancel>Cancel</button>
+      <button class="btn btn-danger" type="submit" form="user-delete-form" data-user-delete-submit disabled>Delete permanently</button>
+    </div>
+  </div>
+</aside>
+
+<script src="/static/js/drawer.js" defer></script>
+<script src="/static/js/users.js" defer></script>
+{% endblock %}

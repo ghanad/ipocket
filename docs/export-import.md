@@ -38,7 +38,7 @@ All three import sections (Bundle, CSV, Nmap XML) use the same `Dry-run` and `Ap
 ## Permissions
 
 - Viewer: allowed to Dry-run.
-- Editor/Admin: allowed to Apply.
+- Editor: allowed to Apply.
 
 ## Bundle JSON schema
 

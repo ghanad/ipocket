@@ -19,7 +19,7 @@ def bootstrap_admin(connection) -> None:
         connection,
         username=username,
         hashed_password=auth.hash_password(password),
-        role=UserRole.ADMIN,
+        role=UserRole.SUPERUSER,
     )
 
 
