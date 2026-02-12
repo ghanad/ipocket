@@ -399,11 +399,24 @@ p {
 
 .table.table-ip-assets {
   font-size: 13px;
+  table-layout: fixed;
 }
 
 .table.table-ip-assets th,
 .table.table-ip-assets td {
   padding: 12px 18px;
+}
+
+.table.table-ip-assets th:first-child,
+.table.table-ip-assets td:first-child {
+  width: 52px;
+  padding-left: 12px;
+  padding-right: 8px;
+}
+
+.table.table-ip-assets th:nth-child(2),
+.table.table-ip-assets td:nth-child(2) {
+  padding-left: 8px;
 }
 
 .table.table-ip-assets .mono {
@@ -1540,15 +1553,15 @@ p {
   }
 
 /* --- IP assets list styles --- */
-.ip-asset-actions {
+  .ip-asset-actions {
     display: inline-flex;
-    gap: 8px;
+    gap: 6px;
     flex-wrap: nowrap;
     align-items: center;
   }
 
   .ip-tags-cell {
-    white-space: nowrap;
+    max-width: 220px;
   }
 
   .ip-tags-inline {
@@ -1563,6 +1576,57 @@ p {
 
   .ip-tags-inline > .tag {
     flex: 0 0 auto;
+  }
+
+  .ip-note-preview {
+    position: relative;
+    display: block;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    vertical-align: middle;
+    cursor: help;
+  }
+
+  .asset-actions-cell {
+    width: 180px;
+    white-space: nowrap;
+  }
+
+  .ip-note-preview::after {
+    content: attr(data-full-note);
+    position: absolute;
+    top: calc(100% + 8px);
+    left: 0;
+    z-index: 80;
+    width: max-content;
+    max-width: min(44vw, 440px);
+    padding: 8px 10px;
+    border-radius: 8px;
+    border: 1px solid var(--color-border);
+    background: #0f172a;
+    color: #f8fafc;
+    box-shadow: 0 10px 26px rgba(15, 23, 42, 0.28);
+    white-space: normal;
+    line-height: 1.45;
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+    transition: opacity 0.14s ease, visibility 0s linear 0.14s;
+  }
+
+  .ip-note-preview:hover::after,
+  .ip-note-preview:focus-visible::after {
+    opacity: 1;
+    visibility: visible;
+    transition-delay: 0.45s, 0.45s;
+  }
+
+  @media (max-width: 768px) {
+    .ip-note-preview {
+      max-width: 140px;
+    }
   }
 
   .ip-tags-more {

@@ -27,6 +27,8 @@ ipocket is a lightweight IP inventory app to track addresses and their project a
 - IP asset detail page now uses the shared card/chip visual language, including metadata chips in the header, a key-value Details card, badge-styled audit actions with optional raw detail expansion, and in-page delete via the same right-side delete drawer mode used on the list view.
 - IP assets list includes bulk edit controls to update type, project assignment, or add tags across multiple IPs at once.
 - IP assets list keeps tag cells compact: up to 3 chips are shown in-row, and extra tags move into a `+N more` popover (with keyboard/outside-click close and inline tag search).
+- IP assets list keeps Notes cells single-line to preserve row height; full note text appears in a hover/focus tooltip after a short pointer delay.
+- IP assets table uses a fixed responsive layout so long Notes/Tags content does not force horizontal page scrolling.
 - Tags on IP assets are now selected from existing Tag records (no free-text tag creation during assignment), with a dedicated Tags page to manage names and colors.
 - Tag selection UI now uses a chip-based picker (`Add tags...`) with searchable dropdown suggestions, Enter/click add, chip remove (`×`), and Backspace removal of the last selected chip.
 - Tags page now uses the same right-side drawer pattern as Projects/Vendors for create/edit/delete, including destructive confirmation by typing the exact tag name. The tags table also shows an **IPs** count column with how many active IP assets currently use each tag.
