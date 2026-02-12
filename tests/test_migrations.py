@@ -67,7 +67,9 @@ def test_listing_indexes_exist_after_migrations(tmp_path) -> None:
 
         ip_asset_tags_indexes = {
             row["name"]
-            for row in connection.execute("PRAGMA index_list('ip_asset_tags')").fetchall()
+            for row in connection.execute(
+                "PRAGMA index_list('ip_asset_tags')"
+            ).fetchall()
         }
         assert "ix_ip_asset_tags_tag_id_ip_asset_id" in ip_asset_tags_indexes
 
