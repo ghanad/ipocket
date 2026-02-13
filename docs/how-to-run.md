@@ -228,6 +228,13 @@ Host UI safety flow: deleting a Host from UI requires opening the host delete co
 .venv/bin/pytest -q
 ```
 
+## Developer code map (UI routes)
+- Aggregated UI router entrypoint: `app/routes/ui/__init__.py`
+- IP assets routes: `app/routes/ui/ip_assets/` (`listing.py`, `forms.py`, `actions.py`, `helpers.py`)
+- Hosts routes: `app/routes/ui/hosts/` (`listing.py`, `mutations.py`, `detail.py`)
+- Ranges routes: `app/routes/ui/ranges/` (`crud.py`, `addresses.py`, `common.py`)
+- Library/settings routes: `app/routes/ui/settings/` (`projects.py`, `tags.py`, `vendors.py`, `audit.py`, `common.py`)
+
 ## Manual vCenter export connector
 
 To export ESXi hosts and VMs from vCenter into an importable ipocket bundle, use:
