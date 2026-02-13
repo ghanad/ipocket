@@ -245,7 +245,8 @@ def _upsert_ip_assets(
         target_tags = (
             normalize_tag_names(asset.tags) if asset.tags is not None else existing_tags
         )
-        target_notes = asset.notes if asset.notes is not None else existing.notes
+        notes_should_update = asset.notes_provided or asset.notes is not None
+        target_notes = asset.notes if notes_should_update else existing.notes
         target_project_id = (
             project_id if asset.project_name is not None else existing.project_id
         )
@@ -277,7 +278,7 @@ def _upsert_ip_assets(
             host_id=host_id,
             notes=asset.notes,
             tags=asset.tags,
-            notes_provided=True,
+            notes_provided=notes_should_update,
         )
         if asset.archived is not None:
             repository.set_ip_asset_archived(

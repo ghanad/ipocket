@@ -41,6 +41,7 @@ class ImportIPAsset:
     project_name: Optional[str] = None
     host_name: Optional[str] = None
     notes: Optional[str] = None
+    notes_provided: bool = False
     archived: Optional[bool] = None
     tags: Optional[list[str]] = None
     source: Optional[ImportSource] = None
