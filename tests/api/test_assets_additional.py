@@ -37,6 +37,20 @@ def test_create_ip_asset_rejects_unknown_host_and_duplicate(
     assert duplicate.json()["detail"] == "IP address already exists."
 
 
+def test_create_ip_asset_rejects_unknown_project(
+    client, _create_user, _login, _auth_headers
+) -> None:
+    headers = _editor_headers(_create_user, _login, _auth_headers)
+
+    unknown_project = client.post(
+        "/ip-assets",
+        headers=headers,
+        json={"ip_address": "10.200.0.12", "type": "VM", "project_id": 9999},
+    )
+    assert unknown_project.status_code == 422
+    assert unknown_project.json()["detail"] == "Project not found."
+
+
 def test_list_and_get_ip_assets_include_tags_and_filters(
     client, _create_user, _login, _auth_headers
 ) -> None:
@@ -89,6 +103,14 @@ def test_update_ip_asset_rejects_unknown_host_and_missing_asset(
     )
     assert unknown_host.status_code == 422
     assert unknown_host.json()["detail"] == "Host not found."
+
+    unknown_project = client.patch(
+        "/ip-assets/10.202.0.10",
+        headers=headers,
+        json={"project_id": 9999},
+    )
+    assert unknown_project.status_code == 422
+    assert unknown_project.json()["detail"] == "Project not found."
 
     missing_asset = client.patch(
         "/ip-assets/10.202.0.99",

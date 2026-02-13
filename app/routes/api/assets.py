@@ -28,6 +28,14 @@ def create_ip_asset(
 ):
     validate_ip_address(payload.ip_address)
     if (
+        payload.project_id is not None
+        and repository.get_project_by_id(connection, payload.project_id) is None
+    ):
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Project not found.",
+        )
+    if (
         payload.host_id is not None
         and repository.get_host_by_id(connection, payload.host_id) is None
     ):
@@ -96,6 +104,14 @@ def update_ip_asset(
     connection=Depends(get_connection),
     user=Depends(require_editor),
 ):
+    if (
+        payload.project_id is not None
+        and repository.get_project_by_id(connection, payload.project_id) is None
+    ):
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Project not found.",
+        )
     if (
         payload.host_id is not None
         and repository.get_host_by_id(connection, payload.host_id) is None
