@@ -182,6 +182,7 @@ def test_extract_ip_assets_from_result_uses_custom_label_and_deduplicates() -> N
     assert ip_assets[0]["project_name"] == "Core"
     assert ip_assets[0]["tags"] == ["monitoring", "node-exporter"]
     assert ip_assets[0]["archived"] is False
+    assert ip_assets[0]["preserve_existing_notes"] is True
     assert "node_uname_info" in str(ip_assets[0]["notes"])
 
     assert len(warnings) == 4

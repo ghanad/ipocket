@@ -82,6 +82,7 @@ Each extracted IPv4 becomes one bundle `ip_assets` entry:
 - `project_name`: included only when provided
 - `tags`: included only when provided
 - `notes`: generated from query context for traceability
+- `preserve_existing_notes`: `true` (keep non-empty existing notes on update)
 - `archived`: `false`
 
 Connector behavior:
@@ -111,4 +112,6 @@ bundle imports:
 - New IPs are created.
 - Existing IPs are updated only when connector output explicitly includes a value
   for optional fields (project/tags/notes/type).
+- Prometheus connector updates do not overwrite non-empty existing IP notes; those
+  notes stay unchanged while other provided fields can still be updated.
 - No new schema/table is introduced.

@@ -246,6 +246,8 @@ def _upsert_ip_assets(
             normalize_tag_names(asset.tags) if asset.tags is not None else existing_tags
         )
         notes_should_update = asset.notes_provided or asset.notes is not None
+        if notes_should_update and asset.preserve_existing_notes and existing.notes:
+            notes_should_update = False
         target_notes = asset.notes if notes_should_update else existing.notes
         target_project_id = (
             project_id if asset.project_name is not None else existing.project_id
