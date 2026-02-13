@@ -286,6 +286,45 @@ def test_csv_ignores_empty_optional_file(client) -> None:
     assert summary["hosts"]["would_create"] == 0
 
 
+def test_csv_apply_clears_existing_ip_asset_note_when_note_cell_is_empty(
+    client,
+) -> None:
+    test_client, db_path = client
+    _create_user(db_path, "editor-clear-note", "editor-pass", UserRole.EDITOR)
+    editor_token = _login(test_client, "editor-clear-note", "editor-pass")
+
+    connection = db.connect(str(db_path))
+    try:
+        db.init_db(connection)
+        repository.create_ip_asset(
+            connection,
+            ip_address="10.0.0.77",
+            asset_type=IPAssetType.VM,
+            notes="to-be-cleared",
+        )
+    finally:
+        connection.close()
+
+    ip_assets_csv = (
+        "ip_address,type,project_name,host_name,notes,archived\n10.0.0.77,VM,,,,false\n"
+    )
+    response = test_client.post(
+        "/import/csv",
+        headers=_auth_headers(editor_token),
+        files={"ip_assets": ("ip-assets.csv", ip_assets_csv, "text/csv")},
+    )
+    assert response.status_code == 200
+    assert response.json()["summary"]["ip_assets"]["would_update"] == 1
+
+    connection = db.connect(str(db_path))
+    try:
+        updated = repository.get_ip_asset_by_ip(connection, "10.0.0.77")
+        assert updated is not None
+        assert updated.notes is None
+    finally:
+        connection.close()
+
+
 def test_validation_errors(client) -> None:
     test_client, db_path = client
     _create_user(db_path, "viewer", "viewer-pass", UserRole.VIEWER)

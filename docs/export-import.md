@@ -96,6 +96,7 @@ Columns:
 - `archived`
 
 Tag values are normalized (trimmed + lowercased). Allowed characters are letters, digits, dashes, and underscores.
+For `ip-assets.csv`, leaving `notes` empty clears an existing note on import (it is treated as an explicit update).
 
 ## Dry-run behavior
 
