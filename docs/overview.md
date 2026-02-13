@@ -103,9 +103,10 @@ Vendors are managed in the shared Library page tabs and are selectable when crea
 - Vendor management uses the same right-side drawer pattern for create/edit/delete, including destructive confirmation by typing the exact vendor name.
 - Vendors table now shows an **IPs** count column with how many active IP assets are currently linked through hosts for each vendor.
 
-- UI route handlers are now organized as a modular package under `app/routes/ui/` (`auth.py`, `dashboard.py`, `ip_assets.py`, `hosts.py`, `ranges.py`, `settings.py`, `data_ops.py`, `connectors.py`) with shared helpers in `utils.py` and a single aggregated `router` exported from `app/routes/ui/__init__.py`.
+- UI route handlers are organized under `app/routes/ui/` with domain packages for larger areas:
+  `app/routes/ui/ip_assets/`, `app/routes/ui/hosts/`, `app/routes/ui/ranges/`, `app/routes/ui/settings/`, plus focused modules such as `auth.py`, `dashboard.py`, `data_ops.py`, and `connectors.py`. `app/routes/ui/__init__.py` remains the single aggregated router entrypoint.
 - UI utility internals are split into `app/routes/ui/_utils/` modules (`session.py`, `rendering.py`, `parsing.py`, `assets.py`, `exporting.py`) and `app/routes/ui/utils.py` now acts as a compatibility facade so existing imports stay stable.
-- IP-assets route helpers were extracted to `app/routes/ui/ip_assets_helpers.py` to keep `app/routes/ui/ip_assets.py` focused on route orchestration without changing endpoint behavior.
+- IP-assets helper logic lives in `app/routes/ui/ip_assets/helpers.py`, while routes are split by concern (`listing.py`, `forms.py`, `actions.py`) to keep assignment/listing and mutation flows separate without changing endpoint behavior.
 - Developer compatibility note: `app/routes/ui/__init__.py` re-exports UI auth/session helpers (including `SESSION_COOKIE`) so existing integrations and tests continue working after modularization.
 
 - API route handlers are now organized as a modular package under `app/routes/api/` (`auth.py`, `system.py`, `assets.py`, `hosts.py`, `metadata.py`, `imports.py`) with shared schemas/dependencies/helpers and a single aggregated `router` exported from `app/routes/api/__init__.py`.
