@@ -325,6 +325,59 @@ def test_csv_apply_clears_existing_ip_asset_note_when_note_cell_is_empty(
         connection.close()
 
 
+def test_bundle_apply_preserves_existing_note_when_requested(client) -> None:
+    test_client, db_path = client
+    _create_user(db_path, "editor-preserve-note", "editor-pass", UserRole.EDITOR)
+    editor_token = _login(test_client, "editor-preserve-note", "editor-pass")
+
+    connection = db.connect(str(db_path))
+    try:
+        db.init_db(connection)
+        repository.create_ip_asset(
+            connection,
+            ip_address="10.0.0.88",
+            asset_type=IPAssetType.OTHER,
+            notes="manual note",
+        )
+    finally:
+        connection.close()
+
+    payload = {
+        "app": "ipocket",
+        "schema_version": "1",
+        "exported_at": "2024-01-01T12:00:00+00:00",
+        "data": {
+            "vendors": [],
+            "projects": [],
+            "hosts": [],
+            "ip_assets": [
+                {
+                    "ip_address": "10.0.0.88",
+                    "type": "OTHER",
+                    "notes": "Imported from Prometheus query 'up' using label 'instance'.",
+                    "preserve_existing_notes": True,
+                    "archived": False,
+                }
+            ],
+        },
+    }
+    response = test_client.post(
+        "/import/bundle",
+        headers=_auth_headers(editor_token),
+        files={"file": ("bundle.json", json.dumps(payload), "application/json")},
+    )
+    assert response.status_code == 200
+    assert response.json()["summary"]["ip_assets"]["would_skip"] == 1
+
+    connection = db.connect(str(db_path))
+    try:
+        updated = repository.get_ip_asset_by_ip(connection, "10.0.0.88")
+        assert updated is not None
+        assert updated.notes == "manual note"
+    finally:
+        connection.close()
+
+
 def test_validation_errors(client) -> None:
     test_client, db_path = client
     _create_user(db_path, "viewer", "viewer-pass", UserRole.VIEWER)

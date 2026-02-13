@@ -13,4 +13,4 @@ Note: Vendor catalog/host vendor selection does not introduce new Prometheus met
 
 UI note: unassigned-related metrics are still available even though the dedicated **Needs Assignment** page was removed; use the IP Assets list filters for assignment workflows.
 
-Connector note: the Prometheus connector imports IP assets from Prometheus query results, but it does not add exporter-side Prometheus metrics in ipocket; `/metrics` remains limited to IP inventory counters listed above.
+Connector note: the Prometheus connector imports IP assets from Prometheus query results (and preserves non-empty existing IP notes during updates), but it does not add exporter-side Prometheus metrics in ipocket; `/metrics` remains limited to IP inventory counters listed above.

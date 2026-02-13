@@ -268,6 +268,8 @@ See `/docs/vcenter-connector.md` for full mapping and options.
 Use the Prometheus connector when you want to pull IPs from Prometheus query results
 and import them as IP assets.
 
+Note: Prometheus connector updates preserve non-empty existing IP notes (manual notes are not overwritten).
+
 UI flow:
 - Open **Connectors → Prometheus**
 - Fill:

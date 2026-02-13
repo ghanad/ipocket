@@ -133,6 +133,10 @@ def _parse_ip_assets(section: object, base_path: str) -> list[ImportIPAsset]:
                 host_name=_normalize_optional_str(entry.get("host_name")),
                 notes=_normalize_optional_str(entry.get("notes")),
                 notes_provided="notes" in entry,
+                preserve_existing_notes=(
+                    _normalize_optional_bool(entry.get("preserve_existing_notes"))
+                    is True
+                ),
                 archived=_normalize_optional_bool(entry.get("archived")),
                 tags=_parse_tags(entry.get("tags")),
                 source=ImportSource(f"{base_path}[{index}]"),

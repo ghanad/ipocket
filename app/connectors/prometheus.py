@@ -230,6 +230,7 @@ def extract_ip_assets_from_result(
             "ip_address": normalized_ip,
             "type": normalized_type,
             "notes": notes,
+            "preserve_existing_notes": True,
             "archived": False,
         }
         if project_name:

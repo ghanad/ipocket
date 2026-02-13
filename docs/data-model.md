@@ -85,3 +85,4 @@ When a user account is deleted, existing audit logs are preserved by setting `au
 - Prometheus and vCenter connectors do not introduce new database tables or fields.
 - Connector runs generate standard import bundles (`schema_version=1`) and upsert through the existing IPAsset import pipeline.
 - Upserts only change optional fields (`project_name`, `tags`, `notes`, `type`) when those values are explicitly included in connector output.
+- Prometheus connector entries set `preserve_existing_notes=true`, so non-empty manual notes on existing IP assets are not overwritten during upsert.
