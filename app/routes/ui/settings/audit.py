@@ -32,12 +32,13 @@ def ui_audit_log(
     if per_page_value not in allowed_page_sizes:
         per_page_value = 20
     page_value = _parse_positive_int_query(page, 1)
-    total_count = repository.count_audit_logs(connection)
+    total_count = repository.count_audit_logs(connection, target_type=None)
     total_pages = max(1, math.ceil(total_count / per_page_value)) if total_count else 1
     page_value = max(1, min(page_value, total_pages))
     offset = (page_value - 1) * per_page_value if total_count else 0
     audit_logs = repository.list_audit_logs_paginated(
         connection,
+        target_type=None,
         limit=per_page_value,
         offset=offset,
     )

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from app import db, repository
 from app.connectors.prometheus import PrometheusMetricRecord
 from app.connectors.vcenter import VCenterHostRecord, VCenterVmRecord
 from app.imports.models import ImportApplyResult, ImportEntitySummary, ImportSummary
@@ -323,6 +324,7 @@ def test_prometheus_connector_dry_run_logs_ip_preview_and_asset_summary(
     logs, warnings, _warning_count, _error_count = (
         connectors_routes._run_prometheus_connector(
             connection=None,
+            user=None,
             prometheus_url="http://127.0.0.1:9090",
             query='up{job="node"}',
             ip_label="instance",
@@ -390,3 +392,105 @@ def test_prometheus_connector_failure_uses_toast_without_inline_error(
     assert response.status_code == 400
     assert "Prometheus connector execution failed." in response.text
     assert "toast-error" in response.text
+
+
+def test_vcenter_connector_apply_writes_import_run_audit_log(
+    client, monkeypatch
+) -> None:
+    import os
+
+    connection = db.connect(os.environ["IPAM_DB_PATH"])
+    try:
+        db.init_db(connection)
+        actor = repository.create_user(
+            connection,
+            username="connector-editor-vcenter",
+            hashed_password="x",
+            role=UserRole.EDITOR,
+        )
+    finally:
+        connection.close()
+
+    app.dependency_overrides[ui.get_current_ui_user] = lambda: actor
+    monkeypatch.setattr(
+        connectors_routes,
+        "fetch_vcenter_inventory",
+        lambda **_kwargs: (
+            [VCenterHostRecord(name="esxi-02.lab", ip_address="10.40.1.10")],
+            [],
+            [],
+        ),
+    )
+    try:
+        response = client.post(
+            "/ui/connectors/vcenter/run",
+            data={
+                "server": "vc.example.local",
+                "username": "administrator@vsphere.local",
+                "password": "secret",
+                "mode": "apply",
+                "port": "443",
+            },
+        )
+    finally:
+        app.dependency_overrides.pop(ui.get_current_ui_user, None)
+
+    assert response.status_code == 200
+    connection = db.connect(os.environ["IPAM_DB_PATH"])
+    try:
+        logs = repository.list_audit_logs(
+            connection, target_type="IMPORT_RUN", limit=10
+        )
+        assert any(log.target_label == "connector_vcenter" for log in logs)
+    finally:
+        connection.close()
+
+
+def test_prometheus_connector_dry_run_does_not_write_import_run_audit_log(
+    client,
+    monkeypatch,
+) -> None:
+    import os
+
+    connection = db.connect(os.environ["IPAM_DB_PATH"])
+    try:
+        db.init_db(connection)
+        actor = repository.create_user(
+            connection,
+            username="connector-viewer-prom",
+            hashed_password="x",
+            role=UserRole.VIEWER,
+        )
+    finally:
+        connection.close()
+
+    app.dependency_overrides[ui.get_current_ui_user] = lambda: actor
+    monkeypatch.setattr(
+        connectors_routes,
+        "fetch_prometheus_query_result",
+        lambda **_kwargs: [
+            PrometheusMetricRecord(labels={"instance": "10.20.0.10:9100"}, value="1")
+        ],
+    )
+    try:
+        response = client.post(
+            "/ui/connectors/prometheus/run",
+            data={
+                "prometheus_url": "http://127.0.0.1:9090",
+                "query": 'up{job="node"}',
+                "ip_label": "instance",
+                "mode": "dry-run",
+            },
+        )
+    finally:
+        app.dependency_overrides.pop(ui.get_current_ui_user, None)
+
+    assert response.status_code == 200
+    connection = db.connect(os.environ["IPAM_DB_PATH"])
+    try:
+        logs = repository.list_audit_logs(
+            connection, target_type="IMPORT_RUN", limit=10
+        )
+        assert logs == []
+    finally:
+        connection.close()

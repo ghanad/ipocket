@@ -3,7 +3,7 @@ from __future__ import annotations
 from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile, status
 
 from app.dependencies import get_connection
-from app.imports import BundleImporter, CsvImporter, run_import
+from app.imports import BundleImporter, CsvImporter, ImportAuditContext, run_import
 from app.models import UserRole
 
 from .dependencies import get_current_user
@@ -23,7 +23,16 @@ async def import_bundle_json(
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN)
     payload = await file.read()
     result = run_import(
-        connection, BundleImporter(), {"bundle": payload}, dry_run=dry_run
+        connection,
+        BundleImporter(),
+        {"bundle": payload},
+        dry_run=dry_run,
+        audit_context=ImportAuditContext(
+            user=user,
+            source="api_import_bundle",
+            mode="apply" if not dry_run else "dry-run",
+            input_label="bundle.json",
+        ),
     )
     return import_result_payload(result)
 
@@ -57,5 +66,16 @@ async def import_csv_files(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="CSV import requires at least one file.",
         )
-    result = run_import(connection, CsvImporter(), inputs, dry_run=dry_run)
+    result = run_import(
+        connection,
+        CsvImporter(),
+        inputs,
+        dry_run=dry_run,
+        audit_context=ImportAuditContext(
+            user=user,
+            source="api_import_csv",
+            mode="apply" if not dry_run else "dry-run",
+            input_label="csv",
+        ),
+    )
     return import_result_payload(result)

@@ -35,6 +35,13 @@ Sample CSVs are available for download on the import page (or directly via `/sta
 Dry-run runs validation and returns a summary without writing to the database. Apply performs upserts.
 All three import sections (Bundle, CSV, Nmap XML) use the same `Dry-run` and `Apply` button pattern in the UI.
 
+## Audit behavior
+
+- Successful `apply` runs for bundle and CSV imports create one run-level audit record with `target_type=IMPORT_RUN`.
+- The audit summary includes source, input type, and create/update/skip/warnings/errors counts.
+- `dry-run` imports do not create run-level audit entries.
+- Per-IP audit behavior remains unchanged for underlying asset create/update/delete operations.
+
 ## Permissions
 
 - Viewer: allowed to Dry-run.

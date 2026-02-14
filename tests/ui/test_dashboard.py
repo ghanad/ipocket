@@ -119,6 +119,44 @@ def test_audit_log_page_lists_ip_entries(client) -> None:
         app.dependency_overrides.pop(ui.get_current_ui_user, None)
 
 
+def test_audit_log_page_lists_import_run_entries(client) -> None:
+    import os
+
+    connection = db.connect(os.environ["IPAM_DB_PATH"])
+    try:
+        db.init_db(connection)
+        user = repository.create_user(
+            connection,
+            username="import-run-view",
+            hashed_password="x",
+            role=UserRole.EDITOR,
+        )
+        repository.create_audit_log(
+            connection,
+            user=user,
+            action="APPLY",
+            target_type="IMPORT_RUN",
+            target_id=0,
+            target_label="api_import_bundle",
+            changes="Import apply source=api_import_bundle; input=bundle.json; create=1; update=0; skip=0; warnings=0; errors=0.",
+        )
+        connection.commit()
+    finally:
+        connection.close()
+
+    app.dependency_overrides[ui.get_current_ui_user] = lambda: User(
+        1, "viewer", "x", UserRole.VIEWER, True
+    )
+    try:
+        response = client.get("/ui/audit-log")
+        assert response.status_code == 200
+        assert "api_import_bundle" in response.text
+        assert "APPLY" in response.text
+        assert "input=bundle.json" in response.text
+    finally:
+        app.dependency_overrides.pop(ui.get_current_ui_user, None)
+
+
 def test_audit_log_page_pagination(client) -> None:
     import os
 

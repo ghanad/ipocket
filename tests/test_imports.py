@@ -6,7 +6,7 @@ import pytest
 from fastapi.testclient import TestClient as FastAPITestClient
 
 from app import auth, db, exports, repository
-from app.imports import BundleImporter, run_import
+from app.imports import BundleImporter, ImportAuditContext, run_import
 from app.main import app
 from app.models import IPAssetType, UserRole
 
@@ -427,6 +427,125 @@ def test_viewer_cannot_apply_import(client) -> None:
         },
     )
     assert response.status_code == 403
+
+
+def test_bundle_api_apply_writes_import_run_audit_log(client) -> None:
+    test_client, db_path = client
+    _create_user(db_path, "editor-audit-bundle", "editor-pass", UserRole.EDITOR)
+    token = _login(test_client, "editor-audit-bundle", "editor-pass")
+
+    payload = json.dumps(_bundle_payload()).encode("utf-8")
+    response = test_client.post(
+        "/import/bundle",
+        headers=_auth_headers(token),
+        files={"file": ("bundle.json", payload, "application/json")},
+    )
+    assert response.status_code == 200
+
+    connection = db.connect(str(db_path))
+    try:
+        logs = repository.list_audit_logs(
+            connection, target_type="IMPORT_RUN", limit=10
+        )
+        assert len(logs) == 1
+        assert logs[0].action == "APPLY"
+        assert logs[0].target_label == "api_import_bundle"
+        assert "input=bundle.json" in (logs[0].changes or "")
+    finally:
+        connection.close()
+
+
+def test_csv_api_apply_writes_import_run_audit_log(client) -> None:
+    test_client, db_path = client
+    _create_user(db_path, "editor-audit-csv", "editor-pass", UserRole.EDITOR)
+    token = _login(test_client, "editor-audit-csv", "editor-pass")
+
+    hosts_csv = "name,notes,vendor_name\nnode-02,worker,Dell\n"
+    ip_assets_csv = "ip_address,type,project_name,host_name,notes,archived\n10.0.0.20,OS,Core,node-02,os,false\n"
+    response = test_client.post(
+        "/import/csv",
+        headers=_auth_headers(token),
+        files={
+            "hosts": ("hosts.csv", hosts_csv, "text/csv"),
+            "ip_assets": ("ip-assets.csv", ip_assets_csv, "text/csv"),
+        },
+    )
+    assert response.status_code == 200
+
+    connection = db.connect(str(db_path))
+    try:
+        logs = repository.list_audit_logs(
+            connection, target_type="IMPORT_RUN", limit=10
+        )
+        assert len(logs) == 1
+        assert logs[0].target_label == "api_import_csv"
+        assert "input=csv" in (logs[0].changes or "")
+    finally:
+        connection.close()
+
+
+def test_run_import_dry_run_with_audit_context_skips_import_run_log(tmp_path) -> None:
+    connection = db.connect(str(tmp_path / "dry-run-audit.db"))
+    try:
+        db.init_db(connection)
+        user = repository.create_user(
+            connection,
+            username="dryrun-user",
+            hashed_password="x",
+            role=UserRole.EDITOR,
+        )
+        result = run_import(
+            connection,
+            BundleImporter(),
+            {"bundle": json.dumps(_bundle_payload()).encode("utf-8")},
+            dry_run=True,
+            audit_context=ImportAuditContext(
+                user=user,
+                source="test_dry_run",
+                mode="dry-run",
+                input_label="bundle.json",
+            ),
+        )
+        assert result.errors == []
+        logs = repository.list_audit_logs(
+            connection, target_type="IMPORT_RUN", limit=10
+        )
+        assert logs == []
+    finally:
+        connection.close()
+
+
+def test_run_import_parse_error_with_audit_context_skips_import_run_log(
+    tmp_path,
+) -> None:
+    connection = db.connect(str(tmp_path / "parse-error-audit.db"))
+    try:
+        db.init_db(connection)
+        user = repository.create_user(
+            connection,
+            username="parse-user",
+            hashed_password="x",
+            role=UserRole.EDITOR,
+        )
+        result = run_import(
+            connection,
+            BundleImporter(),
+            {"bundle": b"{invalid-json"},
+            dry_run=False,
+            audit_context=ImportAuditContext(
+                user=user,
+                source="test_parse_error",
+                mode="apply",
+                input_label="bundle.json",
+            ),
+        )
+        assert result.errors
+        logs = repository.list_audit_logs(
+            connection, target_type="IMPORT_RUN", limit=10
+        )
+        assert logs == []
+    finally:
+        connection.close()
 
 
 def test_round_trip_bundle_import(tmp_path) -> None:
