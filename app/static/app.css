@@ -320,13 +320,12 @@ p {
 
 .bulk-edit-controls {
   display: flex;
-  flex-wrap: wrap;
-  gap: 16px;
   align-items: center;
   justify-content: space-between;
-  padding: 16px 20px;
+  gap: 12px;
+  padding: 10px 16px;
   border-bottom: 1px solid var(--color-border);
-  background: #fff;
+  background: #f8fafc;
 }
 
 .bulk-edit-controls-hidden {
@@ -342,11 +341,50 @@ p {
   color: var(--color-text);
 }
 
-.bulk-edit-fields {
+@media (max-width: 620px) {
+  .bulk-edit-controls {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .bulk-edit-controls [data-bulk-open] {
+    width: 100%;
+  }
+}
+
+.bulk-drawer-selection {
+  margin: 0;
+}
+
+.bulk-common-tags {
+  display: grid;
+  gap: 8px;
+}
+
+.bulk-common-tags-label {
+  margin: 0;
+  font-size: 12px;
+  color: #64748b;
+}
+
+.bulk-common-tags-empty {
+  margin: 0;
+}
+
+.bulk-common-tags-list {
   display: flex;
   flex-wrap: wrap;
-  align-items: flex-end;
-  gap: 12px;
+  gap: 6px;
+}
+
+.bulk-common-tag-chip {
+  border: 1px solid transparent;
+  transition: border-color 0.16s ease, filter 0.16s ease;
+}
+
+.bulk-common-tag-chip.is-marked {
+  border-color: #dc2626;
+  filter: saturate(0.75);
 }
 
 .field-inline {
@@ -2017,6 +2055,10 @@ p {
     gap: 6px;
     max-height: 220px;
     overflow: auto;
+  }
+
+  .tag-picker-dropdown[hidden] {
+    display: none;
   }
 
   .tag-picker-option {

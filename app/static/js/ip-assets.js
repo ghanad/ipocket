@@ -20,6 +20,17 @@
   const deleteConfirmWrap = document.querySelector('[data-ip-delete-confirm-wrap]');
   const deleteConfirmInput = document.querySelector('[data-ip-delete-confirm-input]');
   const deleteError = document.querySelector('[data-ip-delete-error]');
+  const bulkOverlay = document.querySelector('[data-bulk-drawer-overlay]');
+  const bulkDrawer = document.querySelector('[data-bulk-drawer]');
+  const bulkDrawerSelection = document.querySelector('[data-bulk-drawer-selection]');
+  const bulkDrawerStatus = document.querySelector('[data-bulk-drawer-status]');
+  const bulkDrawerApply = document.querySelector('[data-bulk-drawer-apply]');
+  const bulkDrawerClose = document.querySelector('[data-bulk-drawer-close]');
+  const bulkDrawerCancel = document.querySelector('[data-bulk-drawer-cancel]');
+  const bulkCommonTagsList = document.querySelector('[data-bulk-common-tags-list]');
+  const bulkCommonTagsEmpty = document.querySelector('[data-bulk-common-tags-empty]');
+  const bulkRemoveHidden = document.querySelector('[data-bulk-remove-hidden]');
+  const bulkInputs = bulkDrawer ? bulkDrawer.querySelectorAll('[data-bulk-input]') : [];
   const projectPill = document.querySelector('[data-ip-drawer-project]');
   const hostPill = document.querySelector('[data-ip-drawer-host]');
   const dirtyStatus = document.querySelector('[data-ip-drawer-dirty]');
@@ -40,6 +51,8 @@
   let initialValues = {};
   let currentAsset = null;
   let isOpen = false;
+  let isBulkDrawerOpen = false;
+  let bulkRemoveTags = new Set();
   let isAddMode = false;
   let isDeleteMode = false;
   let activeTagsPopoverTrigger = null;
@@ -403,10 +416,112 @@
     isOpen = true;
   };
 
+  const openBulkDrawer = () => {
+    if (!bulkOverlay || !bulkDrawer) {
+      return;
+    }
+    bulkOverlay.classList.add('is-open');
+    bulkDrawer.classList.add('is-open');
+    isBulkDrawerOpen = true;
+  };
+
+  const resetBulkInputs = () => {
+    bulkInputs.forEach((input) => {
+      if (!(input instanceof HTMLSelectElement)) {
+        return;
+      }
+      if (input.multiple) {
+        Array.from(input.options).forEach((option) => {
+          option.selected = false;
+        });
+      } else {
+        input.value = '';
+      }
+      input.dispatchEvent(new Event('change', { bubbles: true }));
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+    });
+    bulkRemoveTags = new Set();
+    syncBulkRemoveHiddenInputs();
+  };
+
+  const parseBulkTags = (checkbox) =>
+    String(checkbox?.dataset?.bulkTags || '')
+      .split(',')
+      .map((tag) => tag.trim().toLowerCase())
+      .filter(Boolean);
+
+  const computeCommonBulkTags = (checkboxes) => {
+    if (!checkboxes.length) {
+      return [];
+    }
+    const tagSets = checkboxes.map((checkbox) => new Set(parseBulkTags(checkbox)));
+    const [first, ...rest] = tagSets;
+    if (!first || first.size === 0) {
+      return [];
+    }
+    const common = Array.from(first).filter((tag) =>
+      rest.every((entry) => entry.has(tag))
+    );
+    return common.sort();
+  };
+
+  const syncBulkRemoveHiddenInputs = () => {
+    if (!bulkRemoveHidden) {
+      return;
+    }
+    bulkRemoveHidden.replaceChildren();
+    Array.from(bulkRemoveTags)
+      .sort()
+      .forEach((tag) => {
+        const input = document.createElement('input');
+        input.type = 'hidden';
+        input.name = 'remove_tags';
+        input.value = tag;
+        bulkRemoveHidden.appendChild(input);
+      });
+  };
+
+  const renderBulkCommonTags = (commonTags) => {
+    if (!bulkCommonTagsList || !bulkCommonTagsEmpty) {
+      return;
+    }
+    const commonSet = new Set(commonTags);
+    bulkRemoveTags = new Set(Array.from(bulkRemoveTags).filter((tag) => commonSet.has(tag)));
+    bulkCommonTagsList.replaceChildren();
+    if (!commonTags.length) {
+      bulkCommonTagsList.hidden = true;
+      bulkCommonTagsEmpty.hidden = false;
+      syncBulkRemoveHiddenInputs();
+      return;
+    }
+    bulkCommonTagsList.hidden = false;
+    bulkCommonTagsEmpty.hidden = true;
+    commonTags.forEach((tag) => {
+      const chip = document.createElement('button');
+      chip.type = 'button';
+      chip.className = 'tag tag-color bulk-common-tag-chip';
+      chip.dataset.bulkRemoveTag = tag;
+      chip.textContent = bulkRemoveTags.has(tag) ? `${tag} ×` : tag;
+      chip.classList.toggle('is-marked', bulkRemoveTags.has(tag));
+      bulkCommonTagsList.appendChild(chip);
+    });
+    syncBulkRemoveHiddenInputs();
+  };
+
+  const closeBulkDrawer = () => {
+    if (!bulkOverlay || !bulkDrawer) {
+      return;
+    }
+    bulkOverlay.classList.remove('is-open');
+    bulkDrawer.classList.remove('is-open');
+    isBulkDrawerOpen = false;
+  };
+
   const openDrawer = (assetData) => {
     if (!form || !drawerSubtitle || !projectPill || !hostPill || !drawerTitle) {
       return;
     }
+    closeBulkDrawer();
     setDrawerMode('edit');
     isAddMode = false;
     currentAsset = assetData;
@@ -454,6 +569,7 @@
     if (!drawerTitle || !drawerSubtitle || !projectPill || !hostPill || !deleteForm || !deleteButton) {
       return;
     }
+    closeBulkDrawer();
     setDrawerMode('delete');
     isAddMode = false;
     currentAsset = assetData;
@@ -499,6 +615,7 @@
     if (!form || !drawerSubtitle || !projectPill || !hostPill || !drawerTitle) {
       return;
     }
+    closeBulkDrawer();
     setDrawerMode('edit');
     isAddMode = true;
     currentAsset = null;
@@ -687,19 +804,36 @@
     const selectAll = bulkForm.querySelector('[data-bulk-select-all]');
     const checkboxes = Array.from(bulkForm.querySelectorAll('[data-bulk-select]'));
     const countLabel = bulkForm.querySelector('[data-selected-count]');
-    const submitButton = bulkForm.querySelector('[data-bulk-submit]');
+    const openButton = bulkForm.querySelector('[data-bulk-open]');
     const bulkControls = bulkForm.querySelector('[data-bulk-controls]');
 
     const updateCount = () => {
-      const selectedCount = checkboxes.filter((checkbox) => checkbox.checked).length;
+      const selected = checkboxes.filter((checkbox) => checkbox.checked);
+      const selectedCount = selected.length;
+      const commonTags = computeCommonBulkTags(selected);
       if (countLabel) {
         countLabel.textContent = `${selectedCount} selected`;
       }
-      if (submitButton) {
-        submitButton.disabled = selectedCount === 0;
+      if (openButton) {
+        openButton.disabled = selectedCount === 0;
+      }
+      if (bulkDrawerApply) {
+        bulkDrawerApply.disabled = selectedCount === 0;
+      }
+      if (bulkDrawerSelection) {
+        bulkDrawerSelection.textContent = `${selectedCount} selected`;
+      }
+      renderBulkCommonTags(commonTags);
+      if (bulkDrawerStatus) {
+        bulkDrawerStatus.textContent = selectedCount > 0
+          ? `Select fields to update${bulkRemoveTags.size ? ` • Remove ${bulkRemoveTags.size} common tag(s)` : ''}`
+          : 'Select at least one row';
       }
       if (bulkControls) {
         bulkControls.classList.toggle('bulk-edit-controls-hidden', selectedCount === 0);
+      }
+      if (selectedCount === 0 && isBulkDrawerOpen) {
+        closeBulkDrawer();
       }
       if (selectAll) {
         selectAll.indeterminate = selectedCount > 0 && selectedCount < checkboxes.length;
@@ -722,6 +856,23 @@
         updateCount();
       });
     });
+
+    if (openButton) {
+      openButton.addEventListener('click', () => {
+        if (openButton.disabled) {
+          return;
+        }
+        if (isOpen) {
+          closeDrawer();
+        }
+        resetBulkInputs();
+        openBulkDrawer();
+        const firstInput = bulkDrawer ? bulkDrawer.querySelector('.select, .input') : null;
+        if (firstInput instanceof HTMLElement) {
+          window.setTimeout(() => firstInput.focus(), 80);
+        }
+      });
+    }
 
     updateCount();
   };
@@ -951,9 +1102,22 @@
     if (overlay) {
       overlay.addEventListener('click', confirmClose);
     }
+    if (bulkOverlay) {
+      bulkOverlay.addEventListener('click', closeBulkDrawer);
+    }
+    if (bulkDrawerClose) {
+      bulkDrawerClose.addEventListener('click', closeBulkDrawer);
+    }
+    if (bulkDrawerCancel) {
+      bulkDrawerCancel.addEventListener('click', closeBulkDrawer);
+    }
     document.addEventListener('keydown', (event) => {
       if (event.key === 'Escape' && activeTagsPopoverTrigger) {
         closeTagsPopover();
+      }
+      if (event.key === 'Escape' && isBulkDrawerOpen) {
+        closeBulkDrawer();
+        return;
       }
       if (event.key === 'Escape' && isOpen) {
         confirmClose();
@@ -1025,6 +1189,12 @@
         window.sessionStorage.setItem(SCROLL_KEY, String(window.scrollY || 0));
       });
     }
+    const bulkForm = document.querySelector('[data-bulk-form]');
+    if (bulkForm && window.sessionStorage) {
+      bulkForm.addEventListener('submit', () => {
+        window.sessionStorage.setItem(SCROLL_KEY, String(window.scrollY || 0));
+      });
+    }
     if (tagFilterSelected) {
       tagFilterSelected.querySelectorAll('[data-remove-tag-filter]').forEach((chip) => {
         applyTagFilterChipColor(chip, chip.getAttribute('data-remove-tag-filter') || '');
@@ -1054,6 +1224,7 @@
         return;
       }
       closeTagsPopover();
+      closeBulkDrawer();
       bindTableInteractions(container);
     });
     document.body.addEventListener('htmx:afterSettle', (event) => {
@@ -1069,6 +1240,30 @@
         event.preventDefault();
         if (removeTagFilter(removeTagButton.dataset.removeTagFilter || '')) {
           submitTagFilter();
+        }
+        return;
+      }
+      const removeCommonTagButton = event.target.closest('[data-bulk-remove-tag]');
+      if (removeCommonTagButton) {
+        event.preventDefault();
+        const tag = (removeCommonTagButton.dataset.bulkRemoveTag || '').trim().toLowerCase();
+        if (!tag) {
+          return;
+        }
+        if (bulkRemoveTags.has(tag)) {
+          bulkRemoveTags.delete(tag);
+        } else {
+          bulkRemoveTags.add(tag);
+        }
+        const bulkFormRoot = document.querySelector('[data-bulk-form]');
+        const selectedCheckboxes = bulkFormRoot
+          ? Array.from(bulkFormRoot.querySelectorAll('[data-bulk-select]')).filter((checkbox) => checkbox.checked)
+          : [];
+        renderBulkCommonTags(computeCommonBulkTags(selectedCheckboxes));
+        if (bulkDrawerStatus) {
+          bulkDrawerStatus.textContent = selectedCheckboxes.length > 0
+            ? `Select fields to update${bulkRemoveTags.size ? ` • Remove ${bulkRemoveTags.size} common tag(s)` : ''}`
+            : 'Select at least one row';
         }
         return;
       }

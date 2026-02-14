@@ -66,8 +66,11 @@ async def ui_bulk_edit_ip_assets(
     tags_to_add_raw = [str(tag) for tag in form.getlist("tags")]
     tags_to_add, tag_errors = _parse_selected_tags(connection, tags_to_add_raw)
     errors.extend(tag_errors)
+    remove_tags_raw = [str(tag) for tag in form.getlist("remove_tags")]
+    tags_to_remove, remove_tag_errors = _parse_selected_tags(connection, remove_tags_raw)
+    errors.extend(remove_tag_errors)
 
-    if not asset_type_enum and not set_project_id and not tags_to_add:
+    if not asset_type_enum and not set_project_id and not tags_to_add and not tags_to_remove:
         errors.append("Choose at least one bulk update action.")
 
     if errors:
@@ -84,6 +87,7 @@ async def ui_bulk_edit_ip_assets(
         project_id=project_id_value,
         set_project_id=set_project_id,
         tags_to_add=tags_to_add,
+        tags_to_remove=tags_to_remove,
         current_user=user,
     )
     success_message = f"Updated {len(updated_assets)} IP assets."

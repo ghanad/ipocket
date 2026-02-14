@@ -251,5 +251,66 @@
   </div>
 </aside>
 
+<div class="ip-drawer-overlay" data-bulk-drawer-overlay aria-hidden="true"></div>
+<aside class="ip-drawer" data-bulk-drawer role="dialog" aria-modal="true" aria-label="Bulk update IP assets">
+  <div class="ip-drawer-header">
+    <div class="ip-drawer-header-row">
+      <div>
+        <h2 class="ip-drawer-title">Bulk update IP assets</h2>
+        <p class="ip-drawer-subtitle">Apply one change set to all selected rows.</p>
+      </div>
+      <button class="ip-drawer-close" type="button" aria-label="Close bulk update drawer" data-bulk-drawer-close>✕</button>
+    </div>
+  </div>
+  <div class="ip-drawer-body">
+    <section class="ip-drawer-section">
+      <h3>Selection</h3>
+      <p class="ip-drawer-helper bulk-drawer-selection" data-bulk-drawer-selection>0 selected</p>
+      <div class="bulk-common-tags">
+        <p class="bulk-common-tags-label">Common tags</p>
+        <p class="ip-drawer-helper bulk-common-tags-empty" data-bulk-common-tags-empty>No shared tags.</p>
+        <div class="bulk-common-tags-list" data-bulk-common-tags-list></div>
+      </div>
+    </section>
+    <section class="ip-drawer-section">
+      <h3>Changes</h3>
+      <label class="field">
+        <span>Type</span>
+        <select class="select" name="type" form="bulk-edit-form" data-bulk-input>
+          <option value="">Keep current</option>
+          {% for asset_type in types %}
+          <option value="{{ asset_type }}">{{ asset_type }}</option>
+          {% endfor %}
+        </select>
+      </label>
+      <label class="field">
+        <span>Project</span>
+        <select class="select" name="project_id" form="bulk-edit-form" data-bulk-input>
+          <option value="">Keep current</option>
+          <option value="unassigned">Unassigned</option>
+          {% for project in projects %}
+          <option value="{{ project.id }}">{{ project.name }}</option>
+          {% endfor %}
+        </select>
+      </label>
+      <label class="field">
+        <span>Add tags</span>
+        <select class="select" name="tags" form="bulk-edit-form" multiple size="6" data-bulk-input data-tag-picker data-tag-picker-placeholder="Add tags...">
+          {% for tag in tags %}
+          <option value="{{ tag.name }}" data-tag-color="{{ tag.color }}">{{ tag.name }}</option>
+          {% endfor %}
+        </select>
+      </label>
+    </section>
+  </div>
+  <div class="ip-drawer-footer">
+    <span class="ip-drawer-footer-status" data-bulk-drawer-status>Select fields to update</span>
+    <div class="ip-drawer-footer-actions">
+      <button class="btn btn-secondary" type="button" data-bulk-drawer-cancel>Cancel</button>
+      <button class="btn btn-primary" type="submit" form="bulk-edit-form" data-bulk-drawer-apply disabled>Apply changes</button>
+    </div>
+  </div>
+</aside>
+
 <script src="/static/js/ip-assets.js" defer></script>
 {% endblock %}

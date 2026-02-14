@@ -30,6 +30,13 @@ def test_ui_assets_are_local() -> None:
     assert ".ip-tags-inline > .ip-tags-more {" in css
     assert "flex-shrink: 0;" in css
     assert "color: var(--tag-color-text, #0f172a);" in css
+    assert ".tag-picker-dropdown[hidden] {" in css
+    assert "display: none;" in css
+    assert ".bulk-edit-controls {" in css
+    assert "background: #f8fafc;" in css
+    assert ".bulk-drawer-selection {" in css
+    assert ".bulk-common-tags {" in css
+    assert ".bulk-common-tag-chip.is-marked {" in css
 
 
 def test_use_local_assets_env_override(monkeypatch) -> None:
@@ -45,6 +52,8 @@ def test_refactored_templates_load_external_page_assets() -> None:
     templates = {
         "hosts": repo_root / "app/templates/hosts.html",
         "ip_assets": repo_root / "app/templates/ip_assets_list.html",
+        "ip_assets_table": repo_root / "app/templates/partials/ip_assets_table.html",
+        "ip_assets_rows": repo_root / "app/templates/partials/ip_table_rows.html",
         "range_addresses": repo_root / "app/templates/range_addresses.html",
         "tags": repo_root / "app/templates/tags.html",
         "audit_log": repo_root / "app/templates/audit_log_list.html",
@@ -62,6 +71,17 @@ def test_refactored_templates_load_external_page_assets() -> None:
     assert '<script src="/static/js/ip-assets.js" defer></script>' in templates[
         "ip_assets"
     ].read_text(encoding="utf-8")
+    assert 'data-bulk-open disabled>Bulk update</button>' in templates[
+        "ip_assets_table"
+    ].read_text(encoding="utf-8")
+    assert "data-bulk-remove-hidden" in templates["ip_assets_table"].read_text(
+        encoding="utf-8"
+    )
+    assert "data-bulk-drawer" in templates["ip_assets"].read_text(encoding="utf-8")
+    assert "data-bulk-common-tags-list" in templates["ip_assets"].read_text(
+        encoding="utf-8"
+    )
+    assert "data-bulk-tags=" in templates["ip_assets_rows"].read_text(encoding="utf-8")
     assert "<style>" not in templates["ip_assets"].read_text(encoding="utf-8")
     assert "<script>" not in templates["ip_assets"].read_text(encoding="utf-8")
 
@@ -95,6 +115,11 @@ def test_refactored_templates_load_external_page_assets() -> None:
     )
     assert "window.ipocketApplyTagContrast = applyTagContrast;" in tag_picker_js
     assert "applyTagContrast(root);" in tag_picker_js
+    ip_assets_js = (repo_root / "app/static/js/ip-assets.js").read_text(
+        encoding="utf-8"
+    )
+    assert "computeCommonBulkTags" in ip_assets_js
+    assert "name = 'remove_tags'" in ip_assets_js
 
 
 def test_hosts_drawer_css_matches_ip_drawer_layout_baseline() -> None:

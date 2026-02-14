@@ -106,6 +106,34 @@ def test_bulk_update_ip_assets_assigns_type_project_and_tags(_setup_connection) 
     assert tag_map[asset_two.id] == ["core", "edge"]
 
 
+def test_bulk_update_ip_assets_supports_removing_common_tags(_setup_connection) -> None:
+    connection = _setup_connection()
+    asset_one = create_ip_asset(
+        connection,
+        ip_address="10.30.0.21",
+        asset_type=IPAssetType.VM,
+        tags=["prod", "edge", "ops"],
+    )
+    asset_two = create_ip_asset(
+        connection,
+        ip_address="10.30.0.22",
+        asset_type=IPAssetType.OS,
+        tags=["prod", "edge"],
+    )
+
+    updated_assets = bulk_update_ip_assets(
+        connection,
+        [asset_one.id, asset_two.id],
+        tags_to_add=["db"],
+        tags_to_remove=["prod"],
+    )
+
+    assert len(updated_assets) == 2
+    tag_map = list_tags_for_ip_assets(connection, [asset_one.id, asset_two.id])
+    assert tag_map[asset_one.id] == ["db", "edge", "ops"]
+    assert tag_map[asset_two.id] == ["db", "edge"]
+
+
 def test_create_bmc_without_host_creates_server_host_and_links_asset(
     _setup_connection,
 ) -> None:

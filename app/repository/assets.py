@@ -448,12 +448,16 @@ def bulk_update_ip_assets(
     project_id: Optional[int] = None,
     set_project_id: bool = False,
     tags_to_add: Optional[list[str]] = None,
+    tags_to_remove: Optional[list[str]] = None,
     current_user: Optional[User] = None,
 ) -> list[IPAsset]:
     assets = list_ip_assets_by_ids(connection, asset_ids)
     if not assets:
         return []
-    normalized_tags = normalize_tag_names(tags_to_add) if tags_to_add else []
+    normalized_tags_to_add = normalize_tag_names(tags_to_add) if tags_to_add else []
+    normalized_tags_to_remove = (
+        normalize_tag_names(tags_to_remove) if tags_to_remove else []
+    )
     tag_map = list_tags_for_ip_assets(connection, [asset.id for asset in assets])
     updated_assets: list[IPAsset] = []
     with connection:
@@ -471,6 +475,16 @@ def bulk_update_ip_assets(
             updated = get_ip_asset_by_id(connection, asset.id)
             if updated is None:
                 continue
+            existing_tags = tag_map.get(asset.id, [])
+            next_tags = normalize_tag_names(
+                [
+                    *existing_tags,
+                    *normalized_tags_to_add,
+                ]
+            )
+            if normalized_tags_to_remove:
+                removal_set = set(normalized_tags_to_remove)
+                next_tags = [tag for tag in next_tags if tag not in removal_set]
             create_audit_log(
                 connection,
                 user=current_user,
@@ -478,11 +492,19 @@ def bulk_update_ip_assets(
                 target_type="IP_ASSET",
                 target_id=updated.id,
                 target_label=updated.ip_address,
-                changes=_summarize_ip_asset_changes(connection, asset, updated),
+                changes=_summarize_ip_asset_changes(
+                    connection,
+                    asset,
+                    updated,
+                    tags_before=existing_tags,
+                    tags_after=next_tags,
+                ),
             )
-            if normalized_tags:
-                existing_tags = tag_map.get(asset.id, [])
-                combined_tags = normalize_tag_names(existing_tags + normalized_tags)
-                set_ip_asset_tags(connection, updated.id, combined_tags)
+            if (
+                normalized_tags_to_add
+                or normalized_tags_to_remove
+                or sorted(existing_tags) != sorted(next_tags)
+            ):
+                set_ip_asset_tags(connection, updated.id, next_tags)
             updated_assets.append(updated)
     return updated_assets

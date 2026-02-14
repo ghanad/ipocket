@@ -35,6 +35,9 @@ ipocket is a lightweight IP inventory app to track addresses and their project a
 - IP assets table uses a fixed responsive layout so long Notes/Tags content does not force horizontal page scrolling.
 - Tags on IP assets are now selected from existing Tag records (no free-text tag creation during assignment), with a dedicated Tags page to manage names and colors.
 - Tag selection UI now uses a chip-based picker (`Add tags...`) with searchable dropdown suggestions, Enter/click add, chip remove (`×`), and Backspace removal of the last selected chip.
+- Bulk edit tag picker no longer shows an empty suggestions panel by default; the suggestions dropdown now stays hidden until you focus/type in `Add tags...`.
+- Bulk updates now open in a right-side drawer (matching Add/Edit/Delete flows) after selecting rows, keeping the table header compact while applying Type/Project/Tag changes to all selected IP assets.
+- Bulk update drawer now shows **Common tags** across selected rows and lets operators mark shared tags for removal (sent as `remove_tags`) while still supporting additive tags in the same action.
 - Tag chips now auto-pick a high-contrast text color (dark/light) based on each tag background color across the IP edit/add drawers, IP assets table tags, and tag popovers.
 - Tags page now uses the same right-side drawer pattern as Projects/Vendors for create/edit/delete, including destructive confirmation by typing the exact tag name. The tags table also shows an **IPs** count column with how many active IP assets currently use each tag.
 - Tag create drawer suggests a random tag color by default (instead of one fixed color), and users can override it before saving.
@@ -70,7 +73,7 @@ ipocket is a lightweight IP inventory app to track addresses and their project a
 - Sidebar includes a **Connectors** page with tabs (`Overview` / `vCenter` / `Prometheus`) so operators can run import connectors directly from UI.
 - **Connectors → vCenter** supports both `dry-run` and `apply` execution modes and shows an in-page execution log (inventory summary + warnings/errors) after each run.
 - Manual vCenter connector is available via `python -m app.connectors.vcenter` (ESXi hosts as `OS` + tag `esxi`, VMs as `VM`) with both file export mode and direct API dry-run/apply modes; on update it always overwrites `type`, merges connector tags into existing tags, and only writes connector notes when the existing note is empty.
-- **Connectors → Prometheus** imports IPs from Prometheus `api/v1/query` vector results by extracting IPv4 values from a chosen label (for node_exporter this is commonly `instance`), supports `dry-run`/`apply` from UI, keeps a CLI path via `python -m app.connectors.prometheus`, and preserves non-empty existing IP notes during updates.
+- **Connectors → Prometheus** imports IPs from Prometheus `api/v1/query` vector results by extracting IPv4 values from a chosen label (for node_exporter this is commonly `instance`), supports `dry-run`/`apply` from UI, keeps a CLI path via `python -m app.connectors.prometheus`, preserves non-empty existing IP notes during updates, and now shows per-IP dry-run change details (`CREATE`/`UPDATE`/`SKIP` with field-level diffs).
 - Successful `apply` executions for bundle/CSV imports and connector runs now write run-level audit entries (`target_type=IMPORT_RUN`) with source + create/update/skip/warning/error summary; `dry-run` executions are not audited at run level.
 - Prometheus metrics on `/metrics`
 - Prometheus SD endpoint on `/sd/node` with project grouping
