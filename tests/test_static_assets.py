@@ -71,7 +71,7 @@ def test_refactored_templates_load_external_page_assets() -> None:
     assert '<script src="/static/js/ip-assets.js" defer></script>' in templates[
         "ip_assets"
     ].read_text(encoding="utf-8")
-    assert 'data-bulk-open disabled>Bulk update</button>' in templates[
+    assert "data-bulk-open disabled>Bulk update</button>" in templates[
         "ip_assets_table"
     ].read_text(encoding="utf-8")
     assert "data-bulk-remove-hidden" in templates["ip_assets_table"].read_text(

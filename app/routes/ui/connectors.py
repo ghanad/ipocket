@@ -60,7 +60,9 @@ def _build_prometheus_dry_run_change_logs(
     if connection is None:
         return []
 
-    project_names = {project.id: project.name for project in repository.list_projects(connection)}
+    project_names = {
+        project.id: project.name for project in repository.list_projects(connection)
+    }
     host_names = {host.id: host.name for host in repository.list_hosts(connection)}
     detail_lines: list[str] = []
 
@@ -99,9 +101,9 @@ def _build_prometheus_dry_run_change_logs(
 
         existing_project = _label_or_unassigned(project_names.get(existing.project_id))
         existing_host = _label_or_unassigned(host_names.get(existing.host_id))
-        existing_tags = repository.list_tags_for_ip_assets(connection, [existing.id]).get(
-            existing.id, []
-        )
+        existing_tags = repository.list_tags_for_ip_assets(
+            connection, [existing.id]
+        ).get(existing.id, [])
 
         if asset.get("tags") is None:
             target_tags = existing_tags

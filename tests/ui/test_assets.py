@@ -262,7 +262,9 @@ def test_ip_assets_list_uses_drawer_actions_for_edit_and_delete(client) -> None:
     js_source = ip_assets_js.read_text(encoding="utf-8")
     assert "ipocket.ip-assets.scrollY" in js_source
     assert "drawer.dataset.ipDrawerMode = normalizedMode" in js_source
-    assert "const bulkDrawer = document.querySelector('[data-bulk-drawer]');" in js_source
+    assert (
+        "const bulkDrawer = document.querySelector('[data-bulk-drawer]');" in js_source
+    )
     assert "const openButton = bulkForm.querySelector('[data-bulk-open]');" in js_source
     assert "computeCommonBulkTags" in js_source
     assert "data-bulk-remove-tag" in js_source
@@ -516,7 +518,10 @@ def test_ip_assets_bulk_edit_removes_selected_common_tags(client) -> None:
     try:
         db.init_db(connection)
         user = repository.create_user(
-            connection, username="editor-remove-tags", hashed_password="x", role=UserRole.EDITOR
+            connection,
+            username="editor-remove-tags",
+            hashed_password="x",
+            role=UserRole.EDITOR,
         )
         asset_one = repository.create_ip_asset(
             connection,
@@ -552,7 +557,9 @@ def test_ip_assets_bulk_edit_removes_selected_common_tags(client) -> None:
     assert "bulk-success=Updated+2+IP+assets." in response.headers["location"]
     connection = db.connect(os.environ["IPAM_DB_PATH"])
     try:
-        tag_map = repository.list_tags_for_ip_assets(connection, [asset_one.id, asset_two.id])
+        tag_map = repository.list_tags_for_ip_assets(
+            connection, [asset_one.id, asset_two.id]
+        )
     finally:
         connection.close()
 
