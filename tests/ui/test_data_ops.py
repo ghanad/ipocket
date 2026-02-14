@@ -250,9 +250,7 @@ def test_bundle_import_apply_success_shows_success_message(client, monkeypatch) 
 def test_csv_import_apply_success_with_ip_assets_file_only(client, monkeypatch) -> None:
     captured_inputs: dict[str, bytes] = {}
 
-    def _fake_run_import(
-        _connection, _importer, inputs, dry_run, audit_context=None
-    ):
+    def _fake_run_import(_connection, _importer, inputs, dry_run, audit_context=None):
         captured_inputs.update(inputs)
         assert dry_run is False
         assert audit_context is not None
