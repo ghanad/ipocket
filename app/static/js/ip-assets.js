@@ -726,6 +726,38 @@
     updateCount();
   };
 
+  const bindTableInteractions = (root = document) => {
+    bindEditButtons(root);
+    bindDeleteButtons(root);
+    bindBulkEdit(root);
+    bindTagsMoreTriggers(root);
+    bindAddButtons();
+  };
+
+  const getIpTableContainerFromEvent = (event) => {
+    const explicitTarget = event?.detail?.target;
+    if (explicitTarget instanceof Element) {
+      if (explicitTarget.id === 'ip-table-container') {
+        return explicitTarget;
+      }
+      const nested = explicitTarget.closest('#ip-table-container');
+      if (nested) {
+        return nested;
+      }
+    }
+    const fallbackTarget = event?.target;
+    if (fallbackTarget instanceof Element) {
+      if (fallbackTarget.id === 'ip-table-container') {
+        return fallbackTarget;
+      }
+      const nested = fallbackTarget.closest('#ip-table-container');
+      if (nested) {
+        return nested;
+      }
+    }
+    return null;
+  };
+
   const normalizeTagValue = (rawValue) => {
     const normalized = (rawValue || '').trim().toLowerCase();
     if (!normalized) {
@@ -1017,14 +1049,19 @@
     }
 
     document.body.addEventListener('htmx:afterSwap', (event) => {
-      if (event.target && event.target.id === 'ip-table-container') {
-        closeTagsPopover();
-        bindEditButtons(event.target);
-        bindDeleteButtons(event.target);
-        bindBulkEdit(event.target);
-        bindTagsMoreTriggers(event.target);
-        bindAddButtons();
+      const container = getIpTableContainerFromEvent(event);
+      if (!container) {
+        return;
       }
+      closeTagsPopover();
+      bindTableInteractions(container);
+    });
+    document.body.addEventListener('htmx:afterSettle', (event) => {
+      const container = getIpTableContainerFromEvent(event);
+      if (!container) {
+        return;
+      }
+      bindTableInteractions(container);
     });
     document.body.addEventListener('click', (event) => {
       const removeTagButton = event.target.closest('[data-remove-tag-filter]');
@@ -1057,9 +1094,5 @@
     });
   }
 
-  bindEditButtons();
-  bindDeleteButtons();
-  bindAddButtons();
-  bindTagsMoreTriggers();
-  bindBulkEdit();
+  bindTableInteractions();
 })();
