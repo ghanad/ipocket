@@ -281,7 +281,7 @@ def _upsert_ip_assets(
             asset_type=asset_type,
             project_id=project_id,
             host_id=host_id,
-            notes=asset.notes,
+            notes=asset.notes if notes_should_update else None,
             tags=target_tags,
             notes_provided=notes_should_update,
         )
