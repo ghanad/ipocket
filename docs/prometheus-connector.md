@@ -28,7 +28,7 @@ Optional inputs:
 1. Open **Connectors → Prometheus**.
 2. Set URL/query/label and optional mapping fields.
 3. Run **dry-run** first.
-4. Review execution log and warnings (dry-run includes extracted IP preview and `ip_assets` create/update/skip summary).
+4. Review execution log and warnings (dry-run includes extracted IP preview, per-IP `CREATE`/`UPDATE`/`SKIP` details with field-level diffs, and `ip_assets` create/update/skip summary).
 5. Run **apply** as an editor account.
 
 ## CLI usage
@@ -91,6 +91,7 @@ Connector behavior:
 - Skips loopback IPs (`127.0.0.0/8`) with warnings.
 - Skips samples where the selected label is missing.
 - Accepts `host:port` and extracts the host part.
+- UI dry-run logs include per-IP action details so you can review exactly which fields would be created or changed before apply.
 
 ## Failure behavior
 

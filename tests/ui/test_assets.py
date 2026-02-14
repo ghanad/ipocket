@@ -233,6 +233,12 @@ def test_ip_assets_list_uses_drawer_actions_for_edit_and_delete(client) -> None:
     assert 'class="col-type"' in response.text
     assert "Host Pair" not in response.text
     assert "bulk-edit-controls-hidden" in response.text
+    assert "data-bulk-open" in response.text
+    assert "data-bulk-drawer" in response.text
+    assert "Bulk update IP assets" in response.text
+    assert "data-bulk-common-tags-list" in response.text
+    assert "data-bulk-remove-hidden" in response.text
+    assert 'data-bulk-tags="edge"' in response.text
     assert f'data-ip-edit="{asset.id}"' in response.text
     assert 'data-ip-address="10.30.0.10"' in response.text
     assert 'data-ip-type="VM"' in response.text
@@ -256,6 +262,12 @@ def test_ip_assets_list_uses_drawer_actions_for_edit_and_delete(client) -> None:
     js_source = ip_assets_js.read_text(encoding="utf-8")
     assert "ipocket.ip-assets.scrollY" in js_source
     assert "drawer.dataset.ipDrawerMode = normalizedMode" in js_source
+    assert (
+        "const bulkDrawer = document.querySelector('[data-bulk-drawer]');" in js_source
+    )
+    assert "const openButton = bulkForm.querySelector('[data-bulk-open]');" in js_source
+    assert "computeCommonBulkTags" in js_source
+    assert "data-bulk-remove-tag" in js_source
     assert "form.style.display = isDeleteMode ? 'none' : 'flex'" in js_source
     assert "deleteForm.style.display = isDeleteMode ? 'flex' : 'none'" in js_source
     assert "data-ip-drawer-title" in response.text
@@ -497,6 +509,62 @@ def test_ip_assets_bulk_edit_updates_selected_assets(client) -> None:
         assert tag_map[asset_two.id] == ["core", "edge"]
     finally:
         connection.close()
+
+
+def test_ip_assets_bulk_edit_removes_selected_common_tags(client) -> None:
+    import os
+
+    connection = db.connect(os.environ["IPAM_DB_PATH"])
+    try:
+        db.init_db(connection)
+        user = repository.create_user(
+            connection,
+            username="editor-remove-tags",
+            hashed_password="x",
+            role=UserRole.EDITOR,
+        )
+        asset_one = repository.create_ip_asset(
+            connection,
+            ip_address="10.70.0.31",
+            asset_type=IPAssetType.VM,
+            tags=["prod", "edge", "ops"],
+        )
+        asset_two = repository.create_ip_asset(
+            connection,
+            ip_address="10.70.0.32",
+            asset_type=IPAssetType.OS,
+            tags=["prod", "edge"],
+        )
+    finally:
+        connection.close()
+
+    app.dependency_overrides[ui.require_ui_editor] = lambda: user
+    try:
+        response = client.post(
+            "/ui/ip-assets/bulk-edit",
+            data=[
+                ("asset_ids", str(asset_one.id)),
+                ("asset_ids", str(asset_two.id)),
+                ("remove_tags", "prod"),
+                ("return_to", "/ui/ip-assets"),
+            ],
+            follow_redirects=False,
+        )
+    finally:
+        app.dependency_overrides.pop(ui.require_ui_editor, None)
+
+    assert response.status_code == 303
+    assert "bulk-success=Updated+2+IP+assets." in response.headers["location"]
+    connection = db.connect(os.environ["IPAM_DB_PATH"])
+    try:
+        tag_map = repository.list_tags_for_ip_assets(
+            connection, [asset_one.id, asset_two.id]
+        )
+    finally:
+        connection.close()
+
+    assert tag_map[asset_one.id] == ["edge", "ops"]
+    assert tag_map[asset_two.id] == ["edge"]
 
 
 def test_ip_assets_edit_returns_to_list_when_return_to_set(client) -> None:

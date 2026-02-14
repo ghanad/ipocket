@@ -185,7 +185,8 @@ UI design reference templates live in `/ui_template` for layout and styling guid
 7) Open **Data Ops** from the sidebar to import or export data using one unified page with tabs.
 8) Open **Connectors** from the sidebar and use **vCenter** or **Prometheus** tabs to run connectors directly from UI (`dry-run` or `apply`) and review execution logs.
 9) When assigning tags on IP Assets or Range Address drawers, use the chip picker (`Add tags...`) to search and select existing tags only (create new tag names first in **Library → Tags**).
-10) Open **Audit Log** to review run-level `apply` entries for Data Ops and Connectors (`IMPORT_RUN`); dry-run executions are intentionally excluded from run-level audit logging.
+10) For multi-row assignment changes, select IPs in **IP Assets** and use **Bulk update** to open the right-side drawer for batch Type/Project/Tag updates; shared tags appear under **Common tags** and can be removed for all selected rows in one apply.
+11) Open **Audit Log** to review run-level `apply` entries for Data Ops and Connectors (`IMPORT_RUN`); dry-run executions are intentionally excluded from run-level audit logging.
 
 Assignment workflow note: use **IP Assets → Assignment = Unassigned only** to review and update records that still need a project. You can also use **Project = Unassigned** in the search filters for the same project-missing view. The old dedicated **Needs Assignment** page is removed.
 
@@ -284,7 +285,7 @@ UI flow:
   - IP label (for node_exporter usually `instance`)
   - optional auth (Bearer token or `username:password`)
   - optional project/tags/type override
-- Start with `dry-run`, inspect extracted IP preview + `ip_assets` create/update/skip summary in logs, then run `apply`.
+- Start with `dry-run`, inspect extracted IP preview + per-IP change details (`CREATE`/`UPDATE`/`SKIP` with field diffs) + `ip_assets` create/update/skip summary in logs, then run `apply`.
 
 CLI examples:
 

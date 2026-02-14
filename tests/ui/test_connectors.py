@@ -5,7 +5,7 @@ from app.connectors.prometheus import PrometheusMetricRecord
 from app.connectors.vcenter import VCenterHostRecord, VCenterVmRecord
 from app.imports.models import ImportApplyResult, ImportEntitySummary, ImportSummary
 from app.main import app
-from app.models import User, UserRole
+from app.models import IPAssetType, User, UserRole
 from app.routes import ui
 from app.routes.ui import connectors as connectors_routes
 
@@ -342,6 +342,97 @@ def test_prometheus_connector_dry_run_logs_ip_preview_and_asset_summary(
     assert any("Dry-run IP preview (2): 10.0.0.10, 10.0.0.11" in line for line in logs)
     assert any(
         "IP assets summary: create=1, update=1, skip=0." in line for line in logs
+    )
+
+
+def test_prometheus_connector_dry_run_logs_per_ip_change_details(
+    monkeypatch, _setup_connection
+) -> None:
+    connection = _setup_connection()
+    try:
+        legacy_project = repository.create_project(connection, name="Legacy")
+        core_project = repository.create_project(connection, name="Core")
+        repository.create_ip_asset(
+            connection,
+            ip_address="10.0.0.10",
+            asset_type=IPAssetType.VM,
+            project_id=legacy_project.id,
+            notes="manual note",
+            tags=["legacy", "ops"],
+        )
+        repository.create_ip_asset(
+            connection,
+            ip_address="10.0.0.11",
+            asset_type=IPAssetType.OTHER,
+            project_id=core_project.id,
+            notes="manual keep",
+            tags=["monitoring"],
+        )
+
+        monkeypatch.setattr(
+            connectors_routes,
+            "fetch_prometheus_query_result",
+            lambda **_kwargs: [
+                PrometheusMetricRecord(
+                    labels={"instance": "10.0.0.10:9100", "__name__": "up"}, value="1"
+                ),
+                PrometheusMetricRecord(
+                    labels={"instance": "10.0.0.11:9100", "__name__": "up"}, value="1"
+                ),
+                PrometheusMetricRecord(
+                    labels={"instance": "10.0.0.12:9100", "__name__": "up"}, value="1"
+                ),
+            ],
+        )
+        monkeypatch.setattr(
+            connectors_routes,
+            "run_import",
+            lambda *_args, **_kwargs: ImportApplyResult(
+                summary=ImportSummary(
+                    vendors=ImportEntitySummary(),
+                    projects=ImportEntitySummary(),
+                    hosts=ImportEntitySummary(),
+                    ip_assets=ImportEntitySummary(
+                        would_create=1, would_update=1, would_skip=1
+                    ),
+                ),
+                errors=[],
+                warnings=[],
+            ),
+        )
+
+        logs, warnings, _warning_count, _error_count = (
+            connectors_routes._run_prometheus_connector(
+                connection=connection,
+                user=None,
+                prometheus_url="http://127.0.0.1:9090",
+                query='up{job="node"}',
+                ip_label="instance",
+                asset_type="OTHER",
+                project_name="Core",
+                tags=["monitoring"],
+                token=None,
+                insecure=False,
+                timeout=30,
+                dry_run=True,
+            )
+        )
+    finally:
+        connection.close()
+
+    assert warnings == []
+    assert "Dry-run per-IP change details:" in logs
+    assert any(
+        "[UPDATE] 10.0.0.10: type VM -> OTHER; project Legacy -> Core; "
+        "tags +[monitoring] -[legacy, ops]; notes preserved (existing note kept)."
+        in line
+        for line in logs
+    )
+    assert any("[SKIP] 10.0.0.11: no field changes." in line for line in logs)
+    assert any(
+        "[CREATE] 10.0.0.12: type=OTHER; project=Core; host=Unassigned; "
+        "tags=[monitoring]; notes=set; archived=false." in line
+        for line in logs
     )
 
 

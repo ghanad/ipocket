@@ -1,6 +1,7 @@
 <section class="card table-card">
-  <form class="bulk-edit-form" method="post" action="/ui/ip-assets/bulk-edit" data-bulk-form>
+  <form class="bulk-edit-form" method="post" action="/ui/ip-assets/bulk-edit" data-bulk-form id="bulk-edit-form">
     <input type="hidden" name="return_to" value="{{ return_to }}">
+    <div data-bulk-remove-hidden></div>
     <div class="bulk-edit-controls bulk-edit-controls-hidden" data-bulk-controls>
       <div class="bulk-edit-selection">
         <label class="field field-inline">
@@ -9,36 +10,7 @@
         </label>
         <span class="muted" data-selected-count>0 selected</span>
       </div>
-      <div class="bulk-edit-fields">
-        <label class="field field-inline">
-          <span class="muted">Type</span>
-          <select class="select" name="type">
-            <option value="">Keep current</option>
-            {% for asset_type in types %}
-            <option value="{{ asset_type }}">{{ asset_type }}</option>
-            {% endfor %}
-          </select>
-        </label>
-        <label class="field field-inline">
-          <span class="muted">Project</span>
-          <select class="select" name="project_id">
-            <option value="">Keep current</option>
-            <option value="unassigned">Unassigned</option>
-            {% for project in projects %}
-            <option value="{{ project.id }}">{{ project.name }}</option>
-            {% endfor %}
-          </select>
-        </label>
-        <label class="field field-inline">
-          <span class="muted">Add tags</span>
-          <select class="select" name="tags" multiple size="4" data-tag-picker data-tag-picker-placeholder="Add tags...">
-            {% for tag in tags %}
-            <option value="{{ tag.name }}" data-tag-color="{{ tag.color }}">{{ tag.name }}</option>
-            {% endfor %}
-          </select>
-        </label>
-        <button class="btn btn-primary btn-small" type="submit" data-bulk-submit disabled>Apply changes</button>
-      </div>
+      <button class="btn btn-primary btn-small" type="button" data-bulk-open disabled>Bulk update</button>
     </div>
     <div class="table-wrapper">
       <table class="table table-ip-assets">

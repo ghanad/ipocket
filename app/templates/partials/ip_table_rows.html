@@ -2,7 +2,14 @@
 {% for asset in assets %}
 <tr data-ip-asset-row-id="{{ asset.id }}">
   <td>
-    <input class="checkbox" type="checkbox" name="asset_ids" value="{{ asset.id }}" data-bulk-select>
+    <input
+      class="checkbox"
+      type="checkbox"
+      name="asset_ids"
+      value="{{ asset.id }}"
+      data-bulk-select
+      data-bulk-tags="{{ asset.tags | map(attribute='name') | join(',') }}"
+    >
   </td>
   <td class="mono col-ip-address"><a href="/ui/ip-assets/{{ asset.id }}">{{ asset.ip_address }}</a></td>
   <td class="col-project">
