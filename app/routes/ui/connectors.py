@@ -143,7 +143,7 @@ def _build_prometheus_dry_run_change_logs(
                 f"{'set' if existing.notes else 'empty'} -> "
                 f"{'set' if target_notes else 'empty'}"
             )
-        elif note_preserved:
+        elif note_preserved and changes:
             changes.append("notes preserved (existing note kept)")
         if bool(existing.archived) != desired_archived:
             changes.append(
