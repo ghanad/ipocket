@@ -264,6 +264,11 @@ python -m app.connectors.vcenter --server <vcenter> --username <user> --password
 
 See `/docs/vcenter-connector.md` for full mapping and options.
 
+Update semantics for existing IP assets (apply mode):
+- `type` is always overwritten from connector output.
+- Connector tags are merged with existing tags (not full replacement).
+- Connector notes are only applied when the existing note is empty.
+
 ## Prometheus connector (node_exporter / metric-driven import)
 
 Use the Prometheus connector when you want to pull IPs from Prometheus query results

@@ -95,10 +95,14 @@ def test_build_import_bundle_sets_os_vm_types_and_esxi_tag() -> None:
     assert ip_assets_payload[0]["type"] == "OS"
     assert ip_assets_payload[0]["host_name"] == "esxi-01.lab"
     assert ip_assets_payload[0]["tags"] == ["esxi"]
+    assert ip_assets_payload[0]["preserve_existing_notes"] is True
+    assert ip_assets_payload[0]["merge_tags"] is True
 
     assert ip_assets_payload[1]["type"] == "VM"
     assert ip_assets_payload[1]["ip_address"] == "10.0.1.10"
     assert "app-vm-01" in ip_assets_payload[1]["notes"]
+    assert ip_assets_payload[1]["preserve_existing_notes"] is True
+    assert ip_assets_payload[1]["merge_tags"] is True
 
 
 def test_build_import_bundle_skips_duplicate_ips() -> None:

@@ -69,6 +69,11 @@ The generated bundle uses these rules:
 - Virtual machines:
   - Exported as IP assets with `type = VM`
 
+Update behavior for existing IPs on apply:
+- `type` is always overwritten from vCenter payload (`OS` for ESXi host IPs, `VM` for VM IPs).
+- Connector tags are merged into existing tags (`merge_tags=true`) instead of replacing all tags.
+- Notes are only set when the existing IP note is empty (`preserve_existing_notes=true` keeps non-empty manual notes).
+
 Records without an IPv4 address are skipped with warnings printed in CLI output.
 
 ## Import into ipocket
