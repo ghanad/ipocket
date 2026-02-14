@@ -9,7 +9,7 @@ from app.imports.models import (
     ImportSummary,
     ImportValidationResult,
 )
-from app.imports.pipeline import run_import
+from app.imports.pipeline import ImportAuditContext, run_import
 from app.imports.validator import validate_bundle
 
 __all__ = [
@@ -25,5 +25,6 @@ __all__ = [
     "ImportApplyResult",
     "validate_bundle",
     "apply_bundle",
+    "ImportAuditContext",
     "run_import",
 ]

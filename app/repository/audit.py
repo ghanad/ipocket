@@ -59,51 +59,81 @@ def get_audit_logs_for_ip(
 
 def list_audit_logs(
     connection: sqlite3.Connection,
-    target_type: str = "IP_ASSET",
+    target_type: Optional[str] = "IP_ASSET",
     limit: int = 200,
 ) -> list[AuditLog]:
-    rows = connection.execute(
-        """
-        SELECT *
-        FROM audit_logs
-        WHERE target_type = ?
-        ORDER BY created_at DESC, id DESC
-        LIMIT ?
-        """,
-        (target_type, limit),
-    ).fetchall()
+    if target_type is None:
+        rows = connection.execute(
+            """
+            SELECT *
+            FROM audit_logs
+            ORDER BY created_at DESC, id DESC
+            LIMIT ?
+            """,
+            (limit,),
+        ).fetchall()
+    else:
+        rows = connection.execute(
+            """
+            SELECT *
+            FROM audit_logs
+            WHERE target_type = ?
+            ORDER BY created_at DESC, id DESC
+            LIMIT ?
+            """,
+            (target_type, limit),
+        ).fetchall()
     return [_row_to_audit_log(row) for row in rows]
 
 
 def count_audit_logs(
     connection: sqlite3.Connection,
-    target_type: str = "IP_ASSET",
+    target_type: Optional[str] = "IP_ASSET",
 ) -> int:
-    row = connection.execute(
-        """
-        SELECT COUNT(*) AS count
-        FROM audit_logs
-        WHERE target_type = ?
-        """,
-        (target_type,),
-    ).fetchone()
+    if target_type is None:
+        row = connection.execute(
+            """
+            SELECT COUNT(*) AS count
+            FROM audit_logs
+            """
+        ).fetchone()
+    else:
+        row = connection.execute(
+            """
+            SELECT COUNT(*) AS count
+            FROM audit_logs
+            WHERE target_type = ?
+            """,
+            (target_type,),
+        ).fetchone()
     return row["count"] if row else 0
 
 
 def list_audit_logs_paginated(
     connection: sqlite3.Connection,
-    target_type: str = "IP_ASSET",
+    target_type: Optional[str] = "IP_ASSET",
     limit: int = 20,
     offset: int = 0,
 ) -> list[AuditLog]:
-    rows = connection.execute(
-        """
-        SELECT *
-        FROM audit_logs
-        WHERE target_type = ?
-        ORDER BY created_at DESC, id DESC
-        LIMIT ? OFFSET ?
-        """,
-        (target_type, limit, offset),
-    ).fetchall()
+    if target_type is None:
+        rows = connection.execute(
+            """
+            SELECT *
+            FROM audit_logs
+            ORDER BY created_at DESC, id DESC
+            LIMIT ? OFFSET ?
+            """,
+            (limit, offset),
+        ).fetchall()
+    else:
+        rows = connection.execute(
+            """
+            SELECT *
+            FROM audit_logs
+            WHERE target_type = ?
+            ORDER BY created_at DESC, id DESC
+            LIMIT ? OFFSET ?
+            """,
+            (target_type, limit, offset),
+        ).fetchall()
     return [_row_to_audit_log(row) for row in rows]

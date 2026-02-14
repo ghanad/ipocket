@@ -18,7 +18,7 @@ from app.connectors.vcenter import (
     fetch_vcenter_inventory,
 )
 from app.dependencies import get_connection
-from app.imports import BundleImporter, run_import
+from app.imports import BundleImporter, ImportAuditContext, run_import
 from app.models import IPAssetType, UserRole
 from app.utils import split_tag_string
 from .utils import _render_template
@@ -95,6 +95,7 @@ def ui_connectors(
 def _run_vcenter_connector(
     *,
     connection,
+    user,
     server: str,
     username: str,
     password: str,
@@ -126,6 +127,12 @@ def _run_vcenter_connector(
         BundleImporter(),
         {"bundle": bundle_payload},
         dry_run=dry_run,
+        audit_context=ImportAuditContext(
+            user=user,
+            source="connector_vcenter",
+            mode="apply" if not dry_run else "dry-run",
+            input_label="connector:vcenter",
+        ),
     )
 
     mode_label = "dry-run" if dry_run else "apply"
@@ -153,6 +160,7 @@ def _run_vcenter_connector(
 def _run_prometheus_connector(
     *,
     connection,
+    user,
     prometheus_url: str,
     query: str,
     ip_label: str,
@@ -208,6 +216,12 @@ def _run_prometheus_connector(
         BundleImporter(),
         {"bundle": bundle_payload},
         dry_run=dry_run,
+        audit_context=ImportAuditContext(
+            user=user,
+            source="connector_prometheus",
+            mode="apply" if not dry_run else "dry-run",
+            input_label="connector:prometheus",
+        ),
     )
 
     mode_label = "dry-run" if dry_run else "apply"
@@ -318,6 +332,7 @@ async def ui_run_vcenter_connector(
             import_error_count,
         ) = _run_vcenter_connector(
             connection=connection,
+            user=user,
             server=server,
             username=username,
             password=password,
@@ -482,6 +497,7 @@ async def ui_run_prometheus_connector(
             import_error_count,
         ) = _run_prometheus_connector(
             connection=connection,
+            user=user,
             prometheus_url=prometheus_url,
             query=query,
             ip_label=ip_label,

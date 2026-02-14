@@ -63,14 +63,20 @@ UI assignment flows only allow selecting from existing tags; they do not create 
 ## AuditLog
 - `user_id` (INTEGER, nullable; FK to `users.id`)
 - `username` (TEXT, nullable snapshot of username at action time)
-- `target_type` (TEXT, ex: `IP_ASSET`, `USER`)
+- `target_type` (TEXT, ex: `IP_ASSET`, `USER`, `IMPORT_RUN`)
 - `target_id` (INTEGER)
 - `target_label` (TEXT, ex: IP address)
-- `action` (TEXT, `CREATE`, `UPDATE`, `DELETE`)
+- `action` (TEXT, `CREATE`, `UPDATE`, `DELETE`, `APPLY`)
 - `changes` (TEXT summary of changes; no-op updates are skipped)
 - `created_at` (TEXT timestamp)
 
 When a user account is deleted, existing audit logs are preserved by setting `audit_logs.user_id` to `NULL` while keeping `username` snapshots intact.
+
+`IMPORT_RUN` convention:
+- Recorded only for successful `apply` executions (not `dry-run`).
+- Uses `target_id=0` as a run-level sentinel.
+- `target_label` stores the run source (for example `api_import_bundle`, `ui_import_csv`, `connector_vcenter`, `connector_prometheus`).
+- `changes` stores a compact text summary including input type and create/update/skip/warnings/errors counts.
 
 
 ## Host deletion rule
