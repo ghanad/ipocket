@@ -305,9 +305,9 @@ def test_ip_assets_list_renders_note_preview_with_hover_content(client) -> None:
 
 
 def test_ip_assets_js_rebinds_actions_after_htmx_pagination_swap() -> None:
-    js_source = (Path(__file__).resolve().parents[2] / "app/static/js/ip-assets.js").read_text(
-        encoding="utf-8"
-    )
+    js_source = (
+        Path(__file__).resolve().parents[2] / "app/static/js/ip-assets.js"
+    ).read_text(encoding="utf-8")
 
     assert "const getIpTableContainerFromEvent = (event) => {" in js_source
     assert "document.body.addEventListener('htmx:afterSwap'" in js_source
