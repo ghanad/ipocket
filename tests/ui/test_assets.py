@@ -304,6 +304,18 @@ def test_ip_assets_list_renders_note_preview_with_hover_content(client) -> None:
     assert "transition-delay: 0.45s, 0.45s;" in css_source
 
 
+def test_ip_assets_js_rebinds_actions_after_htmx_pagination_swap() -> None:
+    js_source = (
+        Path(__file__).resolve().parents[2] / "app/static/js/ip-assets.js"
+    ).read_text(encoding="utf-8")
+
+    assert "const getIpTableContainerFromEvent = (event) => {" in js_source
+    assert "document.body.addEventListener('htmx:afterSwap'" in js_source
+    assert "document.body.addEventListener('htmx:afterSettle'" in js_source
+    assert "bindTableInteractions(container);" in js_source
+    assert "event.target && event.target.id === 'ip-table-container'" not in js_source
+
+
 def test_ip_assets_edit_can_clear_project_assignment(client) -> None:
     import os
 
