@@ -242,9 +242,12 @@ def _upsert_ip_assets(
         existing_tags = repository.list_tags_for_ip_assets(
             connection, [existing.id]
         ).get(existing.id, [])
-        target_tags = (
-            normalize_tag_names(asset.tags) if asset.tags is not None else existing_tags
-        )
+        if asset.tags is None:
+            target_tags = existing_tags
+        elif asset.merge_tags:
+            target_tags = normalize_tag_names([*existing_tags, *asset.tags])
+        else:
+            target_tags = normalize_tag_names(asset.tags)
         notes_should_update = asset.notes_provided or asset.notes is not None
         if notes_should_update and asset.preserve_existing_notes and existing.notes:
             notes_should_update = False
@@ -278,8 +281,8 @@ def _upsert_ip_assets(
             asset_type=asset_type,
             project_id=project_id,
             host_id=host_id,
-            notes=asset.notes,
-            tags=asset.tags,
+            notes=asset.notes if notes_should_update else None,
+            tags=target_tags,
             notes_provided=notes_should_update,
         )
         if asset.archived is not None:

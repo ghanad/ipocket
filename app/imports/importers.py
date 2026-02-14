@@ -137,6 +137,7 @@ def _parse_ip_assets(section: object, base_path: str) -> list[ImportIPAsset]:
                     _normalize_optional_bool(entry.get("preserve_existing_notes"))
                     is True
                 ),
+                merge_tags=_normalize_optional_bool(entry.get("merge_tags")) is True,
                 archived=_normalize_optional_bool(entry.get("archived")),
                 tags=_parse_tags(entry.get("tags")),
                 source=ImportSource(f"{base_path}[{index}]"),

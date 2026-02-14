@@ -378,6 +378,123 @@ def test_bundle_apply_preserves_existing_note_when_requested(client) -> None:
         connection.close()
 
 
+def test_bundle_apply_vcenter_style_update_overwrites_type_merges_tags_and_preserves_existing_note(
+    client,
+) -> None:
+    test_client, db_path = client
+    _create_user(db_path, "editor-vcenter-update", "editor-pass", UserRole.EDITOR)
+    editor_token = _login(test_client, "editor-vcenter-update", "editor-pass")
+
+    connection = db.connect(str(db_path))
+    try:
+        db.init_db(connection)
+        existing = repository.create_ip_asset(
+            connection,
+            ip_address="10.0.0.89",
+            asset_type=IPAssetType.OTHER,
+            notes="manual note",
+            tags=["prod"],
+        )
+        assert existing is not None
+    finally:
+        connection.close()
+
+    payload = {
+        "app": "ipocket",
+        "schema_version": "1",
+        "exported_at": "2024-01-01T12:00:00+00:00",
+        "data": {
+            "vendors": [],
+            "projects": [],
+            "hosts": [],
+            "ip_assets": [
+                {
+                    "ip_address": "10.0.0.89",
+                    "type": "OS",
+                    "tags": ["esxi"],
+                    "notes": "vCenter host: esxi-01.lab",
+                    "preserve_existing_notes": True,
+                    "merge_tags": True,
+                    "archived": False,
+                }
+            ],
+        },
+    }
+    response = test_client.post(
+        "/import/bundle",
+        headers=_auth_headers(editor_token),
+        files={"file": ("bundle.json", json.dumps(payload), "application/json")},
+    )
+    assert response.status_code == 200
+    assert response.json()["summary"]["ip_assets"]["would_update"] == 1
+
+    connection = db.connect(str(db_path))
+    try:
+        updated = repository.get_ip_asset_by_ip(connection, "10.0.0.89")
+        assert updated is not None
+        assert updated.asset_type == IPAssetType.OS
+        assert updated.notes == "manual note"
+        tag_map = repository.list_tags_for_ip_assets(connection, [updated.id])
+        assert tag_map[updated.id] == ["esxi", "prod"]
+    finally:
+        connection.close()
+
+
+def test_bundle_apply_preserve_existing_note_still_sets_note_when_existing_is_empty(
+    client,
+) -> None:
+    test_client, db_path = client
+    _create_user(db_path, "editor-vcenter-note-empty", "editor-pass", UserRole.EDITOR)
+    editor_token = _login(test_client, "editor-vcenter-note-empty", "editor-pass")
+
+    connection = db.connect(str(db_path))
+    try:
+        db.init_db(connection)
+        repository.create_ip_asset(
+            connection,
+            ip_address="10.0.0.90",
+            asset_type=IPAssetType.VM,
+        )
+    finally:
+        connection.close()
+
+    payload = {
+        "app": "ipocket",
+        "schema_version": "1",
+        "exported_at": "2024-01-01T12:00:00+00:00",
+        "data": {
+            "vendors": [],
+            "projects": [],
+            "hosts": [],
+            "ip_assets": [
+                {
+                    "ip_address": "10.0.0.90",
+                    "type": "VM",
+                    "notes": "vCenter VM: app-vm-01",
+                    "preserve_existing_notes": True,
+                    "merge_tags": True,
+                    "archived": False,
+                }
+            ],
+        },
+    }
+    response = test_client.post(
+        "/import/bundle",
+        headers=_auth_headers(editor_token),
+        files={"file": ("bundle.json", json.dumps(payload), "application/json")},
+    )
+    assert response.status_code == 200
+    assert response.json()["summary"]["ip_assets"]["would_update"] == 1
+
+    connection = db.connect(str(db_path))
+    try:
+        updated = repository.get_ip_asset_by_ip(connection, "10.0.0.90")
+        assert updated is not None
+        assert updated.notes == "vCenter VM: app-vm-01"
+    finally:
+        connection.close()
+
+
 def test_validation_errors(client) -> None:
     test_client, db_path = client
     _create_user(db_path, "viewer", "viewer-pass", UserRole.VIEWER)

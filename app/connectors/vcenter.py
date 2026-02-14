@@ -164,6 +164,8 @@ def build_import_bundle(
                 "host_name": host.name,
                 "tags": ["esxi"],
                 "notes": f"vCenter host: {host.name}",
+                "preserve_existing_notes": True,
+                "merge_tags": True,
                 "archived": False,
             }
         )
@@ -183,6 +185,8 @@ def build_import_bundle(
                 "ip_address": vm.ip_address,
                 "type": "VM",
                 "notes": notes,
+                "preserve_existing_notes": True,
+                "merge_tags": True,
                 "archived": False,
             }
         )

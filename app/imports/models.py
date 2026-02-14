@@ -43,6 +43,7 @@ class ImportIPAsset:
     notes: Optional[str] = None
     notes_provided: bool = False
     preserve_existing_notes: bool = False
+    merge_tags: bool = False
     archived: Optional[bool] = None
     tags: Optional[list[str]] = None
     source: Optional[ImportSource] = None
