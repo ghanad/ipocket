@@ -440,6 +440,72 @@ def test_bundle_apply_vcenter_style_update_overwrites_type_merges_tags_and_prese
         connection.close()
 
 
+def test_bundle_apply_prometheus_style_update_preserves_existing_type(client) -> None:
+    test_client, db_path = client
+    _create_user(db_path, "editor-prom-type-preserve", "editor-pass", UserRole.EDITOR)
+    editor_token = _login(test_client, "editor-prom-type-preserve", "editor-pass")
+
+    connection = db.connect(str(db_path))
+    try:
+        db.init_db(connection)
+        legacy_project = repository.create_project(connection, name="Legacy")
+        core_project = repository.create_project(connection, name="Core")
+        existing = repository.create_ip_asset(
+            connection,
+            ip_address="10.0.0.91",
+            asset_type=IPAssetType.VM,
+            project_id=legacy_project.id,
+            notes="manual note",
+            tags=["legacy"],
+        )
+        assert existing is not None
+        assert core_project is not None
+    finally:
+        connection.close()
+
+    payload = {
+        "app": "ipocket",
+        "schema_version": "1",
+        "exported_at": "2024-01-01T12:00:00+00:00",
+        "data": {
+            "vendors": [],
+            "projects": [],
+            "hosts": [],
+            "ip_assets": [
+                {
+                    "ip_address": "10.0.0.91",
+                    "type": "OTHER",
+                    "project_name": "Core",
+                    "tags": ["monitoring"],
+                    "notes": "Imported from Prometheus query 'up' using label 'instance'.",
+                    "preserve_existing_notes": True,
+                    "preserve_existing_type": True,
+                    "archived": False,
+                }
+            ],
+        },
+    }
+    response = test_client.post(
+        "/import/bundle",
+        headers=_auth_headers(editor_token),
+        files={"file": ("bundle.json", json.dumps(payload), "application/json")},
+    )
+    assert response.status_code == 200
+    assert response.json()["summary"]["ip_assets"]["would_update"] == 1
+
+    connection = db.connect(str(db_path))
+    try:
+        updated = repository.get_ip_asset_by_ip(connection, "10.0.0.91")
+        assert updated is not None
+        assert updated.asset_type == IPAssetType.VM
+        assert updated.project_id == core_project.id
+        assert updated.notes == "manual note"
+        tag_map = repository.list_tags_for_ip_assets(connection, [updated.id])
+        assert tag_map[updated.id] == ["monitoring"]
+    finally:
+        connection.close()
+
+
 def test_bundle_apply_preserve_existing_note_still_sets_note_when_existing_is_empty(
     client,
 ) -> None:
