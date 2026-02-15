@@ -59,6 +59,17 @@
   let tagsPopover = null;
   let tagsPopoverOpenTimer = null;
   let tagsPopoverCloseTimer = null;
+  const getCurrentListUrl = () => window.location.pathname + window.location.search;
+
+  const syncEditReturnTo = () => {
+    if (!form) {
+      return;
+    }
+    const returnToInput = form.querySelector('input[name="return_to"]');
+    if (returnToInput) {
+      returnToInput.value = getCurrentListUrl();
+    }
+  };
 
   const shouldShowHostField = (typeValue) => ['OS', 'BMC'].includes((typeValue || '').toUpperCase());
   const shouldShowAutoHost = (typeValue, hostValue) =>
@@ -530,6 +541,7 @@
       writeInputValue(input, assetData[key] || '');
     });
     form.action = `/ui/ip-assets/${assetData.id}/edit`;
+    syncEditReturnTo();
     if (ipAddressInput) {
       ipAddressInput.readOnly = true;
     }
@@ -591,7 +603,7 @@
     }
     deleteForm.action = `/ui/ip-assets/${assetData.id}/delete`;
     if (deleteReturnTo) {
-      deleteReturnTo.value = window.location.pathname + window.location.search;
+      deleteReturnTo.value = getCurrentListUrl();
     }
     if (deleteAck) {
       deleteAck.checked = false;
@@ -631,6 +643,7 @@
       ipAddressInput.readOnly = false;
     }
     form.action = '/ui/ip-assets/new';
+    syncEditReturnTo();
     drawerTitle.textContent = 'Add IP asset';
     drawerSubtitle.textContent = 'Create a new IP assignment';
     projectPill.textContent = 'Project: Unassigned';
@@ -1200,6 +1213,7 @@
     updateHostVisibility();
     if (form && window.sessionStorage) {
       form.addEventListener('submit', () => {
+        syncEditReturnTo();
         window.sessionStorage.setItem(SCROLL_KEY, String(window.scrollY || 0));
       });
     }

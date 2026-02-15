@@ -23,6 +23,7 @@ ipocket is a lightweight IP inventory app to track addresses and their project a
 - Saving an IP edit from the drawer returns to the list view instead of navigating to the detail page.
 - Clearing Project in the IP edit drawer now correctly unassigns the IP (`project_id` becomes null) instead of keeping the previous project.
 - Creating an IP from the drawer now also returns to the list view (preserving active filters/query state) instead of navigating to a detail URL.
+- Editing or creating an IP from the drawer now preserves the currently visible pagination state (`page`/`per-page`) when returning to the list, including after HTMX page switches.
 - After saving in the drawer, the list view restores the prior scroll position.
 - Host assignment in the drawer only appears when the IP type is OS or BMC.
 - BMC IPs without a host assignment show a drawer action to create and assign a host named `server_<ip>`.
