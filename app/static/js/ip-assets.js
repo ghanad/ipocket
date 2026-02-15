@@ -882,7 +882,21 @@
     bindDeleteButtons(root);
     bindBulkEdit(root);
     bindTagsMoreTriggers(root);
+    bindPerPageControl(root);
     bindAddButtons();
+  };
+
+  const bindPerPageControl = (root = document) => {
+    const perPageSelect = root.querySelector('[data-per-page-select]');
+    if (!perPageSelect || perPageSelect.dataset.perPageBound) {
+      return;
+    }
+    perPageSelect.dataset.perPageBound = 'true';
+    ['click', 'mousedown', 'touchstart'].forEach((eventName) => {
+      perPageSelect.addEventListener(eventName, (event) => {
+        event.stopPropagation();
+      });
+    });
   };
 
   const getIpTableContainerFromEvent = (event) => {
@@ -1235,6 +1249,9 @@
       bindTableInteractions(container);
     });
     document.body.addEventListener('click', (event) => {
+      if (event.target.closest('[data-per-page-control]')) {
+        return;
+      }
       const removeTagButton = event.target.closest('[data-remove-tag-filter]');
       if (removeTagButton) {
         event.preventDefault();

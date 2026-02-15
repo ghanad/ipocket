@@ -14,6 +14,7 @@ ipocket is a lightweight IP inventory app to track addresses and their project a
 - Selected tags in the top Tags filter keep each tag's configured catalog color, including chips added live from the autocomplete input.
 - IP assets list includes an archived-only filter for reviewing soft-deleted records when needed.
 - IP assets list includes pagination with a user-selectable page size (default 20) to keep large inventories manageable.
+- Rows-per-page selector in the IP assets table footer is isolated from global table click handlers, so its dropdown stays open reliably while choosing a page size.
 - IP assets list keeps row actions (Edit/Delete) and bulk-selection controls active after HTMX pagination/filter updates (no manual page refresh needed).
 - IP assets pagination/filtering/sorting now execute directly in SQL (including `LIMIT/OFFSET`) instead of Python in-memory slicing, so large inventories page efficiently while preserving deterministic IP ordering across IPv4/IPv6/fallback values.
 - IP assets list rows use compact spacing for IP text and Project/Type chips to keep more records visible per page.
