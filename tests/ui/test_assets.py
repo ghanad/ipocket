@@ -320,12 +320,20 @@ def test_ip_assets_js_rebinds_actions_after_htmx_pagination_swap() -> None:
     js_source = (
         Path(__file__).resolve().parents[2] / "app/static/js/ip-assets.js"
     ).read_text(encoding="utf-8")
+    table_template = (
+        Path(__file__).resolve().parents[2]
+        / "app/templates/partials/ip_assets_table.html"
+    ).read_text(encoding="utf-8")
 
     assert "const getIpTableContainerFromEvent = (event) => {" in js_source
     assert "document.body.addEventListener('htmx:afterSwap'" in js_source
     assert "document.body.addEventListener('htmx:afterSettle'" in js_source
     assert "bindTableInteractions(container);" in js_source
     assert "event.target && event.target.id === 'ip-table-container'" not in js_source
+    assert "const bindPerPageControl = (root = document) => {" in js_source
+    assert "event.target.closest('[data-per-page-control]')" in js_source
+    assert "data-per-page-control" in table_template
+    assert "data-per-page-select" in table_template
 
 
 def test_ip_assets_edit_can_clear_project_assignment(client) -> None:

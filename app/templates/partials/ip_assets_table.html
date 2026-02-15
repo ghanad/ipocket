@@ -42,13 +42,14 @@
       {% endif %}
     </div>
     <div class="table-footer-controls">
-      <div class="table-per-page">
+      <div class="table-per-page" data-per-page-control>
         <form method="get" action="/ui/ip-assets" class="per-page-form" hx-get="/ui/ip-assets" hx-trigger="submit" hx-target="#ip-table-container" hx-push-url="true">
           <label class="field field-inline">
             <span>Rows</span>
             <select
               class="select select-minimal"
               name="per-page"
+              data-per-page-select
               hx-get="/ui/ip-assets"
               hx-trigger="change"
               hx-target="#ip-table-container"
