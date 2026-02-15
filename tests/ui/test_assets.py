@@ -956,6 +956,29 @@ def test_ip_assets_list_paginates_with_custom_page_size(client) -> None:
     assert "10.50.0.10" in response.text
 
 
+def test_ip_assets_per_page_form_preserves_active_filters(client) -> None:
+    response = client.get(
+        "/ui/ip-assets",
+        params={
+            "q": "192.168.100",
+            "project_id": "unassigned",
+            "type": "VM",
+            "unassigned-only": "true",
+            "archived-only": "true",
+        },
+    )
+
+    assert response.status_code == 200
+    per_page_form = response.text.split('class="per-page-form"', 1)[1].split(
+        "</form>", 1
+    )[0]
+    assert 'type="hidden" name="q" value="192.168.100"' in per_page_form
+    assert 'type="hidden" name="project_id" value="unassigned"' in per_page_form
+    assert 'type="hidden" name="type" value="VM"' in per_page_form
+    assert 'type="hidden" name="unassigned-only" value="true"' in per_page_form
+    assert 'type="hidden" name="archived-only" value="true"' in per_page_form
+
+
 def test_ip_asset_detail_page_requires_authentication(client) -> None:
     """Unauthenticated users should be redirected to login page for IP asset detail."""
     import os

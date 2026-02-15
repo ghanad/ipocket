@@ -133,6 +133,14 @@ def ui_list_ip_assets(
     if archived_only:
         pagination_params["archived-only"] = "true"
     base_query = urlencode(pagination_params, doseq=True)
+    preserved_query_items: list[tuple[str, str]] = []
+    for key, value in pagination_params.items():
+        if key == "per-page":
+            continue
+        if isinstance(value, list):
+            preserved_query_items.extend((key, str(item)) for item in value)
+            continue
+        preserved_query_items.append((key, str(value)))
     return_to = request.url.path
     if request.url.query:
         return_to = f"{return_to}?{request.url.query}"
@@ -164,6 +172,7 @@ def ui_list_ip_assets(
             "start_index": start_index,
             "end_index": end_index,
             "base_query": base_query,
+            "preserved_query_items": preserved_query_items,
         },
     }
     if not is_htmx:

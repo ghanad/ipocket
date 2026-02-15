@@ -44,6 +44,9 @@
     <div class="table-footer-controls">
       <div class="table-per-page" data-per-page-control>
         <form method="get" action="/ui/ip-assets" class="per-page-form" hx-get="/ui/ip-assets" hx-trigger="submit" hx-target="#ip-table-container" hx-push-url="true">
+          {% for name, value in pagination.preserved_query_items %}
+          <input type="hidden" name="{{ name }}" value="{{ value }}">
+          {% endfor %}
           <label class="field field-inline">
             <span>Rows</span>
             <select
