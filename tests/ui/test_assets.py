@@ -332,6 +332,15 @@ def test_ip_assets_js_rebinds_actions_after_htmx_pagination_swap() -> None:
     assert "event.target && event.target.id === 'ip-table-container'" not in js_source
     assert "const bindPerPageControl = (root = document) => {" in js_source
     assert "event.target.closest('[data-per-page-control]')" in js_source
+    assert (
+        "const getCurrentListUrl = () => window.location.pathname + window.location.search;"
+        in js_source
+    )
+    assert "const syncEditReturnTo = () => {" in js_source
+    assert "form.querySelector('input[name=\"return_to\"]')" in js_source
+    assert "form.action = `/ui/ip-assets/${assetData.id}/edit`;" in js_source
+    assert "form.action = '/ui/ip-assets/new';" in js_source
+    assert js_source.count("syncEditReturnTo();") >= 3
     assert "data-per-page-control" in table_template
     assert "data-per-page-select" in table_template
 
