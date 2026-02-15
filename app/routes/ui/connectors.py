@@ -85,6 +85,7 @@ def _build_prometheus_dry_run_change_logs(
         desired_tags = _safe_normalize_tags(asset.get("tags"))
         desired_notes = str(asset.get("notes") or "") or None
         preserve_notes = bool(asset.get("preserve_existing_notes"))
+        preserve_type = bool(asset.get("preserve_existing_type"))
         notes_provided = "notes" in asset or asset.get("notes") is not None
 
         existing = repository.get_ip_asset_by_ip(connection, ip_address)
@@ -120,10 +121,11 @@ def _build_prometheus_dry_run_change_logs(
         target_notes = desired_notes if should_update_notes else existing.notes
         target_project = _label_or_unassigned(desired_project or existing_project)
         target_host = _label_or_unassigned(desired_host or existing_host)
+        target_type = existing.asset_type.value if preserve_type else desired_type
 
         changes: list[str] = []
-        if existing.asset_type.value != desired_type:
-            changes.append(f"type {existing.asset_type.value} -> {desired_type}")
+        if existing.asset_type.value != target_type:
+            changes.append(f"type {existing.asset_type.value} -> {target_type}")
         if existing_project != target_project:
             changes.append(f"project {existing_project} -> {target_project}")
         if existing_host != target_host:

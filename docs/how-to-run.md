@@ -275,7 +275,7 @@ Update semantics for existing IP assets (apply mode):
 Use the Prometheus connector when you want to pull IPs from Prometheus query results
 and import them as IP assets.
 
-Note: Prometheus connector updates preserve non-empty existing IP notes (manual notes are not overwritten).
+Note: Prometheus connector updates preserve non-empty existing IP notes (manual notes are not overwritten) and keep the existing `type` for records that are updated.
 
 UI flow:
 - Open **Connectors → Prometheus**

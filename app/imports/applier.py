@@ -256,6 +256,9 @@ def _upsert_ip_assets(
             project_id if asset.project_name is not None else existing.project_id
         )
         target_host_id = host_id if asset.host_name is not None else existing.host_id
+        target_asset_type = (
+            existing.asset_type if asset.preserve_existing_type else asset_type
+        )
         target_archived = (
             asset.archived if asset.archived is not None else existing.archived
         )
@@ -264,7 +267,7 @@ def _upsert_ip_assets(
             target_notes == existing.notes
             and target_project_id == existing.project_id
             and target_host_id == existing.host_id
-            and asset_type == existing.asset_type
+            and target_asset_type == existing.asset_type
             and bool(target_archived) == bool(existing.archived)
             and target_tags == existing_tags
         ):
@@ -278,7 +281,7 @@ def _upsert_ip_assets(
         repository.update_ip_asset(
             connection,
             ip_address=ip_address,
-            asset_type=asset_type,
+            asset_type=target_asset_type,
             project_id=project_id,
             host_id=host_id,
             notes=asset.notes if notes_should_update else None,

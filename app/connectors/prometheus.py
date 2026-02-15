@@ -231,6 +231,7 @@ def extract_ip_assets_from_result(
             "type": normalized_type,
             "notes": notes,
             "preserve_existing_notes": True,
+            "preserve_existing_type": True,
             "archived": False,
         }
         if project_name:

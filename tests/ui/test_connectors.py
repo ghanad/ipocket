@@ -423,7 +423,7 @@ def test_prometheus_connector_dry_run_logs_per_ip_change_details(
     assert warnings == []
     assert "Dry-run per-IP change details:" in logs
     assert any(
-        "[UPDATE] 10.0.0.10: type VM -> OTHER; project Legacy -> Core; "
+        "[UPDATE] 10.0.0.10: project Legacy -> Core; "
         "tags +[monitoring] -[legacy, ops]; notes preserved (existing note kept)."
         in line
         for line in logs
