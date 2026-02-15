@@ -8,6 +8,31 @@
   const saveButton = document.querySelector("[data-range-drawer-save]");
   const closeButton = document.querySelector("[data-range-drawer-close]");
   const cancelButton = document.querySelector("[data-range-drawer-cancel]");
+  const filterForm = document.querySelector(".filters-grid");
+  const tagFilterInput = filterForm
+    ? filterForm.querySelector("[data-range-tag-filter-input]")
+    : null;
+  const tagFilterSelected = filterForm
+    ? filterForm.querySelector("[data-range-tag-filter-selected]")
+    : null;
+  const tagFilterSuggestions = filterForm
+    ? filterForm.querySelector("[data-range-tag-filter-suggestions]")
+    : null;
+
+  const hashToStatus = {
+    "#used": "used",
+    "#free": "free",
+  };
+  const mappedStatus = hashToStatus[window.location.hash || ""];
+  if (mappedStatus) {
+    const url = new URL(window.location.href);
+    const currentStatus = (url.searchParams.get("status") || "").trim().toLowerCase();
+    if (!currentStatus) {
+      url.searchParams.set("status", mappedStatus);
+      window.location.replace(`${url.pathname}?${url.searchParams.toString()}${url.hash}`);
+      return;
+    }
+  }
 
   if (!overlay || !drawer || !form || !title || !subtitle || !statusLabel || !saveButton) {
     return;
@@ -17,6 +42,109 @@
   const state = { open: false, initialValues: {} };
 
   const getInput = (name) => form.querySelector(`[data-range-input="${name}"]`);
+
+  const normalizeTagValue = (rawValue) => {
+    const normalized = (rawValue || "").trim().toLowerCase();
+    if (!normalized) {
+      return "";
+    }
+    if (!/^[a-z0-9_-]+$/.test(normalized)) {
+      return "";
+    }
+    return normalized;
+  };
+
+  const listSelectedTags = () => {
+    if (!tagFilterSelected) {
+      return [];
+    }
+    return Array.from(tagFilterSelected.querySelectorAll('input[name="tag"]')).map(
+      (input) => input.value
+    );
+  };
+
+  const getTagColor = (rawValue) => {
+    if (!tagFilterSuggestions) {
+      return "";
+    }
+    const normalizedValue = normalizeTagValue(rawValue);
+    if (!normalizedValue) {
+      return "";
+    }
+    const option = Array.from(tagFilterSuggestions.options).find(
+      (entry) => normalizeTagValue(entry.value) === normalizedValue
+    );
+    return option ? String(option.dataset.tagColor || "").trim() : "";
+  };
+
+  const applyTagFilterChipColor = (chip, rawValue) => {
+    if (!(chip instanceof HTMLElement)) {
+      return;
+    }
+    const color = getTagColor(rawValue);
+    if (color) {
+      chip.style.setProperty("--tag-color", color);
+    }
+    if (typeof window.ipocketApplyTagContrast === "function") {
+      window.ipocketApplyTagContrast(chip);
+    }
+  };
+
+  const addTagFilter = (rawValue) => {
+    if (!tagFilterSelected) {
+      return false;
+    }
+    const value = normalizeTagValue(rawValue);
+    if (!value) {
+      return false;
+    }
+    if (listSelectedTags().includes(value)) {
+      return false;
+    }
+    const entry = document.createElement("span");
+    entry.className = "tag-filter-entry";
+    entry.dataset.rangeTagFilterEntry = value;
+    entry.innerHTML = `<input type="hidden" name="tag" value="${value}" /><button class="tag tag-color tag-filter-chip" type="button" data-range-remove-tag-filter="${value}">${value} ×</button>`;
+    const chip = entry.querySelector(`[data-range-remove-tag-filter="${value}"]`);
+    applyTagFilterChipColor(chip, value);
+    tagFilterSelected.appendChild(entry);
+    return true;
+  };
+
+  const removeTagFilter = (value) => {
+    if (!tagFilterSelected) {
+      return false;
+    }
+    const entry = tagFilterSelected.querySelector(
+      `[data-range-tag-filter-entry="${value}"]`
+    );
+    if (!entry) {
+      return false;
+    }
+    entry.remove();
+    return true;
+  };
+
+  const submitTagFilter = () => {
+    if (!filterForm) {
+      return;
+    }
+    if (window.htmx && typeof window.htmx.ajax === "function") {
+      const url = new URL(
+        filterForm.action || window.location.pathname,
+        window.location.origin
+      );
+      const params = new URLSearchParams(new FormData(filterForm));
+      url.search = params.toString();
+      window.htmx.ajax("GET", url.toString(), {
+        target: "#range-addresses-table-container",
+        swap: "innerHTML",
+        pushURL: url.pathname + (url.search ? `?${url.searchParams.toString()}` : ""),
+      });
+      return;
+    }
+    filterForm.submit();
+  };
 
   const readInputValue = (input) => {
     if (!input) {
@@ -118,33 +246,45 @@
     document.body.style.overflow = "hidden";
   };
 
-  document.querySelectorAll("[data-range-address-add]").forEach((button) => {
-    button.addEventListener("click", () => {
+  document.addEventListener("click", (event) => {
+    const removeTagButton = event.target.closest("[data-range-remove-tag-filter]");
+    if (removeTagButton) {
+      event.preventDefault();
+      if (removeTagFilter(removeTagButton.dataset.rangeRemoveTagFilter || "")) {
+        submitTagFilter();
+      }
+      return;
+    }
+
+    const addButton = event.target.closest("[data-range-address-add]");
+    if (addButton) {
       openDrawer({
         mode: "add",
-        ipAddress: button.dataset.ipAddress,
+        ipAddress: addButton.dataset.ipAddress,
       });
-    });
-  });
+      return;
+    }
 
-  document.querySelectorAll("[data-range-address-edit]").forEach((button) => {
-    button.addEventListener("click", () => {
-      let tags = [];
-      try {
-        const parsed = JSON.parse(button.dataset.tagsJson || "[]");
-        tags = Array.isArray(parsed) ? parsed : [];
-      } catch (error) {
-        tags = [];
-      }
-      openDrawer({
-        mode: "edit",
-        assetId: button.dataset.assetId,
-        ipAddress: button.dataset.ipAddress,
-        assetType: button.dataset.type,
-        projectId: button.dataset.projectId,
-        notes: button.dataset.notes,
-        tags,
-      });
+    const editButton = event.target.closest("[data-range-address-edit]");
+    if (!editButton) {
+      return;
+    }
+
+    let tags = [];
+    try {
+      const parsed = JSON.parse(editButton.dataset.tagsJson || "[]");
+      tags = Array.isArray(parsed) ? parsed : [];
+    } catch (error) {
+      tags = [];
+    }
+    openDrawer({
+      mode: "edit",
+      assetId: editButton.dataset.assetId,
+      ipAddress: editButton.dataset.ipAddress,
+      assetType: editButton.dataset.type,
+      projectId: editButton.dataset.projectId,
+      notes: editButton.dataset.notes,
+      tags,
     });
   });
 
@@ -165,4 +305,33 @@
     input.addEventListener("input", updateSaveState);
     input.addEventListener("change", updateSaveState);
   });
+
+  if (tagFilterSelected) {
+    tagFilterSelected
+      .querySelectorAll("[data-range-remove-tag-filter]")
+      .forEach((chip) => {
+        applyTagFilterChipColor(
+          chip,
+          chip.getAttribute("data-range-remove-tag-filter") || ""
+        );
+      });
+  }
+
+  if (tagFilterInput) {
+    tagFilterInput.addEventListener("change", () => {
+      if (addTagFilter(tagFilterInput.value)) {
+        tagFilterInput.value = "";
+        submitTagFilter();
+      }
+    });
+    tagFilterInput.addEventListener("keydown", (event) => {
+      if (event.key === "Enter" || event.key === ",") {
+        event.preventDefault();
+        if (addTagFilter(tagFilterInput.value)) {
+          tagFilterInput.value = "";
+          submitTagFilter();
+        }
+      }
+    });
+  }
 })();

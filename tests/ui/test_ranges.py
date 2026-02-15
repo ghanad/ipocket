@@ -36,8 +36,12 @@ def test_ranges_page_renders_single_combined_ranges_table(client) -> None:
     assert "Utilization" in response.text
     assert "Actions" in response.text
     assert "Created" not in response.text
-    assert f'href="/ui/ranges/{ip_range.id}/addresses#used"' in response.text
-    assert f'href="/ui/ranges/{ip_range.id}/addresses#free"' in response.text
+    assert (
+        f'href="/ui/ranges/{ip_range.id}/addresses?status=used#used"' in response.text
+    )
+    assert (
+        f'href="/ui/ranges/{ip_range.id}/addresses?status=free#free"' in response.text
+    )
     assert 'class="btn btn-secondary btn-small"' in response.text
     assert 'class="btn btn-danger btn-small"' in response.text
     assert "data-range-edit" in response.text
@@ -144,6 +148,198 @@ def test_range_addresses_page_shows_tags(client) -> None:
     assert "data-range-drawer" in response.text
     assert "data-tag-picker" in response.text
     assert "Allocate next" not in response.text
+    assert 'name="q"' in response.text
+    assert 'name="project_id"' in response.text
+    assert 'name="type"' in response.text
+    assert "data-range-tag-filter-input" in response.text
+    assert "data-range-tag-filter-selected" in response.text
+
+
+def test_range_addresses_filters_by_ip_project_type_and_tag(client) -> None:
+    import os
+    from app import db, repository
+
+    connection = db.connect(os.environ["IPAM_DB_PATH"])
+    try:
+        db.init_db(connection)
+        ip_range = repository.create_ip_range(
+            connection, name="Search Range", cidr="10.80.0.0/29"
+        )
+        project = repository.create_project(connection, name="Core")
+        host = repository.create_host(connection, name="core-01")
+        repository.create_tag(connection, name="core")
+        repository.create_tag(connection, name="edge")
+        repository.create_ip_asset(
+            connection,
+            ip_address="10.80.0.2",
+            asset_type=IPAssetType.OS,
+            project_id=project.id,
+            host_id=host.id,
+            notes="primary note",
+            tags=["core"],
+        )
+        repository.create_ip_asset(
+            connection,
+            ip_address="10.80.0.3",
+            asset_type=IPAssetType.BMC,
+            host_id=host.id,
+            notes="secondary",
+            tags=["edge"],
+        )
+    finally:
+        connection.close()
+
+    by_ip = client.get(
+        f"/ui/ranges/{ip_range.id}/addresses",
+        params={"q": "10.80.0.2"},
+    )
+    assert by_ip.status_code == 200
+    assert 'id="ip-10-80-0-2"' in by_ip.text
+    assert 'id="ip-10-80-0-3"' not in by_ip.text
+
+    by_project = client.get(
+        f"/ui/ranges/{ip_range.id}/addresses",
+        params={"project_id": str(project.id)},
+    )
+    assert by_project.status_code == 200
+    assert 'id="ip-10-80-0-2"' in by_project.text
+    assert 'id="ip-10-80-0-3"' not in by_project.text
+
+    by_unassigned_project = client.get(
+        f"/ui/ranges/{ip_range.id}/addresses",
+        params={"project_id": "unassigned"},
+    )
+    assert by_unassigned_project.status_code == 200
+    assert 'id="ip-10-80-0-3"' in by_unassigned_project.text
+    assert 'id="ip-10-80-0-2"' not in by_unassigned_project.text
+
+    by_type = client.get(
+        f"/ui/ranges/{ip_range.id}/addresses",
+        params={"type": "BMC"},
+    )
+    assert by_type.status_code == 200
+    assert 'id="ip-10-80-0-3"' in by_type.text
+    assert 'id="ip-10-80-0-2"' not in by_type.text
+
+    by_tag = client.get(
+        f"/ui/ranges/{ip_range.id}/addresses",
+        params={"tag": "edge"},
+    )
+    assert by_tag.status_code == 200
+    assert 'id="ip-10-80-0-3"' in by_tag.text
+    assert 'id="ip-10-80-0-2"' not in by_tag.text
+
+    no_match_tag = client.get(
+        f"/ui/ranges/{ip_range.id}/addresses",
+        params={"tag": "not-found-anywhere"},
+    )
+    assert no_match_tag.status_code == 200
+    assert "No addresses in this range." in no_match_tag.text
+
+
+def test_range_addresses_status_filter_supports_used_free_and_invalid(client) -> None:
+    import os
+    from app import db, repository
+
+    connection = db.connect(os.environ["IPAM_DB_PATH"])
+    try:
+        db.init_db(connection)
+        ip_range = repository.create_ip_range(
+            connection, name="Status Range", cidr="10.81.0.0/29"
+        )
+        repository.create_ip_asset(
+            connection,
+            ip_address="10.81.0.2",
+            asset_type=IPAssetType.VM,
+        )
+    finally:
+        connection.close()
+
+    used = client.get(f"/ui/ranges/{ip_range.id}/addresses", params={"status": "used"})
+    assert used.status_code == 200
+    assert "10.81.0.2" in used.text
+    assert "10.81.0.1" not in used.text
+
+    free = client.get(f"/ui/ranges/{ip_range.id}/addresses", params={"status": "free"})
+    assert free.status_code == 200
+    assert "10.81.0.2" not in free.text
+    assert "10.81.0.1" in free.text
+
+    invalid = client.get(
+        f"/ui/ranges/{ip_range.id}/addresses", params={"status": "invalid"}
+    )
+    assert invalid.status_code == 200
+    assert "10.81.0.2" in invalid.text
+    assert "10.81.0.1" in invalid.text
+
+
+def test_range_addresses_pagination_and_bounds(client) -> None:
+    import os
+    from app import db, repository
+
+    connection = db.connect(os.environ["IPAM_DB_PATH"])
+    try:
+        db.init_db(connection)
+        ip_range = repository.create_ip_range(
+            connection, name="Paging Range", cidr="10.82.0.0/27"
+        )
+    finally:
+        connection.close()
+
+    default_page = client.get(f"/ui/ranges/{ip_range.id}/addresses")
+    assert default_page.status_code == 200
+    assert "Showing 1-20 of 30" in default_page.text
+    assert "Previous" in default_page.text
+    assert "Next" in default_page.text
+
+    second_page = client.get(
+        f"/ui/ranges/{ip_range.id}/addresses",
+        params={"per-page": "10", "page": "2"},
+    )
+    assert second_page.status_code == 200
+    assert "Showing 11-20 of 30" in second_page.text
+    assert "Page 2 of 3" in second_page.text
+    assert "10.82.0.11" in second_page.text
+    assert "10.82.0.20" in second_page.text
+    assert ">10.82.0.1<" not in second_page.text
+
+    invalid_inputs = client.get(
+        f"/ui/ranges/{ip_range.id}/addresses",
+        params={"per-page": "3", "page": "-9"},
+    )
+    assert invalid_inputs.status_code == 200
+    assert "Showing 1-20 of 30" in invalid_inputs.text
+
+    oversized_page = client.get(
+        f"/ui/ranges/{ip_range.id}/addresses",
+        params={"per-page": "10", "page": "999"},
+    )
+    assert oversized_page.status_code == 200
+    assert "Showing 21-30 of 30" in oversized_page.text
+    assert "Page 3 of 3" in oversized_page.text
+
+
+def test_range_addresses_hx_request_renders_partial_table_only(client) -> None:
+    import os
+    from app import db, repository
+
+    connection = db.connect(os.environ["IPAM_DB_PATH"])
+    try:
+        db.init_db(connection)
+        ip_range = repository.create_ip_range(
+            connection, name="HTMX Range", cidr="10.83.0.0/29"
+        )
+    finally:
+        connection.close()
+
+    response = client.get(
+        f"/ui/ranges/{ip_range.id}/addresses",
+        headers={"HX-Request": "true"},
+    )
+    assert response.status_code == 200
+    assert "Addresses in this range" in response.text
+    assert "Back to ranges" not in response.text
+    assert "<h1>" not in response.text
 
 
 def test_range_addresses_quick_add_creates_asset(client) -> None:

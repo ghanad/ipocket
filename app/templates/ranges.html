@@ -37,8 +37,8 @@
           <td>{{ row.name }}</td>
           <td>{{ row.cidr }}</td>
           <td>{{ row.total_usable if row.total_usable is not none else "—" }}</td>
-          <td>{% if row.used is not none %}<a class="link" href="/ui/ranges/{{ row.id }}/addresses#used">{{ row.used }}</a>{% else %}—{% endif %}</td>
-          <td>{% if row.free is not none %}<a class="link" href="/ui/ranges/{{ row.id }}/addresses#free">{{ row.free }}</a>{% else %}—{% endif %}</td>
+          <td>{% if row.used is not none %}<a class="link" href="/ui/ranges/{{ row.id }}/addresses?status=used#used">{{ row.used }}</a>{% else %}—{% endif %}</td>
+          <td>{% if row.free is not none %}<a class="link" href="/ui/ranges/{{ row.id }}/addresses?status=free#free">{{ row.free }}</a>{% else %}—{% endif %}</td>
           <td>{% if row.utilization_percent is not none %}{{ "%.1f"|format(row.utilization_percent) }}%{% else %}—{% endif %}</td>
           <td class="asset-actions-cell">
             <div class="table-actions">
