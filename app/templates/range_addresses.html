@@ -34,125 +34,113 @@
   </div>
 </section>
 
-<section class="card table-card" id="addresses">
-  <div class="card-header card-header-padded">
-    <div>
-      <h2>Addresses in this range</h2>
-      <p class="subtitle">Used: {{ used_total }} • Free: {{ free_total }}</p>
-    </div>
-  </div>
-  <div class="table-wrapper">
-    <table class="table">
-      <thead>
-        <tr>
-          <th>IP address</th>
-          <th>Status</th>
-          <th>Project</th>
-          <th>Type</th>
-          <th>Host Pair</th>
-          <th>Tags</th>
-          <th>Notes</th>
-          <th>Action</th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for entry in address_display %}
-        <tr id="ip-{{ entry.ip_address | replace('.', '-') | replace(':', '-') }}">
-          <td class="mono">
-            {% if entry.asset_id %}
-            <a class="link" href="/ui/ip-assets/{{ entry.asset_id }}">{{ entry.ip_address }}</a>
-            {% else %}
-            {{ entry.ip_address }}
-            {% endif %}
-          </td>
-          <td>
-            {% if entry.status == "used" %}
-            <span class="pill pill-danger">Used</span>
-            {% else %}
-            <span class="pill pill-success">Free</span>
-            {% endif %}
-          </td>
-          <td>
-            {% if entry.status == "used" and entry.project_unassigned %}
-            <span class="tag tag-warning">Unassigned</span>
-            {% elif entry.status == "used" %}
-            <span class="tag tag-project" style="--project-color: {{ entry.project_color }}">{{ entry.project_name }}</span>
-            {% else %}
-            <span class="muted">—</span>
-            {% endif %}
-          </td>
-          <td class="muted">
-            {% if entry.status == "used" %}
-            {{ entry.asset_type }}
-            {% else %}
-            —
-            {% endif %}
-          </td>
-          <td>
-            {% if entry.status == "used" and entry.host_pair %}
-            <span class="mono">{{ entry.host_pair }}</span>
-            {% else %}
-            <span class="muted">—</span>
-            {% endif %}
-          </td>
-          <td>
-            {% if entry.status == "used" and entry.tags %}
-            {% for tag in entry.tags %}
-            <span class="tag tag-color" style="--tag-color: {{ tag.color }}">{{ tag.name }}</span>
-            {% endfor %}
-            {% else %}
-            <span class="muted">—</span>
-            {% endif %}
-          </td>
-          <td class="muted">
-            {% if entry.status == "used" and entry.notes %}
-            {{ entry.notes }}
-            {% else %}
-            —
-            {% endif %}
-          </td>
-          <td>
-            {% if entry.status == "free" %}
-            <button
-              class="btn btn-secondary btn-small"
-              type="button"
-              data-range-address-add
-              data-ip-address="{{ entry.ip_address }}"
-            >
-              Add…
-            </button>
-            {% elif entry.asset_id %}
-            <button
-              class="btn btn-secondary btn-small"
-              type="button"
-              data-range-address-edit
-              data-asset-id="{{ entry.asset_id }}"
-              data-ip-address="{{ entry.ip_address }}"
-              data-type="{{ entry.asset_type }}"
-              data-project-id="{{ entry.project_id or '' }}"
-              data-project-name="{{ entry.project_name or '' }}"
-              data-notes="{{ entry.notes }}"
-              data-tags-json='{{ (entry.tags | default([]) | map(attribute="name") | list) | tojson | e }}'
-            >
-              Edit
-            </button>
-            {% else %}
-            <span class="muted">—</span>
-            {% endif %}
-          </td>
-        </tr>
-        {% else %}
-        <tr>
-          <td colspan="8" class="empty-state">No addresses in this range.</td>
-        </tr>
+<section class="card filter-card">
+  <form class="filters-grid" method="get" action="/ui/ranges/{{ ip_range.id }}/addresses">
+    <label class="field">
+      <span>IP address</span>
+      <input
+        class="input"
+        type="text"
+        name="q"
+        value="{{ filters.q }}"
+        placeholder="Search IP"
+        hx-get="/ui/ranges/{{ ip_range.id }}/addresses"
+        hx-trigger="keyup changed delay:500ms, search"
+        hx-target="#range-addresses-table-container"
+        hx-push-url="true"
+        hx-include="closest form"
+      />
+    </label>
+    <label class="field">
+      <span>Project</span>
+      <select
+        class="select"
+        name="project_id"
+        hx-get="/ui/ranges/{{ ip_range.id }}/addresses"
+        hx-trigger="change"
+        hx-target="#range-addresses-table-container"
+        hx-push-url="true"
+        hx-include="closest form"
+      >
+        <option value=""{% if filters.project_filter == "" %} selected{% endif %}>All</option>
+        <option value="unassigned"{% if filters.project_filter == "unassigned" %} selected{% endif %}>Unassigned</option>
+        {% for project in projects %}
+        <option value="{{ project.id }}"{% if filters.project_filter == (project.id ~ "") %} selected{% endif %}>{{ project.name }}</option>
         {% endfor %}
-      </tbody>
-    </table>
-  </div>
-  {% if address_overflow %}
-  <p class="table-footer muted">Showing first {{ display_limit }} of {{ used_total + free_total }} addresses.</p>
-  {% endif %}
+      </select>
+    </label>
+    <label class="field">
+      <span>Type</span>
+      <select
+        class="select"
+        name="type"
+        hx-get="/ui/ranges/{{ ip_range.id }}/addresses"
+        hx-trigger="change"
+        hx-target="#range-addresses-table-container"
+        hx-push-url="true"
+        hx-include="closest form"
+      >
+        <option value="">All</option>
+        {% for asset_type in types %}
+        <option value="{{ asset_type }}"{% if filters.type == asset_type %} selected{% endif %}>{{ asset_type }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <label class="field">
+      <span>Status</span>
+      <select
+        class="select"
+        name="status"
+        hx-get="/ui/ranges/{{ ip_range.id }}/addresses"
+        hx-trigger="change"
+        hx-target="#range-addresses-table-container"
+        hx-push-url="true"
+        hx-include="closest form"
+      >
+        <option value="all"{% if filters.status == "all" %} selected{% endif %}>All</option>
+        <option value="used"{% if filters.status == "used" %} selected{% endif %}>Used</option>
+        <option value="free"{% if filters.status == "free" %} selected{% endif %}>Free</option>
+      </select>
+    </label>
+    <label class="field field-tag-filter">
+      <span>Tags</span>
+      <div class="tag-filter-controls">
+        <input
+          class="input"
+          type="text"
+          placeholder="Type tag and press Enter"
+          list="range-tag-filter-suggestions"
+          data-range-tag-filter-input
+        />
+      </div>
+      <datalist id="range-tag-filter-suggestions" data-range-tag-filter-suggestions>
+        {% for tag in tags %}
+        <option value="{{ tag.name }}" data-tag-color="{{ tag.color }}"></option>
+        {% endfor %}
+      </datalist>
+      <div class="tag-filter-selected" data-range-tag-filter-selected>
+        {% for selected_tag in filters.tag %}
+        {% set selected_tag_obj = (tags | selectattr("name", "equalto", selected_tag) | list | first) %}
+        <span class="tag-filter-entry" data-range-tag-filter-entry="{{ selected_tag }}">
+          <input type="hidden" name="tag" value="{{ selected_tag }}" />
+          <button
+            class="tag tag-color tag-filter-chip"
+            type="button"
+            data-range-remove-tag-filter="{{ selected_tag }}"
+            {% if selected_tag_obj %}
+            style="--tag-color: {{ selected_tag_obj.color }}"
+            {% endif %}
+          >{{ selected_tag }} ×</button>
+        </span>
+        {% endfor %}
+      </div>
+    </label>
+  </form>
 </section>
+
+<div id="range-addresses-table-container">
+  {% include "partials/range_addresses_table.html" %}
+</div>
 
 <div class="ip-drawer-overlay" data-range-drawer-overlay aria-hidden="true"></div>
 <aside class="ip-drawer" data-range-drawer role="dialog" aria-modal="true" aria-label="Manage range address">

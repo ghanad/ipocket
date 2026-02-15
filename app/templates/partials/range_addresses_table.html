@@ -1,0 +1,235 @@
+<section class="card table-card" id="addresses">
+  <div class="card-header card-header-padded">
+    <div>
+      <h2>Addresses in this range</h2>
+      <p class="subtitle">Used: {{ used_total }} • Free: {{ free_total }}</p>
+    </div>
+  </div>
+  <div class="table-wrapper">
+    <table class="table">
+      <thead>
+        <tr>
+          <th>IP address</th>
+          <th>Status</th>
+          <th>Project</th>
+          <th>Type</th>
+          <th>Host Pair</th>
+          <th>Tags</th>
+          <th>Notes</th>
+          <th>Action</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for entry in address_display %}
+        <tr id="ip-{{ entry.ip_address | replace('.', '-') | replace(':', '-') }}">
+          <td class="mono">
+            {% if entry.asset_id %}
+            <a class="link" href="/ui/ip-assets/{{ entry.asset_id }}">{{ entry.ip_address }}</a>
+            {% else %}
+            {{ entry.ip_address }}
+            {% endif %}
+          </td>
+          <td>
+            {% if entry.status == "used" %}
+            <span class="pill pill-danger">Used</span>
+            {% else %}
+            <span class="pill pill-success">Free</span>
+            {% endif %}
+          </td>
+          <td>
+            {% if entry.status == "used" and entry.project_unassigned %}
+            <span class="tag tag-warning">Unassigned</span>
+            {% elif entry.status == "used" %}
+            <span class="tag tag-project" style="--project-color: {{ entry.project_color }}">{{ entry.project_name }}</span>
+            {% else %}
+            <span class="muted">—</span>
+            {% endif %}
+          </td>
+          <td class="muted">
+            {% if entry.status == "used" %}
+            {{ entry.asset_type }}
+            {% else %}
+            —
+            {% endif %}
+          </td>
+          <td>
+            {% if entry.status == "used" and entry.host_pair %}
+            <span class="mono">{{ entry.host_pair }}</span>
+            {% else %}
+            <span class="muted">—</span>
+            {% endif %}
+          </td>
+          <td>
+            {% if entry.status == "used" and entry.tags %}
+            {% for tag in entry.tags %}
+            <span class="tag tag-color" style="--tag-color: {{ tag.color }}">{{ tag.name }}</span>
+            {% endfor %}
+            {% else %}
+            <span class="muted">—</span>
+            {% endif %}
+          </td>
+          <td class="muted">
+            {% if entry.status == "used" and entry.notes %}
+            {{ entry.notes }}
+            {% else %}
+            —
+            {% endif %}
+          </td>
+          <td>
+            {% if entry.status == "free" %}
+            <button
+              class="btn btn-secondary btn-small"
+              type="button"
+              data-range-address-add
+              data-ip-address="{{ entry.ip_address }}"
+            >
+              Add…
+            </button>
+            {% elif entry.asset_id %}
+            <button
+              class="btn btn-secondary btn-small"
+              type="button"
+              data-range-address-edit
+              data-asset-id="{{ entry.asset_id }}"
+              data-ip-address="{{ entry.ip_address }}"
+              data-type="{{ entry.asset_type }}"
+              data-project-id="{{ entry.project_id or '' }}"
+              data-project-name="{{ entry.project_name or '' }}"
+              data-notes="{{ entry.notes }}"
+              data-tags-json='{{ (entry.tags | default([]) | map(attribute="name") | list) | tojson | e }}'
+            >
+              Edit
+            </button>
+            {% else %}
+            <span class="muted">—</span>
+            {% endif %}
+          </td>
+        </tr>
+        {% else %}
+        <tr>
+          <td colspan="8" class="empty-state">No addresses in this range.</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  <div class="table-footer">
+    <div class="table-meta">
+      {% if pagination.total %}
+      Showing {{ pagination.start_index }}-{{ pagination.end_index }} of {{ pagination.total }}
+      {% else %}
+      No results to display.
+      {% endif %}
+    </div>
+    <div class="table-footer-controls">
+      <div class="table-per-page" data-per-page-control>
+        <form
+          method="get"
+          action="/ui/ranges/{{ ip_range.id }}/addresses"
+          class="per-page-form"
+          hx-get="/ui/ranges/{{ ip_range.id }}/addresses"
+          hx-trigger="submit"
+          hx-target="#range-addresses-table-container"
+          hx-push-url="true"
+        >
+          {% for name, value in pagination.preserved_query_items %}
+          <input type="hidden" name="{{ name }}" value="{{ value }}">
+          {% endfor %}
+          <label class="field field-inline">
+            <span>Rows</span>
+            <select
+              class="select select-minimal"
+              name="per-page"
+              data-per-page-select
+              hx-get="/ui/ranges/{{ ip_range.id }}/addresses"
+              hx-trigger="change"
+              hx-target="#range-addresses-table-container"
+              hx-push-url="true"
+              hx-include="closest form"
+            >
+              {% for option in [10, 20, 50, 100] %}
+              <option value="{{ option }}"{% if pagination.per_page == option %} selected{% endif %}>{{ option }}</option>
+              {% endfor %}
+            </select>
+          </label>
+        </form>
+      </div>
+      <nav class="pagination" aria-label="Range addresses pagination">
+        <a
+          class="btn btn-secondary btn-small{% if not pagination.has_prev %} btn-disabled{% endif %}"
+          href="/ui/ranges/{{ ip_range.id }}/addresses?{{ pagination.base_query }}&page={{ pagination.page - 1 }}"
+          {% if pagination.has_prev %}
+          hx-get="/ui/ranges/{{ ip_range.id }}/addresses?{{ pagination.base_query }}&page={{ pagination.page - 1 }}"
+          hx-target="#range-addresses-table-container"
+          hx-push-url="true"
+          {% else %}
+          aria-disabled="true"
+          tabindex="-1"
+          {% endif %}
+        >
+          Previous
+        </a>
+        <span class="pagination-status">Page {{ pagination.page }} of {{ pagination.total_pages }}</span>
+        <a
+          class="btn btn-secondary btn-small{% if not pagination.has_next %} btn-disabled{% endif %}"
+          href="/ui/ranges/{{ ip_range.id }}/addresses?{{ pagination.base_query }}&page={{ pagination.page + 1 }}"
+          {% if pagination.has_next %}
+          hx-get="/ui/ranges/{{ ip_range.id }}/addresses?{{ pagination.base_query }}&page={{ pagination.page + 1 }}"
+          hx-target="#range-addresses-table-container"
+          hx-push-url="true"
+          {% else %}
+          aria-disabled="true"
+          tabindex="-1"
+          {% endif %}
+        >
+          Next
+        </a>
+      </nav>
+    </div>
+  </div>
+</section>
+<style>
+  .table-footer-controls {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+  .table-per-page {
+    display: flex;
+    align-items: center;
+  }
+  .per-page-form {
+    margin: 0;
+  }
+  .per-page-form .field {
+    margin: 0;
+    flex-direction: row;
+    align-items: center;
+    gap: 6px;
+  }
+  .per-page-form .field span {
+    font-size: 12px;
+    color: var(--color-muted-light, #64748b);
+    font-weight: 400;
+  }
+  .select-minimal {
+    appearance: none;
+    background: transparent;
+    border: 1px solid #e2e8f0;
+    border-radius: 4px;
+    padding: 2px 20px 2px 6px;
+    font-size: 12px;
+    color: #64748b;
+    cursor: pointer;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 4px center;
+  }
+  .select-minimal:hover {
+    border-color: #cbd5e1;
+  }
+  .select-minimal:focus {
+    outline: none;
+    border-color: #94a3b8;
+  }
+</style>

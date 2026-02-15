@@ -316,3 +316,21 @@ def test_range_quick_edit_not_found_and_validation_branches(
     assert "Asset type is required." in missing_type.text
     assert invalid_project.status_code == 400
     assert "Selected project does not exist." in invalid_project.text
+
+
+def test_range_addresses_js_maps_hash_to_status_query(client) -> None:
+    response = client.get("/static/js/range-addresses.js")
+
+    assert response.status_code == 200
+    assert '"#used": "used"' in response.text
+    assert '"#free": "free"' in response.text
+    assert "window.location.replace" in response.text
+
+
+def test_range_addresses_js_includes_chip_tag_filter_hooks(client) -> None:
+    response = client.get("/static/js/range-addresses.js")
+
+    assert response.status_code == 200
+    assert "data-range-tag-filter-input" in response.text
+    assert "data-range-tag-filter-selected" in response.text
+    assert "data-range-remove-tag-filter" in response.text

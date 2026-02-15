@@ -86,6 +86,7 @@ When a user account is deleted, existing audit logs are preserved by setting `au
 ## Assignment workflow
 - Project assignment is managed from the main **IP Assets** list using filters and edit actions.
 - There is no separate "Needs Assignment" page in the current UI.
+- Range address drill-down (`/ui/ranges/{id}/addresses`) now adds UI-only search/status/pagination controls; this does not change persisted schema or entity fields.
 
 ## Connector ingestion note
 - Prometheus and vCenter connectors do not introduce new database tables or fields.

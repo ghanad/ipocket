@@ -12,5 +12,6 @@ The app exposes Prometheus metrics at `GET /metrics`:
 Note: Vendor catalog/host vendor selection does not introduce new Prometheus metrics in this release.
 
 UI note: unassigned-related metrics are still available even though the dedicated **Needs Assignment** page was removed; use the IP Assets list filters for assignment workflows.
+UI note: range-address search/status/pagination changes are presentation-only and do not affect `/metrics` payloads.
 
 Connector note: connectors import through the same IP upsert pipeline (Prometheus preserves non-empty notes and existing `type` on update, and UI dry-run shows per-IP field-level change previews; vCenter overwrites type, merges connector tags, and only writes notes when existing notes are empty), but they do not add exporter-side Prometheus metrics in ipocket; `/metrics` remains limited to IP inventory counters listed above.
