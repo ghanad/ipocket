@@ -72,6 +72,7 @@ ipocket is a lightweight IP inventory app to track addresses and their project a
 - Projects table now shows an **IPs** count column so you can quickly see how many active IP assets are currently assigned to each project.
 - Use the shared **Data Ops** page (Import/Export tabs) for round-trip workflows.
 - Export data as CSV, JSON, or bundle (JSON/ZIP) from the Data Ops Export tab.
+- `hosts.csv` export now includes `project_name`, `os_ip`, and `bmc_ip` so host exports can round-trip through CSV import without manual column edits.
 - Import data from bundle.json or CSV with dry-run support and upserts from the Data Ops Import tab.
 - Upload Nmap XML from the Data Ops Import tab to discover reachable IPs and add them as `OTHER` assets, with inline example commands.
 - Sidebar includes a **Connectors** page with tabs (`Overview` / `vCenter` / `Prometheus`) so operators can run import connectors directly from UI.

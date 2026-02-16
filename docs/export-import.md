@@ -57,7 +57,16 @@ All three import sections (Bundle, CSV, Nmap XML) use the same `Dry-run` and `Ap
   "data": {
     "vendors": [{"name": "HPE"}],
     "projects": [{"name": "Core", "description": "", "color": "#94a3b8"}],
-    "hosts": [{"name": "node-01", "notes": "", "vendor_name": "HPE"}],
+    "hosts": [
+      {
+        "name": "node-01",
+        "notes": "",
+        "vendor_name": "HPE",
+        "project_name": "Core",
+        "os_ip": "10.0.0.11",
+        "bmc_ip": "10.0.0.12"
+      }
+    ],
     "ip_assets": [
       {
         "ip_address": "10.0.0.10",

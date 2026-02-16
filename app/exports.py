@@ -31,11 +31,25 @@ def export_projects(
 def export_hosts(
     connection, host_name: Optional[str] = None
 ) -> list[dict[str, object]]:
-    hosts = repository.list_hosts(connection)
+    hosts = repository.list_hosts_with_ip_counts(connection)
     if host_name:
-        hosts = [host for host in hosts if host.name == host_name]
+        hosts = [host for host in hosts if str(host["name"]) == host_name]
+
+    def _first_ip(value: object) -> Optional[str]:
+        if not isinstance(value, str):
+            return None
+        first = value.split(",", 1)[0].strip()
+        return first or None
+
     return [
-        {"name": host.name, "notes": host.notes, "vendor_name": host.vendor}
+        {
+            "name": host["name"],
+            "notes": host["notes"],
+            "vendor_name": host["vendor"],
+            "project_name": host["project_name"] or None,
+            "os_ip": _first_ip(host["os_ips"]),
+            "bmc_ip": _first_ip(host["bmc_ips"]),
+        }
         for host in hosts
     ]
 

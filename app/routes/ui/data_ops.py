@@ -345,7 +345,7 @@ def export_hosts_csv(
     _user=Depends(get_current_ui_user),
 ) -> Response:
     export_rows = exports.export_hosts(connection, host_name=host)
-    headers = ["name", "notes", "vendor_name"]
+    headers = ["name", "notes", "vendor_name", "project_name", "os_ip", "bmc_ip"]
     return _csv_response("hosts.csv", headers, export_rows)
 
 
@@ -468,7 +468,10 @@ def export_bundle_zip(
             _format_ip_asset_csv_rows(ip_assets),
         ),
         "projects.csv": _build_csv_content(["name", "description", "color"], projects),
-        "hosts.csv": _build_csv_content(["name", "notes", "vendor_name"], hosts),
+        "hosts.csv": _build_csv_content(
+            ["name", "notes", "vendor_name", "project_name", "os_ip", "bmc_ip"],
+            hosts,
+        ),
         "vendors.csv": _build_csv_content(["name"], vendors),
     }
     return _zip_response("bundle.zip", files)
