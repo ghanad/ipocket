@@ -6,7 +6,7 @@
     </div>
   </div>
   <div class="table-wrapper">
-    <table class="table">
+    <table class="table table-range-addresses">
       <thead>
         <tr>
           <th>IP address</th>
@@ -59,11 +59,30 @@
             <span class="muted">—</span>
             {% endif %}
           </td>
-          <td>
+          <td class="ip-tags-cell">
             {% if entry.status == "used" and entry.tags %}
-            {% for tag in entry.tags %}
-            <span class="tag tag-color" style="--tag-color: {{ tag.color }}">{{ tag.name }}</span>
-            {% endfor %}
+            <div class="ip-tags-inline" aria-label="Tags for {{ entry.ip_address }}">
+              {% set visible_tags = entry.tags[:3] %}
+              {% for tag in visible_tags %}
+              <button
+                class="tag tag-color tag-filter-chip"
+                type="button"
+                data-range-quick-filter-tag="{{ tag.name }}"
+                style="--tag-color: {{ tag.color }}"
+              >{{ tag.name }}</button>
+              {% endfor %}
+              {% if entry.tags|length > 3 %}
+              <button
+                class="tag tag-muted ip-tags-more"
+                type="button"
+                data-tags-more-toggle
+                data-tags-ip="{{ entry.ip_address }}"
+                data-tags-json='{{ entry.tags | tojson | e }}'
+                aria-haspopup="dialog"
+                aria-expanded="false"
+              >+{{ entry.tags|length - 3 }} more</button>
+              {% endif %}
+            </div>
             {% else %}
             <span class="muted">—</span>
             {% endif %}

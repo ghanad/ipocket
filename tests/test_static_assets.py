@@ -21,6 +21,7 @@ def test_ui_assets_are_local() -> None:
     assert ".field > span {" in css
     assert ".table.table-ip-assets .tag {" in css
     assert "padding: 3px 9px;" in css
+    assert ".table.table-range-addresses .tag {" in css
     assert ".ip-tags-popover {" in css
     assert "z-index: 120;" in css
     assert ".ip-tags-popover .tag {" in css
@@ -88,6 +89,9 @@ def test_refactored_templates_load_external_page_assets() -> None:
     assert '<script src="/static/js/range-addresses.js" defer></script>' in templates[
         "range_addresses"
     ].read_text(encoding="utf-8")
+    assert 'class="table table-range-addresses"' in (
+        repo_root / "app/templates/partials/range_addresses_table.html"
+    ).read_text(encoding="utf-8")
     assert "<style>" not in templates["range_addresses"].read_text(encoding="utf-8")
 
     assert '<script src="/static/js/tags.js" defer></script>' in templates[
