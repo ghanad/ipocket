@@ -53,6 +53,9 @@ Columns:
 - `name`
 - `notes`
 - `vendor_name`
+- `project_name`
+- `os_ip`
+- `bmc_ip`
 
 ### vendors.csv
 

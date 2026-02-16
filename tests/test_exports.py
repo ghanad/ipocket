@@ -91,6 +91,35 @@ def _seed_export_data(db_path) -> None:
         connection.close()
 
 
+def _seed_host_export_pair_data(db_path) -> None:
+    connection = db.connect(str(db_path))
+    try:
+        db.init_db(connection)
+        vendor = repository.create_vendor(connection, "HPE")
+        project = repository.create_project(
+            connection, "infra", "Infrastructure", color="#334455"
+        )
+        host = repository.create_host(
+            connection, name="node-02", notes="pair host", vendor=vendor.name
+        )
+        repository.create_ip_asset(
+            connection,
+            ip_address="10.10.0.10",
+            asset_type=IPAssetType.OS,
+            project_id=project.id,
+            host_id=host.id,
+        )
+        repository.create_ip_asset(
+            connection,
+            ip_address="10.10.0.11",
+            asset_type=IPAssetType.BMC,
+            project_id=project.id,
+            host_id=host.id,
+        )
+    finally:
+        connection.close()
+
+
 def _parse_csv_rows(payload: str) -> list[dict[str, str]]:
     reader = csv.DictReader(io.StringIO(payload))
     return list(reader)
@@ -198,3 +227,27 @@ def test_ui_export_page_has_no_template_deprecation_warning(client) -> None:
         and "TemplateResponse" in str(w.message)
     ]
     assert template_warnings == []
+
+
+def test_hosts_csv_export_includes_project_and_os_bmc_pair_fields(client) -> None:
+    test_client, db_path = client
+    _create_user(db_path, "host-export-user", "export-pass")
+    _seed_host_export_pair_data(db_path)
+    session_cookie = _login_ui(test_client, "host-export-user", "export-pass")
+
+    response = test_client.get(
+        "/export/hosts.csv", headers=_auth_headers(session_cookie)
+    )
+    assert response.status_code == 200
+
+    rows = _parse_csv_rows(response.text)
+    assert rows == [
+        {
+            "name": "node-02",
+            "notes": "pair host",
+            "vendor_name": "HPE",
+            "project_name": "infra",
+            "os_ip": "10.10.0.10",
+            "bmc_ip": "10.10.0.11",
+        }
+    ]

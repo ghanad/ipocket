@@ -183,7 +183,7 @@ UI design reference templates live in `/ui_template` for layout and styling guid
 5) Create Hosts from the **Hosts** page and pick a Vendor when needed.
 6) Add IPs from the **IP Assets** page.
 7) When you paginate in **IP Assets**, edits from the drawer return you to the same filtered/paginated list state (current `page` and `per-page` are preserved).
-8) Open **Data Ops** from the sidebar to import or export data using one unified page with tabs.
+8) Open **Data Ops** from the sidebar to import or export data using one unified page with tabs. `hosts.csv` exports now include `project_name`, `os_ip`, and `bmc_ip` for round-trip compatibility with CSV import.
 9) Open **Connectors** from the sidebar and use **vCenter** or **Prometheus** tabs to run connectors directly from UI (`dry-run` or `apply`) and review execution logs.
 10) When assigning tags on IP Assets or Range Address drawers, use the chip picker (`Add tags...`) to search and select existing tags only (create new tag names first in **Library → Tags**).
 11) For multi-row assignment changes, select IPs in **IP Assets** and use **Bulk update** to open the right-side drawer for batch Type/Project/Tag updates; shared tags appear under **Common tags** and can be removed for all selected rows in one apply.
