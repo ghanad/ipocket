@@ -59,6 +59,7 @@ ipocket is a lightweight IP inventory app to track addresses and their project a
 - Saved ranges now use the same inline Edit/Delete button style as Hosts so table actions stay visually consistent across pages.
 - Range addresses view includes Status, Host Pair, and Notes for used IPs in subnet drill-downs.
 - Range addresses view now supports IP-specific live search plus separate `Project`/`Type` dropdown filters, chip-based tag filtering (same add/remove interaction as IP assets), status filtering (`all/used/free`), and pagination (`per-page` + previous/next) with URL state preserved during HTMX updates.
+- Range addresses table keeps tag cells compact like IP assets: up to 3 tags render inline, and additional tags collapse behind a `+N more` popover with hover/click open, keyboard close, and inline tag search. Clicking any tag chip in-row or inside the popover instantly adds it to the range Tags filter.
 - Range addresses view now uses a right-side drawer for both “Add” (free IPs) and “Edit” (used IPs), matching the IP assets page workflow.
 - IP ranges page now opens “Add IP Range” inside a right-side drawer instead of an inline card, keeping create UX consistent with Hosts/IP assets flows.
 - IP ranges page now opens range editing in a right-side drawer too, so Edit keeps users on `/ui/ranges` like Hosts and IP assets.

@@ -18,6 +18,222 @@
   const tagFilterSuggestions = filterForm
     ? filterForm.querySelector("[data-range-tag-filter-suggestions]")
     : null;
+  let activeTagsPopoverTrigger = null;
+  let tagsPopover = null;
+  let tagsPopoverOpenTimer = null;
+  let tagsPopoverCloseTimer = null;
+
+  const ensureTagsPopover = () => {
+    if (tagsPopover) {
+      return tagsPopover;
+    }
+    tagsPopover = document.createElement("section");
+    tagsPopover.className = "ip-tags-popover";
+    tagsPopover.setAttribute("role", "dialog");
+    tagsPopover.setAttribute("aria-modal", "false");
+    tagsPopover.hidden = true;
+    tagsPopover.innerHTML = `
+      <header class="ip-tags-popover-header">
+        <h3 class="ip-tags-popover-title" data-tags-popover-title></h3>
+        <button type="button" class="ip-tags-popover-close" data-tags-popover-close aria-label="Close tags popover">✕</button>
+      </header>
+      <label class="field ip-tags-popover-search-field">
+        <span class="visually-hidden">Search tags</span>
+        <input class="input" type="search" placeholder="Filter tags" data-tags-popover-search />
+      </label>
+      <div class="ip-tags-popover-list" data-tags-popover-list></div>
+    `;
+    document.body.appendChild(tagsPopover);
+    const closePopoverButton = tagsPopover.querySelector("[data-tags-popover-close]");
+    if (closePopoverButton) {
+      closePopoverButton.addEventListener("click", () => closeTagsPopover());
+    }
+    const searchInput = tagsPopover.querySelector("[data-tags-popover-search]");
+    if (searchInput) {
+      searchInput.addEventListener("input", renderTagsPopoverList);
+    }
+    tagsPopover.addEventListener("mouseenter", () => {
+      if (tagsPopoverCloseTimer) {
+        window.clearTimeout(tagsPopoverCloseTimer);
+        tagsPopoverCloseTimer = null;
+      }
+    });
+    tagsPopover.addEventListener("mouseleave", () => {
+      scheduleCloseTagsPopover();
+    });
+    return tagsPopover;
+  };
+
+  const scheduleOpenTagsPopover = (trigger, delay = 120) => {
+    if (!trigger) {
+      return;
+    }
+    if (tagsPopoverCloseTimer) {
+      window.clearTimeout(tagsPopoverCloseTimer);
+      tagsPopoverCloseTimer = null;
+    }
+    if (tagsPopoverOpenTimer) {
+      window.clearTimeout(tagsPopoverOpenTimer);
+      tagsPopoverOpenTimer = null;
+    }
+    tagsPopoverOpenTimer = window.setTimeout(() => {
+      openTagsPopover(trigger, { focusSearch: false });
+      tagsPopoverOpenTimer = null;
+    }, delay);
+  };
+
+  const scheduleCloseTagsPopover = (delay = 180) => {
+    if (tagsPopoverOpenTimer) {
+      window.clearTimeout(tagsPopoverOpenTimer);
+      tagsPopoverOpenTimer = null;
+    }
+    if (tagsPopoverCloseTimer) {
+      window.clearTimeout(tagsPopoverCloseTimer);
+      tagsPopoverCloseTimer = null;
+    }
+    tagsPopoverCloseTimer = window.setTimeout(() => {
+      closeTagsPopover();
+      tagsPopoverCloseTimer = null;
+    }, delay);
+  };
+
+  const closeTagsPopover = () => {
+    if (tagsPopoverOpenTimer) {
+      window.clearTimeout(tagsPopoverOpenTimer);
+      tagsPopoverOpenTimer = null;
+    }
+    if (tagsPopoverCloseTimer) {
+      window.clearTimeout(tagsPopoverCloseTimer);
+      tagsPopoverCloseTimer = null;
+    }
+    if (activeTagsPopoverTrigger) {
+      activeTagsPopoverTrigger.setAttribute("aria-expanded", "false");
+    }
+    activeTagsPopoverTrigger = null;
+    if (tagsPopover) {
+      tagsPopover.hidden = true;
+      tagsPopover.dataset.tagsPopoverItems = "[]";
+    }
+  };
+
+  const parseTagsPopoverItems = () => {
+    if (!tagsPopover) {
+      return [];
+    }
+    try {
+      const parsed = JSON.parse(tagsPopover.dataset.tagsPopoverItems || "[]");
+      return Array.isArray(parsed) ? parsed : [];
+    } catch (error) {
+      return [];
+    }
+  };
+
+  const renderTagsPopoverList = () => {
+    if (!tagsPopover) {
+      return;
+    }
+    const list = tagsPopover.querySelector("[data-tags-popover-list]");
+    const searchInput = tagsPopover.querySelector("[data-tags-popover-search]");
+    if (!list) {
+      return;
+    }
+    const term = ((searchInput && searchInput.value) || "").trim().toLowerCase();
+    const items = parseTagsPopoverItems().filter((item) => {
+      const name = String(item?.name || "").toLowerCase();
+      return !term || name.includes(term);
+    });
+    list.replaceChildren();
+    if (!items.length) {
+      const emptyMessage = document.createElement("p");
+      emptyMessage.className = "muted ip-tags-popover-empty";
+      emptyMessage.textContent = "No matching tags.";
+      list.appendChild(emptyMessage);
+      return;
+    }
+    items.forEach((item) => {
+      const tag = document.createElement("button");
+      tag.type = "button";
+      tag.className = "tag tag-color tag-filter-chip";
+      tag.dataset.rangeQuickFilterTag = String(item?.name || "");
+      tag.style.setProperty("--tag-color", String(item?.color || "#94a3b8"));
+      if (typeof window.ipocketApplyTagContrast === "function") {
+        window.ipocketApplyTagContrast(tag);
+      }
+      tag.textContent = String(item?.name || "");
+      list.appendChild(tag);
+    });
+  };
+
+  const positionTagsPopover = () => {
+    if (!tagsPopover || !activeTagsPopoverTrigger || tagsPopover.hidden) {
+      return;
+    }
+    const gutter = 12;
+    const rect = activeTagsPopoverTrigger.getBoundingClientRect();
+    const popoverWidth = Math.min(
+      window.innerWidth - gutter * 2,
+      window.innerWidth < 640 ? window.innerWidth - 16 : 340
+    );
+    tagsPopover.style.width = `${popoverWidth}px`;
+    tagsPopover.style.maxWidth = `${popoverWidth}px`;
+    const popoverRect = tagsPopover.getBoundingClientRect();
+    const availableBelow = window.innerHeight - rect.bottom;
+    const top =
+      availableBelow > popoverRect.height + gutter
+        ? rect.bottom + 6
+        : rect.top - popoverRect.height - 6;
+    const clampedTop = Math.min(
+      window.innerHeight - popoverRect.height - gutter,
+      Math.max(gutter, top)
+    );
+    const left = Math.min(
+      window.innerWidth - popoverRect.width - gutter,
+      Math.max(gutter, rect.left)
+    );
+    tagsPopover.style.top = `${clampedTop + window.scrollY}px`;
+    tagsPopover.style.left = `${left + window.scrollX}px`;
+  };
+
+  const openTagsPopover = (trigger, { focusSearch = true } = {}) => {
+    if (!trigger) {
+      return;
+    }
+    ensureTagsPopover();
+    if (!tagsPopover) {
+      return;
+    }
+    const rawItems = trigger.dataset.tagsJson || "[]";
+    let items = [];
+    try {
+      const parsed = JSON.parse(rawItems);
+      if (Array.isArray(parsed)) {
+        items = parsed;
+      }
+    } catch (error) {
+      items = [];
+    }
+    const ipAddress = trigger.dataset.tagsIp || "IP";
+    const popoverTitle = tagsPopover.querySelector("[data-tags-popover-title]");
+    const searchInput = tagsPopover.querySelector("[data-tags-popover-search]");
+    if (activeTagsPopoverTrigger && activeTagsPopoverTrigger !== trigger) {
+      activeTagsPopoverTrigger.setAttribute("aria-expanded", "false");
+    }
+    activeTagsPopoverTrigger = trigger;
+    activeTagsPopoverTrigger.setAttribute("aria-expanded", "true");
+    tagsPopover.dataset.tagsPopoverItems = JSON.stringify(items);
+    if (popoverTitle) {
+      popoverTitle.textContent = `Tags for ${ipAddress}`;
+    }
+    if (searchInput) {
+      searchInput.value = "";
+    }
+    tagsPopover.hidden = false;
+    renderTagsPopoverList();
+    positionTagsPopover();
+    if (searchInput && focusSearch) {
+      searchInput.focus();
+    }
+  };
 
   const hashToStatus = {
     "#used": "used",
@@ -247,6 +463,29 @@
   };
 
   document.addEventListener("click", (event) => {
+    const quickFilterTag = event.target.closest("[data-range-quick-filter-tag]");
+    if (quickFilterTag) {
+      event.preventDefault();
+      const tagValue = quickFilterTag.dataset.rangeQuickFilterTag || "";
+      if (addTagFilter(tagValue)) {
+        submitTagFilter();
+      }
+      return;
+    }
+
+    const tagsMoreTrigger = event.target.closest("[data-tags-more-toggle]");
+    if (tagsMoreTrigger) {
+      if (activeTagsPopoverTrigger === tagsMoreTrigger && tagsPopover && !tagsPopover.hidden) {
+        closeTagsPopover();
+      } else {
+        openTagsPopover(tagsMoreTrigger);
+      }
+      return;
+    }
+    if (activeTagsPopoverTrigger && tagsPopover && !tagsPopover.contains(event.target)) {
+      closeTagsPopover();
+    }
+
     const removeTagButton = event.target.closest("[data-range-remove-tag-filter]");
     if (removeTagButton) {
       event.preventDefault();
@@ -296,9 +535,77 @@
   });
 
   document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape" && activeTagsPopoverTrigger) {
+      closeTagsPopover();
+      return;
+    }
     if (event.key === "Escape" && state.open) {
       closeDrawer();
     }
+  });
+
+  document.addEventListener("mouseover", (event) => {
+    const trigger = event.target.closest("[data-tags-more-toggle]");
+    if (!trigger) {
+      return;
+    }
+    if (activeTagsPopoverTrigger === trigger && tagsPopover && !tagsPopover.hidden) {
+      if (tagsPopoverCloseTimer) {
+        window.clearTimeout(tagsPopoverCloseTimer);
+        tagsPopoverCloseTimer = null;
+      }
+      return;
+    }
+    scheduleOpenTagsPopover(trigger);
+  });
+
+  document.addEventListener("mouseout", (event) => {
+    const trigger = event.target.closest("[data-tags-more-toggle]");
+    if (!trigger) {
+      return;
+    }
+    const nextTarget = event.relatedTarget;
+    if (
+      nextTarget &&
+      (trigger.contains(nextTarget) || (tagsPopover && tagsPopover.contains(nextTarget)))
+    ) {
+      return;
+    }
+    scheduleCloseTagsPopover();
+  });
+
+  document.addEventListener(
+    "focusin",
+    (event) => {
+      const trigger = event.target.closest("[data-tags-more-toggle]");
+      if (!trigger) {
+        return;
+      }
+      openTagsPopover(trigger);
+    },
+    true
+  );
+
+  document.addEventListener(
+    "focusout",
+    (event) => {
+      const trigger = event.target.closest("[data-tags-more-toggle]");
+      if (!trigger) {
+        return;
+      }
+      const nextTarget = event.relatedTarget;
+      if (nextTarget && tagsPopover && tagsPopover.contains(nextTarget)) {
+        return;
+      }
+      scheduleCloseTagsPopover(0);
+    },
+    true
+  );
+
+  window.addEventListener("resize", positionTagsPopover);
+  window.addEventListener("scroll", positionTagsPopover, true);
+  document.body.addEventListener("htmx:afterSwap", () => {
+    closeTagsPopover();
   });
 
   inputs.forEach((input) => {

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from pathlib import Path
 
 from app import db, repository
 from app.main import app
@@ -153,6 +154,56 @@ def test_range_addresses_page_shows_tags(client) -> None:
     assert 'name="type"' in response.text
     assert "data-range-tag-filter-input" in response.text
     assert "data-range-tag-filter-selected" in response.text
+
+
+def test_range_addresses_tags_cell_collapses_after_three_with_more_trigger(
+    client,
+) -> None:
+    import os
+    from app import db, repository
+
+    connection = db.connect(os.environ["IPAM_DB_PATH"])
+    try:
+        db.init_db(connection)
+        ip_range = repository.create_ip_range(
+            connection, name="Dense Tag Range", cidr="10.41.0.0/24"
+        )
+        for name, color in [
+            ("alpha", "#1d4ed8"),
+            ("beta", "#0f766e"),
+            ("gamma", "#92400e"),
+            ("delta", "#7c3aed"),
+            ("epsilon", "#b91c1c"),
+        ]:
+            repository.create_tag(connection, name=name, color=color)
+        repository.create_ip_asset(
+            connection,
+            ip_address="10.41.0.10",
+            asset_type=IPAssetType.VM,
+            tags=["alpha", "beta", "gamma", "delta", "epsilon"],
+        )
+    finally:
+        connection.close()
+
+    response = client.get(f"/ui/ranges/{ip_range.id}/addresses")
+
+    assert response.status_code == 200
+    assert '<td class="ip-tags-cell">' in response.text
+    assert "alpha" in response.text
+    assert "beta" in response.text
+    assert "gamma" in response.text
+    assert 'data-range-quick-filter-tag="alpha"' in response.text
+    assert "data-tags-more-toggle" in response.text
+    assert 'data-tags-ip="10.41.0.10"' in response.text
+    assert "+2 more" in response.text
+
+    range_addresses_js = (
+        Path(__file__).resolve().parents[2] / "app/static/js/range-addresses.js"
+    )
+    js_source = range_addresses_js.read_text(encoding="utf-8")
+    assert "data-tags-popover-search" in js_source
+    assert "data-tags-more-toggle" in js_source
+    assert "data-range-quick-filter-tag" in js_source
 
 
 def test_range_addresses_filters_by_ip_project_type_and_tag(client) -> None:
