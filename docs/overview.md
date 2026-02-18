@@ -50,6 +50,8 @@ ipocket is a lightweight IP inventory app to track addresses and their project a
 - The old fixed top header has been removed from the main layout to give pages more vertical space; branding remains in the left sidebar.
 - UI templates now keep behavior and page-specific styling in static assets (`app/static/js/*.js` and `app/static/app.css`) to keep Jinja markup focused on structure.
 - The sidebar account section shows Login when signed out and Logout when signed in.
+- Authenticated users can open **Change Password** from the sidebar account section (`/ui/account/password`) to rotate their own password by providing current password + new password confirmation.
+- In the sidebar account section, authenticated actions are grouped as a compact stack (`Change Password` + `Logout`) so account actions stay visually connected.
 - User access model now distinguishes `Editor` (data write) from `Superuser` (user management only); read routes stay public except audit log, which still requires authentication.
 - User management is available on `/ui/users` (superuser-only) and writes user-management actions to audit logs with target type `USER`.
 - The `/ui/users` page is visible and accessible only to authenticated superusers.
@@ -115,7 +117,7 @@ Vendors are managed in the shared Library page tabs and are selectable when crea
 - Vendors table now shows an **IPs** count column with how many active IP assets are currently linked through hosts for each vendor.
 
 - UI route handlers are organized under `app/routes/ui/` with domain packages for larger areas:
-  `app/routes/ui/ip_assets/`, `app/routes/ui/hosts/`, `app/routes/ui/ranges/`, `app/routes/ui/settings/`, plus focused modules such as `auth.py`, `dashboard.py`, `data_ops.py`, and `connectors.py`. `app/routes/ui/__init__.py` remains the single aggregated router entrypoint.
+  `app/routes/ui/ip_assets/`, `app/routes/ui/hosts/`, `app/routes/ui/ranges/`, `app/routes/ui/settings/`, plus focused modules such as `auth.py`, `account.py`, `dashboard.py`, `data_ops.py`, and `connectors.py`. `app/routes/ui/__init__.py` remains the single aggregated router entrypoint.
 - UI utility internals are split into `app/routes/ui/_utils/` modules (`session.py`, `rendering.py`, `parsing.py`, `assets.py`, `exporting.py`) and `app/routes/ui/utils.py` now acts as a compatibility facade so existing imports stay stable.
 - IP-assets helper logic lives in `app/routes/ui/ip_assets/helpers.py`, while routes are split by concern (`listing.py`, `forms.py`, `actions.py`) to keep assignment/listing and mutation flows separate without changing endpoint behavior.
 - Developer compatibility note: `app/routes/ui/__init__.py` re-exports UI auth/session helpers (including `SESSION_COOKIE`) so existing integrations and tests continue working after modularization.

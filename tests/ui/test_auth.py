@@ -10,7 +10,9 @@ def test_logout_button_hidden_when_not_authenticated(client) -> None:
     response = client.get("/ui/management")
 
     assert response.status_code == 200
+    assert "sidebar-account-actions" not in response.text
     assert "sidebar-logout-button" not in response.text
+    assert "sidebar-password-link" not in response.text
     assert "sidebar-login-link" in response.text
     assert "ipocket dev (" in response.text
 
@@ -28,7 +30,10 @@ def test_logout_button_shown_when_authenticated(client, monkeypatch) -> None:
     response = client.get("/ui/management")
 
     assert response.status_code == 200
+    assert "sidebar-account-actions" in response.text
     assert "sidebar-logout-button" in response.text
+    assert "sidebar-account-danger" in response.text
+    assert "sidebar-password-link" in response.text
     assert "sidebar-login-link" not in response.text
 
 

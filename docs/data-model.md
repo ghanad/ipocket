@@ -71,6 +71,7 @@ UI assignment flows only allow selecting from existing tags; they do not create 
 - `created_at` (TEXT timestamp)
 
 When a user account is deleted, existing audit logs are preserved by setting `audit_logs.user_id` to `NULL` while keeping `username` snapshots intact.
+Self-service password changes (`/ui/account/password`) do not add fields/tables; they write a standard `AuditLog` entry with `target_type=USER`, `action=UPDATE`, and a password-rotation change summary.
 
 `IMPORT_RUN` convention:
 - Recorded only for successful `apply` executions (not `dry-run`).

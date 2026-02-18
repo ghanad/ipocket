@@ -151,6 +151,7 @@ Start the app and sign in:
 - Visit http://127.0.0.1:8000/ui/login
 - Login with the bootstrap credentials.
 - Editors can add or edit IPs from the UI.
+- Any authenticated user (Viewer/Editor/Superuser) can change their own password at `http://127.0.0.1:8000/ui/account/password` by entering current password + new password (with confirmation).
 
 ## User management
 User management requires the bootstrap superuser env vars.
