@@ -135,8 +135,14 @@ p {
 .sidebar-account {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 8px;
   margin-bottom: 14px;
+}
+
+.sidebar-account-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
 }
 
 .sidebar-account form {
@@ -153,6 +159,15 @@ p {
   font: inherit;
   text-align: left;
   color: inherit;
+}
+
+.sidebar-account-danger {
+  color: #b91c1c;
+}
+
+.sidebar-account-danger:hover {
+  background: #fee2e2;
+  color: #991b1b;
 }
 
 .sidebar-section-title {

@@ -5,6 +5,7 @@ from fastapi import APIRouter
 from app import repository as repository
 
 from . import (
+    account,
     auth,
     connectors,
     dashboard,
@@ -30,6 +31,7 @@ from .utils import (
 router = APIRouter()
 router.include_router(dashboard.router)
 router.include_router(auth.router)
+router.include_router(account.router)
 router.include_router(connectors.router)
 router.include_router(ip_assets.router)
 router.include_router(hosts.router)
