@@ -49,6 +49,10 @@ def test_create_project_validation_and_duplicate_errors(
 
     _override_editor(user)
     try:
+        missing_name = client.post(
+            "/ui/projects",
+            data={"name": "", "description": "x", "color": "#22c55e"},
+        )
         invalid_color = client.post(
             "/ui/projects",
             data={"name": "new-project", "description": "x", "color": "not-a-color"},
@@ -60,6 +64,8 @@ def test_create_project_validation_and_duplicate_errors(
     finally:
         _clear_overrides()
 
+    assert missing_name.status_code == 400
+    assert "Project name is required." in missing_name.text
     assert invalid_color.status_code == 400
     assert "Project color must be a valid hex color" in invalid_color.text
     assert duplicate.status_code == 409
@@ -84,6 +90,10 @@ def test_update_project_handles_404_and_duplicate_name(
 
     _override_editor(user)
     try:
+        invalid_color = client.post(
+            f"/ui/projects/{first.id}/edit",
+            data={"name": "first", "description": "", "color": "not-a-color"},
+        )
         missing_project = client.post(
             "/ui/projects/999/edit",
             data={"name": "", "description": "", "color": "#22c55e"},
@@ -95,6 +105,8 @@ def test_update_project_handles_404_and_duplicate_name(
     finally:
         _clear_overrides()
 
+    assert invalid_color.status_code == 400
+    assert "Project color must be a valid hex color" in invalid_color.text
     assert missing_project.status_code == 404
     assert duplicate.status_code == 409
     assert "Project name already exists." in duplicate.text

@@ -6,11 +6,12 @@ from urllib.parse import urlencode
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from fastapi.responses import HTMLResponse, RedirectResponse, Response
+from pydantic import ValidationError
 
 from app.dependencies import get_connection
+from app.routes.api.schemas import ProjectCreate
 from app.utils import DEFAULT_PROJECT_COLOR
 from app.routes.ui.utils import (
-    _normalize_project_color,
     _parse_form_data,
     _parse_optional_str,
     _redirect_with_flash,
@@ -23,6 +24,22 @@ from . import repository
 from .common import _tags_template_context, _vendors_template_context
 
 router = APIRouter()
+
+
+def _project_form_errors(validation_error: ValidationError) -> list[str]:
+    errors: list[str] = []
+    for detail in validation_error.errors():
+        location = detail.get("loc") or ()
+        field = location[-1] if location else ""
+        if field == "name":
+            message = "Project name is required."
+        elif field == "color":
+            message = "Project color must be a valid hex color (example: #1a2b3c)."
+        else:
+            message = detail.get("msg", "Invalid input.")
+        if message not in errors:
+            errors.append(message)
+    return errors
 
 
 @router.get("/ui/projects", response_class=HTMLResponse)
@@ -158,16 +175,17 @@ async def ui_update_project(
     description = _parse_optional_str(form_data.get("description"))
     color = form_data.get("color")
 
-    errors = []
-    if not name:
-        errors.append("Project name is required.")
-
-    normalized_color = None
-    if not errors:
-        try:
-            normalized_color = _normalize_project_color(color) or DEFAULT_PROJECT_COLOR
-        except ValueError:
-            errors.append("Project color must be a valid hex color (example: #1a2b3c).")
+    project_input: ProjectCreate | None = None
+    try:
+        project_input = ProjectCreate(
+            name=name or None,
+            description=description,
+            color=color if name else None,
+        )
+    except ValidationError as exc:
+        errors = _project_form_errors(exc)
+    else:
+        errors = []
 
     if errors:
         projects = list(repository.list_projects(connection))
@@ -203,12 +221,15 @@ async def ui_update_project(
             active_nav="library",
         )
 
+    assert project_input is not None
+    normalized_color = project_input.color or DEFAULT_PROJECT_COLOR
+
     try:
         updated = repository.update_project(
             connection,
             project_id=project_id,
-            name=name,
-            description=description,
+            name=project_input.name,
+            description=project_input.description,
             color=normalized_color,
         )
     except sqlite3.IntegrityError:
@@ -325,16 +346,17 @@ async def ui_create_project(
     description = _parse_optional_str(form_data.get("description"))
     color = form_data.get("color")
 
-    errors = []
-    if not name:
-        errors.append("Project name is required.")
-
-    normalized_color = None
-    if not errors:
-        try:
-            normalized_color = _normalize_project_color(color) or DEFAULT_PROJECT_COLOR
-        except ValueError:
-            errors.append("Project color must be a valid hex color (example: #1a2b3c).")
+    project_input: ProjectCreate | None = None
+    try:
+        project_input = ProjectCreate(
+            name=name or None,
+            description=description,
+            color=color if name else None,
+        )
+    except ValidationError as exc:
+        errors = _project_form_errors(exc)
+    else:
+        errors = []
 
     if errors:
         projects = list(repository.list_projects(connection))
@@ -367,9 +389,15 @@ async def ui_create_project(
             active_nav="library",
         )
 
+    assert project_input is not None
+    normalized_color = project_input.color or DEFAULT_PROJECT_COLOR
+
     try:
         repository.create_project(
-            connection, name=name, description=description, color=normalized_color
+            connection,
+            name=project_input.name,
+            description=project_input.description,
+            color=normalized_color,
         )
     except sqlite3.IntegrityError:
         errors.append("Project name already exists.")
