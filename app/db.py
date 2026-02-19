@@ -10,6 +10,9 @@ from alembic.config import Config
 
 def connect(db_path: str) -> sqlite3.Connection:
     connection = sqlite3.connect(db_path, check_same_thread=False)
+    connection.execute("PRAGMA journal_mode=WAL;")
+    connection.execute("PRAGMA synchronous=NORMAL;")
+    connection.execute("PRAGMA busy_timeout=5000;")
     connection.row_factory = sqlite3.Row
     connection.execute("PRAGMA foreign_keys = ON")
     return connection
