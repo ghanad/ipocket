@@ -82,8 +82,9 @@ ipocket is a lightweight IP inventory app to track addresses and their project a
 - Upload Nmap XML from the Data Ops Import tab to discover reachable IPs and add them as `OTHER` assets, with inline example commands.
 - Sidebar includes a **Connectors** page with tabs (`Overview` / `vCenter` / `Prometheus`) so operators can run import connectors directly from UI.
 - **Connectors → vCenter** supports both `dry-run` and `apply` execution modes and shows an in-page execution log (inventory summary + warnings/errors) after each run.
-- Manual vCenter connector is available via `python -m app.connectors.vcenter` (ESXi hosts as `OS` + tag `esxi`, VMs as `VM`) with both file export mode and direct API dry-run/apply modes; on update it always overwrites `type`, merges connector tags into existing tags, and only writes connector notes when the existing note is empty.
+- Manual vCenter connector is available via `python -m app.connectors.vcenter` (ESXi hosts as `OS` + tag `esxi`, VMs as `VM`) with file export mode and local DB dry-run/apply modes (`--db-path`); on update it always overwrites `type`, merges connector tags into existing tags, and only writes connector notes when the existing note is empty.
 - **Connectors → Prometheus** imports IPs from Prometheus `api/v1/query` vector results by extracting IPv4 values from a chosen label (for node_exporter this is commonly `instance`), supports `dry-run`/`apply` from UI, keeps a CLI path via `python -m app.connectors.prometheus`, preserves non-empty existing IP notes and existing `type` during updates, and now shows per-IP dry-run change details (`CREATE`/`UPDATE`/`SKIP` with field-level diffs).
+- Connector dry-run/apply imports execute in-process with the active DB connection (no loopback HTTP request to ipocket `/import/bundle`).
 - Successful `apply` executions for bundle/CSV imports and connector runs now write run-level audit entries (`target_type=IMPORT_RUN`) with source + create/update/skip/warning/error summary; `dry-run` executions are not audited at run level.
 - Prometheus metrics on `/metrics`
 - Prometheus SD endpoint on `/sd/node` with project grouping

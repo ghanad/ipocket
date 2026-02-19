@@ -118,7 +118,7 @@ def test_vcenter_connector_ui_runs_dry_run_and_shows_logs(client, monkeypatch) -
     )
     monkeypatch.setattr(
         connectors_routes,
-        "run_import",
+        "import_vcenter_bundle_via_pipeline",
         lambda *_args, **_kwargs: ImportApplyResult(
             summary=ImportSummary(
                 vendors=ImportEntitySummary(),
@@ -306,7 +306,7 @@ def test_prometheus_connector_dry_run_logs_ip_preview_and_asset_summary(
     )
     monkeypatch.setattr(
         connectors_routes,
-        "run_import",
+        "import_prometheus_bundle_via_pipeline",
         lambda *_args, **_kwargs: ImportApplyResult(
             summary=ImportSummary(
                 vendors=ImportEntitySummary(),
@@ -386,7 +386,7 @@ def test_prometheus_connector_dry_run_logs_per_ip_change_details(
         )
         monkeypatch.setattr(
             connectors_routes,
-            "run_import",
+            "import_prometheus_bundle_via_pipeline",
             lambda *_args, **_kwargs: ImportApplyResult(
                 summary=ImportSummary(
                     vendors=ImportEntitySummary(),

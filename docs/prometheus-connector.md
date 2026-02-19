@@ -45,7 +45,7 @@ python -m app.connectors.prometheus \
   --output ./prometheus-bundle.json
 ```
 
-### Direct dry-run into ipocket API
+### Direct dry-run into local ipocket DB
 
 ```bash
 python -m app.connectors.prometheus \
@@ -54,11 +54,10 @@ python -m app.connectors.prometheus \
   --ip-label instance \
   --token 'prom_user:prom_pass' \
   --mode dry-run \
-  --ipocket-url http://127.0.0.1:8000 \
-  --ipocket-token '<token>'
+  --db-path ./ipocket.db
 ```
 
-### Direct apply into ipocket API
+### Direct apply into local ipocket DB
 
 ```bash
 python -m app.connectors.prometheus \
@@ -66,8 +65,7 @@ python -m app.connectors.prometheus \
   --query 'up{job="node"}' \
   --ip-label instance \
   --mode apply \
-  --ipocket-url http://127.0.0.1:8000 \
-  --ipocket-token '<token>'
+  --db-path ./ipocket.db
 ```
 
 Auth note:
@@ -93,6 +91,7 @@ Connector behavior:
 - Skips samples where the selected label is missing.
 - Accepts `host:port` and extracts the host part.
 - UI dry-run logs include per-IP action details so you can review exactly which fields would be created or changed before apply.
+- UI and CLI imports both execute through the in-process import pipeline (no self-HTTP POST to ipocket `/import/bundle`).
 
 ## Failure behavior
 

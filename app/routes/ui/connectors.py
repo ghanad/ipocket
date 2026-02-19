@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import json
 from typing import Optional
 
 from fastapi import APIRouter, Depends, Query, Request, status
@@ -12,14 +11,15 @@ from app.connectors.prometheus import (
     build_import_bundle_from_prometheus,
     extract_ip_assets_from_result,
     fetch_prometheus_query_result,
+    import_bundle_via_pipeline as import_prometheus_bundle_via_pipeline,
 )
 from app.connectors.vcenter import (
     VCenterConnectorError,
     build_import_bundle,
     fetch_vcenter_inventory,
+    import_bundle_via_pipeline as import_vcenter_bundle_via_pipeline,
 )
 from app.dependencies import get_connection
-from app.imports import BundleImporter, ImportAuditContext, run_import
 from app.models import IPAssetType, UserRole
 from app.utils import normalize_tag_names, split_tag_string
 from .utils import _render_template
@@ -263,18 +263,11 @@ def _run_vcenter_connector(
     total_assets = len(ip_assets) if isinstance(ip_assets, list) else 0
     logs.append(f"Prepared bundle with {total_assets} IP assets.")
 
-    bundle_payload = json.dumps(bundle).encode("utf-8")
-    result = run_import(
+    result = import_vcenter_bundle_via_pipeline(
         connection,
-        BundleImporter(),
-        {"bundle": bundle_payload},
+        bundle=bundle,
+        user=user,
         dry_run=dry_run,
-        audit_context=ImportAuditContext(
-            user=user,
-            source="connector_vcenter",
-            mode="apply" if not dry_run else "dry-run",
-            input_label="connector:vcenter",
-        ),
     )
 
     mode_label = "dry-run" if dry_run else "apply"
@@ -355,18 +348,11 @@ def _run_prometheus_connector(
         )
 
     bundle, bundle_warnings = build_import_bundle_from_prometheus(ip_assets)
-    bundle_payload = json.dumps(bundle).encode("utf-8")
-    result = run_import(
+    result = import_prometheus_bundle_via_pipeline(
         connection,
-        BundleImporter(),
-        {"bundle": bundle_payload},
+        bundle=bundle,
+        user=user,
         dry_run=dry_run,
-        audit_context=ImportAuditContext(
-            user=user,
-            source="connector_prometheus",
-            mode="apply" if not dry_run else "dry-run",
-            input_label="connector:prometheus",
-        ),
     )
 
     mode_label = "dry-run" if dry_run else "apply"

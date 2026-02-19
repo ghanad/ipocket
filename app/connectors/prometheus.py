@@ -12,6 +12,8 @@ from urllib import error as urllib_error
 from urllib import parse as urllib_parse
 from urllib import request as urllib_request
 
+from app.imports import BundleImporter, ImportAuditContext, run_import
+from app.imports.models import ImportApplyResult
 from app.models import IPAssetType
 from app.utils import split_tag_string
 
@@ -289,102 +291,43 @@ def write_bundle_json(bundle: dict[str, object], output_path: str) -> None:
         output_file.write("\n")
 
 
-def _build_import_url(base_url: str, dry_run: bool) -> str:
-    normalized = base_url.rstrip("/")
-    query = "dry_run=1" if dry_run else "dry_run=0"
-    return f"{normalized}/import/bundle?{query}"
-
-
-def import_bundle_via_api(
+def import_bundle_via_pipeline(
+    connection,
     *,
     bundle: dict[str, object],
-    ipocket_url: str,
-    token: str,
+    user: object | None,
     dry_run: bool,
-    insecure: bool = False,
-    timeout_seconds: int = 30,
-) -> dict[str, object]:
-    boundary = "----ipocket-prometheus-boundary"
+) -> ImportApplyResult:
     bundle_payload = json.dumps(bundle, ensure_ascii=False).encode("utf-8")
-    body = b"".join(
-        [
-            f"--{boundary}\r\n".encode("utf-8"),
-            b'Content-Disposition: form-data; name="file"; filename="bundle.json"\r\n',
-            b"Content-Type: application/json\r\n\r\n",
-            bundle_payload,
-            b"\r\n",
-            f"--{boundary}--\r\n".encode("utf-8"),
-        ]
+    return run_import(
+        connection,
+        BundleImporter(),
+        {"bundle": bundle_payload},
+        dry_run=dry_run,
+        audit_context=ImportAuditContext(
+            user=user,
+            source="connector_prometheus",
+            mode="apply" if not dry_run else "dry-run",
+            input_label="connector:prometheus",
+        ),
     )
 
-    request = urllib_request.Request(
-        _build_import_url(ipocket_url, dry_run=dry_run),
-        data=body,
-        method="POST",
-        headers={
-            "Authorization": f"Bearer {token}",
-            "Accept": "application/json",
-            "Content-Type": f"multipart/form-data; boundary={boundary}",
-        },
+
+def _print_import_result(result: ImportApplyResult) -> None:
+    total = result.summary.total()
+    print(
+        f"Import summary: create={total.would_create}, update={total.would_update}, skip={total.would_skip}"
     )
 
-    ssl_context = ssl._create_unverified_context() if insecure else None
-    try:
-        with urllib_request.urlopen(
-            request,
-            timeout=timeout_seconds,
-            context=ssl_context,
-        ) as response:
-            response_payload = response.read()
-    except urllib_error.HTTPError as exc:
-        details = exc.read().decode("utf-8", errors="replace")
-        raise PrometheusConnectorError(
-            f"ipocket import request failed with HTTP {exc.code}: {details}"
-        ) from exc
-    except urllib_error.URLError as exc:
-        raise PrometheusConnectorError(
-            f"Failed to call ipocket import API: {exc}"
-        ) from exc
-
-    try:
-        parsed = json.loads(response_payload.decode("utf-8"))
-    except (UnicodeDecodeError, json.JSONDecodeError) as exc:
-        raise PrometheusConnectorError(
-            "ipocket import API returned invalid JSON."
-        ) from exc
-
-    if not isinstance(parsed, dict):
-        raise PrometheusConnectorError(
-            "ipocket import API returned an unexpected payload."
-        )
-    return parsed
-
-
-def _print_import_result(payload: dict[str, object]) -> None:
-    summary = payload.get("summary")
-    if isinstance(summary, dict):
-        total = summary.get("total")
-        if isinstance(total, dict):
-            created = int(total.get("would_create", 0))
-            updated = int(total.get("would_update", 0))
-            skipped = int(total.get("would_skip", 0))
-            print(f"Import summary: create={created}, update={updated}, skip={skipped}")
-
-    errors = payload.get("errors")
-    if isinstance(errors, list) and errors:
+    if result.errors:
         print("Import errors:")
-        for issue in errors:
-            if not isinstance(issue, dict):
-                continue
-            print(f"- {issue.get('location', 'import')}: {issue.get('message', '')}")
+        for issue in result.errors:
+            print(f"- {issue.location}: {issue.message}")
 
-    warnings = payload.get("warnings")
-    if isinstance(warnings, list) and warnings:
+    if result.warnings:
         print("Import warnings:")
-        for issue in warnings:
-            if not isinstance(issue, dict):
-                continue
-            print(f"- {issue.get('location', 'import')}: {issue.get('message', '')}")
+        for issue in result.warnings:
+            print(f"- {issue.location}: {issue.message}")
 
 
 def _build_parser() -> argparse.ArgumentParser:
@@ -402,7 +345,7 @@ def _build_parser() -> argparse.ArgumentParser:
         "--mode",
         choices=("file", "dry-run", "apply"),
         default="file",
-        help="file=write bundle only, dry-run/apply=call ipocket import API.",
+        help="file=write bundle only, dry-run/apply=run local import pipeline.",
     )
     parser.add_argument(
         "--output",
@@ -435,23 +378,9 @@ def _build_parser() -> argparse.ArgumentParser:
         "--timeout",
         type=int,
         default=30,
-        help="HTTP timeout in seconds for Prometheus/API calls (default: 30)",
+        help="HTTP timeout in seconds for Prometheus calls (default: 30)",
     )
-    parser.add_argument(
-        "--ipocket-url",
-        required=False,
-        help="ipocket base URL (example: http://127.0.0.1:8000)",
-    )
-    parser.add_argument(
-        "--ipocket-token",
-        required=False,
-        help="Bearer token for ipocket API auth.",
-    )
-    parser.add_argument(
-        "--ipocket-insecure",
-        action="store_true",
-        help="Disable TLS verification for ipocket API HTTPS calls.",
-    )
+    parser.add_argument("--db-path", required=False, help="Path to local ipocket DB.")
     return parser
 
 
@@ -460,10 +389,8 @@ def _validate_cli_args(
 ) -> None:
     if args.mode == "file" and not args.output:
         parser.error("--output is required when --mode=file")
-    if args.mode in {"dry-run", "apply"} and not args.ipocket_url:
-        parser.error("--ipocket-url is required when --mode is dry-run/apply")
-    if args.mode in {"dry-run", "apply"} and not args.ipocket_token:
-        parser.error("--ipocket-token is required when --mode is dry-run/apply")
+    if args.mode in {"dry-run", "apply"} and not args.db_path:
+        parser.error("--db-path is required when --mode is dry-run/apply")
 
 
 def main(argv: Optional[Sequence[str]] = None) -> int:
@@ -505,17 +432,18 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         print(f"Bundle written to {args.output}")
 
     if args.mode in {"dry-run", "apply"}:
+        from app import db
+
+        connection = db.connect(args.db_path)
         try:
-            result = import_bundle_via_api(
+            result = import_bundle_via_pipeline(
+                connection,
                 bundle=bundle,
-                ipocket_url=args.ipocket_url,
-                token=args.ipocket_token,
+                user=None,
                 dry_run=args.mode == "dry-run",
-                insecure=args.ipocket_insecure,
-                timeout_seconds=args.timeout,
             )
-        except PrometheusConnectorError as exc:
-            parser.exit(status=1, message=f"error: {exc}\n")
+        finally:
+            connection.close()
 
         print(f"ipocket import mode: {args.mode}")
         _print_import_result(result)
