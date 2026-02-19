@@ -120,7 +120,14 @@ def test_sidebar_users_link_visible_only_to_superuser(
     finally:
         connection.close()
 
-    superuser_cookie = ui._sign_session_value(str(superuser.id))
+    connection = _setup_connection()
+    try:
+        superuser_token = auth.create_access_token(connection, superuser.id)
+        editor_token = auth.create_access_token(connection, editor.id)
+    finally:
+        connection.close()
+
+    superuser_cookie = ui._sign_session_value(superuser_token)
     superuser_page = client.get(
         "/ui/management",
         headers={"Cookie": f"{ui.SESSION_COOKIE}={superuser_cookie}"},
@@ -128,7 +135,7 @@ def test_sidebar_users_link_visible_only_to_superuser(
     assert superuser_page.status_code == 200
     assert 'href="/ui/users"' in superuser_page.text
 
-    editor_cookie = ui._sign_session_value(str(editor.id))
+    editor_cookie = ui._sign_session_value(editor_token)
     editor_page = client.get(
         "/ui/management",
         headers={"Cookie": f"{ui.SESSION_COOKIE}={editor_cookie}"},

@@ -70,6 +70,12 @@ from .ranges import (
     update_ip_range,
 )
 from .summary import get_management_summary
+from .sessions import (
+    clear_sessions,
+    create_session,
+    delete_session,
+    get_session_user_id,
+)
 from .users import (
     count_active_users_by_role,
     count_users,
@@ -146,6 +152,10 @@ __all__ = [
     "list_ip_ranges",
     "update_ip_range",
     "get_management_summary",
+    "create_session",
+    "get_session_user_id",
+    "delete_session",
+    "clear_sessions",
     "count_active_users_by_role",
     "count_users",
     "create_user",

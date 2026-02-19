@@ -37,6 +37,19 @@ class User(Base):
     )
 
 
+class Session(Base):
+    __tablename__ = "sessions"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    token = Column(Text, nullable=False, unique=True)
+    user_id = Column(
+        Integer,
+        ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    created_at = Column(Text, nullable=False, server_default=text("CURRENT_TIMESTAMP"))
+
+
 class Vendor(Base):
     __tablename__ = "vendors"
 

@@ -9,6 +9,7 @@ from fastapi import HTTPException
 from starlette.requests import Request
 from starlette.responses import HTMLResponse, Response
 
+from app import auth
 from app import repository
 from app.main import app
 from app.models import IPAsset, IPAssetType, User, UserRole
@@ -177,8 +178,9 @@ def test_get_current_user_and_editor_guard_paths(_setup_connection) -> None:
         user = repository.create_user(
             connection, username="viewer", hashed_password="x", role=UserRole.VIEWER
         )
-        signed_missing = ui_utils._sign_session_value("999")
-        signed_existing = ui_utils._sign_session_value(str(user.id))
+        signed_missing = ui_utils._sign_session_value("missing-token")
+        existing_token = auth.create_access_token(connection, user.id)
+        signed_existing = ui_utils._sign_session_value(existing_token)
 
         no_cookie_req = _request(path="/ui/hosts", query="page=2")
         with pytest.raises(HTTPException) as no_cookie_exc:
