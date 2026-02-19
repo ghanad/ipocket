@@ -24,6 +24,10 @@ After pulling updates, rerun `alembic upgrade head` to apply the latest indexing
 The migration runner reads `IPAM_DB_PATH` (defaults to `ipocket.db`) to locate the
 SQLite file.
 
+At runtime, each new SQLite connection enables WAL mode and applies
+`synchronous=NORMAL` with a `busy_timeout` of 5000ms to reduce
+`database is locked` errors under concurrent requests.
+
 Reset the database for local dev (removes data):
 
 ```bash
