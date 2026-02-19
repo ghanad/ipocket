@@ -15,7 +15,16 @@ def login(request: LoginRequest, connection=Depends(get_connection)) -> TokenRes
     user = repository.get_user_by_username(connection, request.username)
     if user is None or not user.is_active:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED)
-    if not auth.verify_password(request.password, user.hashed_password):
+    verified, replacement_hash = auth.verify_and_update_password(
+        request.password, user.hashed_password
+    )
+    if not verified:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED)
-    token = auth.create_access_token(user.id)
+    if replacement_hash is not None:
+        repository.update_user_password(
+            connection,
+            user_id=user.id,
+            hashed_password=replacement_hash,
+        )
+    token = auth.create_access_token(connection, user.id)
     return TokenResponse(access_token=token)

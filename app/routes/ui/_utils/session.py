@@ -12,7 +12,7 @@ from typing import Optional
 from fastapi import Depends, HTTPException, Request, status
 from fastapi.responses import RedirectResponse, Response
 
-from app import db, repository
+from app import auth, db, repository
 from app.dependencies import get_connection, get_db_path
 from app.models import UserRole
 
@@ -136,22 +136,33 @@ def _redirect_with_flash(
 
 def _is_authenticated_request(request: Request) -> bool:
     signed_session = request.cookies.get(SESSION_COOKIE)
-    return _verify_session_value(signed_session) is not None
-
-
-def _is_superuser_request(request: Request) -> bool:
-    signed_session = request.cookies.get(SESSION_COOKIE)
-    user_id = _verify_session_value(signed_session)
-    if not user_id:
-        return False
-    try:
-        parsed_user_id = int(user_id)
-    except ValueError:
+    session_token = _verify_session_value(signed_session)
+    if not session_token:
         return False
 
     connection = db.connect(get_db_path())
     try:
-        user = repository.get_user_by_id(connection, parsed_user_id)
+        user_id = auth.get_user_id_for_token(connection, session_token)
+        if user_id is None:
+            return False
+        user = repository.get_user_by_id(connection, user_id)
+    finally:
+        connection.close()
+    return bool(user and user.is_active)
+
+
+def _is_superuser_request(request: Request) -> bool:
+    signed_session = request.cookies.get(SESSION_COOKIE)
+    session_token = _verify_session_value(signed_session)
+    if not session_token:
+        return False
+
+    connection = db.connect(get_db_path())
+    try:
+        user_id = auth.get_user_id_for_token(connection, session_token)
+        if user_id is None:
+            return False
+        user = repository.get_user_by_id(connection, user_id)
     finally:
         connection.close()
     return bool(user and user.is_active and user.role == UserRole.SUPERUSER)
@@ -167,14 +178,21 @@ def _return_to(request: Request) -> str:
 
 def get_current_ui_user(request: Request, connection=Depends(get_connection)):
     signed_session = request.cookies.get(SESSION_COOKIE)
-    user_id = _verify_session_value(signed_session)
-    if not user_id:
+    session_token = _verify_session_value(signed_session)
+    if not session_token:
         raise HTTPException(
             status_code=status.HTTP_303_SEE_OTHER,
             headers={"Location": f"/ui/login?return_to={_return_to(request)}"},
         )
 
-    user = repository.get_user_by_id(connection, int(user_id))
+    user_id = auth.get_user_id_for_token(connection, session_token)
+    if user_id is None:
+        raise HTTPException(
+            status_code=status.HTTP_303_SEE_OTHER,
+            headers={"Location": f"/ui/login?return_to={_return_to(request)}"},
+        )
+
+    user = repository.get_user_by_id(connection, user_id)
     if user is None or not user.is_active:
         raise HTTPException(
             status_code=status.HTTP_303_SEE_OTHER,

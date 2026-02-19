@@ -18,7 +18,7 @@ def get_current_user(
     scheme, _, token = authorization.partition(" ")
     if scheme.lower() != "bearer" or not token:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED)
-    user_id = auth.get_user_id_for_token(token)
+    user_id = auth.get_user_id_for_token(connection, token)
     if user_id is None:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED)
     user = repository.get_user_by_id(connection, user_id)

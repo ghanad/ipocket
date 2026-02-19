@@ -55,9 +55,18 @@ UI assignment flows only allow selecting from existing tags; they do not create 
 
 ## User
 - `username` (TEXT, unique)
-- `hashed_password` (TEXT)
+- `hashed_password` (TEXT; bcrypt hash via `passlib`, with legacy SHA-256 hashes upgraded on successful login)
 - `role` (`Viewer`, `Editor`, `Admin` where `Admin` is treated as Superuser)
 - `is_active` (INTEGER flag; `1` active, `0` inactive)
+
+
+## Session
+- `id` (INTEGER primary key)
+- `token` (TEXT, unique)
+- `user_id` (INTEGER, FK to `users.id`, cascade delete)
+- `created_at` (TEXT timestamp)
+
+API bearer tokens and UI login cookies both map to this table for session validation and revocation.
 
 
 ## AuditLog
