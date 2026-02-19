@@ -1,14 +1,14 @@
 from __future__ import annotations
 
+import json
 from types import SimpleNamespace
 
 from app.connectors import vcenter
 from app.connectors.vcenter import (
     VCenterHostRecord,
     VCenterVmRecord,
-    _build_import_url,
     build_import_bundle,
-    import_bundle_via_api,
+    import_bundle_via_pipeline,
     parse_host_systems,
     parse_virtual_machines,
 )
@@ -118,56 +118,43 @@ def test_build_import_bundle_skips_duplicate_ips() -> None:
     assert "Duplicate IP '10.0.0.11'" in warnings[0]
 
 
-def test_build_import_url_supports_dry_run_and_apply() -> None:
-    assert (
-        _build_import_url("http://127.0.0.1:8000/", dry_run=True)
-        == "http://127.0.0.1:8000/import/bundle?dry_run=1"
-    )
-    assert (
-        _build_import_url("http://127.0.0.1:8000", dry_run=False)
-        == "http://127.0.0.1:8000/import/bundle?dry_run=0"
-    )
-
-
-def test_import_bundle_via_api_posts_multipart_and_parses_response(monkeypatch) -> None:
+def test_import_bundle_via_pipeline_calls_run_import(monkeypatch) -> None:
     captured: dict[str, object] = {}
 
-    class _FakeResponse:
-        def __enter__(self):
-            return self
+    def _fake_run_import(
+        connection, importer, inputs, *, options=None, dry_run=False, audit_context=None
+    ):
+        captured["connection"] = connection
+        captured["importer_type"] = type(importer).__name__
+        captured["inputs"] = inputs
+        captured["dry_run"] = dry_run
+        captured["audit_source"] = audit_context.source if audit_context else None
+        captured["audit_mode"] = audit_context.mode if audit_context else None
+        captured["audit_input_label"] = (
+            audit_context.input_label if audit_context else None
+        )
+        captured["audit_user"] = audit_context.user if audit_context else None
+        return "ok"
 
-        def __exit__(self, exc_type, exc_val, exc_tb):
-            return False
+    monkeypatch.setattr(vcenter, "run_import", _fake_run_import)
 
-        def read(self) -> bytes:
-            return (
-                b'{"summary":{"total":{"would_create":2,"would_update":0,"would_skip":1}},'
-                b'"errors":[],"warnings":[]}'
-            )
-
-    def _fake_urlopen(request, timeout, context):
-        captured["url"] = request.full_url
-        captured["timeout"] = timeout
-        header_map = dict(request.header_items())
-        captured["auth"] = header_map.get("Authorization")
-        captured["content_type"] = header_map.get("Content-type")
-        captured["body"] = request.data
-        return _FakeResponse()
-
-    monkeypatch.setattr(vcenter.urllib_request, "urlopen", _fake_urlopen)
-
-    result = import_bundle_via_api(
+    result = import_bundle_via_pipeline(
+        "db-conn",
         bundle={"app": "ipocket", "schema_version": "1", "data": {}},
-        ipocket_url="http://127.0.0.1:8000/",
-        token="test-token",
+        user="alice",
         dry_run=True,
     )
 
-    assert captured["url"] == "http://127.0.0.1:8000/import/bundle?dry_run=1"
-    assert captured["timeout"] == 30
-    assert captured["auth"] == "Bearer test-token"
-    assert "multipart/form-data; boundary=" in str(captured["content_type"])
-    body = captured["body"]
-    assert isinstance(body, bytes)
-    assert b'name="file"; filename="bundle.json"' in body
-    assert result["summary"]["total"]["would_create"] == 2
+    assert result == "ok"
+    assert captured["connection"] == "db-conn"
+    assert captured["importer_type"] == "BundleImporter"
+    assert captured["dry_run"] is True
+    assert captured["audit_source"] == "connector_vcenter"
+    assert captured["audit_mode"] == "dry-run"
+    assert captured["audit_input_label"] == "connector:vcenter"
+    assert captured["audit_user"] == "alice"
+    assert json.loads(captured["inputs"]["bundle"].decode("utf-8")) == {
+        "app": "ipocket",
+        "schema_version": "1",
+        "data": {},
+    }

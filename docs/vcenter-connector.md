@@ -28,7 +28,7 @@ python -m app.connectors.vcenter \
   --output ./vcenter-bundle.json
 ```
 
-### 2) Direct dry-run into ipocket API (no manual file import)
+### 2) Direct dry-run into local ipocket DB (no manual file import)
 
 ```bash
 python -m app.connectors.vcenter \
@@ -36,11 +36,10 @@ python -m app.connectors.vcenter \
   --username administrator@vsphere.local \
   --password '<password>' \
   --mode dry-run \
-  --ipocket-url http://127.0.0.1:8000 \
-  --token '<ipocket_token>'
+  --db-path ./ipocket.db
 ```
 
-### 3) Direct apply into ipocket API
+### 3) Direct apply into local ipocket DB
 
 ```bash
 python -m app.connectors.vcenter \
@@ -48,16 +47,13 @@ python -m app.connectors.vcenter \
   --username administrator@vsphere.local \
   --password '<password>' \
   --mode apply \
-  --ipocket-url http://127.0.0.1:8000 \
-  --token '<ipocket_token>'
+  --db-path ./ipocket.db
 ```
 
 Optional flags:
 
 - `--port 443`
 - `--insecure` (skip TLS certificate verification for vCenter)
-- `--ipocket-insecure` (skip TLS verification for ipocket API)
-
 ## Output mapping
 
 The generated bundle uses these rules:
@@ -85,4 +81,6 @@ If you used `--mode file`:
 3. Run **Dry-run** first
 4. Run **Apply** after verifying the summary
 
-If you used `--mode dry-run` or `--mode apply`, the connector sends the same bundle directly to `/import/bundle` API and prints the import summary in CLI output.
+If you used `--mode dry-run` or `--mode apply`, the connector runs the same bundle through the in-process import pipeline and prints the import summary in CLI output.
+
+For the web UI connector path, ipocket also runs imports in-process with the active request database connection (no loopback HTTP call to its own API).
