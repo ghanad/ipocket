@@ -190,6 +190,7 @@ UI design reference templates live in `/ui_template` for layout and styling guid
 1) Bootstrap a superuser (env vars above).
 2) Login at `/ui/login`.
 3) Open **Library** from the sidebar and use tabs to create Projects, Tags, and Vendors.
+   - The header **New Project / New Tag / New Vendor** button opens the matching create drawer for the active tab.
 4) In **Library → Tags**, the create drawer now suggests a random color by default; you can keep it or pick another color before saving.
 5) Create Hosts from the **Hosts** page and pick a Vendor when needed.
 6) Add IPs from the **IP Assets** page.

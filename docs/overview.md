@@ -76,6 +76,7 @@ ipocket is a lightweight IP inventory app to track addresses and their project a
 - Projects, Tags, and Vendors tab drawer interactions (open/close + form dirty/valid save state) are implemented with Alpine.js directives in the Jinja templates. The Tags tab create drawer also auto-suggests a random hex color in component state when no color is prefilled.
 - Project create/edit drawer validation now reuses the API `ProjectCreate` Pydantic schema in UI routes so color normalization and validation rules stay consistent between UI and API.
 - The Library page uses one shared "Catalog Settings" header with compact segmented tabs (Projects/Tags/Vendors) and a tab-aware primary action button (New Project/Tag/Vendor) to keep controls in one place.
+- The Library header primary action button now reliably opens the matching create drawer on all tabs (Projects/Tags/Vendors).
 - The Projects and Tags tab tables now use compact row spacing so catalog rows stay denser and easier to scan.
 - Projects table now shows an **IPs** count column so you can quickly see how many active IP assets are currently assigned to each project.
 - Use the shared **Data Ops** page (Import/Export tabs) for round-trip workflows.
