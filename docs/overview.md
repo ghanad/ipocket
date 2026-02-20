@@ -71,6 +71,7 @@ ipocket is a lightweight IP inventory app to track addresses and their project a
 - Range delete drawer now reliably displays CIDR/usage context from the selected row (including when opened inline), reducing confirmation mistakes.
 - IP ranges now render in a single unified table card (name/CIDR/usable/used/free/utilization/actions), with Used/Free counts staying clickable for address drill-down and row-level Edit/Delete actions kept compact.
 - Drawer open/close behavior is shared through `app/static/js/drawer.js` so Hosts and Ranges follow the same interaction pattern.
+- Reusable drawer shell markup is centralized in `app/templates/macros/drawer.html`, and the Projects tab uses that macro to keep drawer structure consistent across create/edit/delete flows.
 - Projects management is part of the shared Library page and follows the same right-side drawer UX for create/edit/delete actions, including destructive confirmation by typing the exact project name.
 - Project create/edit drawer validation now reuses the API `ProjectCreate` Pydantic schema in UI routes so color normalization and validation rules stay consistent between UI and API.
 - The Library page uses one shared "Catalog Settings" header with compact segmented tabs (Projects/Tags/Vendors) and a tab-aware primary action button (New Project/Tag/Vendor) to keep controls in one place.
