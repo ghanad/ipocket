@@ -95,6 +95,7 @@ ipocket is a lightweight IP inventory app to track addresses and their project a
 - Database schema managed through Alembic migrations
 - SQLite connections are configured for concurrent request handling (`journal_mode=WAL`, `synchronous=NORMAL`, `busy_timeout=5000`).
 - Repository data-access layer is modularized under `app/repository/` (assets, hosts, ranges, metadata, users, audit, summary), while `app.repository` remains the stable import surface via package re-exports.
+- Metadata repository operations (`projects`, `vendors`, `tags`) now run through SQLAlchemy ORM sessions (`app/schema.py`) as the first step of an incremental repository migration away from raw SQL call sites.
 - Internal IP-asset repository logic is further split into focused helpers: `app/repository/_asset_filters.py` (filter query assembly), `app/repository/_asset_tags.py` (tag mappings/persistence), and `app/repository/_asset_audit.py` (audit change summaries); `app/repository/assets.py` remains the backward-compatible public API module.
 - The IP asset listing path adds DB indexes (`ip_assets` archived/filter columns plus tag lookup indexes) to keep paginated list and tag-filter queries responsive on larger datasets.
 
