@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from app import repository
-from app.models import IPAssetType
+from app.models import IPAssetType, Tag, Vendor
 
 
 def test_delete_project_unassigns_linked_ip_assets(_setup_connection) -> None:
@@ -172,7 +172,21 @@ def test_tag_metadata_supports_sqlalchemy_session(
     session = _setup_session()
     try:
         tag = repository.create_tag(session, name="orm-tag", color="#abc123")
+        assert isinstance(tag, Tag)
         assert tag.color == "#abc123"
+
+        updated = repository.update_tag(
+            session,
+            tag_id=tag.id,
+            name="orm-tag-updated",
+            color="#00AACC",
+        )
+        assert updated is not None
+        assert updated.name == "orm-tag-updated"
+        assert updated.color == "#00aacc"
+
+        listed = list(repository.list_tags(session))
+        assert any(item.id == tag.id for item in listed)
 
         connection = _setup_connection()
         try:
@@ -181,12 +195,79 @@ def test_tag_metadata_supports_sqlalchemy_session(
                 ip_address="10.9.1.10",
                 asset_type=IPAssetType.OTHER,
             )
-            repository.set_ip_asset_tags(connection, asset.id, ["orm-tag"])
+            repository.set_ip_asset_tags(connection, asset.id, ["orm-tag-updated"])
+            archived = repository.create_ip_asset(
+                connection,
+                ip_address="10.9.1.11",
+                asset_type=IPAssetType.VM,
+            )
+            repository.set_ip_asset_tags(connection, archived.id, ["orm-tag-updated"])
+            repository.set_ip_asset_archived(
+                connection,
+                archived.ip_address,
+                archived=True,
+            )
             connection.commit()
         finally:
             connection.close()
 
         counts = repository.list_tag_ip_counts(session)
         assert counts[tag.id] == 1
+        deleted = repository.delete_tag(session, tag.id)
+        assert deleted is True
+        assert repository.get_tag_by_id(session, tag.id) is None
+    finally:
+        session.close()
+
+
+def test_vendor_metadata_supports_sqlalchemy_session(
+    _setup_connection, _setup_session
+) -> None:
+    session = _setup_session()
+    try:
+        vendor = repository.create_vendor(session, name="Session Vendor")
+        assert isinstance(vendor, Vendor)
+        assert vendor.name == "Session Vendor"
+
+        updated = repository.update_vendor(session, vendor.id, name="Session Vendor 2")
+        assert updated is not None
+        assert updated.name == "Session Vendor 2"
+
+        listed = list(repository.list_vendors(session))
+        assert any(item.id == vendor.id for item in listed)
+
+        connection = _setup_connection()
+        try:
+            host = repository.create_host(
+                connection,
+                name="session-host",
+                vendor=updated.name,
+            )
+            repository.create_ip_asset(
+                connection,
+                ip_address="10.9.2.10",
+                asset_type=IPAssetType.OS,
+                host_id=host.id,
+            )
+            archived = repository.create_ip_asset(
+                connection,
+                ip_address="10.9.2.11",
+                asset_type=IPAssetType.BMC,
+                host_id=host.id,
+            )
+            repository.set_ip_asset_archived(
+                connection,
+                archived.ip_address,
+                archived=True,
+            )
+        finally:
+            connection.close()
+
+        counts = repository.list_vendor_ip_counts(session)
+        assert counts[vendor.id] == 1
+
+        deleted = repository.delete_vendor(session, vendor.id)
+        assert deleted is True
+        assert repository.get_vendor_by_id(session, vendor.id) is None
     finally:
         session.close()
