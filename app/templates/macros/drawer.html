@@ -1,13 +1,13 @@
-{% macro drawer(drawer_id, title, subtitle, overlay_data_attr, drawer_data_attr, open_data_attr, is_open, aria_label, close_data_attr, close_label='Close drawer') -%}
-<div class="ip-drawer-overlay" {{ overlay_data_attr }} aria-hidden="true"></div>
-<aside id="{{ drawer_id }}" class="ip-drawer" {{ drawer_data_attr }} {{ open_data_attr }}="{{ 'true' if is_open else 'false' }}" role="dialog" aria-modal="true" aria-label="{{ aria_label }}">
+{% macro drawer(drawer_id, title, subtitle, overlay_data_attr, drawer_data_attr, open_data_attr, is_open, aria_label, close_data_attr, subtitle_data_attr='', close_label='Close drawer') -%}
+<div class="ip-drawer-overlay" {{ overlay_data_attr|safe }} aria-hidden="true"></div>
+<aside id="{{ drawer_id }}" class="ip-drawer" {{ drawer_data_attr|safe }} {{ open_data_attr|safe }}="{{ 'true' if is_open else 'false' }}" role="dialog" aria-modal="true" aria-label="{{ aria_label }}">
   <div class="ip-drawer-header">
     <div class="ip-drawer-header-row">
       <div>
         <h2 class="ip-drawer-title">{{ title }}</h2>
-        <p class="ip-drawer-subtitle">{{ subtitle }}</p>
+        <p class="ip-drawer-subtitle" {{ subtitle_data_attr|safe }}>{{ subtitle }}</p>
       </div>
-      <button class="ip-drawer-close" type="button" aria-label="{{ close_label }}" {{ close_data_attr }}>✕</button>
+      <button class="ip-drawer-close" type="button" aria-label="{{ close_label }}" {{ close_data_attr|safe }}>✕</button>
     </div>
   </div>
   <div class="ip-drawer-body">

@@ -1,3 +1,4 @@
+{% import 'macros/drawer.html' as drawer_macros %}
 <div
   x-data="{
     createOpen: {{ 'true' if errors else 'false' }},
@@ -258,43 +259,18 @@
     </div>
   </section>
 
-  <div
-    class="ip-drawer-overlay"
-    data-project-create-overlay
-    x-show="createOpen"
-    x-transition.opacity.duration.150ms
-    :class="{ 'is-open': createOpen }"
-    x-bind:aria-hidden="(!createOpen).toString()"
-    @click="closeCreate()"
-  ></div>
-  <aside
-    id="project-create-drawer"
-    class="ip-drawer"
-    data-project-create-drawer
-    data-project-open="{{ 'true' if errors else 'false' }}"
-    x-show="createOpen"
-    x-transition:enter="transition ease-out duration-150"
-    x-transition:enter-start="opacity-0"
-    x-transition:enter-end="opacity-100"
-    x-transition:leave="transition ease-in duration-100"
-    x-transition:leave-start="opacity-100"
-    x-transition:leave-end="opacity-0"
-    :class="{ 'is-open': createOpen }"
-    role="dialog"
-    aria-modal="true"
-    aria-label="Add project"
-    x-bind:aria-hidden="(!createOpen).toString()"
-  >
-    <div class="ip-drawer-header">
-      <div class="ip-drawer-header-row">
-        <div>
-          <h2 class="ip-drawer-title">Create Project</h2>
-          <p class="ip-drawer-subtitle">Add new project labels for IP assignments.</p>
-        </div>
-        <button class="ip-drawer-close" type="button" aria-label="Close drawer" data-project-create-close @click="closeCreate()">✕</button>
-      </div>
-    </div>
-    <div class="ip-drawer-body">
+  {% call(section) drawer_macros.drawer(
+    'project-create-drawer',
+    'Create Project',
+    'Add new project labels for IP assignments.',
+    'data-project-create-overlay x-show="createOpen" x-transition.opacity.duration.150ms :class="{ \\'is-open\\': createOpen }" x-bind:aria-hidden="(!createOpen).toString()" @click="closeCreate()"',
+    'data-project-create-drawer x-show="createOpen" x-transition:enter="transition ease-out duration-150" x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100" x-transition:leave="transition ease-in duration-100" x-transition:leave-start="opacity-100" x-transition:leave-end="opacity-0" :class="{ \\'is-open\\': createOpen }" x-bind:aria-hidden="(!createOpen).toString()"',
+    'data-project-open',
+    errors,
+    'Add project',
+    'data-project-create-close @click="closeCreate()"'
+  ) %}
+    {% if section == 'body' %}
       {% if errors %}
       <div class="alert alert-error">
         <ul>
@@ -321,53 +297,29 @@
           </label>
         </section>
       </form>
-    </div>
-    <div class="ip-drawer-footer">
-      <span class="ip-drawer-footer-status" data-project-create-dirty x-text="createStatus()">Enter details</span>
-      <div class="ip-drawer-footer-actions">
-        <button class="btn btn-secondary" type="button" data-project-create-cancel @click="closeCreate()">Cancel</button>
-        <button class="btn btn-primary" type="submit" form="project-create-form" data-project-create-save :disabled="!createCanSave()">Create project</button>
-      </div>
-    </div>
-  </aside>
-
-  <div
-    class="ip-drawer-overlay"
-    data-project-edit-overlay
-    x-show="editOpen"
-    x-transition.opacity.duration.150ms
-    :class="{ 'is-open': editOpen }"
-    x-bind:aria-hidden="(!editOpen).toString()"
-    @click="closeEdit()"
-  ></div>
-  <aside
-    id="project-edit-drawer"
-    class="ip-drawer"
-    data-project-edit-drawer
-    data-project-edit-open="{{ 'true' if (edit_errors or edit_project) else 'false' }}"
-    x-show="editOpen"
-    x-transition:enter="transition ease-out duration-150"
-    x-transition:enter-start="opacity-0"
-    x-transition:enter-end="opacity-100"
-    x-transition:leave="transition ease-in duration-100"
-    x-transition:leave-start="opacity-100"
-    x-transition:leave-end="opacity-0"
-    :class="{ 'is-open': editOpen }"
-    role="dialog"
-    aria-modal="true"
-    aria-label="Edit project"
-    x-bind:aria-hidden="(!editOpen).toString()"
-  >
-    <div class="ip-drawer-header">
-      <div class="ip-drawer-header-row">
-        <div>
-          <h2 class="ip-drawer-title">Edit Project</h2>
-          <p class="ip-drawer-subtitle">Update project fields used in assignments.</p>
+    {% elif section == 'footer' %}
+      <div class="ip-drawer-footer">
+        <span class="ip-drawer-footer-status" data-project-create-dirty x-text="createStatus()">Enter details</span>
+        <div class="ip-drawer-footer-actions">
+          <button class="btn btn-secondary" type="button" data-project-create-cancel @click="closeCreate()">Cancel</button>
+          <button class="btn btn-primary" type="submit" form="project-create-form" data-project-create-save :disabled="!createCanSave()">Create project</button>
         </div>
-        <button class="ip-drawer-close" type="button" aria-label="Close drawer" data-project-edit-close @click="closeEdit()">✕</button>
       </div>
-    </div>
-    <div class="ip-drawer-body">
+    {% endif %}
+  {% endcall %}
+
+  {% call(section) drawer_macros.drawer(
+    'project-edit-drawer',
+    'Edit Project',
+    'Update project fields used in assignments.',
+    'data-project-edit-overlay x-show="editOpen" x-transition.opacity.duration.150ms :class="{ \\'is-open\\': editOpen }" x-bind:aria-hidden="(!editOpen).toString()" @click="closeEdit()"',
+    'data-project-edit-drawer x-show="editOpen" x-transition:enter="transition ease-out duration-150" x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100" x-transition:leave="transition ease-in duration-100" x-transition:leave-start="opacity-100" x-transition:leave-end="opacity-0" :class="{ \\'is-open\\': editOpen }" x-bind:aria-hidden="(!editOpen).toString()"',
+    'data-project-edit-open',
+    (edit_errors or edit_project),
+    'Edit project',
+    'data-project-edit-close @click="closeEdit()"'
+  ) %}
+    {% if section == 'body' %}
       {% if edit_errors %}
       <div class="alert alert-error">
         <ul>
@@ -402,53 +354,30 @@
           </label>
         </section>
       </form>
-    </div>
-    <div class="ip-drawer-footer">
-      <span class="ip-drawer-footer-status" data-project-edit-dirty x-text="editStatus()">Choose project</span>
-      <div class="ip-drawer-footer-actions">
-        <button class="btn btn-secondary" type="button" data-project-edit-cancel @click="closeEdit()">Cancel</button>
-        <button class="btn btn-primary" type="submit" form="project-edit-form" data-project-edit-save :disabled="!editCanSave()">Save changes</button>
-      </div>
-    </div>
-  </aside>
-
-  <div
-    class="ip-drawer-overlay"
-    data-project-delete-overlay
-    x-show="deleteOpen"
-    x-transition.opacity.duration.150ms
-    :class="{ 'is-open': deleteOpen }"
-    x-bind:aria-hidden="(!deleteOpen).toString()"
-    @click="closeDelete()"
-  ></div>
-  <aside
-    id="project-delete-drawer"
-    class="ip-drawer"
-    data-project-delete-drawer
-    data-project-delete-open="{{ 'true' if delete_project else 'false' }}"
-    x-show="deleteOpen"
-    x-transition:enter="transition ease-out duration-150"
-    x-transition:enter-start="opacity-0"
-    x-transition:enter-end="opacity-100"
-    x-transition:leave="transition ease-in duration-100"
-    x-transition:leave-start="opacity-100"
-    x-transition:leave-end="opacity-0"
-    :class="{ 'is-open': deleteOpen }"
-    role="dialog"
-    aria-modal="true"
-    aria-label="Delete project"
-    x-bind:aria-hidden="(!deleteOpen).toString()"
-  >
-    <div class="ip-drawer-header">
-      <div class="ip-drawer-header-row">
-        <div>
-          <h2 class="ip-drawer-title">Delete Project</h2>
-          <p class="ip-drawer-subtitle" data-project-delete-subtitle x-text="deleteProjectName || 'Permanent removal'">Permanent removal</p>
+    {% elif section == 'footer' %}
+      <div class="ip-drawer-footer">
+        <span class="ip-drawer-footer-status" data-project-edit-dirty x-text="editStatus()">Choose project</span>
+        <div class="ip-drawer-footer-actions">
+          <button class="btn btn-secondary" type="button" data-project-edit-cancel @click="closeEdit()">Cancel</button>
+          <button class="btn btn-primary" type="submit" form="project-edit-form" data-project-edit-save :disabled="!editCanSave()">Save changes</button>
         </div>
-        <button class="ip-drawer-close" type="button" aria-label="Close drawer" data-project-delete-close @click="closeDelete()">✕</button>
       </div>
-    </div>
-    <div class="ip-drawer-body">
+    {% endif %}
+  {% endcall %}
+
+  {% call(section) drawer_macros.drawer(
+    'project-delete-drawer',
+    'Delete Project',
+    'Permanent removal',
+    'data-project-delete-overlay x-show="deleteOpen" x-transition.opacity.duration.150ms :class="{ \\'is-open\\': deleteOpen }" x-bind:aria-hidden="(!deleteOpen).toString()" @click="closeDelete()"',
+    'data-project-delete-drawer x-show="deleteOpen" x-transition:enter="transition ease-out duration-150" x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100" x-transition:leave="transition ease-in duration-100" x-transition:leave-start="opacity-100" x-transition:leave-end="opacity-0" :class="{ \\'is-open\\': deleteOpen }" x-bind:aria-hidden="(!deleteOpen).toString()"',
+    'data-project-delete-open',
+    delete_project,
+    'Delete project',
+    'data-project-delete-close @click="closeDelete()"',
+    'data-project-delete-subtitle x-text="deleteProjectName || \\'Permanent removal\\'"'
+  ) %}
+    {% if section == 'body' %}
       {% if delete_errors %}
       <div class="alert alert-error">
         <ul>
@@ -493,15 +422,16 @@
           </label>
         </section>
       </form>
-    </div>
-    <div class="ip-drawer-footer">
-      <span class="ip-drawer-footer-status" data-project-delete-dirty x-text="deleteStatus()">Choose project</span>
-      <div class="ip-drawer-footer-actions">
-        <button class="btn btn-secondary" type="button" data-project-delete-cancel @click="closeDelete()">Cancel</button>
-        <button class="btn btn-danger" type="submit" form="project-delete-form" data-project-delete-submit :disabled="!deleteIsValid()">Delete permanently</button>
+    {% elif section == 'footer' %}
+      <div class="ip-drawer-footer">
+        <span class="ip-drawer-footer-status" data-project-delete-dirty x-text="deleteStatus()">Choose project</span>
+        <div class="ip-drawer-footer-actions">
+          <button class="btn btn-secondary" type="button" data-project-delete-cancel @click="closeDelete()">Cancel</button>
+          <button class="btn btn-danger" type="submit" form="project-delete-form" data-project-delete-submit :disabled="!deleteIsValid()">Delete permanently</button>
+        </div>
       </div>
-    </div>
-  </aside>
+    {% endif %}
+  {% endcall %}
 </div>
 {% if use_local_assets %}
 <script src="/static/js/drawer.js" defer></script>
