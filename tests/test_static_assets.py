@@ -175,6 +175,29 @@ def test_tags_templates_use_alpine_for_drawer_interactions() -> None:
     assert "/static/js/tags.js" not in tags_partial
 
 
+def test_vendors_templates_use_alpine_for_drawer_interactions() -> None:
+    repo_root = Path(__file__).resolve().parents[1]
+    projects_template = (repo_root / "app/templates/projects.html").read_text(
+        encoding="utf-8"
+    )
+    vendors_partial = (
+        repo_root / "app/templates/partials/vendors_tab_content.html"
+    ).read_text(encoding="utf-8")
+
+    assert "@click=\"$dispatch('vendor-create-open')\"" in projects_template
+    assert "{% import 'macros/drawer.html' as drawer_macros %}" in vendors_partial
+    assert 'x-data="' in vendors_partial
+    assert '@vendor-create-open.window="openCreate()"' in vendors_partial
+    assert 'x-show="createOpen"' in vendors_partial
+    assert 'x-show="editOpen"' in vendors_partial
+    assert 'x-show="deleteOpen"' in vendors_partial
+    assert 'x-model="createName"' in vendors_partial
+    assert 'x-model="editName"' in vendors_partial
+    assert 'x-model="deleteConfirmName"' in vendors_partial
+    assert "/static/js/vendors.js" not in vendors_partial
+    assert not (repo_root / "app/static/js/vendors.js").exists()
+
+
 def test_hosts_drawer_css_matches_ip_drawer_layout_baseline() -> None:
     repo_root = Path(__file__).resolve().parents[1]
     css = (repo_root / "app/static/app.css").read_text(encoding="utf-8")

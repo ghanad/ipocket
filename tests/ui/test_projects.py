@@ -160,6 +160,15 @@ def test_library_tabs_render_tag_and_vendor_content(client, _setup_connection) -
     vendors_response = client.get("/ui/projects?tab=vendors")
     assert vendors_response.status_code == 200
     assert "data-vendor-add" in vendors_response.text
+    assert "@click=\"$dispatch('vendor-create-open')\"" in vendors_response.text
+    assert 'x-data="{' in vendors_response.text
+    assert '@vendor-create-open.window="openCreate()"' in vendors_response.text
+    assert 'data-vendor-create-overlay x-show="createOpen"' in vendors_response.text
+    assert 'data-vendor-edit-overlay x-show="editOpen"' in vendors_response.text
+    assert 'data-vendor-delete-overlay x-show="deleteOpen"' in vendors_response.text
+    assert 'x-model="createName"' in vendors_response.text
+    assert 'x-model="editName"' in vendors_response.text
+    assert 'x-model="deleteConfirmName"' in vendors_response.text
 
 
 def test_vendors_tab_shows_vendor_ip_counts(client, _setup_connection) -> None:

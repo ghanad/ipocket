@@ -11,7 +11,7 @@
     {% if active_tab == "tags" %}
     <button class="btn btn-primary" type="button" data-tag-add @click="$dispatch('tag-create-open')">New Tag</button>
     {% elif active_tab == "vendors" %}
-    <button class="btn btn-primary" type="button" data-vendor-add>New Vendor</button>
+    <button class="btn btn-primary" type="button" data-vendor-add @click="$dispatch('vendor-create-open')">New Vendor</button>
     {% else %}
     <button class="btn btn-primary" type="button" data-project-add @click="$dispatch('project-create-open')">New Project</button>
     {% endif %}
