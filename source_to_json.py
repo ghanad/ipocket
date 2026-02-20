@@ -86,7 +86,7 @@ if __name__ == "__main__":
         "source_to_json.py",
         "source_code.json",
         "*.sqlite3",
-        "*.db",
+        "*.db*",
         ".coverage",
         # Add any other files or directories to exclude
         # e.g., 'docs/*', '*.log'
