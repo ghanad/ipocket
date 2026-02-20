@@ -5,7 +5,9 @@ from datetime import datetime, timezone
 import ipaddress
 import logging
 from typing import Optional
-import xml.etree.ElementTree as ET
+
+from defusedxml import ElementTree as ET
+from defusedxml.common import DefusedXmlException
 
 from app import repository
 from app.models import IPAssetType, User
@@ -47,7 +49,7 @@ class NmapImportResult:
 def parse_nmap_xml(payload: bytes) -> NmapParseResult:
     try:
         root = ET.fromstring(payload)
-    except ET.ParseError as exc:
+    except (ET.ParseError, DefusedXmlException) as exc:
         raise NmapParseError("Invalid Nmap XML payload.") from exc
 
     hosts: list[NmapHost] = []

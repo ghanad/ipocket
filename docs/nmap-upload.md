@@ -27,6 +27,7 @@ nmap -sn -PS80,443 -oX ipocket.xml <CIDR>
 ## What ipocket does
 
 - Parses only Nmap XML.
+- Uses a hardened XML parser (`defusedxml`) to block XML external entities (XXE) and entity expansion attacks.
 - Imports IPv4 addresses for hosts marked `up`.
 - Creates missing IP assets with a discovery note.
 - If a MAC address vendor is present, ipocket tries to infer the asset type:

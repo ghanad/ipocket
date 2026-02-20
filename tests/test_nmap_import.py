@@ -8,7 +8,7 @@ import pytest
 from fastapi.testclient import TestClient as FastAPITestClient
 
 from app import auth, db, repository
-from app.imports.nmap import import_nmap_xml, parse_nmap_xml
+from app.imports.nmap import NmapParseError, import_nmap_xml, parse_nmap_xml
 from app.main import app
 from app.models import IPAssetType, User, UserRole
 from app.routes import ui
@@ -37,6 +37,25 @@ def test_parse_nmap_xml_extracts_up_hosts() -> None:
     assert result.errors == []
     assert [host.ip_address for host in result.hosts] == ["10.0.0.10", "10.0.0.12"]
     assert [host.vendor for host in result.hosts] == [None, None]
+
+
+def test_parse_nmap_xml_rejects_xxe_payload() -> None:
+    payload = b"""<?xml version=\"1.0\"?>
+<!DOCTYPE nmaprun [
+  <!ENTITY xxe SYSTEM \"file:///etc/passwd\">
+]>
+<nmaprun>
+  <host>
+    <status state=\"up\"/>
+    <address addr=\"&xxe;\" addrtype=\"ipv4\"/>
+  </host>
+</nmaprun>
+"""
+
+    with pytest.raises(NmapParseError) as excinfo:
+        parse_nmap_xml(payload)
+
+    assert "Invalid Nmap XML payload." in str(excinfo.value)
 
 
 def test_nmap_dry_run_does_not_create(client) -> None:
