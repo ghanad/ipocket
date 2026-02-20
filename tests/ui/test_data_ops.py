@@ -88,6 +88,22 @@ def test_nmap_import_validation_and_apply_branches(client, monkeypatch) -> None:
     assert "Discovered up hosts: 1" in apply_success.text
 
 
+def test_ui_nmap_import_rejects_files_over_size_limit(client, monkeypatch) -> None:
+    monkeypatch.setattr(data_ops_routes, "IMPORT_UPLOAD_MAX_BYTES", 10)
+    app.dependency_overrides[ui.get_current_ui_user] = lambda: _user(UserRole.EDITOR)
+    try:
+        response = client.post(
+            "/ui/import/nmap",
+            data={"mode": "dry-run"},
+            files={"nmap_file": ("scan.xml", b"01234567890", "text/xml")},
+        )
+    finally:
+        app.dependency_overrides.pop(ui.get_current_ui_user, None)
+
+    assert response.status_code == 413
+    assert "Uploaded file exceeds maximum size of 10 bytes." in response.text
+
+
 def test_bundle_import_validation_and_result_payload_rendering(
     client, monkeypatch
 ) -> None:
@@ -183,6 +199,22 @@ def test_csv_import_validation_and_result_payload_rendering(
     assert rendered.status_code == 200
     assert "Total: 2 create, 2 update, 2 skip" in rendered.text
     assert "csv.ip_assets[0]: bad ip" in rendered.text
+
+
+def test_ui_csv_import_rejects_files_over_size_limit(client, monkeypatch) -> None:
+    monkeypatch.setattr(data_ops_routes, "IMPORT_UPLOAD_MAX_BYTES", 10)
+    app.dependency_overrides[ui.get_current_ui_user] = lambda: _user(UserRole.EDITOR)
+    try:
+        response = client.post(
+            "/ui/import/csv",
+            data={"mode": "dry-run"},
+            files={"hosts_file": ("hosts.csv", b"01234567890", "text/csv")},
+        )
+    finally:
+        app.dependency_overrides.pop(ui.get_current_ui_user, None)
+
+    assert response.status_code == 413
+    assert "Uploaded file exceeds maximum size of 10 bytes." in response.text
 
 
 def test_export_bundle_zip_contains_expected_files(client, _setup_connection) -> None:

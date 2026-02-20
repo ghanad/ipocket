@@ -10,6 +10,7 @@ ipocket supports round-trip workflows: export data (CSV/JSON/bundle) and re-impo
   - Multipart form upload with field: `file` (bundle.json).
 - `POST /import/csv?dry_run=1`
   - Multipart form upload with fields: `hosts` (hosts.csv) and/or `ip_assets` (ip-assets.csv). Empty files are ignored.
+- Upload limit: each uploaded import file is capped at `10 MB`. Oversize uploads are rejected with HTTP `413`.
 
 ### UI
 
@@ -25,6 +26,7 @@ On the `Import` tab upload:
 - Bundle JSON section: `bundle.json`
 - CSV section: `hosts.csv` and/or `ip-assets.csv` (empty uploads are ignored)
 - Nmap XML section: `ipocket.xml` from your Nmap scan
+- Upload limit: each file (`bundle.json`, CSV uploads, Nmap XML) is capped at `10 MB`; oversize uploads are rejected with HTTP `413`.
 
 The Import tab renders these three sections as equal-sized cards in a responsive grid (3 columns on wide screens, then 2 and 1 on smaller screens).
 Each card keeps a dedicated action footer so `Dry-run`/`Apply` stay aligned at the bottom of the card.

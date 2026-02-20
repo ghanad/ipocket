@@ -12,6 +12,12 @@ from app.dependencies import get_connection
 from app.imports import BundleImporter, CsvImporter, ImportAuditContext, run_import
 from app.imports.models import ImportApplyResult, ImportSummary
 from app.imports.nmap import NmapImportResult, import_nmap_xml
+from app.imports.uploads import (
+    IMPORT_UPLOAD_MAX_BYTES,
+    UploadTooLargeError,
+    describe_upload_limit,
+    read_upload_limited,
+)
 from app.models import UserRole
 from .utils import (
     _build_csv_content,
@@ -26,6 +32,10 @@ from .utils import (
 )
 
 router = APIRouter()
+
+
+def _upload_size_error_message(max_bytes: int) -> str:
+    return f"Uploaded file exceeds maximum size of {describe_upload_limit(max_bytes)}."
 
 
 def _data_ops_context(
@@ -141,7 +151,15 @@ async def ui_import_nmap_submit(
             nmap_errors=["Nmap XML file is required."],
             status_code=status.HTTP_400_BAD_REQUEST,
         )
-    payload = await upload.read()
+    try:
+        payload = await read_upload_limited(upload, max_bytes=IMPORT_UPLOAD_MAX_BYTES)
+    except UploadTooLargeError:
+        return _render_data_ops_template(
+            request,
+            active_tab="import",
+            nmap_errors=[_upload_size_error_message(IMPORT_UPLOAD_MAX_BYTES)],
+            status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+        )
     if not payload:
         return _render_data_ops_template(
             request,
@@ -187,7 +205,15 @@ async def ui_import_bundle(
             errors=["bundle.json file is required."],
             status_code=status.HTTP_400_BAD_REQUEST,
         )
-    payload = await upload.read()
+    try:
+        payload = await read_upload_limited(upload, max_bytes=IMPORT_UPLOAD_MAX_BYTES)
+    except UploadTooLargeError:
+        return _render_data_ops_template(
+            request,
+            active_tab="import",
+            errors=[_upload_size_error_message(IMPORT_UPLOAD_MAX_BYTES)],
+            status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+        )
     result = run_import(
         connection,
         BundleImporter(),
@@ -240,11 +266,31 @@ async def ui_import_csv(
         )
     inputs: dict[str, bytes] = {}
     if hosts_file is not None:
-        hosts_payload = await hosts_file.read()
+        try:
+            hosts_payload = await read_upload_limited(
+                hosts_file, max_bytes=IMPORT_UPLOAD_MAX_BYTES
+            )
+        except UploadTooLargeError:
+            return _render_data_ops_template(
+                request,
+                active_tab="import",
+                errors=[_upload_size_error_message(IMPORT_UPLOAD_MAX_BYTES)],
+                status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+            )
         if hosts_payload:
             inputs["hosts"] = hosts_payload
     if ip_assets_file is not None:
-        ip_assets_payload = await ip_assets_file.read()
+        try:
+            ip_assets_payload = await read_upload_limited(
+                ip_assets_file, max_bytes=IMPORT_UPLOAD_MAX_BYTES
+            )
+        except UploadTooLargeError:
+            return _render_data_ops_template(
+                request,
+                active_tab="import",
+                errors=[_upload_size_error_message(IMPORT_UPLOAD_MAX_BYTES)],
+                status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+            )
         if ip_assets_payload:
             inputs["ip_assets"] = ip_assets_payload
     if not inputs:

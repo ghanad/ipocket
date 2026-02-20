@@ -9,6 +9,7 @@ ipocket includes a lightweight toast system for global feedback (success/error/i
 
 ## Triggering from the backend (flash messages)
 Use the session-backed flash helper in `app/routes/ui.py`. These messages are one-time and cleared after they are rendered.
+Flash payloads are stored in a signed cookie, so each message is truncated to a safe maximum length (`400` chars) before encoding.
 
 **Example: success after a POST redirect**
 ```python

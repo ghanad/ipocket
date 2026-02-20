@@ -179,6 +179,23 @@ def test_flash_helpers_and_cookie_roundtrip() -> None:
     assert response.headers.get("set-cookie") is None
 
 
+def test_flash_helpers_truncate_long_messages_for_cookie_safety() -> None:
+    long_message = "x" * 10000
+    encoded = ui_utils._encode_flash_payload(
+        [{"type": "error", "message": long_message}]
+    )
+    decoded = json.loads(base64.urlsafe_b64decode(encoded.encode("utf-8")).decode())
+    assert len(decoded[0]["message"]) == ui_session_utils.FLASH_MAX_MESSAGE_LENGTH
+
+    response = Response()
+    ui_utils._store_flash_messages(
+        response, [{"type": "error", "message": long_message}]
+    )
+    set_cookie = response.headers.get("set-cookie")
+    assert set_cookie is not None
+    assert len(set_cookie) < 4096
+
+
 def test_get_current_user_and_editor_guard_paths(_setup_connection) -> None:
     connection = _setup_connection()
     try:
