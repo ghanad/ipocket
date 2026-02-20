@@ -1,5 +1,4 @@
 {% extends "base.html" %}
-{% from "macros/drawer.html" import drawer %}
 
 {% block content %}
 <section class="page-header">
@@ -14,7 +13,7 @@
     {% elif active_tab == "vendors" %}
     <button class="btn btn-primary" type="button" data-vendor-add>New Vendor</button>
     {% else %}
-    <button class="btn btn-primary" type="button" data-project-add>New Project</button>
+    <button class="btn btn-primary" type="button" data-project-add @click="$dispatch('project-create-open')">New Project</button>
     {% endif %}
   </div>
 </section>

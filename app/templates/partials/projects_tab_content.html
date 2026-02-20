@@ -1,233 +1,509 @@
-<section class="card table-card projects-existing-card">
-  <div class="card-header">
-    <div>
-      <h2>Existing projects</h2>
-      <p class="subtitle">Keep the catalog of project ownership current.</p>
-    </div>
-  </div>
-  <div class="table-wrapper">
-    <table class="table table-compact">
-      <thead>
-        <tr>
-          <th>Name</th>
-          <th>Description</th>
-          <th>Color</th>
-          <th>IPs</th>
-          <th>Actions</th>
-        </tr>
-      </thead>
-      <tbody>
-        {% if projects %}
-        {% for project in projects %}
-        <tr>
-          <td>{{ project.name }}</td>
-          <td>{{ project.description or '—' }}</td>
-          <td><input class="input input-color" type="color" value="{{ project.color }}" disabled /></td>
-          <td>{{ project_ip_counts.get(project.id, 0) }}</td>
-          <td class="asset-actions-cell">
-            <div class="table-actions">
-              <button
-                class="btn btn-secondary btn-small"
-                type="button"
-                data-project-edit="{{ project.id }}"
-                data-project-name="{{ project.name }}"
-                data-project-description="{{ project.description or '' }}"
-                data-project-color="{{ project.color }}"
-              >
-                Edit
-              </button>
-              <button
-                class="btn btn-danger btn-small"
-                type="button"
-                data-project-delete="{{ project.id }}"
-                data-project-delete-name="{{ project.name }}"
-                data-project-delete-description="{{ project.description or '' }}"
-              >
-                Delete
-              </button>
-            </div>
-          </td>
-        </tr>
-        {% endfor %}
-        {% else %}
-        <tr>
-          <td colspan="5" class="empty-state">No projects yet.</td>
-        </tr>
-        {% endif %}
-      </tbody>
-    </table>
-  </div>
-</section>
+<div
+  x-data="{
+    createOpen: {{ 'true' if errors else 'false' }},
+    createName: {{ form_state.name|tojson|forceescape }},
+    createDescription: {{ form_state.description|tojson|forceescape }},
+    createColor: {{ form_state.color|tojson|forceescape }},
+    createInitial: {},
 
-{% call(section) drawer(
-  'project-create-drawer',
-  'Create Project',
-  'Add new project labels for IP assignments.',
-  'data-project-create-overlay',
-  'data-project-create-drawer',
-  'data-project-open',
-  errors,
-  'Add project',
-  'data-project-create-close'
-) %}
-  {% if section == 'body' %}
-  {% if errors %}
-  <div class="alert alert-error">
-    <ul>
-      {% for error in errors %}
-      <li>{{ error }}</li>
-      {% endfor %}
-    </ul>
-  </div>
-  {% endif %}
-  <form class="ip-drawer-form" method="post" action="/ui/projects" data-project-create-form id="project-create-form">
-    <section class="ip-drawer-section">
-      <h3>Project details</h3>
-      <label class="field">
-        <span>Name</span>
-        <input class="input" type="text" name="name" value="{{ form_state.name }}" data-project-input="name" required />
-      </label>
-      <label class="field">
-        <span>Description</span>
-        <input class="input" type="text" name="description" value="{{ form_state.description }}" data-project-input="description" />
-      </label>
-      <label class="field">
-        <span>Color</span>
-        <input class="input input-color" type="color" name="color" value="{{ form_state.color }}" data-project-input="color" />
-      </label>
-    </section>
-  </form>
-  {% elif section == 'footer' %}
-  <div class="ip-drawer-footer">
-    <span class="ip-drawer-footer-status" data-project-create-dirty>Enter details</span>
-    <div class="ip-drawer-footer-actions">
-      <button class="btn btn-secondary" type="button" data-project-create-cancel>Cancel</button>
-      <button class="btn btn-primary" type="submit" form="project-create-form" data-project-create-save disabled>Create project</button>
-    </div>
-  </div>
-  {% endif %}
-{% endcall %}
+    editOpen: {{ 'true' if (edit_errors or edit_project) else 'false' }},
+    editProjectId: {{ (edit_project.id if edit_project else '')|tojson|forceescape }},
+    editName: {{ edit_form_state.name|tojson|forceescape }},
+    editDescription: {{ edit_form_state.description|tojson|forceescape }},
+    editColor: {{ edit_form_state.color|tojson|forceescape }},
+    editInitial: {},
 
-{% call(section) drawer(
-  'project-edit-drawer',
-  'Edit Project',
-  'Update project fields used in assignments.',
-  'data-project-edit-overlay',
-  'data-project-edit-drawer',
-  'data-project-edit-open',
-  edit_errors or edit_project,
-  'Edit project',
-  'data-project-edit-close'
-) %}
-  {% if section == 'body' %}
-  {% if edit_errors %}
-  <div class="alert alert-error">
-    <ul>
-      {% for error in edit_errors %}
-      <li>{{ error }}</li>
-      {% endfor %}
-    </ul>
-  </div>
-  {% endif %}
-  <form
-    class="ip-drawer-form"
-    method="post"
-    action="{% if edit_project %}/ui/projects/{{ edit_project.id }}/edit{% else %}#{% endif %}"
-    data-project-edit-form
-    id="project-edit-form"
-    data-project-edit-id="{{ edit_project.id if edit_project else '' }}"
+    deleteOpen: {{ 'true' if delete_project else 'false' }},
+    deleteProjectId: {{ (delete_project.id if delete_project else '')|tojson|forceescape }},
+    deleteProjectName: {{ (delete_project.name if delete_project else '')|tojson|forceescape }},
+    deleteProjectDescription: {{ (delete_project.description if delete_project and delete_project.description else '')|tojson|forceescape }},
+    deleteAck: false,
+    deleteConfirmName: {{ delete_confirm_value|tojson|forceescape }},
+
+    init() {
+      this.syncCreateInitial();
+      this.syncEditInitial();
+    },
+
+    normalize(value) {
+      return (value || '').trim();
+    },
+
+    syncCreateInitial() {
+      this.createInitial = {
+        name: this.normalize(this.createName),
+        description: this.normalize(this.createDescription),
+        color: this.normalize(this.createColor),
+      };
+    },
+
+    createIsDirty() {
+      return (
+        this.normalize(this.createName) !== (this.createInitial.name || '') ||
+        this.normalize(this.createDescription) !== (this.createInitial.description || '') ||
+        this.normalize(this.createColor) !== (this.createInitial.color || '')
+      );
+    },
+
+    createIsValid() {
+      return Boolean(this.normalize(this.createName));
+    },
+
+    createCanSave() {
+      return this.createIsDirty() && this.createIsValid();
+    },
+
+    createStatus() {
+      return this.createIsDirty() ? 'Ready to create' : 'Enter details';
+    },
+
+    openCreate() {
+      this.createOpen = true;
+      this.$nextTick(() => this.$refs.createNameInput?.focus());
+    },
+
+    closeCreate() {
+      if (this.createIsDirty() && !window.confirm('Discard changes?')) {
+        return;
+      }
+      this.createOpen = false;
+    },
+
+    syncEditInitial() {
+      this.editInitial = {
+        name: this.normalize(this.editName),
+        description: this.normalize(this.editDescription),
+        color: this.normalize(this.editColor),
+      };
+    },
+
+    editIsDirty() {
+      return (
+        this.normalize(this.editName) !== (this.editInitial.name || '') ||
+        this.normalize(this.editDescription) !== (this.editInitial.description || '') ||
+        this.normalize(this.editColor) !== (this.editInitial.color || '')
+      );
+    },
+
+    editIsValid() {
+      return Boolean(this.editProjectId) && Boolean(this.normalize(this.editName));
+    },
+
+    editCanSave() {
+      return this.editIsDirty() && this.editIsValid();
+    },
+
+    editStatus() {
+      if (!this.editProjectId) {
+        return 'Choose project';
+      }
+      return this.editIsDirty() ? 'Ready to save' : 'No changes yet';
+    },
+
+    editAction() {
+      if (!this.editProjectId) {
+        return '#';
+      }
+      return '/ui/projects/' + this.editProjectId + '/edit';
+    },
+
+    openEdit(project) {
+      this.editProjectId = String(project.id || '');
+      this.editName = project.name || '';
+      this.editDescription = project.description || '';
+      this.editColor = project.color || '#94a3b8';
+      this.syncEditInitial();
+      this.editOpen = true;
+      this.$nextTick(() => this.$refs.editNameInput?.focus());
+    },
+
+    closeEdit() {
+      if (this.editIsDirty() && !window.confirm('Discard changes?')) {
+        return;
+      }
+      this.editOpen = false;
+    },
+
+    deleteAction() {
+      if (!this.deleteProjectId) {
+        return '#';
+      }
+      return '/ui/projects/' + this.deleteProjectId + '/delete';
+    },
+
+    deleteDescriptionDisplay() {
+      return this.normalize(this.deleteProjectDescription) || '—';
+    },
+
+    deleteIsValid() {
+      if (!this.deleteProjectId || !this.deleteProjectName) {
+        return false;
+      }
+      if (!this.deleteAck) {
+        return false;
+      }
+      return this.normalize(this.deleteConfirmName) === this.deleteProjectName;
+    },
+
+    deleteStatus() {
+      if (!this.deleteProjectId) {
+        return 'Choose project';
+      }
+      if (!this.deleteAck) {
+        return 'Acknowledge delete';
+      }
+      return this.deleteIsValid() ? 'Ready to delete' : 'Type exact project name';
+    },
+
+    openDelete(project) {
+      this.deleteProjectId = String(project.id || '');
+      this.deleteProjectName = project.name || '';
+      this.deleteProjectDescription = project.description || '';
+      this.deleteAck = false;
+      this.deleteConfirmName = '';
+      this.deleteOpen = true;
+      this.$nextTick(() => this.$refs.deleteConfirmInput?.focus());
+    },
+
+    closeDelete() {
+      this.deleteOpen = false;
+    },
+
+    closeOnEscape() {
+      if (this.createOpen) {
+        this.closeCreate();
+        return;
+      }
+      if (this.editOpen) {
+        this.closeEdit();
+        return;
+      }
+      if (this.deleteOpen) {
+        this.closeDelete();
+      }
+    }
+  }"
+  @project-create-open.window="openCreate()"
+  @keydown.escape.window="closeOnEscape()"
+>
+  <section class="card table-card projects-existing-card">
+    <div class="card-header">
+      <div>
+        <h2>Existing projects</h2>
+        <p class="subtitle">Keep the catalog of project ownership current.</p>
+      </div>
+    </div>
+    <div class="table-wrapper">
+      <table class="table table-compact">
+        <thead>
+          <tr>
+            <th>Name</th>
+            <th>Description</th>
+            <th>Color</th>
+            <th>IPs</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% if projects %}
+          {% for project in projects %}
+          <tr>
+            <td>{{ project.name }}</td>
+            <td>{{ project.description or '—' }}</td>
+            <td><input class="input input-color" type="color" value="{{ project.color }}" disabled /></td>
+            <td>{{ project_ip_counts.get(project.id, 0) }}</td>
+            <td class="asset-actions-cell">
+              <div class="table-actions">
+                <button
+                  class="btn btn-secondary btn-small"
+                  type="button"
+                  data-project-edit="{{ project.id }}"
+                  data-project-name="{{ project.name }}"
+                  data-project-description="{{ project.description or '' }}"
+                  data-project-color="{{ project.color }}"
+                  @click="openEdit({
+                    id: $el.dataset.projectEdit,
+                    name: $el.dataset.projectName,
+                    description: $el.dataset.projectDescription,
+                    color: $el.dataset.projectColor
+                  })"
+                >
+                  Edit
+                </button>
+                <button
+                  class="btn btn-danger btn-small"
+                  type="button"
+                  data-project-delete="{{ project.id }}"
+                  data-project-delete-name="{{ project.name }}"
+                  data-project-delete-description="{{ project.description or '' }}"
+                  @click="openDelete({
+                    id: $el.dataset.projectDelete,
+                    name: $el.dataset.projectDeleteName,
+                    description: $el.dataset.projectDeleteDescription
+                  })"
+                >
+                  Delete
+                </button>
+              </div>
+            </td>
+          </tr>
+          {% endfor %}
+          {% else %}
+          <tr>
+            <td colspan="5" class="empty-state">No projects yet.</td>
+          </tr>
+          {% endif %}
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <div
+    class="ip-drawer-overlay"
+    data-project-create-overlay
+    x-show="createOpen"
+    x-transition.opacity.duration.150ms
+    :class="{ 'is-open': createOpen }"
+    x-bind:aria-hidden="(!createOpen).toString()"
+    @click="closeCreate()"
+  ></div>
+  <aside
+    id="project-create-drawer"
+    class="ip-drawer"
+    data-project-create-drawer
+    data-project-open="{{ 'true' if errors else 'false' }}"
+    x-show="createOpen"
+    x-transition:enter="transition ease-out duration-150"
+    x-transition:enter-start="opacity-0"
+    x-transition:enter-end="opacity-100"
+    x-transition:leave="transition ease-in duration-100"
+    x-transition:leave-start="opacity-100"
+    x-transition:leave-end="opacity-0"
+    :class="{ 'is-open': createOpen }"
+    role="dialog"
+    aria-modal="true"
+    aria-label="Add project"
+    x-bind:aria-hidden="(!createOpen).toString()"
   >
-    <section class="ip-drawer-section">
-      <h3>Project details</h3>
-      <label class="field">
-        <span>Name</span>
-        <input class="input" type="text" name="name" value="{{ edit_form_state.name }}" data-project-edit-input="name" required />
-      </label>
-      <label class="field">
-        <span>Description</span>
-        <input class="input" type="text" name="description" value="{{ edit_form_state.description }}" data-project-edit-input="description" />
-      </label>
-      <label class="field">
-        <span>Color</span>
-        <input class="input input-color" type="color" name="color" value="{{ edit_form_state.color }}" data-project-edit-input="color" />
-      </label>
-    </section>
-  </form>
-  {% elif section == 'footer' %}
-  <div class="ip-drawer-footer">
-    <span class="ip-drawer-footer-status" data-project-edit-dirty>Choose project</span>
-    <div class="ip-drawer-footer-actions">
-      <button class="btn btn-secondary" type="button" data-project-edit-cancel>Cancel</button>
-      <button class="btn btn-primary" type="submit" form="project-edit-form" data-project-edit-save disabled>Save changes</button>
+    <div class="ip-drawer-header">
+      <div class="ip-drawer-header-row">
+        <div>
+          <h2 class="ip-drawer-title">Create Project</h2>
+          <p class="ip-drawer-subtitle">Add new project labels for IP assignments.</p>
+        </div>
+        <button class="ip-drawer-close" type="button" aria-label="Close drawer" data-project-create-close @click="closeCreate()">✕</button>
+      </div>
     </div>
-  </div>
-  {% endif %}
-{% endcall %}
+    <div class="ip-drawer-body">
+      {% if errors %}
+      <div class="alert alert-error">
+        <ul>
+          {% for error in errors %}
+          <li>{{ error }}</li>
+          {% endfor %}
+        </ul>
+      </div>
+      {% endif %}
+      <form class="ip-drawer-form" method="post" action="/ui/projects" data-project-create-form id="project-create-form" @submit="if (!createCanSave()) { $event.preventDefault(); }">
+        <section class="ip-drawer-section">
+          <h3>Project details</h3>
+          <label class="field">
+            <span>Name</span>
+            <input class="input" type="text" name="name" value="{{ form_state.name }}" x-model="createName" data-project-input="name" x-ref="createNameInput" required />
+          </label>
+          <label class="field">
+            <span>Description</span>
+            <input class="input" type="text" name="description" value="{{ form_state.description }}" x-model="createDescription" data-project-input="description" />
+          </label>
+          <label class="field">
+            <span>Color</span>
+            <input class="input input-color" type="color" name="color" value="{{ form_state.color }}" x-model="createColor" data-project-input="color" />
+          </label>
+        </section>
+      </form>
+    </div>
+    <div class="ip-drawer-footer">
+      <span class="ip-drawer-footer-status" data-project-create-dirty x-text="createStatus()">Enter details</span>
+      <div class="ip-drawer-footer-actions">
+        <button class="btn btn-secondary" type="button" data-project-create-cancel @click="closeCreate()">Cancel</button>
+        <button class="btn btn-primary" type="submit" form="project-create-form" data-project-create-save :disabled="!createCanSave()">Create project</button>
+      </div>
+    </div>
+  </aside>
 
-{% call(section) drawer(
-  'project-delete-drawer',
-  'Delete Project',
-  'Permanent removal',
-  'data-project-delete-overlay',
-  'data-project-delete-drawer',
-  'data-project-delete-open',
-  delete_project,
-  'Delete project',
-  'data-project-delete-close'
-) %}
-  {% if section == 'body' %}
-  {% if delete_errors %}
-  <div class="alert alert-error">
-    <ul>
-      {% for error in delete_errors %}
-      <li>{{ error }}</li>
-      {% endfor %}
-    </ul>
-  </div>
-  {% endif %}
-  <form
-    class="ip-drawer-form ip-drawer-delete-form"
-    method="post"
-    action="{% if delete_project %}/ui/projects/{{ delete_project.id }}/delete{% else %}#{% endif %}"
-    data-project-delete-form
-    id="project-delete-form"
-    data-project-delete-id="{{ delete_project.id if delete_project else '' }}"
-    data-project-delete-name="{{ delete_project.name if delete_project else '' }}"
+  <div
+    class="ip-drawer-overlay"
+    data-project-edit-overlay
+    x-show="editOpen"
+    x-transition.opacity.duration.150ms
+    :class="{ 'is-open': editOpen }"
+    x-bind:aria-hidden="(!editOpen).toString()"
+    @click="closeEdit()"
+  ></div>
+  <aside
+    id="project-edit-drawer"
+    class="ip-drawer"
+    data-project-edit-drawer
+    data-project-edit-open="{{ 'true' if (edit_errors or edit_project) else 'false' }}"
+    x-show="editOpen"
+    x-transition:enter="transition ease-out duration-150"
+    x-transition:enter-start="opacity-0"
+    x-transition:enter-end="opacity-100"
+    x-transition:leave="transition ease-in duration-100"
+    x-transition:leave-start="opacity-100"
+    x-transition:leave-end="opacity-0"
+    :class="{ 'is-open': editOpen }"
+    role="dialog"
+    aria-modal="true"
+    aria-label="Edit project"
+    x-bind:aria-hidden="(!editOpen).toString()"
   >
-    <section class="ip-drawer-section">
-      <h3 class="ip-drawer-delete-heading">Delete this project?</h3>
-      <p class="ip-drawer-delete-warning">Linked IPs will become unassigned.</p>
-      <dl class="ip-drawer-delete-details">
-        <div><dt>Name</dt><dd data-project-delete-name-display>{{ delete_project.name if delete_project else '—' }}</dd></div>
-        <div><dt>Description</dt><dd data-project-delete-description-display>{{ delete_project.description if delete_project and delete_project.description else '—' }}</dd></div>
-      </dl>
-      <label class="field field-inline">
-        <input class="checkbox" type="checkbox" data-project-delete-ack />
-        <span>I understand this cannot be undone</span>
-      </label>
-      <label class="field">
-        <span>Type the project name to confirm: <strong data-project-delete-name-inline>{{ delete_project.name if delete_project else '—' }}</strong></span>
-        <input
-          class="input"
-          type="text"
-          name="confirm_name"
-          autocomplete="off"
-          data-project-delete-confirm
-          value="{{ delete_confirm_value }}"
-        />
-      </label>
-    </section>
-  </form>
-  {% elif section == 'footer' %}
-  <div class="ip-drawer-footer">
-    <span class="ip-drawer-footer-status" data-project-delete-dirty>Choose project</span>
-    <div class="ip-drawer-footer-actions">
-      <button class="btn btn-secondary" type="button" data-project-delete-cancel>Cancel</button>
-      <button class="btn btn-danger" type="submit" form="project-delete-form" data-project-delete-submit disabled>Delete permanently</button>
+    <div class="ip-drawer-header">
+      <div class="ip-drawer-header-row">
+        <div>
+          <h2 class="ip-drawer-title">Edit Project</h2>
+          <p class="ip-drawer-subtitle">Update project fields used in assignments.</p>
+        </div>
+        <button class="ip-drawer-close" type="button" aria-label="Close drawer" data-project-edit-close @click="closeEdit()">✕</button>
+      </div>
     </div>
-  </div>
-  {% endif %}
-{% endcall %}
+    <div class="ip-drawer-body">
+      {% if edit_errors %}
+      <div class="alert alert-error">
+        <ul>
+          {% for error in edit_errors %}
+          <li>{{ error }}</li>
+          {% endfor %}
+        </ul>
+      </div>
+      {% endif %}
+      <form
+        class="ip-drawer-form"
+        method="post"
+        :action="editAction()"
+        data-project-edit-form
+        id="project-edit-form"
+        :data-project-edit-id="editProjectId"
+        @submit="if (!editCanSave()) { $event.preventDefault(); }"
+      >
+        <section class="ip-drawer-section">
+          <h3>Project details</h3>
+          <label class="field">
+            <span>Name</span>
+            <input class="input" type="text" name="name" value="{{ edit_form_state.name }}" x-model="editName" data-project-edit-input="name" x-ref="editNameInput" required />
+          </label>
+          <label class="field">
+            <span>Description</span>
+            <input class="input" type="text" name="description" value="{{ edit_form_state.description }}" x-model="editDescription" data-project-edit-input="description" />
+          </label>
+          <label class="field">
+            <span>Color</span>
+            <input class="input input-color" type="color" name="color" value="{{ edit_form_state.color }}" x-model="editColor" data-project-edit-input="color" />
+          </label>
+        </section>
+      </form>
+    </div>
+    <div class="ip-drawer-footer">
+      <span class="ip-drawer-footer-status" data-project-edit-dirty x-text="editStatus()">Choose project</span>
+      <div class="ip-drawer-footer-actions">
+        <button class="btn btn-secondary" type="button" data-project-edit-cancel @click="closeEdit()">Cancel</button>
+        <button class="btn btn-primary" type="submit" form="project-edit-form" data-project-edit-save :disabled="!editCanSave()">Save changes</button>
+      </div>
+    </div>
+  </aside>
 
+  <div
+    class="ip-drawer-overlay"
+    data-project-delete-overlay
+    x-show="deleteOpen"
+    x-transition.opacity.duration.150ms
+    :class="{ 'is-open': deleteOpen }"
+    x-bind:aria-hidden="(!deleteOpen).toString()"
+    @click="closeDelete()"
+  ></div>
+  <aside
+    id="project-delete-drawer"
+    class="ip-drawer"
+    data-project-delete-drawer
+    data-project-delete-open="{{ 'true' if delete_project else 'false' }}"
+    x-show="deleteOpen"
+    x-transition:enter="transition ease-out duration-150"
+    x-transition:enter-start="opacity-0"
+    x-transition:enter-end="opacity-100"
+    x-transition:leave="transition ease-in duration-100"
+    x-transition:leave-start="opacity-100"
+    x-transition:leave-end="opacity-0"
+    :class="{ 'is-open': deleteOpen }"
+    role="dialog"
+    aria-modal="true"
+    aria-label="Delete project"
+    x-bind:aria-hidden="(!deleteOpen).toString()"
+  >
+    <div class="ip-drawer-header">
+      <div class="ip-drawer-header-row">
+        <div>
+          <h2 class="ip-drawer-title">Delete Project</h2>
+          <p class="ip-drawer-subtitle" data-project-delete-subtitle x-text="deleteProjectName || 'Permanent removal'">Permanent removal</p>
+        </div>
+        <button class="ip-drawer-close" type="button" aria-label="Close drawer" data-project-delete-close @click="closeDelete()">✕</button>
+      </div>
+    </div>
+    <div class="ip-drawer-body">
+      {% if delete_errors %}
+      <div class="alert alert-error">
+        <ul>
+          {% for error in delete_errors %}
+          <li>{{ error }}</li>
+          {% endfor %}
+        </ul>
+      </div>
+      {% endif %}
+      <form
+        class="ip-drawer-form ip-drawer-delete-form"
+        method="post"
+        :action="deleteAction()"
+        data-project-delete-form
+        id="project-delete-form"
+        :data-project-delete-id="deleteProjectId"
+        :data-project-delete-name="deleteProjectName"
+      >
+        <section class="ip-drawer-section">
+          <h3 class="ip-drawer-delete-heading">Delete this project?</h3>
+          <p class="ip-drawer-delete-warning">Linked IPs will become unassigned.</p>
+          <dl class="ip-drawer-delete-details">
+            <div><dt>Name</dt><dd data-project-delete-name-display x-text="deleteProjectName || '—'">{{ delete_project.name if delete_project else '—' }}</dd></div>
+            <div><dt>Description</dt><dd data-project-delete-description-display x-text="deleteDescriptionDisplay()">{{ delete_project.description if delete_project and delete_project.description else '—' }}</dd></div>
+          </dl>
+          <label class="field field-inline">
+            <input class="checkbox" type="checkbox" data-project-delete-ack x-model="deleteAck" />
+            <span>I understand this cannot be undone</span>
+          </label>
+          <label class="field">
+            <span>Type the project name to confirm: <strong data-project-delete-name-inline x-text="deleteProjectName || '—'">{{ delete_project.name if delete_project else '—' }}</strong></span>
+            <input
+              class="input"
+              type="text"
+              name="confirm_name"
+              autocomplete="off"
+              data-project-delete-confirm
+              value="{{ delete_confirm_value }}"
+              x-model="deleteConfirmName"
+              x-ref="deleteConfirmInput"
+            />
+          </label>
+        </section>
+      </form>
+    </div>
+    <div class="ip-drawer-footer">
+      <span class="ip-drawer-footer-status" data-project-delete-dirty x-text="deleteStatus()">Choose project</span>
+      <div class="ip-drawer-footer-actions">
+        <button class="btn btn-secondary" type="button" data-project-delete-cancel @click="closeDelete()">Cancel</button>
+        <button class="btn btn-danger" type="submit" form="project-delete-form" data-project-delete-submit :disabled="!deleteIsValid()">Delete permanently</button>
+      </div>
+    </div>
+  </aside>
+</div>
+{% if use_local_assets %}
 <script src="/static/js/drawer.js" defer></script>
 <script src="/static/js/projects.js" defer></script>
+{% endif %}

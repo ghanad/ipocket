@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from app import db, repository
+from app.environment import use_local_assets
 from app.main import app
 from app.models import IPAssetType, UserRole
 from app.routes import ui
@@ -35,9 +36,20 @@ def test_projects_page_uses_drawer_actions(client) -> None:
 
     assert response.status_code == 200
     assert "data-project-add" in response.text
+    assert "@click=\"$dispatch('project-create-open')\"" in response.text
     assert "data-project-create-drawer" in response.text
     assert "data-project-edit-drawer" in response.text
     assert "data-project-delete-drawer" in response.text
+    assert 'x-data="{' in response.text
+    assert '@project-create-open.window="openCreate()"' in response.text
+    if use_local_assets():
+        assert '<script src="/static/js/projects.js" defer></script>' in response.text
+        assert '<script src="/static/js/drawer.js" defer></script>' in response.text
+    else:
+        assert (
+            '<script src="/static/js/projects.js" defer></script>' not in response.text
+        )
+        assert '<script src="/static/js/drawer.js" defer></script>' not in response.text
     assert 'class="table table-compact"' in response.text
     assert f'data-project-edit="{project.id}"' in response.text
     assert f'data-project-delete="{project.id}"' in response.text

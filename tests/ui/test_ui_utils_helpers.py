@@ -99,6 +99,13 @@ def test_render_template_fallback_covers_payload_branches(monkeypatch) -> None:
         "x.html", {"use_local_assets": True}
     )
     assert "/static/vendor/htmx.min.js" in direct_fallback.body.decode("utf-8")
+    assert "cdn.jsdelivr.net/npm/alpinejs" not in direct_fallback.body.decode("utf-8")
+
+    remote_fallback = ui_utils._render_fallback_template(
+        "x.html", {"use_local_assets": False}
+    )
+    assert "unpkg.com/htmx.org" in remote_fallback.body.decode("utf-8")
+    assert "cdn.jsdelivr.net/npm/alpinejs" in remote_fallback.body.decode("utf-8")
 
 
 def test_render_template_with_templates_deletes_flash_cookie(monkeypatch) -> None:
