@@ -9,6 +9,8 @@ from app.routes.api.schemas import (
     IPAssetUpdate,
     ProjectCreate,
     ProjectUpdate,
+    TagCreate,
+    TagUpdate,
 )
 
 
@@ -65,3 +67,27 @@ def test_project_color_validators_raise_clean_errors() -> None:
     with pytest.raises(ValidationError) as invalid_update:
         ProjectUpdate(color="not-a-color")
     assert "Color must be a hex value like #1a2b3c." in str(invalid_update.value)
+
+
+def test_tag_validators_normalize_and_raise_clean_errors() -> None:
+    valid_create = TagCreate(name=" Core_Tag ", color="#ABCDEF")
+    assert valid_create.name == "core_tag"
+    assert valid_create.color == "#abcdef"
+
+    valid_update = TagUpdate(name="edge", color="#123456")
+    assert valid_update.name == "edge"
+    assert valid_update.color == "#123456"
+
+    with pytest.raises(ValidationError) as missing_name:
+        TagCreate(name=None, color="#22c55e")
+    assert "Input should be a valid string" in str(missing_name.value)
+
+    with pytest.raises(ValidationError) as invalid_name:
+        TagCreate(name="bad name", color="#22c55e")
+    assert "Tag name may include letters, digits, dash, and underscore only." in str(
+        invalid_name.value
+    )
+
+    with pytest.raises(ValidationError) as invalid_color:
+        TagUpdate(name="prod", color="not-a-color")
+    assert "Color must be a hex value like #1a2b3c." in str(invalid_color.value)

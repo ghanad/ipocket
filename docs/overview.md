@@ -75,6 +75,7 @@ ipocket is a lightweight IP inventory app to track addresses and their project a
 - Projects management is part of the shared Library page and follows the same right-side drawer UX for create/edit/delete actions, including destructive confirmation by typing the exact project name.
 - Projects, Tags, and Vendors tab drawer interactions (open/close + form dirty/valid save state) are implemented with Alpine.js directives in the Jinja templates. The Tags tab create drawer also auto-suggests a random hex color in component state when no color is prefilled.
 - Project create/edit drawer validation now reuses the API `ProjectCreate` Pydantic schema in UI routes so color normalization and validation rules stay consistent between UI and API.
+- Projects, Tags, and Vendors create/edit drawer validation now reuses API Pydantic schemas in UI routes, keeping required-field and normalization/error behavior aligned across UI and API.
 - The Library page uses one shared "Catalog Settings" header with compact segmented tabs (Projects/Tags/Vendors) and a tab-aware primary action button (New Project/Tag/Vendor) to keep controls in one place.
 - The Library header primary action button now reliably opens the matching create drawer on all tabs (Projects/Tags/Vendors).
 - The Projects and Tags tab tables now use compact row spacing so catalog rows stay denser and easier to scan.

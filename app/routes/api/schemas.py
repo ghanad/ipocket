@@ -8,6 +8,7 @@ from app.models import IPAssetType
 from app.utils import (
     normalize_cidr,
     normalize_hex_color,
+    normalize_tag_name,
     normalize_tag_names,
     split_tag_string,
 )
@@ -134,6 +135,48 @@ class VendorCreate(BaseModel):
 
 class VendorUpdate(BaseModel):
     name: str
+
+
+class TagCreate(BaseModel):
+    name: str
+    color: Optional[str] = None
+
+    @field_validator("name")
+    @classmethod
+    def normalize_name(cls, value: str) -> str:
+        try:
+            return normalize_tag_name(value)
+        except ValueError as exc:
+            raise ValueError(str(exc)) from exc
+
+    @field_validator("color")
+    @classmethod
+    def normalize_color(cls, value: Optional[str]) -> Optional[str]:
+        try:
+            return normalize_hex_color(value)
+        except ValueError as exc:
+            raise ValueError(str(exc)) from exc
+
+
+class TagUpdate(BaseModel):
+    name: str
+    color: Optional[str] = None
+
+    @field_validator("name")
+    @classmethod
+    def normalize_name(cls, value: str) -> str:
+        try:
+            return normalize_tag_name(value)
+        except ValueError as exc:
+            raise ValueError(str(exc)) from exc
+
+    @field_validator("color")
+    @classmethod
+    def normalize_color(cls, value: Optional[str]) -> Optional[str]:
+        try:
+            return normalize_hex_color(value)
+        except ValueError as exc:
+            raise ValueError(str(exc)) from exc
 
 
 class IPRangeCreate(BaseModel):

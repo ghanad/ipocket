@@ -7,10 +7,12 @@ import app.routes.ui.settings as settings_routes
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from fastapi.responses import HTMLResponse, RedirectResponse, Response
+from pydantic import ValidationError
 from sqlalchemy.exc import IntegrityError
 
 from app.dependencies import get_session
-from app.utils import DEFAULT_TAG_COLOR, normalize_hex_color, normalize_tag_name
+from app.routes.api.schemas import TagCreate, TagUpdate
+from app.utils import DEFAULT_TAG_COLOR
 from app.routes.ui.utils import (
     _parse_form_data,
     _redirect_with_flash,
@@ -23,6 +25,21 @@ from . import repository
 from .common import _tags_template_context
 
 router = APIRouter()
+
+
+def _tag_form_errors(validation_error: ValidationError) -> list[str]:
+    errors: list[str] = []
+    for detail in validation_error.errors():
+        location = detail.get("loc") or ()
+        field = location[-1] if location else ""
+        message = detail.get("msg", "Invalid input.")
+        if field == "name" and message == "Input should be a valid string":
+            message = "Tag name is required."
+        elif field == "color":
+            message = "Tag color must be a valid hex color (example: #1a2b3c)."
+        if message not in errors:
+            errors.append(message)
+    return errors
 
 
 @router.get("/ui/tags", response_class=HTMLResponse)
@@ -89,24 +106,13 @@ async def ui_create_tag(
     name = (form_data.get("name") or "").strip()
     color = form_data.get("color")
 
-    errors = []
-    normalized_name = ""
-    if not name:
-        errors.append("Tag name is required.")
+    tag_input: TagCreate | None = None
+    try:
+        tag_input = TagCreate(name=name or None, color=color if name else None)
+    except ValidationError as exc:
+        errors = _tag_form_errors(exc)
     else:
-        try:
-            normalized_name = normalize_tag_name(name)
-        except ValueError as exc:
-            errors.append(str(exc))
-
-    normalized_color = None
-    if not errors:
-        try:
-            normalized_color = (
-                normalize_hex_color(color) or settings_routes.suggest_random_tag_color()
-            )
-        except ValueError:
-            errors.append("Tag color must be a valid hex color (example: #1a2b3c).")
+        errors = []
 
     if errors:
         return _render_template(
@@ -124,8 +130,11 @@ async def ui_create_tag(
             active_nav="library",
         )
 
+    assert tag_input is not None
+    normalized_color = tag_input.color or settings_routes.suggest_random_tag_color()
+
     try:
-        repository.create_tag(session, name=normalized_name, color=normalized_color)
+        repository.create_tag(session, name=tag_input.name, color=normalized_color)
     except IntegrityError:
         return _render_template(
             request,
@@ -162,22 +171,13 @@ async def ui_edit_tag(
     name = (form_data.get("name") or "").strip()
     color = form_data.get("color")
 
-    errors = []
-    normalized_name = ""
-    if not name:
-        errors.append("Tag name is required.")
+    tag_input: TagUpdate | None = None
+    try:
+        tag_input = TagUpdate(name=name or None, color=color if name else None)
+    except ValidationError as exc:
+        errors = _tag_form_errors(exc)
     else:
-        try:
-            normalized_name = normalize_tag_name(name)
-        except ValueError as exc:
-            errors.append(str(exc))
-
-    normalized_color = None
-    if not errors:
-        try:
-            normalized_color = normalize_hex_color(color) or DEFAULT_TAG_COLOR
-        except ValueError:
-            errors.append("Tag color must be a valid hex color (example: #1a2b3c).")
+        errors = []
 
     if errors:
         edit_tag = repository.get_tag_by_id(session, tag_id)
@@ -196,9 +196,12 @@ async def ui_edit_tag(
             active_nav="library",
         )
 
+    assert tag_input is not None
+    normalized_color = tag_input.color or DEFAULT_TAG_COLOR
+
     try:
         updated = repository.update_tag(
-            session, tag_id, normalized_name, normalized_color
+            session, tag_id, tag_input.name, normalized_color
         )
     except IntegrityError:
         edit_tag = repository.get_tag_by_id(session, tag_id)
