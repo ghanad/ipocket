@@ -182,6 +182,7 @@ def test_tag_metadata_supports_sqlalchemy_session(
                 asset_type=IPAssetType.OTHER,
             )
             repository.set_ip_asset_tags(connection, asset.id, ["orm-tag"])
+            connection.commit()
         finally:
             connection.close()
 

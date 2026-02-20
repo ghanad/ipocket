@@ -90,7 +90,7 @@ def update_project(
     description: Optional[str] = None,
     color: Optional[str] = None,
 ) -> Optional[Project]:
-    with _session_scope(connection_or_session) as session:
+    with _write_session_scope(connection_or_session) as session:
         model = session.get(db_schema.Project, project_id)
         if model is None:
             return None
@@ -204,7 +204,7 @@ def get_vendor_by_name(
 def update_vendor(
     connection_or_session: sqlite3.Connection | Session, vendor_id: int, name: str
 ) -> Optional[Vendor]:
-    with _session_scope(connection_or_session) as session:
+    with _write_session_scope(connection_or_session) as session:
         result = session.execute(
             update(db_schema.Vendor)
             .where(db_schema.Vendor.id == vendor_id)
