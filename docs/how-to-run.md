@@ -222,6 +222,8 @@ curl -s -X POST http://127.0.0.1:8000/ip-assets \
   -d '{"ip_address":"10.0.0.50","type":"VM"}'
 ```
 
+If `10.0.0.50` already exists only as an archived IP, the create call restores that archived record instead of returning a duplicate conflict.
+
 List unassigned IPs:
 
 ```bash

@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import ipaddress
-import sqlite3
+from typing import Mapping, Any
 
 from app.models import (
     AuditLog,
@@ -17,7 +17,7 @@ from app.models import (
 )
 
 
-def _row_to_project(row: sqlite3.Row) -> Project:
+def _row_to_project(row: Mapping[str, Any]) -> Project:
     return Project(
         id=row["id"],
         name=row["name"],
@@ -26,21 +26,21 @@ def _row_to_project(row: sqlite3.Row) -> Project:
     )
 
 
-def _row_to_host(row: sqlite3.Row) -> Host:
+def _row_to_host(row: Mapping[str, Any]) -> Host:
     return Host(
         id=row["id"], name=row["name"], notes=row["notes"], vendor=row["vendor_name"]
     )
 
 
-def _row_to_vendor(row: sqlite3.Row) -> Vendor:
+def _row_to_vendor(row: Mapping[str, Any]) -> Vendor:
     return Vendor(id=row["id"], name=row["name"])
 
 
-def _row_to_tag(row: sqlite3.Row) -> Tag:
+def _row_to_tag(row: Mapping[str, Any]) -> Tag:
     return Tag(id=row["id"], name=row["name"], color=row["color"])
 
 
-def _row_to_user(row: sqlite3.Row) -> User:
+def _row_to_user(row: Mapping[str, Any]) -> User:
     return User(
         id=row["id"],
         username=row["username"],
@@ -50,7 +50,7 @@ def _row_to_user(row: sqlite3.Row) -> User:
     )
 
 
-def _row_to_ip_asset(row: sqlite3.Row) -> IPAsset:
+def _row_to_ip_asset(row: Mapping[str, Any]) -> IPAsset:
     return IPAsset(
         id=row["id"],
         ip_address=row["ip_address"],
@@ -80,7 +80,7 @@ def _ip_address_sort_key(value: str) -> tuple[int, int, int | str]:
     return (0, parsed_ip.version, int(parsed_ip))
 
 
-def _row_to_audit_log(row: sqlite3.Row) -> AuditLog:
+def _row_to_audit_log(row: Mapping[str, Any]) -> AuditLog:
     return AuditLog(
         id=row["id"],
         user_id=row["user_id"],
@@ -94,7 +94,7 @@ def _row_to_audit_log(row: sqlite3.Row) -> AuditLog:
     )
 
 
-def _row_to_ip_range(row: sqlite3.Row) -> IPRange:
+def _row_to_ip_range(row: Mapping[str, Any]) -> IPRange:
     return IPRange(
         id=row["id"],
         name=row["name"],

@@ -4,67 +4,129 @@ import ipaddress
 import sqlite3
 from typing import Iterable, Optional
 
+from sqlalchemy import func, select, update, delete
+from sqlalchemy.exc import IntegrityError
+from sqlalchemy.orm import Session
+
+from app import schema as db_schema
 from app.models import IPAssetType, IPRange
 from app.utils import DEFAULT_PROJECT_COLOR, normalize_cidr, parse_ipv4_network
-from .assets import list_tag_details_for_ip_assets
+
+from ._asset_tags import list_tag_details_for_ip_assets
+from ._db import (
+    reraise_as_sqlite_integrity_error,
+    session_scope,
+    write_session_scope,
+)
 from .hosts import list_host_pair_ips_for_hosts
 from .mappers import _row_to_ip_range
 
 
 def create_ip_range(
-    connection: sqlite3.Connection,
+    connection_or_session: sqlite3.Connection | Session,
     name: str,
     cidr: str,
     notes: Optional[str] = None,
 ) -> IPRange:
     normalized_cidr = normalize_cidr(cidr)
-    cursor = connection.execute(
-        "INSERT INTO ip_ranges (name, cidr, notes) VALUES (?, ?, ?)",
-        (name, normalized_cidr, notes),
-    )
-    connection.commit()
-    row = connection.execute(
-        "SELECT * FROM ip_ranges WHERE id = ?", (cursor.lastrowid,)
-    ).fetchone()
-    if row is None:
-        raise RuntimeError("Failed to fetch newly created IP range.")
+    with write_session_scope(connection_or_session) as session:
+        model = db_schema.IPRange(name=name, cidr=normalized_cidr, notes=notes)
+        try:
+            session.add(model)
+            session.commit()
+        except IntegrityError as exc:
+            reraise_as_sqlite_integrity_error(exc)
+        session.refresh(model)
+        row = {
+            "id": model.id,
+            "name": model.name,
+            "cidr": model.cidr,
+            "notes": model.notes,
+            "created_at": model.created_at,
+            "updated_at": model.updated_at,
+        }
     return _row_to_ip_range(row)
 
 
-def list_ip_ranges(connection: sqlite3.Connection) -> Iterable[IPRange]:
-    rows = connection.execute("SELECT * FROM ip_ranges ORDER BY name").fetchall()
+def list_ip_ranges(
+    connection_or_session: sqlite3.Connection | Session,
+) -> Iterable[IPRange]:
+    with session_scope(connection_or_session) as session:
+        rows = (
+            session.execute(
+                select(
+                    db_schema.IPRange.id,
+                    db_schema.IPRange.name,
+                    db_schema.IPRange.cidr,
+                    db_schema.IPRange.notes,
+                    db_schema.IPRange.created_at,
+                    db_schema.IPRange.updated_at,
+                ).order_by(db_schema.IPRange.name)
+            )
+            .mappings()
+            .all()
+        )
     return [_row_to_ip_range(row) for row in rows]
 
 
-def get_ip_range_by_id(connection: sqlite3.Connection, range_id: int) -> IPRange | None:
-    row = connection.execute(
-        "SELECT * FROM ip_ranges WHERE id = ?", (range_id,)
-    ).fetchone()
+def get_ip_range_by_id(
+    connection_or_session: sqlite3.Connection | Session, range_id: int
+) -> IPRange | None:
+    with session_scope(connection_or_session) as session:
+        row = (
+            session.execute(
+                select(
+                    db_schema.IPRange.id,
+                    db_schema.IPRange.name,
+                    db_schema.IPRange.cidr,
+                    db_schema.IPRange.notes,
+                    db_schema.IPRange.created_at,
+                    db_schema.IPRange.updated_at,
+                ).where(db_schema.IPRange.id == range_id)
+            )
+            .mappings()
+            .first()
+        )
     if row is None:
         return None
     return _row_to_ip_range(row)
 
 
 def update_ip_range(
-    connection: sqlite3.Connection,
+    connection_or_session: sqlite3.Connection | Session,
     range_id: int,
     name: str,
     cidr: str,
     notes: Optional[str] = None,
 ) -> IPRange | None:
     normalized_cidr = normalize_cidr(cidr)
-    connection.execute(
-        "UPDATE ip_ranges SET name = ?, cidr = ?, notes = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
-        (name, normalized_cidr, notes, range_id),
-    )
-    connection.commit()
-    return get_ip_range_by_id(connection, range_id)
+    with write_session_scope(connection_or_session) as session:
+        try:
+            session.execute(
+                update(db_schema.IPRange)
+                .where(db_schema.IPRange.id == range_id)
+                .values(
+                    name=name,
+                    cidr=normalized_cidr,
+                    notes=notes,
+                    updated_at=func.current_timestamp(),
+                )
+            )
+            session.commit()
+        except IntegrityError as exc:
+            reraise_as_sqlite_integrity_error(exc)
+    return get_ip_range_by_id(connection_or_session, range_id)
 
 
-def delete_ip_range(connection: sqlite3.Connection, range_id: int) -> bool:
-    cursor = connection.execute("DELETE FROM ip_ranges WHERE id = ?", (range_id,))
-    connection.commit()
-    return cursor.rowcount > 0
+def delete_ip_range(
+    connection_or_session: sqlite3.Connection | Session, range_id: int
+) -> bool:
+    with write_session_scope(connection_or_session) as session:
+        result = session.execute(
+            delete(db_schema.IPRange).where(db_schema.IPRange.id == range_id)
+        )
+        session.commit()
+    return bool(result.rowcount)
 
 
 def _total_usable_addresses(network: ipaddress.IPv4Network) -> int:
@@ -75,15 +137,20 @@ def _total_usable_addresses(network: ipaddress.IPv4Network) -> int:
     return max(int(network.num_addresses) - 2, 0)
 
 
-def get_ip_range_utilization(connection: sqlite3.Connection) -> list[dict[str, object]]:
-    ranges = list(list_ip_ranges(connection))
-    rows = connection.execute(
-        "SELECT DISTINCT ip_address FROM ip_assets WHERE archived = 0"
-    ).fetchall()
+def get_ip_range_utilization(
+    connection_or_session: sqlite3.Connection | Session,
+) -> list[dict[str, object]]:
+    ranges = list(list_ip_ranges(connection_or_session))
+    with session_scope(connection_or_session) as session:
+        rows = session.execute(
+            select(db_schema.IPAsset.ip_address)
+            .where(db_schema.IPAsset.archived == 0)
+            .distinct()
+        ).all()
     ip_addresses: set[ipaddress.IPv4Address] = set()
-    for row in rows:
+    for (raw_ip,) in rows:
         try:
-            ip_value = ipaddress.ip_address(row["ip_address"])
+            ip_value = ipaddress.ip_address(raw_ip)
         except ValueError:
             continue
         if ip_value.version == 4:
@@ -114,44 +181,54 @@ def get_ip_range_utilization(connection: sqlite3.Connection) -> list[dict[str, o
 
 
 def get_ip_range_address_breakdown(
-    connection: sqlite3.Connection,
+    connection_or_session: sqlite3.Connection | Session,
     range_id: int,
 ) -> dict[str, object] | None:
-    ip_range = get_ip_range_by_id(connection, range_id)
+    ip_range = get_ip_range_by_id(connection_or_session, range_id)
     if ip_range is None:
         return None
 
     network = parse_ipv4_network(ip_range.cidr)
-    rows = connection.execute(
-        """
-        SELECT ip_assets.id AS asset_id,
-               ip_assets.ip_address AS ip_address,
-               ip_assets.type AS asset_type,
-               ip_assets.host_id AS host_id,
-               ip_assets.project_id AS project_id,
-               ip_assets.notes AS notes,
-               projects.name AS project_name,
-               projects.color AS project_color
-        FROM ip_assets
-        LEFT JOIN projects ON projects.id = ip_assets.project_id
-        WHERE ip_assets.archived = 0
-        """
-    ).fetchall()
+    with session_scope(connection_or_session) as session:
+        rows = (
+            session.execute(
+                select(
+                    db_schema.IPAsset.id.label("asset_id"),
+                    db_schema.IPAsset.ip_address.label("ip_address"),
+                    db_schema.IPAsset.type.label("asset_type"),
+                    db_schema.IPAsset.host_id.label("host_id"),
+                    db_schema.IPAsset.project_id.label("project_id"),
+                    db_schema.IPAsset.notes.label("notes"),
+                    db_schema.Project.name.label("project_name"),
+                    db_schema.Project.color.label("project_color"),
+                )
+                .select_from(db_schema.IPAsset)
+                .join(
+                    db_schema.Project,
+                    db_schema.Project.id == db_schema.IPAsset.project_id,
+                    isouter=True,
+                )
+                .where(db_schema.IPAsset.archived == 0)
+            )
+            .mappings()
+            .all()
+        )
+
     used_entries: list[dict[str, object]] = []
     used_addresses: set[ipaddress.IPv4Address] = set()
     used_asset_ids: list[int] = []
     used_host_ids: list[int] = []
     for row in rows:
         try:
-            ip_value = ipaddress.ip_address(row["ip_address"])
+            ip_value = ipaddress.ip_address(str(row["ip_address"]))
         except ValueError:
             continue
         if ip_value.version != 4 or ip_value not in network:
             continue
         used_addresses.add(ip_value)
-        used_asset_ids.append(row["asset_id"])
+        used_asset_ids.append(int(row["asset_id"]))
         if row["host_id"]:
-            used_host_ids.append(row["host_id"])
+            used_host_ids.append(int(row["host_id"]))
         used_entries.append(
             {
                 "ip_address": str(ip_value),
@@ -169,10 +246,12 @@ def get_ip_range_address_breakdown(
             }
         )
 
-    tag_map = list_tag_details_for_ip_assets(connection, used_asset_ids)
+    tag_map = list_tag_details_for_ip_assets(connection_or_session, used_asset_ids)
     for entry in used_entries:
-        entry["tags"] = tag_map.get(entry["asset_id"], [])
-    host_pair_lookup = list_host_pair_ips_for_hosts(connection, used_host_ids)
+        entry["tags"] = tag_map.get(int(entry["asset_id"]), [])
+    host_pair_lookup = list_host_pair_ips_for_hosts(
+        connection_or_session, used_host_ids
+    )
     for entry in used_entries:
         host_id = entry.get("host_id")
         asset_type = entry.get("asset_type")
@@ -183,11 +262,12 @@ def get_ip_range_address_breakdown(
                 else IPAssetType.OS.value
             )
             entry["host_pair"] = ", ".join(
-                host_pair_lookup.get(host_id, {}).get(pair_type, [])
+                host_pair_lookup.get(int(host_id), {}).get(pair_type, [])
             )
 
     used_sorted = sorted(
-        used_entries, key=lambda entry: int(ipaddress.ip_address(entry["ip_address"]))
+        used_entries,
+        key=lambda entry: int(ipaddress.ip_address(str(entry["ip_address"]))),
     )
     usable_addresses = list(network.hosts())
     free_entries = [
@@ -209,7 +289,7 @@ def get_ip_range_address_breakdown(
     ]
     address_entries = sorted(
         [*used_sorted, *free_entries],
-        key=lambda entry: int(ipaddress.ip_address(entry["ip_address"])),
+        key=lambda entry: int(ipaddress.ip_address(str(entry["ip_address"]))),
     )
 
     return {

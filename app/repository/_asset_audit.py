@@ -3,33 +3,45 @@ from __future__ import annotations
 import sqlite3
 from typing import Optional
 
+from sqlalchemy import select
+from sqlalchemy.orm import Session
+
+from app import schema as db_schema
 from app.models import IPAsset
 
+from ._db import session_scope
 
-def _project_label(connection: sqlite3.Connection, project_id: Optional[int]) -> str:
+
+def _project_label(
+    connection_or_session: sqlite3.Connection | Session, project_id: Optional[int]
+) -> str:
     if project_id is None:
         return "Unassigned"
-    project = connection.execute(
-        "SELECT name FROM projects WHERE id = ?", (project_id,)
-    ).fetchone()
-    if project is None:
+    with session_scope(connection_or_session) as session:
+        project_name = session.scalar(
+            select(db_schema.Project.name).where(db_schema.Project.id == project_id)
+        )
+    if project_name is None:
         return f"Unknown ({project_id})"
-    return project["name"]
+    return str(project_name)
 
 
-def _host_label(connection: sqlite3.Connection, host_id: Optional[int]) -> str:
+def _host_label(
+    connection_or_session: sqlite3.Connection | Session, host_id: Optional[int]
+) -> str:
     if host_id is None:
         return "Unassigned"
-    host = connection.execute(
-        "SELECT name FROM hosts WHERE id = ?", (host_id,)
-    ).fetchone()
-    if host is None:
+    with session_scope(connection_or_session) as session:
+        host_name = session.scalar(
+            select(db_schema.Host.name).where(db_schema.Host.id == host_id)
+        )
+    if host_name is None:
         return f"Unknown ({host_id})"
-    return host["name"]
+    return str(host_name)
 
 
 def _summarize_ip_asset_changes(
-    connection: sqlite3.Connection,
+    connection_or_session: sqlite3.Connection | Session,
     existing: IPAsset,
     updated: IPAsset,
     *,
@@ -43,11 +55,11 @@ def _summarize_ip_asset_changes(
         )
     if existing.project_id != updated.project_id:
         changes.append(
-            f"project: {_project_label(connection, existing.project_id)} -> {_project_label(connection, updated.project_id)}"
+            f"project: {_project_label(connection_or_session, existing.project_id)} -> {_project_label(connection_or_session, updated.project_id)}"
         )
     if existing.host_id != updated.host_id:
         changes.append(
-            f"host: {_host_label(connection, existing.host_id)} -> {_host_label(connection, updated.host_id)}"
+            f"host: {_host_label(connection_or_session, existing.host_id)} -> {_host_label(connection_or_session, updated.host_id)}"
         )
     if (existing.notes or "") != (updated.notes or ""):
         changes.append(f"notes: {existing.notes or ''} -> {updated.notes or ''}")

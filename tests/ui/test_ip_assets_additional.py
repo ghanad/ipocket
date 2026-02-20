@@ -207,6 +207,47 @@ def test_create_ip_validation_paths_and_duplicate_conflict(
     assert "IP address already exists." in duplicate.text
 
 
+def test_create_ip_reuses_archived_record_in_ui_form(client, _setup_connection) -> None:
+    connection = _setup_connection()
+    try:
+        editor = repository.create_user(
+            connection,
+            username="editor-restore",
+            hashed_password="x",
+            role=UserRole.EDITOR,
+        )
+        archived = repository.create_ip_asset(
+            connection, ip_address="10.81.2.50", asset_type=IPAssetType.VM
+        )
+        repository.archive_ip_asset(connection, archived.ip_address)
+    finally:
+        connection.close()
+
+    app.dependency_overrides[ui.require_ui_editor] = lambda: editor
+    try:
+        restored = client.post(
+            "/ui/ip-assets/new",
+            data={"ip_address": "10.81.2.50", "type": "OS"},
+            follow_redirects=False,
+        )
+    finally:
+        app.dependency_overrides.pop(ui.require_ui_editor, None)
+
+    assert restored.status_code == 303
+    assert restored.headers["location"] == "/ui/ip-assets"
+
+    verify_connection = _setup_connection()
+    try:
+        refreshed = repository.get_ip_asset_by_ip(verify_connection, "10.81.2.50")
+    finally:
+        verify_connection.close()
+
+    assert refreshed is not None
+    assert refreshed.id == archived.id
+    assert refreshed.archived is False
+    assert refreshed.asset_type == IPAssetType.OS
+
+
 def test_detail_edit_auto_host_and_edit_submit_edge_paths(
     client, _setup_connection
 ) -> None:
