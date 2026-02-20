@@ -470,7 +470,7 @@ def test_ui_delete_host_requires_confirmation_text(client) -> None:
         1, "editor", "x", UserRole.EDITOR, True
     )
     try:
-        form_response = client.get(f"/ui/hosts/{host.id}/delete")
+        form_response = client.get(f"/ui/hosts/{host.id}/delete", follow_redirects=False)
         response = client.post(
             f"/ui/hosts/{host.id}/delete",
             data={"confirm_name": "wrong-name"},
@@ -734,7 +734,7 @@ def test_ui_delete_host_open_delete_redirect_shows_drawer(client) -> None:
         1, "editor", "x", UserRole.EDITOR, True
     )
     try:
-        response = client.get(f"/ui/hosts/{host.id}/delete")
+        response = client.get(f"/ui/hosts/{host.id}/delete", follow_redirects=False)
         list_response = client.get(f"/ui/hosts?delete={host.id}")
     finally:
         app.dependency_overrides.pop(ui.require_ui_editor, None)

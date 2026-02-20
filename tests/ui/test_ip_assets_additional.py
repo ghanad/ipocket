@@ -124,22 +124,22 @@ def test_bulk_edit_validates_invalid_ids_type_and_project_selection(
     try:
         bad_id = client.post(
             "/ui/ip-assets/bulk-edit",
-            data=[("asset_ids", "abc"), ("type", "VIP")],
+            data={"asset_ids": ["abc"], "type": "VIP"},
             follow_redirects=False,
         )
         bad_type = client.post(
             "/ui/ip-assets/bulk-edit",
-            data=[("asset_ids", str(asset.id)), ("type", "BAD")],
+            data={"asset_ids": [str(asset.id)], "type": "BAD"},
             follow_redirects=False,
         )
         missing_project = client.post(
             "/ui/ip-assets/bulk-edit",
-            data=[("asset_ids", str(asset.id)), ("project_id", "999")],
+            data={"asset_ids": [str(asset.id)], "project_id": "999"},
             follow_redirects=False,
         )
         unassign_project = client.post(
             "/ui/ip-assets/bulk-edit",
-            data=[("asset_ids", str(asset.id)), ("project_id", "unassigned")],
+            data={"asset_ids": [str(asset.id)], "project_id": "unassigned"},
             follow_redirects=False,
         )
     finally:
@@ -425,7 +425,7 @@ def test_bulk_edit_project_id_parse_none_branch(
     try:
         response = client.post(
             "/ui/ip-assets/bulk-edit",
-            data=[("asset_ids", str(asset.id)), ("project_id", "123")],
+            data={"asset_ids": [str(asset.id)], "project_id": "123"},
             follow_redirects=False,
         )
     finally:

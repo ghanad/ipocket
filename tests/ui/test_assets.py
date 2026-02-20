@@ -486,15 +486,13 @@ def test_ip_assets_bulk_edit_updates_selected_assets(client) -> None:
     try:
         response = client.post(
             "/ui/ip-assets/bulk-edit",
-            data=[
-                ("asset_ids", str(asset_one.id)),
-                ("asset_ids", str(asset_two.id)),
-                ("type", "VIP"),
-                ("project_id", str(project.id)),
-                ("tags", "edge"),
-                ("tags", "core"),
-                ("return_to", "/ui/ip-assets"),
-            ],
+            data={
+                "asset_ids": [str(asset_one.id), str(asset_two.id)],
+                "type": "VIP",
+                "project_id": str(project.id),
+                "tags": ["edge", "core"],
+                "return_to": "/ui/ip-assets",
+            },
             follow_redirects=False,
         )
     finally:
@@ -558,12 +556,11 @@ def test_ip_assets_bulk_edit_removes_selected_common_tags(client) -> None:
     try:
         response = client.post(
             "/ui/ip-assets/bulk-edit",
-            data=[
-                ("asset_ids", str(asset_one.id)),
-                ("asset_ids", str(asset_two.id)),
-                ("remove_tags", "prod"),
-                ("return_to", "/ui/ip-assets"),
-            ],
+            data={
+                "asset_ids": [str(asset_one.id), str(asset_two.id)],
+                "remove_tags": ["prod"],
+                "return_to": "/ui/ip-assets",
+            },
             follow_redirects=False,
         )
     finally:
@@ -674,10 +671,10 @@ def test_ip_assets_bulk_edit_shows_error_toast_for_missing_selection(client) -> 
     try:
         response = client.post(
             "/ui/ip-assets/bulk-edit",
-            data=[
-                ("type", "VIP"),
-                ("return_to", "/ui/ip-assets"),
-            ],
+            data={
+                "type": "VIP",
+                "return_to": "/ui/ip-assets",
+            },
             follow_redirects=False,
         )
     finally:
@@ -742,11 +739,11 @@ def test_ip_assets_bulk_edit_rejects_nonexistent_tag_selection(client) -> None:
     try:
         response = client.post(
             "/ui/ip-assets/bulk-edit",
-            data=[
-                ("asset_ids", str(asset.id)),
-                ("tags", "ghost"),
-                ("return_to", "/ui/ip-assets"),
-            ],
+            data={
+                "asset_ids": [str(asset.id)],
+                "tags": ["ghost"],
+                "return_to": "/ui/ip-assets",
+            },
             follow_redirects=False,
         )
     finally:

@@ -3,6 +3,7 @@
 ## Requirements
 - Python 3.11+
 - SQLite (built-in)
+- HTTP client support comes from the pip-installed `httpx` package in `requirements.txt`; ipocket does not ship a local `httpx/` package in the repo to avoid import shadowing.
 
 ## Run locally
 Install dependencies:
