@@ -43,9 +43,9 @@ def test_projects_page_uses_drawer_actions(client) -> None:
     assert 'data-project-create-overlay x-show="createOpen"' in response.text
     assert 'data-project-edit-overlay x-show="editOpen"' in response.text
     assert 'data-project-delete-overlay x-show="deleteOpen"' in response.text
-    assert ":class=\"{ 'is-open': createOpen }\"" in response.text
-    assert ":class=\"{ 'is-open': editOpen }\"" in response.text
-    assert ":class=\"{ 'is-open': deleteOpen }\"" in response.text
+    assert ':class="{ &#39;is-open&#39;: createOpen }"' in response.text
+    assert ':class="{ &#39;is-open&#39;: editOpen }"' in response.text
+    assert ':class="{ &#39;is-open&#39;: deleteOpen }"' in response.text
     assert 'x-transition:enter="transition ease-out duration-150"' in response.text
     assert 'x-bind:aria-hidden="(!createOpen).toString()"' in response.text
     assert 'x-bind:aria-hidden="(!editOpen).toString()"' in response.text

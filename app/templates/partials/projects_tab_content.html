@@ -263,8 +263,8 @@
     'project-create-drawer',
     'Create Project',
     'Add new project labels for IP assignments.',
-    'data-project-create-overlay x-show="createOpen" x-transition.opacity.duration.150ms :class="{ \\'is-open\\': createOpen }" x-bind:aria-hidden="(!createOpen).toString()" @click="closeCreate()"',
-    'data-project-create-drawer x-show="createOpen" x-transition:enter="transition ease-out duration-150" x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100" x-transition:leave="transition ease-in duration-100" x-transition:leave-start="opacity-100" x-transition:leave-end="opacity-0" :class="{ \\'is-open\\': createOpen }" x-bind:aria-hidden="(!createOpen).toString()"',
+    'data-project-create-overlay x-show="createOpen" x-transition.opacity.duration.150ms :class="{ &#39;is-open&#39;: createOpen }" x-bind:aria-hidden="(!createOpen).toString()" @click="closeCreate()"',
+    'data-project-create-drawer x-show="createOpen" x-transition:enter="transition ease-out duration-150" x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100" x-transition:leave="transition ease-in duration-100" x-transition:leave-start="opacity-100" x-transition:leave-end="opacity-0" :class="{ &#39;is-open&#39;: createOpen }" x-bind:aria-hidden="(!createOpen).toString()"',
     'data-project-open',
     errors,
     'Add project',
@@ -312,8 +312,8 @@
     'project-edit-drawer',
     'Edit Project',
     'Update project fields used in assignments.',
-    'data-project-edit-overlay x-show="editOpen" x-transition.opacity.duration.150ms :class="{ \\'is-open\\': editOpen }" x-bind:aria-hidden="(!editOpen).toString()" @click="closeEdit()"',
-    'data-project-edit-drawer x-show="editOpen" x-transition:enter="transition ease-out duration-150" x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100" x-transition:leave="transition ease-in duration-100" x-transition:leave-start="opacity-100" x-transition:leave-end="opacity-0" :class="{ \\'is-open\\': editOpen }" x-bind:aria-hidden="(!editOpen).toString()"',
+    'data-project-edit-overlay x-show="editOpen" x-transition.opacity.duration.150ms :class="{ &#39;is-open&#39;: editOpen }" x-bind:aria-hidden="(!editOpen).toString()" @click="closeEdit()"',
+    'data-project-edit-drawer x-show="editOpen" x-transition:enter="transition ease-out duration-150" x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100" x-transition:leave="transition ease-in duration-100" x-transition:leave-start="opacity-100" x-transition:leave-end="opacity-0" :class="{ &#39;is-open&#39;: editOpen }" x-bind:aria-hidden="(!editOpen).toString()"',
     'data-project-edit-open',
     (edit_errors or edit_project),
     'Edit project',
@@ -369,13 +369,13 @@
     'project-delete-drawer',
     'Delete Project',
     'Permanent removal',
-    'data-project-delete-overlay x-show="deleteOpen" x-transition.opacity.duration.150ms :class="{ \\'is-open\\': deleteOpen }" x-bind:aria-hidden="(!deleteOpen).toString()" @click="closeDelete()"',
-    'data-project-delete-drawer x-show="deleteOpen" x-transition:enter="transition ease-out duration-150" x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100" x-transition:leave="transition ease-in duration-100" x-transition:leave-start="opacity-100" x-transition:leave-end="opacity-0" :class="{ \\'is-open\\': deleteOpen }" x-bind:aria-hidden="(!deleteOpen).toString()"',
+    'data-project-delete-overlay x-show="deleteOpen" x-transition.opacity.duration.150ms :class="{ &#39;is-open&#39;: deleteOpen }" x-bind:aria-hidden="(!deleteOpen).toString()" @click="closeDelete()"',
+    'data-project-delete-drawer x-show="deleteOpen" x-transition:enter="transition ease-out duration-150" x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100" x-transition:leave="transition ease-in duration-100" x-transition:leave-start="opacity-100" x-transition:leave-end="opacity-0" :class="{ &#39;is-open&#39;: deleteOpen }" x-bind:aria-hidden="(!deleteOpen).toString()"',
     'data-project-delete-open',
     delete_project,
     'Delete project',
     'data-project-delete-close @click="closeDelete()"',
-    'data-project-delete-subtitle x-text="deleteProjectName || \\'Permanent removal\\'"'
+    'data-project-delete-subtitle x-text="deleteProjectName || &#39;Permanent removal&#39;"'
   ) %}
     {% if section == 'body' %}
       {% if delete_errors %}
