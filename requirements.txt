@@ -9,3 +9,4 @@ alembic==1.13.3
 pyvmomi==8.0.3.0.1
 passlib==1.7.4
 bcrypt==4.2.0
+defusedxml==0.7.1

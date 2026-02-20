@@ -2,6 +2,8 @@
 
 ipocket supports round-trip workflows: export data (CSV/JSON/bundle) and re-import it later. Imports are modular and use a parser → validator → applier pipeline so future sources (like nmap output) can be added without rewriting core logic.
 
+Nmap XML imports use a hardened XML parser (`defusedxml`) to reject XML external entities (XXE) and entity expansion payloads.
+
 ## Import endpoints
 
 ### API
