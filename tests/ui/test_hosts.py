@@ -470,7 +470,9 @@ def test_ui_delete_host_requires_confirmation_text(client) -> None:
         1, "editor", "x", UserRole.EDITOR, True
     )
     try:
-        form_response = client.get(f"/ui/hosts/{host.id}/delete", follow_redirects=False)
+        form_response = client.get(
+            f"/ui/hosts/{host.id}/delete", follow_redirects=False
+        )
         response = client.post(
             f"/ui/hosts/{host.id}/delete",
             data={"confirm_name": "wrong-name"},
