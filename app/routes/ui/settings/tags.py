@@ -200,7 +200,9 @@ async def ui_edit_tag(
     normalized_color = tag_input.color or DEFAULT_TAG_COLOR
 
     try:
-        updated = repository.update_tag(session, tag_id, tag_input.name, normalized_color)
+        updated = repository.update_tag(
+            session, tag_id, tag_input.name, normalized_color
+        )
     except IntegrityError:
         edit_tag = repository.get_tag_by_id(session, tag_id)
         if edit_tag is None:
