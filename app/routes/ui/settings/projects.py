@@ -1,14 +1,14 @@
 from __future__ import annotations
 
-import sqlite3
 from typing import Optional
 from urllib.parse import urlencode
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from fastapi.responses import HTMLResponse, RedirectResponse, Response
 from pydantic import ValidationError
+from sqlalchemy.exc import IntegrityError
 
-from app.dependencies import get_connection
+from app.dependencies import get_session
 from app.routes.api.schemas import ProjectCreate
 from app.utils import DEFAULT_PROJECT_COLOR
 from app.routes.ui.utils import (
@@ -48,14 +48,12 @@ def ui_list_projects(
     tab: Optional[str] = Query(default=None),
     edit: Optional[int] = Query(default=None),
     delete: Optional[int] = Query(default=None),
-    connection=Depends(get_connection),
+    session=Depends(get_session),
 ) -> HTMLResponse:
     if tab == "tags":
-        edit_tag = (
-            repository.get_tag_by_id(connection, edit) if edit is not None else None
-        )
+        edit_tag = repository.get_tag_by_id(session, edit) if edit is not None else None
         delete_tag = (
-            repository.get_tag_by_id(connection, delete) if delete is not None else None
+            repository.get_tag_by_id(session, delete) if delete is not None else None
         )
         if edit is not None and edit_tag is None:
             raise HTTPException(status_code=404, detail="Tag not found")
@@ -64,20 +62,16 @@ def ui_list_projects(
         return _render_template(
             request,
             "projects.html",
-            _tags_template_context(
-                connection, edit_tag=edit_tag, delete_tag=delete_tag
-            ),
+            _tags_template_context(session, edit_tag=edit_tag, delete_tag=delete_tag),
             active_nav="library",
         )
 
     if tab == "vendors":
         edit_vendor = (
-            repository.get_vendor_by_id(connection, edit) if edit is not None else None
+            repository.get_vendor_by_id(session, edit) if edit is not None else None
         )
         delete_vendor = (
-            repository.get_vendor_by_id(connection, delete)
-            if delete is not None
-            else None
+            repository.get_vendor_by_id(session, delete) if delete is not None else None
         )
         if edit is not None and edit_vendor is None:
             raise HTTPException(status_code=404, detail="Vendor not found")
@@ -87,20 +81,20 @@ def ui_list_projects(
             request,
             "projects.html",
             _vendors_template_context(
-                connection, edit_vendor=edit_vendor, delete_vendor=delete_vendor
+                session, edit_vendor=edit_vendor, delete_vendor=delete_vendor
             ),
             active_nav="library",
         )
 
-    projects = list(repository.list_projects(connection))
+    projects = list(repository.list_projects(session))
     edit_project = None
     delete_project = None
     if edit is not None:
-        edit_project = repository.get_project_by_id(connection, edit)
+        edit_project = repository.get_project_by_id(session, edit)
         if edit_project is None:
             raise HTTPException(status_code=404, detail="Project not found")
     if delete is not None:
-        delete_project = repository.get_project_by_id(connection, delete)
+        delete_project = repository.get_project_by_id(session, delete)
         if delete_project is None:
             raise HTTPException(status_code=404, detail="Project not found")
 
@@ -110,7 +104,7 @@ def ui_list_projects(
         {
             "title": "ipocket - Projects",
             "projects": projects,
-            "project_ip_counts": repository.list_project_ip_counts(connection),
+            "project_ip_counts": repository.list_project_ip_counts(session),
             "errors": [],
             "form_state": {
                 "name": "",
@@ -167,7 +161,7 @@ def ui_open_project_delete(
 async def ui_update_project(
     project_id: int,
     request: Request,
-    connection=Depends(get_connection),
+    session=Depends(get_session),
     _user=Depends(require_ui_editor),
 ) -> HTMLResponse:
     form_data = await _parse_form_data(request)
@@ -188,8 +182,8 @@ async def ui_update_project(
         errors = []
 
     if errors:
-        projects = list(repository.list_projects(connection))
-        edit_project = repository.get_project_by_id(connection, project_id)
+        projects = list(repository.list_projects(session))
+        edit_project = repository.get_project_by_id(session, project_id)
         if edit_project is None:
             return Response(status_code=404)
         return _render_template(
@@ -199,7 +193,7 @@ async def ui_update_project(
                 "title": "ipocket - Projects",
                 "active_tab": "projects",
                 "projects": projects,
-                "project_ip_counts": repository.list_project_ip_counts(connection),
+                "project_ip_counts": repository.list_project_ip_counts(session),
                 "errors": [],
                 "form_state": {
                     "name": "",
@@ -226,15 +220,15 @@ async def ui_update_project(
 
     try:
         updated = repository.update_project(
-            connection,
+            session,
             project_id=project_id,
             name=project_input.name,
             description=project_input.description,
             color=normalized_color,
         )
-    except sqlite3.IntegrityError:
-        projects = list(repository.list_projects(connection))
-        edit_project = repository.get_project_by_id(connection, project_id)
+    except IntegrityError:
+        projects = list(repository.list_projects(session))
+        edit_project = repository.get_project_by_id(session, project_id)
         if edit_project is None:
             return Response(status_code=404)
         return _render_template(
@@ -244,7 +238,7 @@ async def ui_update_project(
                 "title": "ipocket - Projects",
                 "active_tab": "projects",
                 "projects": projects,
-                "project_ip_counts": repository.list_project_ip_counts(connection),
+                "project_ip_counts": repository.list_project_ip_counts(session),
                 "errors": [],
                 "form_state": {
                     "name": "",
@@ -282,13 +276,13 @@ async def ui_update_project(
 async def ui_delete_project(
     project_id: int,
     request: Request,
-    connection=Depends(get_connection),
+    session=Depends(get_session),
     _user=Depends(require_ui_editor),
 ) -> HTMLResponse:
     form_data = await _parse_form_data(request)
     confirm_name = (form_data.get("confirm_name") or "").strip()
 
-    project = repository.get_project_by_id(connection, project_id)
+    project = repository.get_project_by_id(session, project_id)
     if project is None:
         return Response(status_code=404)
 
@@ -299,8 +293,8 @@ async def ui_delete_project(
             {
                 "title": "ipocket - Projects",
                 "active_tab": "projects",
-                "projects": list(repository.list_projects(connection)),
-                "project_ip_counts": repository.list_project_ip_counts(connection),
+                "projects": list(repository.list_projects(session)),
+                "project_ip_counts": repository.list_project_ip_counts(session),
                 "errors": [],
                 "form_state": {
                     "name": "",
@@ -322,7 +316,7 @@ async def ui_delete_project(
             active_nav="library",
         )
 
-    deleted = repository.delete_project(connection, project_id)
+    deleted = repository.delete_project(session, project_id)
     if not deleted:
         return Response(status_code=404)
 
@@ -338,7 +332,7 @@ async def ui_delete_project(
 @router.post("/ui/projects", response_class=HTMLResponse)
 async def ui_create_project(
     request: Request,
-    connection=Depends(get_connection),
+    session=Depends(get_session),
     _user=Depends(require_ui_editor),
 ) -> HTMLResponse:
     form_data = await _parse_form_data(request)
@@ -359,7 +353,7 @@ async def ui_create_project(
         errors = []
 
     if errors:
-        projects = list(repository.list_projects(connection))
+        projects = list(repository.list_projects(session))
         return _render_template(
             request,
             "projects.html",
@@ -367,7 +361,7 @@ async def ui_create_project(
                 "title": "ipocket - Projects",
                 "active_tab": "projects",
                 "projects": projects,
-                "project_ip_counts": repository.list_project_ip_counts(connection),
+                "project_ip_counts": repository.list_project_ip_counts(session),
                 "errors": errors,
                 "form_state": {
                     "name": name,
@@ -394,14 +388,14 @@ async def ui_create_project(
 
     try:
         repository.create_project(
-            connection,
+            session,
             name=project_input.name,
             description=project_input.description,
             color=normalized_color,
         )
-    except sqlite3.IntegrityError:
+    except IntegrityError:
         errors.append("Project name already exists.")
-        projects = list(repository.list_projects(connection))
+        projects = list(repository.list_projects(session))
         return _render_template(
             request,
             "projects.html",
@@ -409,7 +403,7 @@ async def ui_create_project(
                 "title": "ipocket - Projects",
                 "active_tab": "projects",
                 "projects": projects,
-                "project_ip_counts": repository.list_project_ip_counts(connection),
+                "project_ip_counts": repository.list_project_ip_counts(session),
                 "errors": errors,
                 "form_state": {
                     "name": name,

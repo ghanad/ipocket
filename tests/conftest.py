@@ -5,8 +5,10 @@ from collections.abc import Callable, Generator
 
 import pytest
 from fastapi.testclient import TestClient as FastAPITestClient
+from sqlalchemy.orm import Session
 
 from app import auth, db, repository
+from app.dependencies import create_db_session
 from app.main import app
 from app.models import UserRole
 
@@ -36,6 +38,19 @@ def _setup_connection(db_path) -> Callable[[], sqlite3.Connection]:
         connection.execute("PRAGMA foreign_keys = ON")
         db.init_db(connection)
         return connection
+
+    return _factory
+
+
+@pytest.fixture
+def _setup_session(db_path) -> Callable[[], Session]:
+    def _factory() -> Session:
+        connection = db.connect(str(db_path))
+        try:
+            db.init_db(connection)
+        finally:
+            connection.close()
+        return create_db_session(str(db_path))
 
     return _factory
 

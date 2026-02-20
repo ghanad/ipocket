@@ -1,13 +1,13 @@
 from __future__ import annotations
 
-import sqlite3
 from typing import Optional
 from urllib.parse import urlencode
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from fastapi.responses import HTMLResponse, RedirectResponse, Response
+from sqlalchemy.exc import IntegrityError
 
-from app.dependencies import get_connection
+from app.dependencies import get_session
 from app.routes.ui.utils import (
     _parse_form_data,
     _redirect_with_flash,
@@ -27,16 +27,16 @@ def ui_list_vendors(
     request: Request,
     edit: Optional[int] = Query(default=None),
     delete: Optional[int] = Query(default=None),
-    connection=Depends(get_connection),
+    session=Depends(get_session),
 ) -> HTMLResponse:
     edit_vendor = None
     delete_vendor = None
     if edit is not None:
-        edit_vendor = repository.get_vendor_by_id(connection, edit)
+        edit_vendor = repository.get_vendor_by_id(session, edit)
         if edit_vendor is None:
             raise HTTPException(status_code=404, detail="Vendor not found")
     if delete is not None:
-        delete_vendor = repository.get_vendor_by_id(connection, delete)
+        delete_vendor = repository.get_vendor_by_id(session, delete)
         if delete_vendor is None:
             raise HTTPException(status_code=404, detail="Vendor not found")
 
@@ -44,7 +44,7 @@ def ui_list_vendors(
         request,
         "projects.html",
         _vendors_template_context(
-            connection, edit_vendor=edit_vendor, delete_vendor=delete_vendor
+            session, edit_vendor=edit_vendor, delete_vendor=delete_vendor
         ),
         active_nav="library",
     )
@@ -83,17 +83,17 @@ async def ui_create_vendor(
     request: Request,
     edit: Optional[int] = Query(default=None),
     delete: Optional[int] = Query(default=None),
-    connection=Depends(get_connection),
+    session=Depends(get_session),
     _user=Depends(require_ui_editor),
 ) -> HTMLResponse:
     form_data = await _parse_form_data(request)
     name = (form_data.get("name") or "").strip()
 
     edit_vendor = (
-        repository.get_vendor_by_id(connection, edit) if edit is not None else None
+        repository.get_vendor_by_id(session, edit) if edit is not None else None
     )
     delete_vendor = (
-        repository.get_vendor_by_id(connection, delete) if delete is not None else None
+        repository.get_vendor_by_id(session, delete) if delete is not None else None
     )
 
     if not name:
@@ -101,7 +101,7 @@ async def ui_create_vendor(
             request,
             "projects.html",
             _vendors_template_context(
-                connection,
+                session,
                 errors=["Vendor name is required."],
                 form_state={"name": name},
                 edit_vendor=edit_vendor,
@@ -111,13 +111,13 @@ async def ui_create_vendor(
             active_nav="library",
         )
     try:
-        repository.create_vendor(connection, name=name)
-    except sqlite3.IntegrityError:
+        repository.create_vendor(session, name=name)
+    except IntegrityError:
         return _render_template(
             request,
             "projects.html",
             _vendors_template_context(
-                connection,
+                session,
                 errors=["Vendor name already exists."],
                 form_state={"name": name},
                 edit_vendor=edit_vendor,
@@ -139,20 +139,20 @@ async def ui_create_vendor(
 async def ui_edit_vendor(
     vendor_id: int,
     request: Request,
-    connection=Depends(get_connection),
+    session=Depends(get_session),
     _user=Depends(require_ui_editor),
 ) -> HTMLResponse:
     form_data = await _parse_form_data(request)
     name = (form_data.get("name") or "").strip()
     if not name:
-        edit_vendor = repository.get_vendor_by_id(connection, vendor_id)
+        edit_vendor = repository.get_vendor_by_id(session, vendor_id)
         if edit_vendor is None:
             return Response(status_code=404)
         return _render_template(
             request,
             "projects.html",
             _vendors_template_context(
-                connection,
+                session,
                 edit_errors=["Vendor name is required."],
                 edit_vendor=edit_vendor,
                 edit_form_state={"name": name},
@@ -161,16 +161,16 @@ async def ui_edit_vendor(
             active_nav="library",
         )
     try:
-        updated = repository.update_vendor(connection, vendor_id, name)
-    except sqlite3.IntegrityError:
-        edit_vendor = repository.get_vendor_by_id(connection, vendor_id)
+        updated = repository.update_vendor(session, vendor_id, name)
+    except IntegrityError:
+        edit_vendor = repository.get_vendor_by_id(session, vendor_id)
         if edit_vendor is None:
             return Response(status_code=404)
         return _render_template(
             request,
             "projects.html",
             _vendors_template_context(
-                connection,
+                session,
                 edit_errors=["Vendor name already exists."],
                 edit_vendor=edit_vendor,
                 edit_form_state={"name": name},
@@ -193,12 +193,12 @@ async def ui_edit_vendor(
 async def ui_delete_vendor(
     vendor_id: int,
     request: Request,
-    connection=Depends(get_connection),
+    session=Depends(get_session),
     _user=Depends(require_ui_editor),
 ) -> HTMLResponse:
     form_data = await _parse_form_data(request)
     confirm_name = (form_data.get("confirm_name") or "").strip()
-    vendor = repository.get_vendor_by_id(connection, vendor_id)
+    vendor = repository.get_vendor_by_id(session, vendor_id)
     if vendor is None:
         return Response(status_code=404)
 
@@ -207,7 +207,7 @@ async def ui_delete_vendor(
             request,
             "projects.html",
             _vendors_template_context(
-                connection,
+                session,
                 delete_errors=["Vendor name confirmation does not match."],
                 delete_vendor=vendor,
                 delete_confirm_value=confirm_name,
@@ -216,7 +216,7 @@ async def ui_delete_vendor(
             active_nav="library",
         )
 
-    deleted = repository.delete_vendor(connection, vendor_id)
+    deleted = repository.delete_vendor(session, vendor_id)
     if not deleted:
         return Response(status_code=404)
 

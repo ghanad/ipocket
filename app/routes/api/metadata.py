@@ -3,7 +3,7 @@ from __future__ import annotations
 from fastapi import APIRouter, Depends, HTTPException, status
 
 from app import repository
-from app.dependencies import get_connection
+from app.dependencies import get_connection, get_session
 
 from .dependencies import require_editor
 from .schemas import (
@@ -20,11 +20,11 @@ router = APIRouter()
 @router.post("/projects")
 def create_project(
     payload: ProjectCreate,
-    connection=Depends(get_connection),
+    session=Depends(get_session),
     _user=Depends(require_editor),
 ):
     project = repository.create_project(
-        connection,
+        session,
         name=payload.name,
         description=payload.description,
         color=payload.color,
@@ -38,8 +38,8 @@ def create_project(
 
 
 @router.get("/projects")
-def list_projects(connection=Depends(get_connection)):
-    projects = repository.list_projects(connection)
+def list_projects(session=Depends(get_session)):
+    projects = repository.list_projects(session)
     return [
         {
             "id": project.id,
@@ -55,11 +55,11 @@ def list_projects(connection=Depends(get_connection)):
 def update_project(
     project_id: int,
     payload: ProjectUpdate,
-    connection=Depends(get_connection),
+    session=Depends(get_session),
     _user=Depends(require_editor),
 ):
     project = repository.update_project(
-        connection,
+        session,
         project_id=project_id,
         name=payload.name,
         description=payload.description,
@@ -114,18 +114,18 @@ def create_range(
 
 
 @router.get("/vendors")
-def list_vendors(connection=Depends(get_connection)):
-    vendors = repository.list_vendors(connection)
+def list_vendors(session=Depends(get_session)):
+    vendors = repository.list_vendors(session)
     return [{"id": vendor.id, "name": vendor.name} for vendor in vendors]
 
 
 @router.post("/vendors")
 def create_vendor(
     payload: VendorCreate,
-    connection=Depends(get_connection),
+    session=Depends(get_session),
     _user=Depends(require_editor),
 ):
-    vendor = repository.create_vendor(connection, payload.name.strip())
+    vendor = repository.create_vendor(session, payload.name.strip())
     return {"id": vendor.id, "name": vendor.name}
 
 
@@ -133,10 +133,10 @@ def create_vendor(
 def update_vendor(
     vendor_id: int,
     payload: VendorUpdate,
-    connection=Depends(get_connection),
+    session=Depends(get_session),
     _user=Depends(require_editor),
 ):
-    vendor = repository.update_vendor(connection, vendor_id, payload.name.strip())
+    vendor = repository.update_vendor(session, vendor_id, payload.name.strip())
     if vendor is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
     return {"id": vendor.id, "name": vendor.name}

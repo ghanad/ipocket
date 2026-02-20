@@ -123,3 +123,69 @@ def test_list_vendor_ip_counts_returns_active_counts(_setup_connection) -> None:
         assert counts == {vendor_a.id: 2}
     finally:
         connection.close()
+
+
+def test_project_metadata_supports_sqlalchemy_session(
+    _setup_connection, _setup_session
+) -> None:
+    session = _setup_session()
+    try:
+        created = repository.create_project(
+            session,
+            name="Session Project",
+            description="Via ORM session",
+            color="#123abc",
+        )
+        assert created.color == "#123abc"
+
+        updated = repository.update_project(
+            session,
+            project_id=created.id,
+            name="Session Project Updated",
+            description="Updated",
+            color="#456def",
+        )
+        assert updated is not None
+        assert updated.name == "Session Project Updated"
+        assert updated.color == "#456def"
+
+        connection = _setup_connection()
+        try:
+            repository.create_ip_asset(
+                connection,
+                ip_address="10.9.0.10",
+                asset_type=IPAssetType.VM,
+                project_id=created.id,
+            )
+        finally:
+            connection.close()
+
+        counts = repository.list_project_ip_counts(session)
+        assert counts[created.id] == 1
+    finally:
+        session.close()
+
+
+def test_tag_metadata_supports_sqlalchemy_session(
+    _setup_connection, _setup_session
+) -> None:
+    session = _setup_session()
+    try:
+        tag = repository.create_tag(session, name="orm-tag", color="#abc123")
+        assert tag.color == "#abc123"
+
+        connection = _setup_connection()
+        try:
+            asset = repository.create_ip_asset(
+                connection,
+                ip_address="10.9.1.10",
+                asset_type=IPAssetType.OTHER,
+            )
+            repository.set_ip_asset_tags(connection, asset.id, ["orm-tag"])
+        finally:
+            connection.close()
+
+        counts = repository.list_tag_ip_counts(session)
+        assert counts[tag.id] == 1
+    finally:
+        session.close()
