@@ -37,11 +37,23 @@ def _session_scope(connection_or_session: sqlite3.Connection | Session):
         return
 
     # Backward-compatible shim for non-migrated call sites that still pass sqlite3.
-    session = create_db_session()
+    db_row = connection_or_session.execute("PRAGMA database_list").fetchone()
+    db_path = db_row[2] if db_row and db_row[2] else None
+    session = create_db_session(db_path)
     try:
         yield session
     finally:
         session.close()
+
+
+@contextmanager
+def _write_session_scope(connection_or_session: sqlite3.Connection | Session):
+    with _session_scope(connection_or_session) as session:
+        try:
+            yield session
+        except Exception:
+            session.rollback()
+            raise
 
 
 def create_project(
@@ -51,7 +63,7 @@ def create_project(
     color: Optional[str] = None,
 ) -> Project:
     normalized_color = color or DEFAULT_PROJECT_COLOR
-    with _session_scope(connection_or_session) as session:
+    with _write_session_scope(connection_or_session) as session:
         model = db_schema.Project(
             name=name,
             description=description,
@@ -106,7 +118,7 @@ def list_projects(
 def delete_project(
     connection_or_session: sqlite3.Connection | Session, project_id: int
 ) -> bool:
-    with _session_scope(connection_or_session) as session:
+    with _write_session_scope(connection_or_session) as session:
         session.execute(
             update(db_schema.IPAsset)
             .where(db_schema.IPAsset.project_id == project_id)
@@ -137,7 +149,7 @@ def list_project_ip_counts(
 def create_vendor(
     connection_or_session: sqlite3.Connection | Session, name: str
 ) -> Vendor:
-    with _session_scope(connection_or_session) as session:
+    with _write_session_scope(connection_or_session) as session:
         model = db_schema.Vendor(name=name)
         session.add(model)
         session.commit()
@@ -208,7 +220,7 @@ def update_vendor(
 def delete_vendor(
     connection_or_session: sqlite3.Connection | Session, vendor_id: int
 ) -> bool:
-    with _session_scope(connection_or_session) as session:
+    with _write_session_scope(connection_or_session) as session:
         session.execute(
             update(db_schema.Host)
             .where(db_schema.Host.vendor_id == vendor_id)
@@ -227,7 +239,7 @@ def create_tag(
     color: Optional[str] = None,
 ) -> Tag:
     normalized_color = normalize_hex_color(color) or DEFAULT_TAG_COLOR
-    with _session_scope(connection_or_session) as session:
+    with _write_session_scope(connection_or_session) as session:
         model = db_schema.Tag(name=name, color=normalized_color)
         session.add(model)
         session.commit()
@@ -282,7 +294,7 @@ def update_tag(
     color: Optional[str] = None,
 ) -> Optional[Tag]:
     normalized_color = normalize_hex_color(color) or DEFAULT_TAG_COLOR
-    with _session_scope(connection_or_session) as session:
+    with _write_session_scope(connection_or_session) as session:
         result = session.execute(
             update(db_schema.Tag)
             .where(db_schema.Tag.id == tag_id)
@@ -302,7 +314,7 @@ def update_tag(
 def delete_tag(
     connection_or_session: sqlite3.Connection | Session, tag_id: int
 ) -> bool:
-    with _session_scope(connection_or_session) as session:
+    with _write_session_scope(connection_or_session) as session:
         session.execute(
             delete(db_schema.IPAssetTag).where(db_schema.IPAssetTag.tag_id == tag_id)
         )
