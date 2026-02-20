@@ -99,6 +99,8 @@ logs/
 ._*
 .Spotlight-V100
 .Trashes
+ipocket.db-shm
+ipocket.db-wal
 *.db
 
 # Docker
