@@ -126,6 +126,26 @@ def test_refactored_templates_load_external_page_assets() -> None:
     assert "name = 'remove_tags'" in ip_assets_js
 
 
+def test_projects_templates_use_shared_drawer_macro() -> None:
+    repo_root = Path(__file__).resolve().parents[1]
+    projects_template = (repo_root / "app/templates/projects.html").read_text(
+        encoding="utf-8"
+    )
+    projects_partial = (
+        repo_root / "app/templates/partials/projects_tab_content.html"
+    ).read_text(encoding="utf-8")
+    drawer_macro = (repo_root / "app/templates/macros/drawer.html").read_text(
+        encoding="utf-8"
+    )
+
+    assert '{% from "macros/drawer.html" import drawer %}' in projects_template
+    assert "{% macro drawer(" in drawer_macro
+    assert "{{ caller('body') }}" in drawer_macro
+    assert "{{ caller('footer') }}" in drawer_macro
+    assert projects_partial.count("{% call(section) drawer(") == 3
+    assert '<aside class="ip-drawer"' not in projects_partial
+
+
 def test_hosts_drawer_css_matches_ip_drawer_layout_baseline() -> None:
     repo_root = Path(__file__).resolve().parents[1]
     css = (repo_root / "app/static/app.css").read_text(encoding="utf-8")

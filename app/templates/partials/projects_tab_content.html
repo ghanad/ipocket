@@ -59,45 +59,45 @@
   </div>
 </section>
 
-<div class="ip-drawer-overlay" data-project-create-overlay aria-hidden="true"></div>
-<aside class="ip-drawer" data-project-create-drawer data-project-open="{{ 'true' if errors else 'false' }}" role="dialog" aria-modal="true" aria-label="Add project">
-  <div class="ip-drawer-header">
-    <div class="ip-drawer-header-row">
-      <div>
-        <h2 class="ip-drawer-title">Create Project</h2>
-        <p class="ip-drawer-subtitle">Add new project labels for IP assignments.</p>
-      </div>
-      <button class="ip-drawer-close" type="button" aria-label="Close drawer" data-project-create-close>✕</button>
-    </div>
+{% call(section) drawer(
+  'project-create-drawer',
+  'Create Project',
+  'Add new project labels for IP assignments.',
+  'data-project-create-overlay',
+  'data-project-create-drawer',
+  'data-project-open',
+  errors,
+  'Add project',
+  'data-project-create-close'
+) %}
+  {% if section == 'body' %}
+  {% if errors %}
+  <div class="alert alert-error">
+    <ul>
+      {% for error in errors %}
+      <li>{{ error }}</li>
+      {% endfor %}
+    </ul>
   </div>
-  <div class="ip-drawer-body">
-    {% if errors %}
-    <div class="alert alert-error">
-      <ul>
-        {% for error in errors %}
-        <li>{{ error }}</li>
-        {% endfor %}
-      </ul>
-    </div>
-    {% endif %}
-    <form class="ip-drawer-form" method="post" action="/ui/projects" data-project-create-form id="project-create-form">
-      <section class="ip-drawer-section">
-        <h3>Project details</h3>
-        <label class="field">
-          <span>Name</span>
-          <input class="input" type="text" name="name" value="{{ form_state.name }}" data-project-input="name" required />
-        </label>
-        <label class="field">
-          <span>Description</span>
-          <input class="input" type="text" name="description" value="{{ form_state.description }}" data-project-input="description" />
-        </label>
-        <label class="field">
-          <span>Color</span>
-          <input class="input input-color" type="color" name="color" value="{{ form_state.color }}" data-project-input="color" />
-        </label>
-      </section>
-    </form>
-  </div>
+  {% endif %}
+  <form class="ip-drawer-form" method="post" action="/ui/projects" data-project-create-form id="project-create-form">
+    <section class="ip-drawer-section">
+      <h3>Project details</h3>
+      <label class="field">
+        <span>Name</span>
+        <input class="input" type="text" name="name" value="{{ form_state.name }}" data-project-input="name" required />
+      </label>
+      <label class="field">
+        <span>Description</span>
+        <input class="input" type="text" name="description" value="{{ form_state.description }}" data-project-input="description" />
+      </label>
+      <label class="field">
+        <span>Color</span>
+        <input class="input input-color" type="color" name="color" value="{{ form_state.color }}" data-project-input="color" />
+      </label>
+    </section>
+  </form>
+  {% elif section == 'footer' %}
   <div class="ip-drawer-footer">
     <span class="ip-drawer-footer-status" data-project-create-dirty>Enter details</span>
     <div class="ip-drawer-footer-actions">
@@ -105,54 +105,55 @@
       <button class="btn btn-primary" type="submit" form="project-create-form" data-project-create-save disabled>Create project</button>
     </div>
   </div>
-</aside>
+  {% endif %}
+{% endcall %}
 
-<div class="ip-drawer-overlay" data-project-edit-overlay aria-hidden="true"></div>
-<aside class="ip-drawer" data-project-edit-drawer data-project-edit-open="{{ 'true' if (edit_errors or edit_project) else 'false' }}" role="dialog" aria-modal="true" aria-label="Edit project">
-  <div class="ip-drawer-header">
-    <div class="ip-drawer-header-row">
-      <div>
-        <h2 class="ip-drawer-title">Edit Project</h2>
-        <p class="ip-drawer-subtitle">Update project fields used in assignments.</p>
-      </div>
-      <button class="ip-drawer-close" type="button" aria-label="Close drawer" data-project-edit-close>✕</button>
-    </div>
+{% call(section) drawer(
+  'project-edit-drawer',
+  'Edit Project',
+  'Update project fields used in assignments.',
+  'data-project-edit-overlay',
+  'data-project-edit-drawer',
+  'data-project-edit-open',
+  edit_errors or edit_project,
+  'Edit project',
+  'data-project-edit-close'
+) %}
+  {% if section == 'body' %}
+  {% if edit_errors %}
+  <div class="alert alert-error">
+    <ul>
+      {% for error in edit_errors %}
+      <li>{{ error }}</li>
+      {% endfor %}
+    </ul>
   </div>
-  <div class="ip-drawer-body">
-    {% if edit_errors %}
-    <div class="alert alert-error">
-      <ul>
-        {% for error in edit_errors %}
-        <li>{{ error }}</li>
-        {% endfor %}
-      </ul>
-    </div>
-    {% endif %}
-    <form
-      class="ip-drawer-form"
-      method="post"
-      action="{% if edit_project %}/ui/projects/{{ edit_project.id }}/edit{% else %}#{% endif %}"
-      data-project-edit-form
-      id="project-edit-form"
-      data-project-edit-id="{{ edit_project.id if edit_project else '' }}"
-    >
-      <section class="ip-drawer-section">
-        <h3>Project details</h3>
-        <label class="field">
-          <span>Name</span>
-          <input class="input" type="text" name="name" value="{{ edit_form_state.name }}" data-project-edit-input="name" required />
-        </label>
-        <label class="field">
-          <span>Description</span>
-          <input class="input" type="text" name="description" value="{{ edit_form_state.description }}" data-project-edit-input="description" />
-        </label>
-        <label class="field">
-          <span>Color</span>
-          <input class="input input-color" type="color" name="color" value="{{ edit_form_state.color }}" data-project-edit-input="color" />
-        </label>
-      </section>
-    </form>
-  </div>
+  {% endif %}
+  <form
+    class="ip-drawer-form"
+    method="post"
+    action="{% if edit_project %}/ui/projects/{{ edit_project.id }}/edit{% else %}#{% endif %}"
+    data-project-edit-form
+    id="project-edit-form"
+    data-project-edit-id="{{ edit_project.id if edit_project else '' }}"
+  >
+    <section class="ip-drawer-section">
+      <h3>Project details</h3>
+      <label class="field">
+        <span>Name</span>
+        <input class="input" type="text" name="name" value="{{ edit_form_state.name }}" data-project-edit-input="name" required />
+      </label>
+      <label class="field">
+        <span>Description</span>
+        <input class="input" type="text" name="description" value="{{ edit_form_state.description }}" data-project-edit-input="description" />
+      </label>
+      <label class="field">
+        <span>Color</span>
+        <input class="input input-color" type="color" name="color" value="{{ edit_form_state.color }}" data-project-edit-input="color" />
+      </label>
+    </section>
+  </form>
+  {% elif section == 'footer' %}
   <div class="ip-drawer-footer">
     <span class="ip-drawer-footer-status" data-project-edit-dirty>Choose project</span>
     <div class="ip-drawer-footer-actions">
@@ -160,63 +161,64 @@
       <button class="btn btn-primary" type="submit" form="project-edit-form" data-project-edit-save disabled>Save changes</button>
     </div>
   </div>
-</aside>
+  {% endif %}
+{% endcall %}
 
-<div class="ip-drawer-overlay" data-project-delete-overlay aria-hidden="true"></div>
-<aside class="ip-drawer" data-project-delete-drawer data-project-delete-open="{{ 'true' if delete_project else 'false' }}" role="dialog" aria-modal="true" aria-label="Delete project">
-  <div class="ip-drawer-header">
-    <div class="ip-drawer-header-row">
-      <div>
-        <h2 class="ip-drawer-title">Delete Project</h2>
-        <p class="ip-drawer-subtitle" data-project-delete-subtitle>Permanent removal</p>
-      </div>
-      <button class="ip-drawer-close" type="button" aria-label="Close drawer" data-project-delete-close>✕</button>
-    </div>
+{% call(section) drawer(
+  'project-delete-drawer',
+  'Delete Project',
+  'Permanent removal',
+  'data-project-delete-overlay',
+  'data-project-delete-drawer',
+  'data-project-delete-open',
+  delete_project,
+  'Delete project',
+  'data-project-delete-close'
+) %}
+  {% if section == 'body' %}
+  {% if delete_errors %}
+  <div class="alert alert-error">
+    <ul>
+      {% for error in delete_errors %}
+      <li>{{ error }}</li>
+      {% endfor %}
+    </ul>
   </div>
-  <div class="ip-drawer-body">
-    {% if delete_errors %}
-    <div class="alert alert-error">
-      <ul>
-        {% for error in delete_errors %}
-        <li>{{ error }}</li>
-        {% endfor %}
-      </ul>
-    </div>
-    {% endif %}
-    <form
-      class="ip-drawer-form ip-drawer-delete-form"
-      method="post"
-      action="{% if delete_project %}/ui/projects/{{ delete_project.id }}/delete{% else %}#{% endif %}"
-      data-project-delete-form
-      id="project-delete-form"
-      data-project-delete-id="{{ delete_project.id if delete_project else '' }}"
-      data-project-delete-name="{{ delete_project.name if delete_project else '' }}"
-    >
-      <section class="ip-drawer-section">
-        <h3 class="ip-drawer-delete-heading">Delete this project?</h3>
-        <p class="ip-drawer-delete-warning">Linked IPs will become unassigned.</p>
-        <dl class="ip-drawer-delete-details">
-          <div><dt>Name</dt><dd data-project-delete-name-display>{{ delete_project.name if delete_project else '—' }}</dd></div>
-          <div><dt>Description</dt><dd data-project-delete-description-display>{{ delete_project.description if delete_project and delete_project.description else '—' }}</dd></div>
-        </dl>
-        <label class="field field-inline">
-          <input class="checkbox" type="checkbox" data-project-delete-ack />
-          <span>I understand this cannot be undone</span>
-        </label>
-        <label class="field">
-          <span>Type the project name to confirm: <strong data-project-delete-name-inline>{{ delete_project.name if delete_project else '—' }}</strong></span>
-          <input
-            class="input"
-            type="text"
-            name="confirm_name"
-            autocomplete="off"
-            data-project-delete-confirm
-            value="{{ delete_confirm_value }}"
-          />
-        </label>
-      </section>
-    </form>
-  </div>
+  {% endif %}
+  <form
+    class="ip-drawer-form ip-drawer-delete-form"
+    method="post"
+    action="{% if delete_project %}/ui/projects/{{ delete_project.id }}/delete{% else %}#{% endif %}"
+    data-project-delete-form
+    id="project-delete-form"
+    data-project-delete-id="{{ delete_project.id if delete_project else '' }}"
+    data-project-delete-name="{{ delete_project.name if delete_project else '' }}"
+  >
+    <section class="ip-drawer-section">
+      <h3 class="ip-drawer-delete-heading">Delete this project?</h3>
+      <p class="ip-drawer-delete-warning">Linked IPs will become unassigned.</p>
+      <dl class="ip-drawer-delete-details">
+        <div><dt>Name</dt><dd data-project-delete-name-display>{{ delete_project.name if delete_project else '—' }}</dd></div>
+        <div><dt>Description</dt><dd data-project-delete-description-display>{{ delete_project.description if delete_project and delete_project.description else '—' }}</dd></div>
+      </dl>
+      <label class="field field-inline">
+        <input class="checkbox" type="checkbox" data-project-delete-ack />
+        <span>I understand this cannot be undone</span>
+      </label>
+      <label class="field">
+        <span>Type the project name to confirm: <strong data-project-delete-name-inline>{{ delete_project.name if delete_project else '—' }}</strong></span>
+        <input
+          class="input"
+          type="text"
+          name="confirm_name"
+          autocomplete="off"
+          data-project-delete-confirm
+          value="{{ delete_confirm_value }}"
+        />
+      </label>
+    </section>
+  </form>
+  {% elif section == 'footer' %}
   <div class="ip-drawer-footer">
     <span class="ip-drawer-footer-status" data-project-delete-dirty>Choose project</span>
     <div class="ip-drawer-footer-actions">
@@ -224,7 +226,8 @@
       <button class="btn btn-danger" type="submit" form="project-delete-form" data-project-delete-submit disabled>Delete permanently</button>
     </div>
   </div>
-</aside>
+  {% endif %}
+{% endcall %}
 
 <script src="/static/js/drawer.js" defer></script>
 <script src="/static/js/projects.js" defer></script>
