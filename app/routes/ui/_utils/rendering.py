@@ -81,6 +81,9 @@ def _render_fallback_template(
         lines.append('<script src="/static/vendor/htmx.min.js" defer></script>')
     else:
         lines.append('<script src="https://unpkg.com/htmx.org@1.9.12" defer></script>')
+        lines.append(
+            '<script src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.9/dist/cdn.min.js" defer></script>'
+        )
     lines.append(str(payload.get("title", "ipocket")))
     assets = payload.get("assets") or []
     for asset in assets:
