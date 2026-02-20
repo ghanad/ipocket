@@ -35,6 +35,11 @@ def test_init_db_runs_alembic_migrations(tmp_path) -> None:
             for row in connection.execute("PRAGMA table_info(sessions)").fetchall()
         }
         assert {"id", "token", "user_id", "created_at"} <= session_columns
+        ip_asset_columns = {
+            row["name"]
+            for row in connection.execute("PRAGMA table_info(ip_assets)").fetchall()
+        }
+        assert "ip_int" in ip_asset_columns
     finally:
         connection.close()
 
@@ -71,6 +76,7 @@ def test_listing_indexes_exist_after_migrations(tmp_path) -> None:
         }
         assert "ix_ip_assets_archived_project_type" in ip_assets_indexes
         assert "ix_ip_assets_archived_ip_address" in ip_assets_indexes
+        assert "ix_ip_assets_archived_ip_int" in ip_assets_indexes
 
         ip_asset_tags_indexes = {
             row["name"]

@@ -19,7 +19,7 @@ Initialize the database (runs migrations):
 alembic upgrade head
 ```
 
-After pulling updates, rerun `alembic upgrade head` to apply the latest indexing migration used by SQL-based IP asset pagination/filtering performance improvements.
+After pulling updates, rerun `alembic upgrade head` to apply the latest schema/index migrations (including `ip_int` for SQL-based IPv4 sorting and subnet utilization filtering).
 
 The migration runner reads `IPAM_DB_PATH` (defaults to `ipocket.db`) to locate the
 SQLite file.
@@ -196,7 +196,7 @@ UI design reference templates live in `/ui_template` for layout and styling guid
 6) Add IPs from the **IP Assets** page.
 7) When you paginate in **IP Assets**, edits from the drawer return you to the same filtered/paginated list state (current `page` and `per-page` are preserved).
 8) Open **Data Ops** from the sidebar to import or export data using one unified page with tabs. `hosts.csv` exports now include `project_name`, `os_ip`, and `bmc_ip` for round-trip compatibility with CSV import.
-9) Open **Connectors** from the sidebar and use **vCenter** or **Prometheus** tabs to run connectors directly from UI (`dry-run` or `apply`) and review execution logs.
+9) Open **Connectors** from the sidebar and use **vCenter** or **Prometheus** tabs to run connectors directly from UI (`dry-run` or `apply`) as background jobs, then refresh the tab URL (with `job_id`) to review status and execution logs.
 10) When assigning tags on IP Assets or Range Address drawers, use the chip picker (`Add tags...`) to search and select existing tags only (create new tag names first in **Library → Tags**).
 11) For multi-row assignment changes, select IPs in **IP Assets** and use **Bulk update** to open the right-side drawer for batch Type/Project/Tag updates; shared tags appear under **Common tags** and can be removed for all selected rows in one apply.
 12) Open **Audit Log** to review run-level `apply` entries for Data Ops and Connectors (`IMPORT_RUN`); dry-run executions are intentionally excluded from run-level audit logging.
@@ -270,8 +270,8 @@ The UI flow also supports direct execution:
 - Choose mode:
   - `dry-run` (recommended first)
   - `apply`
-- Click **Run Connector**
-- Review the in-page execution log for collected host/VM counts and any warnings/errors
+- Click **Run Connector** (the run is queued in background)
+- Keep the connector tab open/refresh to review job status and execution logs for collected host/VM counts and any warnings/errors
 
 To skip manual upload and send directly to ipocket import API:
 
@@ -301,7 +301,7 @@ UI flow:
   - IP label (for node_exporter usually `instance`)
   - optional auth (Bearer token or `username:password`)
   - optional project/tags/type override
-- Start with `dry-run`, inspect extracted IP preview + per-IP change details (`CREATE`/`UPDATE`/`SKIP` with field diffs) + `ip_assets` create/update/skip summary in logs, then run `apply`.
+- Start with `dry-run`, inspect extracted IP preview + per-IP change details (`CREATE`/`UPDATE`/`SKIP` with field diffs) + `ip_assets` create/update/skip summary in logs (from the background job result), then run `apply`.
 
 CLI examples:
 

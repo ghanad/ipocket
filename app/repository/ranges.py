@@ -141,42 +141,40 @@ def get_ip_range_utilization(
     connection_or_session: sqlite3.Connection | Session,
 ) -> list[dict[str, object]]:
     ranges = list(list_ip_ranges(connection_or_session))
-    with session_scope(connection_or_session) as session:
-        rows = session.execute(
-            select(db_schema.IPAsset.ip_address)
-            .where(db_schema.IPAsset.archived == 0)
-            .distinct()
-        ).all()
-    ip_addresses: set[ipaddress.IPv4Address] = set()
-    for (raw_ip,) in rows:
-        try:
-            ip_value = ipaddress.ip_address(raw_ip)
-        except ValueError:
-            continue
-        if ip_value.version == 4:
-            ip_addresses.add(ip_value)
-
     utilization: list[dict[str, object]] = []
-    for ip_range in ranges:
-        network = parse_ipv4_network(ip_range.cidr)
-        total = int(network.num_addresses)
-        total_usable = _total_usable_addresses(network)
-        used = sum(1 for ip_value in ip_addresses if ip_value in network)
-        free = max(total_usable - used, 0)
-        utilization_percent = (used / total_usable * 100.0) if total_usable else 0.0
-        utilization.append(
-            {
-                "id": ip_range.id,
-                "name": ip_range.name,
-                "cidr": ip_range.cidr,
-                "notes": ip_range.notes,
-                "total": total,
-                "total_usable": total_usable,
-                "used": used,
-                "free": free,
-                "utilization_percent": utilization_percent,
-            }
-        )
+    with session_scope(connection_or_session) as session:
+        for ip_range in ranges:
+            network = parse_ipv4_network(ip_range.cidr)
+            total = int(network.num_addresses)
+            total_usable = _total_usable_addresses(network)
+            start_ip = int(network.network_address)
+            end_ip = int(network.broadcast_address)
+            used = int(
+                session.scalar(
+                    select(func.count(func.distinct(db_schema.IPAsset.ip_int))).where(
+                        db_schema.IPAsset.archived == 0,
+                        db_schema.IPAsset.ip_int.is_not(None),
+                        db_schema.IPAsset.ip_int >= start_ip,
+                        db_schema.IPAsset.ip_int <= end_ip,
+                    )
+                )
+                or 0
+            )
+            free = max(total_usable - used, 0)
+            utilization_percent = (used / total_usable * 100.0) if total_usable else 0.0
+            utilization.append(
+                {
+                    "id": ip_range.id,
+                    "name": ip_range.name,
+                    "cidr": ip_range.cidr,
+                    "notes": ip_range.notes,
+                    "total": total,
+                    "total_usable": total_usable,
+                    "used": used,
+                    "free": free,
+                    "utilization_percent": utilization_percent,
+                }
+            )
     return utilization
 
 
@@ -189,12 +187,15 @@ def get_ip_range_address_breakdown(
         return None
 
     network = parse_ipv4_network(ip_range.cidr)
+    start_ip = int(network.network_address)
+    end_ip = int(network.broadcast_address)
     with session_scope(connection_or_session) as session:
         rows = (
             session.execute(
                 select(
                     db_schema.IPAsset.id.label("asset_id"),
                     db_schema.IPAsset.ip_address.label("ip_address"),
+                    db_schema.IPAsset.ip_int.label("ip_int"),
                     db_schema.IPAsset.type.label("asset_type"),
                     db_schema.IPAsset.host_id.label("host_id"),
                     db_schema.IPAsset.project_id.label("project_id"),
@@ -208,7 +209,12 @@ def get_ip_range_address_breakdown(
                     db_schema.Project.id == db_schema.IPAsset.project_id,
                     isouter=True,
                 )
-                .where(db_schema.IPAsset.archived == 0)
+                .where(
+                    db_schema.IPAsset.archived == 0,
+                    db_schema.IPAsset.ip_int.is_not(None),
+                    db_schema.IPAsset.ip_int >= start_ip,
+                    db_schema.IPAsset.ip_int <= end_ip,
+                )
             )
             .mappings()
             .all()
@@ -219,12 +225,7 @@ def get_ip_range_address_breakdown(
     used_asset_ids: list[int] = []
     used_host_ids: list[int] = []
     for row in rows:
-        try:
-            ip_value = ipaddress.ip_address(str(row["ip_address"]))
-        except ValueError:
-            continue
-        if ip_value.version != 4 or ip_value not in network:
-            continue
+        ip_value = ipaddress.IPv4Address(int(row["ip_int"]))
         used_addresses.add(ip_value)
         used_asset_ids.append(int(row["asset_id"]))
         if row["host_id"]:
@@ -232,6 +233,7 @@ def get_ip_range_address_breakdown(
         used_entries.append(
             {
                 "ip_address": str(ip_value),
+                "sort_ip_int": int(row["ip_int"]),
                 "status": "used",
                 "asset_id": row["asset_id"],
                 "host_id": row["host_id"],
@@ -267,12 +269,13 @@ def get_ip_range_address_breakdown(
 
     used_sorted = sorted(
         used_entries,
-        key=lambda entry: int(ipaddress.ip_address(str(entry["ip_address"]))),
+        key=lambda entry: int(entry["sort_ip_int"]),
     )
     usable_addresses = list(network.hosts())
     free_entries = [
         {
             "ip_address": str(ip_value),
+            "sort_ip_int": int(ip_value),
             "status": "free",
             "asset_id": None,
             "project_id": None,
@@ -289,8 +292,10 @@ def get_ip_range_address_breakdown(
     ]
     address_entries = sorted(
         [*used_sorted, *free_entries],
-        key=lambda entry: int(ipaddress.ip_address(str(entry["ip_address"]))),
+        key=lambda entry: int(entry["sort_ip_int"]),
     )
+    for entry in address_entries:
+        entry.pop("sort_ip_int", None)
 
     return {
         "ip_range": ip_range,

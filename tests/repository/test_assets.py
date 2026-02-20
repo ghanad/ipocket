@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-
 from app.models import IPAssetType
 from app.repository import (
     archive_ip_asset,
@@ -34,6 +33,12 @@ def test_create_project_and_ipasset(_setup_connection) -> None:
     assert fetched.ip_address == asset.ip_address
     assert fetched.project_id == project.id
     assert project.color == "#223344"
+    row = connection.execute(
+        "SELECT ip_int FROM ip_assets WHERE ip_address = ?",
+        (asset.ip_address,),
+    ).fetchone()
+    assert row is not None
+    assert int(row["ip_int"]) == 167772170
 
 
 def test_get_ip_asset_metrics_counts(_setup_connection) -> None:
@@ -331,8 +336,8 @@ def test_list_active_ip_assets_paginated_sorts_ipv6_and_fallback_deterministical
     assets = list_active_ip_assets_paginated(connection, limit=10, offset=0)
 
     assert [asset.ip_address for asset in assets] == [
-        "2001:db8::2",
         "2001:db8::10",
+        "2001:db8::2",
         "not-an-ip",
     ]
 
