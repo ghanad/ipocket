@@ -134,6 +134,10 @@ Service discovery token (optional):
 - `IPOCKET_AUTO_HOST_FOR_BMC` (default: enabled). Set to `0`, `false`, `no`, or `off` to disable auto-creating `server_{ip}` Host records when creating BMC IP assets without `host_id`.
 - `IPOCKET_LOG_LEVEL` (default: `INFO`). Controls application logging verbosity (e.g., `DEBUG`, `INFO`, `WARNING`).
 
+Session security:
+- `SESSION_SECRET` (required outside tests). UI session/flash cookies are HMAC-signed, and startup now raises `RuntimeError` if this variable is missing or blank in non-testing environments.
+- During automated tests, ipocket uses an internal test-only fallback secret so test runs do not require extra env setup.
+
 Example systemd unit override (`Environment=`):
 
 ```ini
@@ -141,6 +145,7 @@ Example systemd unit override (`Environment=`):
 Environment="IPOCKET_VERSION=0.1.0"
 Environment="IPOCKET_COMMIT=abc1234"
 Environment="IPOCKET_BUILD_TIME=2024-01-01T00:00:00Z"
+Environment="SESSION_SECRET=replace-with-random-long-secret"
 ```
 
 Endpoints:
