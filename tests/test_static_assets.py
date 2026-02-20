@@ -95,9 +95,12 @@ def test_refactored_templates_load_external_page_assets() -> None:
     ).read_text(encoding="utf-8")
     assert "<style>" not in templates["range_addresses"].read_text(encoding="utf-8")
 
-    assert '<script src="/static/js/tags.js" defer></script>' in templates[
+    assert '{% include "partials/tags_tab_content.html" %}' in templates[
         "tags"
     ].read_text(encoding="utf-8")
+    assert "@click=\"$dispatch('tag-create-open')\"" in templates["tags"].read_text(
+        encoding="utf-8"
+    )
     assert "<script>" not in templates["tags"].read_text(encoding="utf-8")
 
     assert "<style>" not in templates["audit_log"].read_text(encoding="utf-8")
@@ -107,7 +110,6 @@ def test_refactored_templates_load_external_page_assets() -> None:
     assert (repo_root / "app/static/js/hosts.js").exists()
     assert (repo_root / "app/static/js/ip-assets.js").exists()
     assert (repo_root / "app/static/js/range-addresses.js").exists()
-    assert (repo_root / "app/static/js/tags.js").exists()
     assert (repo_root / "app/static/js/tag-picker.js").exists()
     tag_picker_js = (repo_root / "app/static/js/tag-picker.js").read_text(
         encoding="utf-8"
@@ -148,6 +150,29 @@ def test_projects_templates_use_alpine_for_drawer_interactions() -> None:
     assert "{% if use_local_assets %}" in projects_partial
     assert '<script src="/static/js/drawer.js" defer></script>' in projects_partial
     assert '<script src="/static/js/projects.js" defer></script>' in projects_partial
+
+
+def test_tags_templates_use_alpine_for_drawer_interactions() -> None:
+    repo_root = Path(__file__).resolve().parents[1]
+    projects_template = (repo_root / "app/templates/projects.html").read_text(
+        encoding="utf-8"
+    )
+    tags_partial = (
+        repo_root / "app/templates/partials/tags_tab_content.html"
+    ).read_text(encoding="utf-8")
+
+    assert "@click=\"$dispatch('tag-create-open')\"" in projects_template
+    assert "{% import 'macros/drawer.html' as drawer_macros %}" in tags_partial
+    assert 'x-data="' in tags_partial
+    assert "randomHexColor()" in tags_partial
+    assert '@tag-create-open.window="openCreate()"' in tags_partial
+    assert 'x-show="createOpen"' in tags_partial
+    assert 'x-show="editOpen"' in tags_partial
+    assert 'x-show="deleteOpen"' in tags_partial
+    assert 'x-model="createName"' in tags_partial
+    assert 'x-model="editName"' in tags_partial
+    assert 'x-model="deleteConfirmName"' in tags_partial
+    assert "/static/js/tags.js" not in tags_partial
 
 
 def test_hosts_drawer_css_matches_ip_drawer_layout_baseline() -> None:
