@@ -3,44 +3,65 @@ from __future__ import annotations
 import sqlite3
 from typing import Optional
 
+from sqlalchemy import delete, select
+from sqlalchemy.exc import IntegrityError, OperationalError
+from sqlalchemy.orm import Session
 
-def create_session(connection: sqlite3.Connection, token: str, user_id: int) -> None:
-    connection.execute(
-        "INSERT INTO sessions (token, user_id) VALUES (?, ?)",
-        (token, user_id),
-    )
-    connection.commit()
+from app import schema as db_schema
+
+from ._db import (
+    reraise_as_sqlite_integrity_error,
+    session_scope,
+    write_session_scope,
+)
 
 
-def get_session_user_id(connection: sqlite3.Connection, token: str) -> Optional[int]:
+def create_session(
+    connection_or_session: sqlite3.Connection | Session, token: str, user_id: int
+) -> None:
+    with write_session_scope(connection_or_session) as session:
+        try:
+            session.add(db_schema.Session(token=token, user_id=user_id))
+            session.commit()
+        except IntegrityError as exc:
+            reraise_as_sqlite_integrity_error(exc)
+
+
+def get_session_user_id(
+    connection_or_session: sqlite3.Connection | Session, token: str
+) -> Optional[int]:
     try:
-        row = connection.execute(
-            "SELECT user_id FROM sessions WHERE token = ?",
-            (token,),
-        ).fetchone()
-    except sqlite3.OperationalError:
-        # During transitional startup/tests before migrations create the table.
+        with session_scope(connection_or_session) as session:
+            user_id = session.scalar(
+                select(db_schema.Session.user_id).where(
+                    db_schema.Session.token == token
+                )
+            )
+    except OperationalError:
         return None
-    if row is None:
+    if user_id is None:
         return None
-    return int(row["user_id"])
+    return int(user_id)
 
 
-def delete_session(connection: sqlite3.Connection, token: str) -> bool:
+def delete_session(
+    connection_or_session: sqlite3.Connection | Session, token: str
+) -> bool:
     try:
-        cursor = connection.execute(
-            "DELETE FROM sessions WHERE token = ?",
-            (token,),
-        )
-    except sqlite3.OperationalError:
+        with write_session_scope(connection_or_session) as session:
+            result = session.execute(
+                delete(db_schema.Session).where(db_schema.Session.token == token)
+            )
+            session.commit()
+    except OperationalError:
         return False
-    connection.commit()
-    return cursor.rowcount > 0
+    return bool(result.rowcount)
 
 
-def clear_sessions(connection: sqlite3.Connection) -> None:
+def clear_sessions(connection_or_session: sqlite3.Connection | Session) -> None:
     try:
-        connection.execute("DELETE FROM sessions")
-    except sqlite3.OperationalError:
+        with write_session_scope(connection_or_session) as session:
+            session.execute(delete(db_schema.Session))
+            session.commit()
+    except OperationalError:
         return
-    connection.commit()

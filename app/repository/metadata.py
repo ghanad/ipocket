@@ -1,16 +1,16 @@
 from __future__ import annotations
 
 import sqlite3
-from contextlib import contextmanager
 from typing import Iterable, Optional
 
 from sqlalchemy import delete, func, select, update
 from sqlalchemy.orm import Session
 
 from app import schema as db_schema
-from app.dependencies import create_db_session
 from app.models import Project, Tag, Vendor
 from app.utils import DEFAULT_PROJECT_COLOR, DEFAULT_TAG_COLOR, normalize_hex_color
+from ._db import session_scope as _session_scope
+from ._db import write_session_scope as _write_session_scope
 
 
 def _to_project(model: db_schema.Project) -> Project:
@@ -28,32 +28,6 @@ def _to_vendor(model: db_schema.Vendor) -> Vendor:
 
 def _to_tag(model: db_schema.Tag) -> Tag:
     return Tag(id=int(model.id), name=str(model.name), color=str(model.color))
-
-
-@contextmanager
-def _session_scope(connection_or_session: sqlite3.Connection | Session):
-    if isinstance(connection_or_session, Session):
-        yield connection_or_session
-        return
-
-    # Backward-compatible shim for non-migrated call sites that still pass sqlite3.
-    db_row = connection_or_session.execute("PRAGMA database_list").fetchone()
-    db_path = db_row[2] if db_row and db_row[2] else None
-    session = create_db_session(db_path)
-    try:
-        yield session
-    finally:
-        session.close()
-
-
-@contextmanager
-def _write_session_scope(connection_or_session: sqlite3.Connection | Session):
-    with _session_scope(connection_or_session) as session:
-        try:
-            yield session
-        except Exception:
-            session.rollback()
-            raise
 
 
 def create_project(

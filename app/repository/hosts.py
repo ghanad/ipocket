@@ -3,134 +3,227 @@ from __future__ import annotations
 import sqlite3
 from typing import Iterable, Optional
 
+from sqlalchemy import case, distinct, func, select, update, delete
+from sqlalchemy.exc import IntegrityError
+from sqlalchemy.orm import Session
+
+from app import schema as db_schema
 from app.models import Host, IPAsset, IPAssetType
+
+from ._db import (
+    reraise_as_sqlite_integrity_error,
+    session_scope,
+    write_session_scope,
+)
 from .mappers import _row_to_host, _row_to_ip_asset
 
 
 def _resolve_vendor_id(
-    connection: sqlite3.Connection, vendor_name: Optional[str]
+    connection_or_session: sqlite3.Connection | Session, vendor_name: Optional[str]
 ) -> Optional[int]:
     if vendor_name is None:
         return None
-    row = connection.execute(
-        "SELECT id FROM vendors WHERE name = ?", (vendor_name,)
-    ).fetchone()
-    if row is None:
+    with session_scope(connection_or_session) as session:
+        vendor_id = session.scalar(
+            select(db_schema.Vendor.id).where(db_schema.Vendor.name == vendor_name)
+        )
+    if vendor_id is None:
         raise sqlite3.IntegrityError("Vendor name does not exist.")
-    return int(row["id"])
+    return int(vendor_id)
 
 
 def create_host(
-    connection: sqlite3.Connection,
+    connection_or_session: sqlite3.Connection | Session,
     name: str,
     notes: Optional[str] = None,
     vendor: Optional[str] = None,
 ) -> Host:
-    cursor = connection.execute(
-        "INSERT INTO hosts (name, notes, vendor_id) VALUES (?, ?, ?)",
-        (name, notes, _resolve_vendor_id(connection, vendor)),
-    )
-    connection.commit()
-    return Host(id=cursor.lastrowid, name=name, notes=notes, vendor=vendor)
+    vendor_id = _resolve_vendor_id(connection_or_session, vendor)
+    with write_session_scope(connection_or_session) as session:
+        model = db_schema.Host(name=name, notes=notes, vendor_id=vendor_id)
+        try:
+            session.add(model)
+            session.commit()
+        except IntegrityError as exc:
+            reraise_as_sqlite_integrity_error(exc)
+        session.refresh(model)
+    return Host(id=int(model.id), name=name, notes=notes, vendor=vendor)
 
 
-def list_hosts(connection: sqlite3.Connection) -> Iterable[Host]:
-    rows = connection.execute(
-        "SELECT hosts.id, hosts.name, hosts.notes, vendors.name AS vendor_name FROM hosts LEFT JOIN vendors ON vendors.id = hosts.vendor_id ORDER BY hosts.name"
-    ).fetchall()
+def list_hosts(connection_or_session: sqlite3.Connection | Session) -> Iterable[Host]:
+    with session_scope(connection_or_session) as session:
+        rows = (
+            session.execute(
+                select(
+                    db_schema.Host.id,
+                    db_schema.Host.name,
+                    db_schema.Host.notes,
+                    db_schema.Vendor.name.label("vendor_name"),
+                )
+                .select_from(db_schema.Host)
+                .join(
+                    db_schema.Vendor,
+                    db_schema.Vendor.id == db_schema.Host.vendor_id,
+                    isouter=True,
+                )
+                .order_by(db_schema.Host.name)
+            )
+            .mappings()
+            .all()
+        )
     return [_row_to_host(row) for row in rows]
 
 
-def get_host_by_id(connection: sqlite3.Connection, host_id: int) -> Optional[Host]:
-    row = connection.execute(
-        "SELECT hosts.id, hosts.name, hosts.notes, vendors.name AS vendor_name FROM hosts LEFT JOIN vendors ON vendors.id = hosts.vendor_id WHERE hosts.id = ?",
-        (host_id,),
-    ).fetchone()
+def get_host_by_id(
+    connection_or_session: sqlite3.Connection | Session, host_id: int
+) -> Optional[Host]:
+    with session_scope(connection_or_session) as session:
+        row = (
+            session.execute(
+                select(
+                    db_schema.Host.id,
+                    db_schema.Host.name,
+                    db_schema.Host.notes,
+                    db_schema.Vendor.name.label("vendor_name"),
+                )
+                .select_from(db_schema.Host)
+                .join(
+                    db_schema.Vendor,
+                    db_schema.Vendor.id == db_schema.Host.vendor_id,
+                    isouter=True,
+                )
+                .where(db_schema.Host.id == host_id)
+            )
+            .mappings()
+            .first()
+        )
     return _row_to_host(row) if row else None
 
 
-def get_host_by_name(connection: sqlite3.Connection, name: str) -> Optional[Host]:
-    row = connection.execute(
-        "SELECT hosts.id, hosts.name, hosts.notes, vendors.name AS vendor_name FROM hosts LEFT JOIN vendors ON vendors.id = hosts.vendor_id WHERE hosts.name = ?",
-        (name,),
-    ).fetchone()
+def get_host_by_name(
+    connection_or_session: sqlite3.Connection | Session, name: str
+) -> Optional[Host]:
+    with session_scope(connection_or_session) as session:
+        row = (
+            session.execute(
+                select(
+                    db_schema.Host.id,
+                    db_schema.Host.name,
+                    db_schema.Host.notes,
+                    db_schema.Vendor.name.label("vendor_name"),
+                )
+                .select_from(db_schema.Host)
+                .join(
+                    db_schema.Vendor,
+                    db_schema.Vendor.id == db_schema.Host.vendor_id,
+                    isouter=True,
+                )
+                .where(db_schema.Host.name == name)
+            )
+            .mappings()
+            .first()
+        )
     return _row_to_host(row) if row else None
+
+
+def _list_hosts_with_counts_query(limit: int | None = None, offset: int = 0):
+    project_count_subquery = (
+        select(func.count(distinct(db_schema.IPAsset.project_id)))
+        .where(
+            db_schema.IPAsset.host_id == db_schema.Host.id,
+            db_schema.IPAsset.archived == 0,
+            db_schema.IPAsset.project_id.is_not(None),
+        )
+        .scalar_subquery()
+    )
+    project_name_subquery = (
+        select(db_schema.Project.name)
+        .join(db_schema.IPAsset, db_schema.Project.id == db_schema.IPAsset.project_id)
+        .where(
+            db_schema.IPAsset.host_id == db_schema.Host.id,
+            db_schema.IPAsset.archived == 0,
+            db_schema.IPAsset.project_id.is_not(None),
+        )
+        .order_by(db_schema.Project.name)
+        .limit(1)
+        .scalar_subquery()
+    )
+    project_color_subquery = (
+        select(db_schema.Project.color)
+        .join(db_schema.IPAsset, db_schema.Project.id == db_schema.IPAsset.project_id)
+        .where(
+            db_schema.IPAsset.host_id == db_schema.Host.id,
+            db_schema.IPAsset.archived == 0,
+            db_schema.IPAsset.project_id.is_not(None),
+        )
+        .order_by(db_schema.Project.name)
+        .limit(1)
+        .scalar_subquery()
+    )
+    ip_count_subquery = (
+        select(func.count())
+        .select_from(db_schema.IPAsset)
+        .where(
+            db_schema.IPAsset.host_id == db_schema.Host.id,
+            db_schema.IPAsset.archived == 0,
+        )
+        .scalar_subquery()
+    )
+    os_ips_subquery = (
+        select(func.group_concat(db_schema.IPAsset.ip_address, ", "))
+        .where(
+            db_schema.IPAsset.host_id == db_schema.Host.id,
+            db_schema.IPAsset.archived == 0,
+            db_schema.IPAsset.type == IPAssetType.OS.value,
+        )
+        .order_by(db_schema.IPAsset.ip_address)
+        .scalar_subquery()
+    )
+    bmc_ips_subquery = (
+        select(func.group_concat(db_schema.IPAsset.ip_address, ", "))
+        .where(
+            db_schema.IPAsset.host_id == db_schema.Host.id,
+            db_schema.IPAsset.archived == 0,
+            db_schema.IPAsset.type == IPAssetType.BMC.value,
+        )
+        .order_by(db_schema.IPAsset.ip_address)
+        .scalar_subquery()
+    )
+    statement = (
+        select(
+            db_schema.Host.id.label("id"),
+            db_schema.Host.name.label("name"),
+            db_schema.Host.notes.label("notes"),
+            db_schema.Vendor.name.label("vendor"),
+            project_count_subquery.label("project_count"),
+            project_name_subquery.label("project_name"),
+            project_color_subquery.label("project_color"),
+            ip_count_subquery.label("ip_count"),
+            os_ips_subquery.label("os_ips"),
+            bmc_ips_subquery.label("bmc_ips"),
+        )
+        .select_from(db_schema.Host)
+        .join(
+            db_schema.Vendor,
+            db_schema.Vendor.id == db_schema.Host.vendor_id,
+            isouter=True,
+        )
+        .order_by(db_schema.Host.name)
+    )
+    if limit is not None:
+        statement = statement.limit(limit).offset(offset)
+    return statement
 
 
 def list_hosts_with_ip_counts(
-    connection: sqlite3.Connection,
+    connection_or_session: sqlite3.Connection | Session,
 ) -> list[dict[str, object]]:
-    rows = connection.execute(
-        """
-        SELECT
-            hosts.id AS id,
-            hosts.name AS name,
-            hosts.notes AS notes,
-            vendors.name AS vendor,
-            (
-                SELECT COUNT(DISTINCT ip_assets.project_id)
-                FROM ip_assets
-                WHERE ip_assets.host_id = hosts.id
-                  AND ip_assets.archived = 0
-                  AND ip_assets.project_id IS NOT NULL
-            ) AS project_count,
-            (
-                SELECT projects.name
-                FROM ip_assets
-                JOIN projects ON projects.id = ip_assets.project_id
-                WHERE ip_assets.host_id = hosts.id
-                  AND ip_assets.archived = 0
-                  AND ip_assets.project_id IS NOT NULL
-                ORDER BY projects.name
-                LIMIT 1
-            ) AS project_name,
-            (
-                SELECT projects.color
-                FROM ip_assets
-                JOIN projects ON projects.id = ip_assets.project_id
-                WHERE ip_assets.host_id = hosts.id
-                  AND ip_assets.archived = 0
-                  AND ip_assets.project_id IS NOT NULL
-                ORDER BY projects.name
-                LIMIT 1
-            ) AS project_color,
-            (
-                SELECT COUNT(*)
-                FROM ip_assets
-                WHERE ip_assets.host_id = hosts.id
-                  AND ip_assets.archived = 0
-            ) AS ip_count,
-            (
-                SELECT group_concat(ip_address, ', ')
-                FROM (
-                    SELECT ip_address
-                    FROM ip_assets
-                    WHERE host_id = hosts.id
-                      AND archived = 0
-                      AND type = 'OS'
-                    ORDER BY ip_address
-                )
-            ) AS os_ips,
-            (
-                SELECT group_concat(ip_address, ', ')
-                FROM (
-                    SELECT ip_address
-                    FROM ip_assets
-                    WHERE host_id = hosts.id
-                      AND archived = 0
-                      AND type = 'BMC'
-                    ORDER BY ip_address
-                )
-            ) AS bmc_ips
-        FROM hosts
-        LEFT JOIN vendors ON vendors.id = hosts.vendor_id
-        ORDER BY hosts.name
-        """
-    ).fetchall()
+    with session_scope(connection_or_session) as session:
+        rows = session.execute(_list_hosts_with_counts_query()).mappings().all()
     return [
         {
-            "id": row["id"],
-            "name": row["name"],
+            "id": int(row["id"]),
+            "name": str(row["name"]),
             "notes": row["notes"],
             "vendor": row["vendor"],
             "project_count": int(row["project_count"] or 0),
@@ -144,91 +237,27 @@ def list_hosts_with_ip_counts(
     ]
 
 
-def count_hosts(connection: sqlite3.Connection) -> int:
-    """Return the total number of hosts."""
-    row = connection.execute("SELECT COUNT(*) AS count FROM hosts").fetchone()
-    return row["count"] if row else 0
+def count_hosts(connection_or_session: sqlite3.Connection | Session) -> int:
+    with session_scope(connection_or_session) as session:
+        total = session.scalar(select(func.count()).select_from(db_schema.Host))
+    return int(total or 0)
 
 
 def list_hosts_with_ip_counts_paginated(
-    connection: sqlite3.Connection,
+    connection_or_session: sqlite3.Connection | Session,
     limit: int,
     offset: int,
 ) -> list[dict[str, object]]:
-    """Return a paginated list of hosts with IP counts."""
-    rows = connection.execute(
-        """
-        SELECT
-            hosts.id AS id,
-            hosts.name AS name,
-            hosts.notes AS notes,
-            vendors.name AS vendor,
-            (
-                SELECT COUNT(DISTINCT ip_assets.project_id)
-                FROM ip_assets
-                WHERE ip_assets.host_id = hosts.id
-                  AND ip_assets.archived = 0
-                  AND ip_assets.project_id IS NOT NULL
-            ) AS project_count,
-            (
-                SELECT projects.name
-                FROM ip_assets
-                JOIN projects ON projects.id = ip_assets.project_id
-                WHERE ip_assets.host_id = hosts.id
-                  AND ip_assets.archived = 0
-                  AND ip_assets.project_id IS NOT NULL
-                ORDER BY projects.name
-                LIMIT 1
-            ) AS project_name,
-            (
-                SELECT projects.color
-                FROM ip_assets
-                JOIN projects ON projects.id = ip_assets.project_id
-                WHERE ip_assets.host_id = hosts.id
-                  AND ip_assets.archived = 0
-                  AND ip_assets.project_id IS NOT NULL
-                ORDER BY projects.name
-                LIMIT 1
-            ) AS project_color,
-            (
-                SELECT COUNT(*)
-                FROM ip_assets
-                WHERE ip_assets.host_id = hosts.id
-                  AND ip_assets.archived = 0
-            ) AS ip_count,
-            (
-                SELECT group_concat(ip_address, ', ')
-                FROM (
-                    SELECT ip_address
-                    FROM ip_assets
-                    WHERE host_id = hosts.id
-                      AND archived = 0
-                      AND type = 'OS'
-                    ORDER BY ip_address
-                )
-            ) AS os_ips,
-            (
-                SELECT group_concat(ip_address, ', ')
-                FROM (
-                    SELECT ip_address
-                    FROM ip_assets
-                    WHERE host_id = hosts.id
-                      AND archived = 0
-                      AND type = 'BMC'
-                    ORDER BY ip_address
-                )
-            ) AS bmc_ips
-        FROM hosts
-        LEFT JOIN vendors ON vendors.id = hosts.vendor_id
-        ORDER BY hosts.name
-        LIMIT ? OFFSET ?
-        """,
-        (limit, offset),
-    ).fetchall()
+    with session_scope(connection_or_session) as session:
+        rows = (
+            session.execute(_list_hosts_with_counts_query(limit=limit, offset=offset))
+            .mappings()
+            .all()
+        )
     return [
         {
-            "id": row["id"],
-            "name": row["name"],
+            "id": int(row["id"]),
+            "name": str(row["name"]),
             "notes": row["notes"],
             "vendor": row["vendor"],
             "project_count": int(row["project_count"] or 0),
@@ -243,12 +272,31 @@ def list_hosts_with_ip_counts_paginated(
 
 
 def get_host_linked_assets_grouped(
-    connection: sqlite3.Connection, host_id: int
+    connection_or_session: sqlite3.Connection | Session, host_id: int
 ) -> dict[str, list[IPAsset]]:
-    rows = connection.execute(
-        "SELECT * FROM ip_assets WHERE host_id = ? AND archived = 0 ORDER BY ip_address",
-        (host_id,),
-    ).fetchall()
+    with session_scope(connection_or_session) as session:
+        rows = (
+            session.execute(
+                select(
+                    db_schema.IPAsset.id,
+                    db_schema.IPAsset.ip_address,
+                    db_schema.IPAsset.type,
+                    db_schema.IPAsset.project_id,
+                    db_schema.IPAsset.host_id,
+                    db_schema.IPAsset.notes,
+                    db_schema.IPAsset.archived,
+                    db_schema.IPAsset.created_at,
+                    db_schema.IPAsset.updated_at,
+                )
+                .where(
+                    db_schema.IPAsset.host_id == host_id,
+                    db_schema.IPAsset.archived == 0,
+                )
+                .order_by(db_schema.IPAsset.ip_address)
+            )
+            .mappings()
+            .all()
+        )
     assets = [_row_to_ip_asset(row) for row in rows]
     return {
         "os": [a for a in assets if a.asset_type == IPAssetType.OS],
@@ -260,54 +308,81 @@ def get_host_linked_assets_grouped(
 
 
 def list_host_pair_ips_for_hosts(
-    connection: sqlite3.Connection,
+    connection_or_session: sqlite3.Connection | Session,
     host_ids: Iterable[int],
 ) -> dict[int, dict[str, list[str]]]:
     host_ids_list = sorted({host_id for host_id in host_ids if host_id is not None})
     if not host_ids_list:
         return {}
-    placeholders = ",".join(["?"] * len(host_ids_list))
-    rows = connection.execute(
-        f"""
-        SELECT host_id, type, ip_address
-        FROM ip_assets
-        WHERE archived = 0
-          AND host_id IN ({placeholders})
-          AND type IN ('OS', 'BMC')
-        ORDER BY host_id, type, ip_address
-        """,
-        host_ids_list,
-    ).fetchall()
+    with session_scope(connection_or_session) as session:
+        rows = session.execute(
+            select(
+                db_schema.IPAsset.host_id,
+                db_schema.IPAsset.type,
+                db_schema.IPAsset.ip_address,
+            )
+            .where(
+                db_schema.IPAsset.archived == 0,
+                db_schema.IPAsset.host_id.in_(host_ids_list),
+                db_schema.IPAsset.type.in_(
+                    [IPAssetType.OS.value, IPAssetType.BMC.value]
+                ),
+            )
+            .order_by(
+                db_schema.IPAsset.host_id,
+                db_schema.IPAsset.type,
+                db_schema.IPAsset.ip_address,
+            )
+        ).all()
     mapping: dict[int, dict[str, list[str]]] = {
         host_id: {"OS": [], "BMC": []} for host_id in host_ids_list
     }
-    for row in rows:
-        mapping.setdefault(row["host_id"], {"OS": [], "BMC": []})[row["type"]].append(
-            row["ip_address"]
+    for host_id, asset_type, ip_address in rows:
+        mapping.setdefault(int(host_id), {"OS": [], "BMC": []})[str(asset_type)].append(
+            str(ip_address)
         )
     return mapping
 
 
 def update_host(
-    connection: sqlite3.Connection,
+    connection_or_session: sqlite3.Connection | Session,
     host_id: int,
     name: Optional[str] = None,
     notes: Optional[str] = None,
     vendor: Optional[str] = None,
 ) -> Optional[Host]:
-    connection.execute(
-        "UPDATE hosts SET name = COALESCE(?, name), notes = COALESCE(?, notes), vendor_id = COALESCE(?, vendor_id), updated_at = CURRENT_TIMESTAMP WHERE id = ?",
-        (name, notes, _resolve_vendor_id(connection, vendor), host_id),
-    )
-    connection.commit()
-    return get_host_by_id(connection, host_id)
+    vendor_id = _resolve_vendor_id(connection_or_session, vendor)
+    with write_session_scope(connection_or_session) as session:
+        values: dict[str, object] = {"updated_at": func.current_timestamp()}
+        if name is not None:
+            values["name"] = name
+        if notes is not None:
+            values["notes"] = notes
+        if vendor is not None:
+            values["vendor_id"] = vendor_id
+        try:
+            session.execute(
+                update(db_schema.Host)
+                .where(db_schema.Host.id == host_id)
+                .values(**values)
+            )
+            session.commit()
+        except IntegrityError as exc:
+            reraise_as_sqlite_integrity_error(exc)
+    return get_host_by_id(connection_or_session, host_id)
 
 
-def delete_host(connection: sqlite3.Connection, host_id: int) -> bool:
-    connection.execute(
-        "UPDATE ip_assets SET host_id = NULL, updated_at = CURRENT_TIMESTAMP WHERE host_id = ?",
-        (host_id,),
-    )
-    cursor = connection.execute("DELETE FROM hosts WHERE id = ?", (host_id,))
-    connection.commit()
-    return cursor.rowcount > 0
+def delete_host(
+    connection_or_session: sqlite3.Connection | Session, host_id: int
+) -> bool:
+    with write_session_scope(connection_or_session) as session:
+        session.execute(
+            update(db_schema.IPAsset)
+            .where(db_schema.IPAsset.host_id == host_id)
+            .values(host_id=None, updated_at=func.current_timestamp())
+        )
+        result = session.execute(
+            delete(db_schema.Host).where(db_schema.Host.id == host_id)
+        )
+        session.commit()
+    return bool(result.rowcount)

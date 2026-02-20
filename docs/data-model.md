@@ -10,6 +10,10 @@
 - tags (many-to-many via `ip_asset_tags`)
 - timestamps (`created_at`, `updated_at`)
 
+Create behavior with archived records:
+- If a create request uses an `ip_address` that exists only as an archived record, ipocket restores that same row (`archived=0`) and updates its fields instead of creating a second row.
+- If the same `ip_address` already exists as an active record, create still fails with duplicate-address conflict.
+
 ## Project
 - `name` (unique)
 - `description` (optional)

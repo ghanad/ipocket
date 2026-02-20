@@ -217,6 +217,35 @@ def test_delete_ip_asset_returns_false_for_unknown_ip(_setup_connection) -> None
     assert deleted is False
 
 
+def test_create_ip_asset_restores_archived_asset_with_same_ip(
+    _setup_connection,
+) -> None:
+    connection = _setup_connection()
+    original = create_ip_asset(
+        connection,
+        ip_address="10.0.9.10",
+        asset_type=IPAssetType.VM,
+        notes="old",
+    )
+    archive_ip_asset(connection, original.ip_address)
+
+    restored = create_ip_asset(
+        connection,
+        ip_address="10.0.9.10",
+        asset_type=IPAssetType.OS,
+        notes="new",
+        tags=["restored"],
+    )
+
+    assert restored.id == original.id
+    assert restored.archived is False
+    assert restored.asset_type == IPAssetType.OS
+    assert restored.notes == "new"
+    assert list_tags_for_ip_assets(connection, [restored.id])[restored.id] == [
+        "restored"
+    ]
+
+
 def test_list_active_ip_assets_paginated_with_search(_setup_connection) -> None:
     connection = _setup_connection()
     create_ip_asset(

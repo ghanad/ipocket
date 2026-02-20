@@ -140,3 +140,31 @@ def test_archive_ip_asset_success_and_not_found(
 
     missing = client.post("/ip-assets/10.203.0.99/archive", headers=headers)
     assert missing.status_code == 404
+
+
+def test_create_ip_asset_reuses_archived_record(
+    client, _create_user, _login, _auth_headers
+) -> None:
+    headers = _editor_headers(_create_user, _login, _auth_headers)
+
+    created = client.post(
+        "/ip-assets",
+        headers=headers,
+        json={"ip_address": "10.204.0.10", "type": "VM", "notes": "original"},
+    )
+    assert created.status_code == 200
+    created_id = created.json()["id"]
+
+    archived = client.post("/ip-assets/10.204.0.10/archive", headers=headers)
+    assert archived.status_code == 204
+
+    recreated = client.post(
+        "/ip-assets",
+        headers=headers,
+        json={"ip_address": "10.204.0.10", "type": "OS", "notes": "restored"},
+    )
+    assert recreated.status_code == 200
+    payload = recreated.json()
+    assert payload["id"] == created_id
+    assert payload["type"] == "OS"
+    assert payload["notes"] == "restored"
