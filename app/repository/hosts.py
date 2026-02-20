@@ -3,7 +3,7 @@ from __future__ import annotations
 import sqlite3
 from typing import Iterable, Optional
 
-from sqlalchemy import case, distinct, func, select, update, delete
+from sqlalchemy import distinct, func, select, update, delete
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
