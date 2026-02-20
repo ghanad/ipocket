@@ -150,21 +150,21 @@ def create_vendor(
     connection_or_session: sqlite3.Connection | Session, name: str
 ) -> Vendor:
     with _write_session_scope(connection_or_session) as session:
-        model = db_schema.Vendor(name=name)
-        session.add(model)
+        vendor_model = db_schema.Vendor(name=name)
+        session.add(vendor_model)
         session.commit()
-        session.refresh(model)
-        return _to_vendor(model)
+        session.refresh(vendor_model)
+        return _to_vendor(vendor_model)
 
 
 def list_vendors(
     connection_or_session: sqlite3.Connection | Session,
 ) -> Iterable[Vendor]:
     with _session_scope(connection_or_session) as session:
-        models = session.scalars(
+        vendor_models = session.scalars(
             select(db_schema.Vendor).order_by(db_schema.Vendor.name)
         ).all()
-        return [_to_vendor(model) for model in models]
+        return [_to_vendor(vendor_model) for vendor_model in vendor_models]
 
 
 def list_vendor_ip_counts(
@@ -172,7 +172,10 @@ def list_vendor_ip_counts(
 ) -> dict[int, int]:
     with _session_scope(connection_or_session) as session:
         rows = session.execute(
-            select(db_schema.Host.vendor_id, func.count().label("total"))
+            select(
+                db_schema.Host.vendor_id,
+                func.count(db_schema.IPAsset.id).label("total"),
+            )
             .join(db_schema.IPAsset, db_schema.IPAsset.host_id == db_schema.Host.id)
             .where(
                 db_schema.Host.vendor_id.is_not(None),
@@ -205,16 +208,17 @@ def update_vendor(
     connection_or_session: sqlite3.Connection | Session, vendor_id: int, name: str
 ) -> Optional[Vendor]:
     with _write_session_scope(connection_or_session) as session:
-        result = session.execute(
+        existing = session.get(db_schema.Vendor, vendor_id)
+        if existing is None:
+            return None
+        session.execute(
             update(db_schema.Vendor)
             .where(db_schema.Vendor.id == vendor_id)
             .values(name=name, updated_at=func.current_timestamp())
         )
         session.commit()
-        if result.rowcount == 0:
-            return None
-        model = session.get(db_schema.Vendor, vendor_id)
-        return _to_vendor(model) if model else None
+        session.refresh(existing)
+        return _to_vendor(existing)
 
 
 def delete_vendor(
@@ -240,19 +244,19 @@ def create_tag(
 ) -> Tag:
     normalized_color = normalize_hex_color(color) or DEFAULT_TAG_COLOR
     with _write_session_scope(connection_or_session) as session:
-        model = db_schema.Tag(name=name, color=normalized_color)
-        session.add(model)
+        tag_model = db_schema.Tag(name=name, color=normalized_color)
+        session.add(tag_model)
         session.commit()
-        session.refresh(model)
-        return _to_tag(model)
+        session.refresh(tag_model)
+        return _to_tag(tag_model)
 
 
 def list_tags(connection_or_session: sqlite3.Connection | Session) -> Iterable[Tag]:
     with _session_scope(connection_or_session) as session:
-        models = session.scalars(
+        tag_models = session.scalars(
             select(db_schema.Tag).order_by(db_schema.Tag.name)
         ).all()
-        return [_to_tag(model) for model in models]
+        return [_to_tag(tag_model) for tag_model in tag_models]
 
 
 def list_tag_ip_counts(
@@ -260,7 +264,10 @@ def list_tag_ip_counts(
 ) -> dict[int, int]:
     with _session_scope(connection_or_session) as session:
         rows = session.execute(
-            select(db_schema.IPAssetTag.tag_id, func.count().label("total"))
+            select(
+                db_schema.IPAssetTag.tag_id,
+                func.count(db_schema.IPAsset.id).label("total"),
+            )
             .join(
                 db_schema.IPAsset,
                 db_schema.IPAsset.id == db_schema.IPAssetTag.ip_asset_id,
@@ -295,7 +302,10 @@ def update_tag(
 ) -> Optional[Tag]:
     normalized_color = normalize_hex_color(color) or DEFAULT_TAG_COLOR
     with _write_session_scope(connection_or_session) as session:
-        result = session.execute(
+        existing = session.get(db_schema.Tag, tag_id)
+        if existing is None:
+            return None
+        session.execute(
             update(db_schema.Tag)
             .where(db_schema.Tag.id == tag_id)
             .values(
@@ -305,10 +315,8 @@ def update_tag(
             )
         )
         session.commit()
-        if result.rowcount == 0:
-            return None
-        model = session.get(db_schema.Tag, tag_id)
-        return _to_tag(model) if model else None
+        session.refresh(existing)
+        return _to_tag(existing)
 
 
 def delete_tag(
