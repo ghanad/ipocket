@@ -85,6 +85,7 @@ ipocket is a lightweight IP inventory app to track addresses and their project a
 - `hosts.csv` export now includes `project_name`, `os_ip`, and `bmc_ip` so host exports can round-trip through CSV import without manual column edits.
 - Import data from bundle.json or CSV with dry-run support and upserts from the Data Ops Import tab.
 - Upload Nmap XML from the Data Ops Import tab to discover reachable IPs and add them as `OTHER` assets, with inline example commands.
+- Data Ops and API import uploads enforce a per-file size cap of `10 MB` and return HTTP `413` when exceeded.
 - Sidebar includes a **Connectors** page with tabs (`Overview` / `vCenter` / `Prometheus`) so operators can run import connectors directly from UI.
 - **Connectors → vCenter** supports both `dry-run` and `apply` execution modes, now runs as a background job from UI to avoid long request blocking, and shows an in-page execution log/status on the connector tab.
 - Manual vCenter connector is available via `python -m app.connectors.vcenter` (ESXi hosts as `OS` + tag `esxi`, VMs as `VM`) with file export mode and local DB dry-run/apply modes (`--db-path`); on update it always overwrites `type`, merges connector tags into existing tags, and only writes connector notes when the existing note is empty.
@@ -131,6 +132,7 @@ Vendors are managed in the shared Library page tabs and are selectable when crea
 - UI route handlers are organized under `app/routes/ui/` with domain packages for larger areas:
   `app/routes/ui/ip_assets/`, `app/routes/ui/hosts/`, `app/routes/ui/ranges/`, `app/routes/ui/settings/`, plus focused modules such as `auth.py`, `account.py`, `dashboard.py`, `data_ops.py`, and `connectors.py`. `app/routes/ui/__init__.py` remains the single aggregated router entrypoint.
 - UI utility internals are split into `app/routes/ui/_utils/` modules (`session.py`, `rendering.py`, `parsing.py`, `assets.py`, `exporting.py`) and `app/routes/ui/utils.py` now acts as a compatibility facade so existing imports stay stable.
+- UI flash notifications are cookie-backed and now truncate each message to a safe length (`400` chars) before cookie encoding to avoid oversized cookie failures.
 - IP-assets helper logic lives in `app/routes/ui/ip_assets/helpers.py`, while routes are split by concern (`listing.py`, `forms.py`, `actions.py`) to keep assignment/listing and mutation flows separate without changing endpoint behavior.
 - Developer compatibility note: `app/routes/ui/__init__.py` re-exports UI auth/session helpers (including `SESSION_COOKIE`) so existing integrations and tests continue working after modularization.
 

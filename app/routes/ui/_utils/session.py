@@ -21,6 +21,7 @@ SESSION_SECRET = os.getenv("SESSION_SECRET", "dev-session-secret").encode("utf-8
 FLASH_COOKIE = "ipocket_flash"
 FLASH_ALLOWED_TYPES = {"success", "info", "error", "warning"}
 FLASH_MAX_MESSAGES = 5
+FLASH_MAX_MESSAGE_LENGTH = 400
 
 
 def _sign_session_value(value: str) -> str:
@@ -51,8 +52,35 @@ def _normalize_flash_type(value: Optional[str]) -> str:
     return "info"
 
 
+def _normalize_flash_message(value: object) -> str:
+    message = str(value or "").strip()
+    if not message:
+        return ""
+    return message[:FLASH_MAX_MESSAGE_LENGTH]
+
+
+def _sanitize_flash_messages(raw_messages: list[object]) -> list[dict[str, str]]:
+    messages: list[dict[str, str]] = []
+    for item in raw_messages:
+        if not isinstance(item, dict):
+            continue
+        message = _normalize_flash_message(item.get("message"))
+        if not message:
+            continue
+        messages.append(
+            {
+                "type": _normalize_flash_type(item.get("type")),
+                "message": message,
+            }
+        )
+        if len(messages) >= FLASH_MAX_MESSAGES:
+            break
+    return messages
+
+
 def _encode_flash_payload(messages: list[dict[str, str]]) -> str:
-    serialized = json.dumps(messages, separators=(",", ":"))
+    sanitized_messages = _sanitize_flash_messages(list(messages))
+    serialized = json.dumps(sanitized_messages, separators=(",", ":"))
     return base64.urlsafe_b64encode(serialized.encode("utf-8")).decode("utf-8")
 
 
@@ -78,26 +106,14 @@ def _load_flash_messages(request: Request) -> list[dict[str, str]]:
     if not isinstance(data, list):
         return []
 
-    messages: list[dict[str, str]] = []
-    for item in data:
-        if not isinstance(item, dict):
-            continue
-        message = str(item.get("message") or "").strip()
-        if not message:
-            continue
-        messages.append(
-            {
-                "type": _normalize_flash_type(item.get("type")),
-                "message": message,
-            }
-        )
-    return messages[:FLASH_MAX_MESSAGES]
+    return _sanitize_flash_messages(data)
 
 
 def _store_flash_messages(response: Response, messages: list[dict[str, str]]) -> None:
-    if not messages:
+    sanitized_messages = _sanitize_flash_messages(list(messages))
+    if not sanitized_messages:
         return
-    payload = _encode_flash_payload(messages[:FLASH_MAX_MESSAGES])
+    payload = _encode_flash_payload(sanitized_messages)
     response.set_cookie(
         FLASH_COOKIE,
         _sign_session_value(payload),

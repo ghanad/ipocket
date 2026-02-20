@@ -9,6 +9,7 @@ from app import auth, db, exports, repository
 from app.imports import BundleImporter, ImportAuditContext, run_import
 from app.main import app
 from app.models import IPAssetType, UserRole
+from app.routes.api import imports as imports_routes
 
 
 @pytest.fixture
@@ -284,6 +285,40 @@ def test_csv_ignores_empty_optional_file(client) -> None:
     summary = response.json()["summary"]
     assert summary["ip_assets"]["would_create"] == 1
     assert summary["hosts"]["would_create"] == 0
+
+
+def test_api_bundle_import_rejects_files_over_size_limit(client, monkeypatch) -> None:
+    test_client, db_path = client
+    _create_user(db_path, "viewer-limit", "viewer-pass", UserRole.VIEWER)
+    token = _login(test_client, "viewer-limit", "viewer-pass")
+    monkeypatch.setattr(imports_routes, "IMPORT_UPLOAD_MAX_BYTES", 10)
+
+    response = test_client.post(
+        "/import/bundle?dry_run=1",
+        headers=_auth_headers(token),
+        files={"file": ("bundle.json", b"01234567890", "application/json")},
+    )
+    assert response.status_code == 413
+    assert (
+        response.json()["detail"] == "Uploaded file exceeds maximum size of 10 bytes."
+    )
+
+
+def test_api_csv_import_rejects_files_over_size_limit(client, monkeypatch) -> None:
+    test_client, db_path = client
+    _create_user(db_path, "viewer-csv-limit", "viewer-pass", UserRole.VIEWER)
+    token = _login(test_client, "viewer-csv-limit", "viewer-pass")
+    monkeypatch.setattr(imports_routes, "IMPORT_UPLOAD_MAX_BYTES", 10)
+
+    response = test_client.post(
+        "/import/csv?dry_run=1",
+        headers=_auth_headers(token),
+        files={"hosts": ("hosts.csv", b"01234567890", "text/csv")},
+    )
+    assert response.status_code == 413
+    assert (
+        response.json()["detail"] == "Uploaded file exceeds maximum size of 10 bytes."
+    )
 
 
 def test_csv_apply_clears_existing_ip_asset_note_when_note_cell_is_empty(

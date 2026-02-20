@@ -33,6 +33,7 @@ from ._utils.rendering import (
 )
 from ._utils.session import (
     FLASH_COOKIE as FLASH_COOKIE,
+    FLASH_MAX_MESSAGE_LENGTH as FLASH_MAX_MESSAGE_LENGTH,
     FLASH_MAX_MESSAGES as FLASH_MAX_MESSAGES,
     SESSION_COOKIE as SESSION_COOKIE,
     _add_flash_message as _add_flash_message,
@@ -54,6 +55,7 @@ from ._utils.session import (
 __all__ = [
     "SESSION_COOKIE",
     "FLASH_COOKIE",
+    "FLASH_MAX_MESSAGE_LENGTH",
     "FLASH_MAX_MESSAGES",
     "get_current_ui_user",
     "require_ui_editor",
