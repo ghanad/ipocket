@@ -17,7 +17,7 @@ ipocket is a lightweight IP inventory app to track addresses and their project a
 - Rows-per-page selector in the IP assets table footer is isolated from global table click handlers, so its dropdown stays open reliably while choosing a page size.
 - Changing rows-per-page now preserves active IP assets filters (search text, project/type, assignment, archived state, tags) instead of resetting the list query.
 - IP assets list keeps row actions (Edit/Delete) and bulk-selection controls active after HTMX pagination/filter updates (no manual page refresh needed).
-- IP assets pagination/filtering/sorting now execute directly in SQL (including `LIMIT/OFFSET`) instead of Python in-memory slicing, so large inventories page efficiently while preserving deterministic IP ordering across IPv4/IPv6/fallback values.
+- IP assets pagination/filtering/sorting now execute directly in SQL (including `LIMIT/OFFSET`) using persisted IPv4 integer values (`ip_int`) for fast numeric ordering, with text fallback ordering for non-IPv4 values.
 - IP assets list rows use compact spacing for IP text and Project/Type chips to keep more records visible per page.
 - IP assets table keeps `IP address`, `Project`, and `Type` columns narrow because their values are bounded, leaving more horizontal space for Tags and Notes.
 - IP assets list uses a right-side drawer for both adding and editing IPs without leaving the list view.
@@ -86,9 +86,9 @@ ipocket is a lightweight IP inventory app to track addresses and their project a
 - Import data from bundle.json or CSV with dry-run support and upserts from the Data Ops Import tab.
 - Upload Nmap XML from the Data Ops Import tab to discover reachable IPs and add them as `OTHER` assets, with inline example commands.
 - Sidebar includes a **Connectors** page with tabs (`Overview` / `vCenter` / `Prometheus`) so operators can run import connectors directly from UI.
-- **Connectors → vCenter** supports both `dry-run` and `apply` execution modes and shows an in-page execution log (inventory summary + warnings/errors) after each run.
+- **Connectors → vCenter** supports both `dry-run` and `apply` execution modes, now runs as a background job from UI to avoid long request blocking, and shows an in-page execution log/status on the connector tab.
 - Manual vCenter connector is available via `python -m app.connectors.vcenter` (ESXi hosts as `OS` + tag `esxi`, VMs as `VM`) with file export mode and local DB dry-run/apply modes (`--db-path`); on update it always overwrites `type`, merges connector tags into existing tags, and only writes connector notes when the existing note is empty.
-- **Connectors → Prometheus** imports IPs from Prometheus `api/v1/query` vector results by extracting IPv4 values from a chosen label (for node_exporter this is commonly `instance`), supports `dry-run`/`apply` from UI, keeps a CLI path via `python -m app.connectors.prometheus`, preserves non-empty existing IP notes and existing `type` during updates, and now shows per-IP dry-run change details (`CREATE`/`UPDATE`/`SKIP` with field-level diffs).
+- **Connectors → Prometheus** imports IPs from Prometheus `api/v1/query` vector results by extracting IPv4 values from a chosen label (for node_exporter this is commonly `instance`), supports `dry-run`/`apply` from UI background jobs, keeps a CLI path via `python -m app.connectors.prometheus`, preserves non-empty existing IP notes and existing `type` during updates, and shows per-IP dry-run change details (`CREATE`/`UPDATE`/`SKIP` with field-level diffs).
 - Connector dry-run/apply imports execute in-process with the active DB connection (no loopback HTTP request to ipocket `/import/bundle`).
 - Successful `apply` executions for bundle/CSV imports and connector runs now write run-level audit entries (`target_type=IMPORT_RUN`) with source + create/update/skip/warning/error summary; `dry-run` executions are not audited at run level.
 - Prometheus metrics on `/metrics`
@@ -100,6 +100,7 @@ ipocket is a lightweight IP inventory app to track addresses and their project a
 - Repository operations now run through SQLAlchemy ORM/Core sessions (`app/schema.py`) across assets/hosts/ranges/metadata/users/audit/summary/sessions, while keeping backward compatibility for callers that still pass `sqlite3.Connection` objects.
 - Internal IP-asset repository logic is further split into focused helpers: `app/repository/_asset_filters.py` (filter query assembly), `app/repository/_asset_tags.py` (tag mappings/persistence), and `app/repository/_asset_audit.py` (audit change summaries); `app/repository/assets.py` remains the backward-compatible public API module.
 - The IP asset listing path adds DB indexes (`ip_assets` archived/filter columns plus tag lookup indexes) to keep paginated list and tag-filter queries responsive on larger datasets.
+- IP assets now persist an optional integer IPv4 representation (`ip_int`) for DB-side numeric sorting and CIDR range utilization queries at larger scale.
 - Creating an IP that matches an existing archived record now restores (un-archives) that same record instead of returning a duplicate-address conflict.
 
 ## Note

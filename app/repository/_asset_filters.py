@@ -10,7 +10,7 @@ from app import schema as db_schema
 from app.models import IPAsset, IPAssetType
 
 from ._db import session_scope
-from .mappers import _ip_address_sort_key, _row_to_ip_asset
+from .mappers import _row_to_ip_asset
 
 
 def _apply_asset_filters(
@@ -120,17 +120,13 @@ def list_active_assets(
         tag_names=tag_names,
         archived_only=archived_only,
     )
-    with session_scope(connection_or_session) as session:
-        rows = session.execute(statement).mappings().all()
-    rows_sorted = sorted(
-        rows,
-        key=lambda row: (
-            _ip_address_sort_key(str(row["ip_address"]))[0],
-            _ip_address_sort_key(str(row["ip_address"]))[1],
-            _ip_address_sort_key(str(row["ip_address"]))[2],
-            str(row["ip_address"]),
-        ),
+    statement = statement.order_by(
+        db_schema.IPAsset.ip_int.is_(None),
+        db_schema.IPAsset.ip_int,
+        db_schema.IPAsset.ip_address,
     )
     if limit is not None:
-        rows_sorted = rows_sorted[offset : offset + limit]
-    return [_row_to_ip_asset(row) for row in rows_sorted]
+        statement = statement.limit(limit).offset(offset)
+    with session_scope(connection_or_session) as session:
+        rows = session.execute(statement).mappings().all()
+    return [_row_to_ip_asset(row) for row in rows]

@@ -21,3 +21,4 @@ Connector note: connectors import through the same IP upsert pipeline (Prometheu
 
 Account note: self-service password change (`/ui/account/password`) is a UI/audit behavior change only and does not add or alter `/metrics` counters.
 Auth/session note: bcrypt password hashing and database-backed session tokens do not add or alter `/metrics` counters.
+Performance note: DB-side `ip_int` sorting/range filtering and background connector execution improve scale behavior but do not change `/metrics` names or payload fields.

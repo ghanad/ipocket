@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session
 
 from app import schema as db_schema
 from app.models import IPAsset, IPAssetType, User
-from app.utils import normalize_tag_names
+from app.utils import ipv4_to_int, normalize_tag_names
 
 from ._asset_audit import (
     _summarize_ip_asset_changes as _summarize_ip_asset_changes,
@@ -89,6 +89,7 @@ def create_ip_asset(
                 update(db_schema.IPAsset)
                 .where(db_schema.IPAsset.id == int(existing["id"]))
                 .values(
+                    ip_int=ipv4_to_int(ip_address),
                     type=asset_type.value,
                     project_id=project_id,
                     host_id=resolved_host_id,
@@ -120,6 +121,7 @@ def create_ip_asset(
 
         model = db_schema.IPAsset(
             ip_address=ip_address,
+            ip_int=ipv4_to_int(ip_address),
             type=asset_type.value,
             project_id=project_id,
             host_id=resolved_host_id,
@@ -203,7 +205,11 @@ def list_ip_assets_by_ids(
             session.execute(
                 select(*_asset_columns())
                 .where(db_schema.IPAsset.id.in_(asset_ids_list))
-                .order_by(db_schema.IPAsset.ip_address)
+                .order_by(
+                    db_schema.IPAsset.ip_int.is_(None),
+                    db_schema.IPAsset.ip_int,
+                    db_schema.IPAsset.ip_address,
+                )
             )
             .mappings()
             .all()
@@ -309,7 +315,11 @@ def list_sd_targets(
         statement = statement.where(
             db_schema.IPAsset.type.in_([asset_type.value for asset_type in asset_types])
         )
-    statement = statement.order_by(db_schema.IPAsset.ip_address)
+    statement = statement.order_by(
+        db_schema.IPAsset.ip_int.is_(None),
+        db_schema.IPAsset.ip_int,
+        db_schema.IPAsset.ip_address,
+    )
     with session_scope(connection_or_session) as session:
         rows = session.execute(statement).mappings().all()
 
@@ -372,7 +382,11 @@ def list_ip_assets_for_export(
         statement = statement.where(db_schema.Project.name == project_name)
     if host_name:
         statement = statement.where(db_schema.Host.name == host_name)
-    statement = statement.order_by(db_schema.IPAsset.ip_address)
+    statement = statement.order_by(
+        db_schema.IPAsset.ip_int.is_(None),
+        db_schema.IPAsset.ip_int,
+        db_schema.IPAsset.ip_address,
+    )
     with session_scope(connection_or_session) as session:
         rows = session.execute(statement).mappings().all()
     tag_map = list_tags_for_ip_assets(

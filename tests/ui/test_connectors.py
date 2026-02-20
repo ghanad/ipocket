@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import time
+
 from app import db, repository
 from app.connectors.prometheus import PrometheusMetricRecord
 from app.connectors.vcenter import VCenterHostRecord, VCenterVmRecord
@@ -8,6 +10,12 @@ from app.main import app
 from app.models import IPAssetType, User, UserRole
 from app.routes import ui
 from app.routes.ui import connectors as connectors_routes
+
+
+def _resolve_connector_response(client, response):
+    if response.status_code != 303:
+        return response
+    return client.get(response.headers["location"])
 
 
 def test_connectors_page_renders_sidebar_link_and_tabs(client) -> None:
@@ -52,6 +60,7 @@ def test_vcenter_connector_apply_mode_requires_editor_role(client) -> None:
     try:
         response = client.post(
             "/ui/connectors/vcenter/run",
+            follow_redirects=True,
             data={
                 "server": "vc.example.local",
                 "username": "administrator@vsphere.local",
@@ -80,6 +89,7 @@ def test_vcenter_connector_dry_run_allows_non_editor(client, monkeypatch) -> Non
     try:
         response = client.post(
             "/ui/connectors/vcenter/run",
+            follow_redirects=True,
             data={
                 "server": "vc.example.local",
                 "username": "administrator@vsphere.local",
@@ -91,9 +101,10 @@ def test_vcenter_connector_dry_run_allows_non_editor(client, monkeypatch) -> Non
     finally:
         app.dependency_overrides.pop(ui.get_current_ui_user, None)
 
+    response = _resolve_connector_response(client, response)
     assert response.status_code == 200
     assert "Import mode: dry-run." in response.text
-    assert "vCenter dry-run completed successfully." in response.text
+    assert "vCenter dry-run: Connector completed successfully." in response.text
     assert "toast-success" in response.text
 
 
@@ -135,6 +146,7 @@ def test_vcenter_connector_ui_runs_dry_run_and_shows_logs(client, monkeypatch) -
     try:
         response = client.post(
             "/ui/connectors/vcenter/run",
+            follow_redirects=True,
             data={
                 "server": "vc.example.local",
                 "username": "administrator@vsphere.local",
@@ -146,12 +158,13 @@ def test_vcenter_connector_ui_runs_dry_run_and_shows_logs(client, monkeypatch) -
     finally:
         app.dependency_overrides.pop(ui.get_current_ui_user, None)
 
+    response = _resolve_connector_response(client, response)
     assert response.status_code == 200
     assert "Execution log" in response.text
     assert "Collected 1 hosts and 1 VMs." in response.text
     assert "Import mode: dry-run." in response.text
     assert "Connector warnings: 1" in response.text
-    assert "completed with warnings" in response.text
+    assert "vCenter dry-run: Connector completed with warnings." in response.text
     assert "toast-warning" in response.text
 
 
@@ -162,6 +175,7 @@ def test_vcenter_connector_ui_validates_required_fields(client) -> None:
     try:
         response = client.post(
             "/ui/connectors/vcenter/run",
+            follow_redirects=True,
             data={"server": "", "username": "", "password": "", "mode": "dry-run"},
         )
     finally:
@@ -189,6 +203,7 @@ def test_vcenter_connector_failure_uses_toast_without_inline_error(
     try:
         response = client.post(
             "/ui/connectors/vcenter/run",
+            follow_redirects=True,
             data={
                 "server": "vc.example.local",
                 "username": "administrator@vsphere.local",
@@ -200,7 +215,8 @@ def test_vcenter_connector_failure_uses_toast_without_inline_error(
     finally:
         app.dependency_overrides.pop(ui.get_current_ui_user, None)
 
-    assert response.status_code == 400
+    response = _resolve_connector_response(client, response)
+    assert response.status_code == 200
     assert "vCenter connector execution failed." in response.text
     assert "toast-error" in response.text
 
@@ -212,6 +228,7 @@ def test_prometheus_connector_apply_mode_requires_editor_role(client) -> None:
     try:
         response = client.post(
             "/ui/connectors/prometheus/run",
+            follow_redirects=True,
             data={
                 "prometheus_url": "http://127.0.0.1:9090",
                 "query": 'up{job="node"}',
@@ -239,6 +256,7 @@ def test_prometheus_connector_dry_run_allows_non_editor(client, monkeypatch) -> 
     try:
         response = client.post(
             "/ui/connectors/prometheus/run",
+            follow_redirects=True,
             data={
                 "prometheus_url": "http://127.0.0.1:9090",
                 "query": 'up{job="node"}',
@@ -249,9 +267,10 @@ def test_prometheus_connector_dry_run_allows_non_editor(client, monkeypatch) -> 
     finally:
         app.dependency_overrides.pop(ui.get_current_ui_user, None)
 
+    response = _resolve_connector_response(client, response)
     assert response.status_code == 200
     assert "Import mode: dry-run." in response.text
-    assert "Prometheus dry-run completed successfully." in response.text
+    assert "Prometheus dry-run: Connector completed successfully." in response.text
     assert "toast-success" in response.text
 
 
@@ -274,6 +293,7 @@ def test_prometheus_connector_ui_runs_dry_run_and_shows_logs(
     try:
         response = client.post(
             "/ui/connectors/prometheus/run",
+            follow_redirects=True,
             data={
                 "prometheus_url": "http://127.0.0.1:9090",
                 "query": 'up{job="node"}',
@@ -284,12 +304,13 @@ def test_prometheus_connector_ui_runs_dry_run_and_shows_logs(
     finally:
         app.dependency_overrides.pop(ui.get_current_ui_user, None)
 
+    response = _resolve_connector_response(client, response)
     assert response.status_code == 200
     assert "Execution log" in response.text
     assert "Collected 2 metric samples." in response.text
     assert "Import mode: dry-run." in response.text
     assert "Connector warnings: 1" in response.text
-    assert "completed with warnings" in response.text
+    assert "Prometheus dry-run: Connector completed with warnings." in response.text
     assert "toast-warning" in response.text
 
 
@@ -443,6 +464,7 @@ def test_prometheus_connector_ui_validates_required_fields(client) -> None:
     try:
         response = client.post(
             "/ui/connectors/prometheus/run",
+            follow_redirects=True,
             data={"prometheus_url": "", "query": "", "ip_label": "", "mode": "dry-run"},
         )
     finally:
@@ -470,6 +492,7 @@ def test_prometheus_connector_failure_uses_toast_without_inline_error(
     try:
         response = client.post(
             "/ui/connectors/prometheus/run",
+            follow_redirects=True,
             data={
                 "prometheus_url": "http://127.0.0.1:9090",
                 "query": 'up{job="node"}',
@@ -480,7 +503,8 @@ def test_prometheus_connector_failure_uses_toast_without_inline_error(
     finally:
         app.dependency_overrides.pop(ui.get_current_ui_user, None)
 
-    assert response.status_code == 400
+    response = _resolve_connector_response(client, response)
+    assert response.status_code == 200
     assert "Prometheus connector execution failed." in response.text
     assert "toast-error" in response.text
 
@@ -515,6 +539,7 @@ def test_vcenter_connector_apply_writes_import_run_audit_log(
     try:
         response = client.post(
             "/ui/connectors/vcenter/run",
+            follow_redirects=True,
             data={
                 "server": "vc.example.local",
                 "username": "administrator@vsphere.local",
@@ -526,12 +551,18 @@ def test_vcenter_connector_apply_writes_import_run_audit_log(
     finally:
         app.dependency_overrides.pop(ui.get_current_ui_user, None)
 
+    response = _resolve_connector_response(client, response)
     assert response.status_code == 200
     connection = db.connect(os.environ["IPAM_DB_PATH"])
     try:
-        logs = repository.list_audit_logs(
-            connection, target_type="IMPORT_RUN", limit=10
-        )
+        logs = []
+        for _ in range(20):
+            logs = repository.list_audit_logs(
+                connection, target_type="IMPORT_RUN", limit=10
+            )
+            if logs:
+                break
+            time.sleep(0.05)
         assert any(log.target_label == "connector_vcenter" for log in logs)
     finally:
         connection.close()
@@ -566,6 +597,7 @@ def test_prometheus_connector_dry_run_does_not_write_import_run_audit_log(
     try:
         response = client.post(
             "/ui/connectors/prometheus/run",
+            follow_redirects=True,
             data={
                 "prometheus_url": "http://127.0.0.1:9090",
                 "query": 'up{job="node"}',
@@ -576,6 +608,7 @@ def test_prometheus_connector_dry_run_does_not_write_import_run_audit_log(
     finally:
         app.dependency_overrides.pop(ui.get_current_ui_user, None)
 
+    response = _resolve_connector_response(client, response)
     assert response.status_code == 200
     connection = db.connect(os.environ["IPAM_DB_PATH"])
     try:

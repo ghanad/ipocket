@@ -34,6 +34,22 @@ def parse_ipv4_network(value: str) -> ipaddress.IPv4Network:
     return network
 
 
+def ipv4_to_int(value: str) -> int | None:
+    try:
+        ip_value = ipaddress.ip_address(value)
+    except ValueError:
+        parts = value.split(".")
+        if len(parts) != 4 or not all(part.isdigit() for part in parts):
+            return None
+        octets = [int(part) for part in parts]
+        if not all(0 <= octet <= 255 for octet in octets):
+            return None
+        return (octets[0] << 24) + (octets[1] << 16) + (octets[2] << 8) + octets[3]
+    if ip_value.version != 4:
+        return None
+    return int(ip_value)
+
+
 DEFAULT_PROJECT_COLOR = "#94a3b8"
 DEFAULT_TAG_COLOR = "#e2e8f0"
 

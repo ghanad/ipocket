@@ -2,6 +2,7 @@
 
 ## IPAsset
 - `ip_address` (unique)
+- `ip_int` (optional INTEGER; derived IPv4 numeric value used for SQL sorting/range filters, null for non-IPv4 values)
 - `project_id` (optional)
 - `type` (`VM`, `OS`, `BMC`, `VIP`, `OTHER`)
 - `host_id` (optional)
@@ -105,6 +106,7 @@ Self-service password changes (`/ui/account/password`) do not add fields/tables;
 ## Connector ingestion note
 - Prometheus and vCenter connectors do not introduce new database tables or fields.
 - Connector runs generate standard import bundles (`schema_version=1`) and upsert through the existing IPAsset import pipeline.
+- UI connector runs execute as background jobs so long-running remote calls do not block a single web request.
 - Upserts only change optional fields when those values are explicitly included in connector output; Prometheus updates keep existing `type`, while vCenter updates can overwrite `type`.
 - Prometheus connector entries set `preserve_existing_notes=true`, so non-empty manual notes on existing IP assets are not overwritten during upsert.
 - Prometheus connector entries also set `preserve_existing_type=true`, so existing IP records keep their current `type` during update while new records still use the connector-selected `type`.

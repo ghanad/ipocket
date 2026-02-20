@@ -94,6 +94,19 @@ def test_ip_range_utilization_counts(_setup_connection) -> None:
     assert loopback["free"] == 0
 
 
+def test_ip_range_utilization_deduplicates_equivalent_ipv4_strings(
+    _setup_connection,
+) -> None:
+    connection = _setup_connection()
+    create_ip_range(connection, name="Corp LAN", cidr="10.1.0.0/24")
+    create_ip_asset(connection, ip_address="10.1.0.1", asset_type=IPAssetType.VM)
+    create_ip_asset(connection, ip_address="10.1.0.01", asset_type=IPAssetType.OS)
+
+    utilization = {row["cidr"]: row for row in get_ip_range_utilization(connection)}
+    corp = utilization["10.1.0.0/24"]
+    assert corp["used"] == 1
+
+
 def test_ip_range_address_breakdown(_setup_connection) -> None:
     connection = _setup_connection()
     project = create_project(connection, name="Lab")

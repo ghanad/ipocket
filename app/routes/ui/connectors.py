@@ -1,10 +1,14 @@
 from __future__ import annotations
 
+import threading
+import time
+import uuid
 from typing import Optional
 
-from fastapi import APIRouter, Depends, Query, Request, status
-from fastapi.responses import HTMLResponse
+from fastapi import APIRouter, BackgroundTasks, Depends, Query, Request, status
+from fastapi.responses import HTMLResponse, RedirectResponse
 
+from app import db
 from app import repository
 from app.connectors.prometheus import (
     PrometheusConnectorError,
@@ -19,7 +23,7 @@ from app.connectors.vcenter import (
     fetch_vcenter_inventory,
     import_bundle_via_pipeline as import_vcenter_bundle_via_pipeline,
 )
-from app.dependencies import get_connection
+from app.dependencies import get_db_path
 from app.models import IPAssetType, UserRole
 from app.utils import normalize_tag_names, split_tag_string
 from .utils import _render_template
@@ -27,6 +31,9 @@ from .utils import _parse_form_data, get_current_ui_user
 
 router = APIRouter()
 _PROMETHEUS_DETAIL_LIMIT = 100
+_CONNECTOR_JOB_RETENTION_SECONDS = 3600
+_CONNECTOR_JOB_LOCK = threading.Lock()
+_CONNECTOR_JOBS: dict[str, dict[str, object]] = {}
 
 
 def _safe_normalize_tags(tag_values: object) -> list[str]:
@@ -220,18 +227,256 @@ def _connectors_context(
     }
 
 
+def _prune_old_connector_jobs(now: float | None = None) -> None:
+    current = now or time.time()
+    with _CONNECTOR_JOB_LOCK:
+        stale_ids = [
+            job_id
+            for job_id, payload in _CONNECTOR_JOBS.items()
+            if current - float(payload.get("updated_at", current))
+            > _CONNECTOR_JOB_RETENTION_SECONDS
+        ]
+        for job_id in stale_ids:
+            _CONNECTOR_JOBS.pop(job_id, None)
+
+
+def _create_connector_job(*, active_tab: str, form_state: dict[str, object]) -> str:
+    _prune_old_connector_jobs()
+    job_id = uuid.uuid4().hex
+    with _CONNECTOR_JOB_LOCK:
+        _CONNECTOR_JOBS[job_id] = {
+            "active_tab": active_tab,
+            "form_state": dict(form_state),
+            "status": "queued",
+            "logs": [],
+            "toast_messages": [],
+            "updated_at": time.time(),
+        }
+    return job_id
+
+
+def _update_connector_job(job_id: str, **fields: object) -> None:
+    with _CONNECTOR_JOB_LOCK:
+        existing = _CONNECTOR_JOBS.get(job_id)
+        if existing is None:
+            return
+        existing.update(fields)
+        existing["updated_at"] = time.time()
+
+
+def _get_connector_job(job_id: str) -> dict[str, object] | None:
+    _prune_old_connector_jobs()
+    with _CONNECTOR_JOB_LOCK:
+        payload = _CONNECTOR_JOBS.get(job_id)
+        return dict(payload) if payload is not None else None
+
+
 @router.get("/ui/connectors", response_class=HTMLResponse)
 def ui_connectors(
     request: Request,
     tab: Optional[str] = Query(default=None),
+    job_id: Optional[str] = Query(default=None),
 ) -> HTMLResponse:
     active_tab = tab if tab in {"overview", "vcenter", "prometheus"} else "overview"
+    context = _connectors_context(active_tab=active_tab)
+    if job_id:
+        job = _get_connector_job(job_id)
+        if job is not None:
+            active_tab = str(job.get("active_tab") or active_tab)
+            context["active_tab"] = active_tab
+            status_value = str(job.get("status") or "queued")
+            logs = list(job.get("logs") or [])
+            toast_messages = list(job.get("toast_messages") or [])
+            form_state = dict(job.get("form_state") or {})
+            if active_tab == "vcenter":
+                context["vcenter_form_state"] = (
+                    form_state or _default_vcenter_form_state()
+                )
+                context["vcenter_logs"] = logs
+            elif active_tab == "prometheus":
+                context["prometheus_form_state"] = (
+                    form_state or _default_prometheus_form_state()
+                )
+                context["prometheus_logs"] = logs
+            if status_value in {"queued", "running"}:
+                context["toast_messages"] = [
+                    {
+                        "type": "warning",
+                        "message": f"{active_tab} connector run is still in progress.",
+                    }
+                ]
+            else:
+                context["toast_messages"] = toast_messages
     return _render_template(
         request,
         "connectors.html",
-        _connectors_context(active_tab=active_tab),
+        context,
         active_nav="connectors",
     )
+
+
+def _finalize_job_logs(
+    *,
+    logs: list[str],
+    warnings: list[str],
+    import_warning_count: int,
+    import_error_count: int,
+) -> tuple[list[str], list[dict[str, str]]]:
+    final_logs = [*logs]
+    if warnings:
+        final_logs.append(f"Connector warnings: {len(warnings)}")
+        for warning in warnings:
+            final_logs.append(f"- {warning}")
+
+    toast_messages: list[dict[str, str]] = []
+    if import_error_count > 0:
+        toast_messages.append(
+            {
+                "type": "error",
+                "message": f"Connector completed with {import_error_count} import error(s).",
+            }
+        )
+    elif import_warning_count > 0 or warnings:
+        toast_messages.append(
+            {
+                "type": "warning",
+                "message": "Connector completed with warnings. Review execution log.",
+            }
+        )
+    else:
+        toast_messages.append(
+            {
+                "type": "success",
+                "message": "Connector completed successfully.",
+            }
+        )
+    return final_logs, toast_messages
+
+
+def _run_vcenter_connector_job(
+    *,
+    job_id: str,
+    db_path: str,
+    user_id: int | None,
+    server: str,
+    username: str,
+    password: str,
+    port: int,
+    insecure: bool,
+    mode: str,
+) -> None:
+    _update_connector_job(job_id, status="running")
+    connection = db.connect(db_path)
+    try:
+        db.init_db(connection)
+        actor = repository.get_user_by_id(connection, user_id) if user_id else None
+        logs, warnings, import_warning_count, import_error_count = (
+            _run_vcenter_connector(
+                connection=connection,
+                user=actor,
+                server=server,
+                username=username,
+                password=password,
+                port=port,
+                insecure=insecure,
+                dry_run=mode == "dry-run",
+            )
+        )
+        final_logs, toast_messages = _finalize_job_logs(
+            logs=logs,
+            warnings=warnings,
+            import_warning_count=import_warning_count,
+            import_error_count=import_error_count,
+        )
+        for toast in toast_messages:
+            toast["message"] = f"vCenter {mode}: {toast['message']}"
+        _update_connector_job(
+            job_id,
+            status="completed",
+            logs=final_logs,
+            toast_messages=toast_messages,
+        )
+    except VCenterConnectorError as exc:
+        _update_connector_job(
+            job_id,
+            status="failed",
+            logs=[f"Connector failed: {exc}"],
+            toast_messages=[
+                {
+                    "type": "error",
+                    "message": "vCenter connector execution failed.",
+                }
+            ],
+        )
+    finally:
+        connection.close()
+
+
+def _run_prometheus_connector_job(
+    *,
+    job_id: str,
+    db_path: str,
+    user_id: int | None,
+    prometheus_url: str,
+    query: str,
+    ip_label: str,
+    asset_type: str,
+    project_name: Optional[str],
+    tags: Optional[list[str]],
+    token: Optional[str],
+    insecure: bool,
+    timeout: int,
+    mode: str,
+) -> None:
+    _update_connector_job(job_id, status="running")
+    connection = db.connect(db_path)
+    try:
+        db.init_db(connection)
+        actor = repository.get_user_by_id(connection, user_id) if user_id else None
+        logs, warnings, import_warning_count, import_error_count = (
+            _run_prometheus_connector(
+                connection=connection,
+                user=actor,
+                prometheus_url=prometheus_url,
+                query=query,
+                ip_label=ip_label,
+                asset_type=asset_type,
+                project_name=project_name,
+                tags=tags,
+                token=token,
+                insecure=insecure,
+                timeout=timeout,
+                dry_run=mode == "dry-run",
+            )
+        )
+        final_logs, toast_messages = _finalize_job_logs(
+            logs=logs,
+            warnings=warnings,
+            import_warning_count=import_warning_count,
+            import_error_count=import_error_count,
+        )
+        for toast in toast_messages:
+            toast["message"] = f"Prometheus {mode}: {toast['message']}"
+        _update_connector_job(
+            job_id,
+            status="completed",
+            logs=final_logs,
+            toast_messages=toast_messages,
+        )
+    except PrometheusConnectorError as exc:
+        _update_connector_job(
+            job_id,
+            status="failed",
+            logs=[f"Connector failed: {exc}"],
+            toast_messages=[
+                {
+                    "type": "error",
+                    "message": "Prometheus connector execution failed.",
+                }
+            ],
+        )
+    finally:
+        connection.close()
 
 
 def _run_vcenter_connector(
@@ -386,7 +631,8 @@ def _run_prometheus_connector(
 @router.post("/ui/connectors/vcenter/run", response_class=HTMLResponse)
 async def ui_run_vcenter_connector(
     request: Request,
-    connection=Depends(get_connection),
+    background_tasks: BackgroundTasks,
+    db_path: str = Depends(get_db_path),
     user=Depends(get_current_ui_user),
 ) -> HTMLResponse:
     form_data = await _parse_form_data(request)
@@ -453,87 +699,30 @@ async def ui_run_vcenter_connector(
             status_code=status.HTTP_403_FORBIDDEN,
         )
 
-    logs: list[str] = []
-    toast_messages: list[dict[str, str]] = []
-    try:
-        (
-            run_logs,
-            warnings,
-            import_warning_count,
-            import_error_count,
-        ) = _run_vcenter_connector(
-            connection=connection,
-            user=user,
-            server=server,
-            username=username,
-            password=password,
-            port=port,
-            insecure=insecure,
-            dry_run=mode == "dry-run",
-        )
-        logs.extend(run_logs)
-        if warnings:
-            logs.append(f"Connector warnings: {len(warnings)}")
-            for warning in warnings:
-                logs.append(f"- {warning}")
-        if import_error_count > 0:
-            toast_messages.append(
-                {
-                    "type": "error",
-                    "message": f"vCenter {mode} completed with {import_error_count} import error(s).",
-                }
-            )
-        elif import_warning_count > 0 or warnings:
-            toast_messages.append(
-                {
-                    "type": "warning",
-                    "message": f"vCenter {mode} completed with warnings. Review execution log.",
-                }
-            )
-        else:
-            toast_messages.append(
-                {
-                    "type": "success",
-                    "message": f"vCenter {mode} completed successfully.",
-                }
-            )
-    except VCenterConnectorError as exc:
-        logs.append(f"Connector failed: {exc}")
-        return _render_template(
-            request,
-            "connectors.html",
-            _connectors_context(
-                active_tab="vcenter",
-                vcenter_form_state=form_state,
-                vcenter_logs=logs,
-                toast_messages=[
-                    {
-                        "type": "error",
-                        "message": "vCenter connector execution failed.",
-                    }
-                ],
-            ),
-            active_nav="connectors",
-            status_code=status.HTTP_400_BAD_REQUEST,
-        )
-
-    return _render_template(
-        request,
-        "connectors.html",
-        _connectors_context(
-            active_tab="vcenter",
-            vcenter_form_state=form_state,
-            vcenter_logs=logs,
-            toast_messages=toast_messages,
-        ),
-        active_nav="connectors",
+    job_id = _create_connector_job(active_tab="vcenter", form_state=form_state)
+    background_tasks.add_task(
+        _run_vcenter_connector_job,
+        job_id=job_id,
+        db_path=db_path,
+        user_id=int(user.id),
+        server=server,
+        username=username,
+        password=password,
+        port=port,
+        insecure=insecure,
+        mode=mode,
+    )
+    return RedirectResponse(
+        url=f"/ui/connectors?tab=vcenter&job_id={job_id}",
+        status_code=status.HTTP_303_SEE_OTHER,
     )
 
 
 @router.post("/ui/connectors/prometheus/run", response_class=HTMLResponse)
 async def ui_run_prometheus_connector(
     request: Request,
-    connection=Depends(get_connection),
+    background_tasks: BackgroundTasks,
+    db_path: str = Depends(get_db_path),
     user=Depends(get_current_ui_user),
 ) -> HTMLResponse:
     form_data = await _parse_form_data(request)
@@ -618,83 +807,24 @@ async def ui_run_prometheus_connector(
             status_code=status.HTTP_403_FORBIDDEN,
         )
 
-    logs: list[str] = []
-    toast_messages: list[dict[str, str]] = []
-    try:
-        (
-            run_logs,
-            warnings,
-            import_warning_count,
-            import_error_count,
-        ) = _run_prometheus_connector(
-            connection=connection,
-            user=user,
-            prometheus_url=prometheus_url,
-            query=query,
-            ip_label=ip_label,
-            asset_type=asset_type,
-            project_name=project_name,
-            tags=tags,
-            token=token,
-            insecure=insecure,
-            timeout=timeout,
-            dry_run=mode == "dry-run",
-        )
-        logs.extend(run_logs)
-        if warnings:
-            logs.append(f"Connector warnings: {len(warnings)}")
-            for warning in warnings:
-                logs.append(f"- {warning}")
-        if import_error_count > 0:
-            toast_messages.append(
-                {
-                    "type": "error",
-                    "message": f"Prometheus {mode} completed with {import_error_count} import error(s).",
-                }
-            )
-        elif import_warning_count > 0 or warnings:
-            toast_messages.append(
-                {
-                    "type": "warning",
-                    "message": "Prometheus "
-                    f"{mode} completed with warnings. Review execution log.",
-                }
-            )
-        else:
-            toast_messages.append(
-                {
-                    "type": "success",
-                    "message": f"Prometheus {mode} completed successfully.",
-                }
-            )
-    except PrometheusConnectorError as exc:
-        logs.append(f"Connector failed: {exc}")
-        return _render_template(
-            request,
-            "connectors.html",
-            _connectors_context(
-                active_tab="prometheus",
-                prometheus_form_state=form_state,
-                prometheus_logs=logs,
-                toast_messages=[
-                    {
-                        "type": "error",
-                        "message": "Prometheus connector execution failed.",
-                    }
-                ],
-            ),
-            active_nav="connectors",
-            status_code=status.HTTP_400_BAD_REQUEST,
-        )
-
-    return _render_template(
-        request,
-        "connectors.html",
-        _connectors_context(
-            active_tab="prometheus",
-            prometheus_form_state=form_state,
-            prometheus_logs=logs,
-            toast_messages=toast_messages,
-        ),
-        active_nav="connectors",
+    job_id = _create_connector_job(active_tab="prometheus", form_state=form_state)
+    background_tasks.add_task(
+        _run_prometheus_connector_job,
+        job_id=job_id,
+        db_path=db_path,
+        user_id=int(user.id),
+        prometheus_url=prometheus_url,
+        query=query,
+        ip_label=ip_label,
+        asset_type=asset_type,
+        project_name=project_name,
+        tags=tags,
+        token=token,
+        insecure=insecure,
+        timeout=timeout,
+        mode=mode,
+    )
+    return RedirectResponse(
+        url=f"/ui/connectors?tab=prometheus&job_id={job_id}",
+        status_code=status.HTTP_303_SEE_OTHER,
     )

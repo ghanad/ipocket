@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import ipaddress
 import os
 import sqlite3
 from pathlib import Path
@@ -110,6 +111,9 @@ def _apply_legacy_migrations(connection: sqlite3.Connection) -> None:
             row["name"]
             for row in connection.execute("PRAGMA table_info(ip_assets)").fetchall()
         }
+        if "ip_int" not in ip_asset_columns:
+            connection.execute("ALTER TABLE ip_assets ADD COLUMN ip_int INTEGER")
+            _backfill_ip_asset_int_column(connection)
         if "host_id" not in ip_asset_columns:
             connection.execute(
                 "ALTER TABLE ip_assets ADD COLUMN host_id INTEGER REFERENCES hosts(id)"
@@ -158,8 +162,60 @@ def _apply_legacy_migrations(connection: sqlite3.Connection) -> None:
             )
 
     _drop_legacy_ip_asset_addressing(connection)
+    _ensure_listing_indexes(connection)
 
     connection.commit()
+
+
+def _ipv4_to_int(value: str) -> int | None:
+    try:
+        parsed = ipaddress.ip_address(value)
+    except ValueError:
+        parts = value.split(".")
+        if len(parts) != 4 or not all(part.isdigit() for part in parts):
+            return None
+        octets = [int(part) for part in parts]
+        if not all(0 <= octet <= 255 for octet in octets):
+            return None
+        return (octets[0] << 24) + (octets[1] << 16) + (octets[2] << 8) + octets[3]
+    if parsed.version != 4:
+        return None
+    return int(parsed)
+
+
+def _backfill_ip_asset_int_column(connection: sqlite3.Connection) -> None:
+    rows = connection.execute("SELECT id, ip_address FROM ip_assets").fetchall()
+    for row in rows:
+        ip_int = _ipv4_to_int(str(row["ip_address"] or ""))
+        connection.execute(
+            "UPDATE ip_assets SET ip_int = ? WHERE id = ?",
+            (ip_int, row["id"]),
+        )
+
+
+def _ensure_listing_indexes(connection: sqlite3.Connection) -> None:
+    if _has_table(connection, "ip_assets"):
+        connection.execute(
+            "CREATE INDEX IF NOT EXISTS ix_ip_assets_archived_project_type "
+            "ON ip_assets(archived, project_id, type)"
+        )
+        connection.execute(
+            "CREATE INDEX IF NOT EXISTS ix_ip_assets_archived_ip_address "
+            "ON ip_assets(archived, ip_address)"
+        )
+        connection.execute(
+            "CREATE INDEX IF NOT EXISTS ix_ip_assets_archived_ip_int "
+            "ON ip_assets(archived, ip_int)"
+        )
+    if _has_table(connection, "ip_asset_tags"):
+        connection.execute(
+            "CREATE INDEX IF NOT EXISTS ix_ip_asset_tags_tag_id_ip_asset_id "
+            "ON ip_asset_tags(tag_id, ip_asset_id)"
+        )
+    if _has_table(connection, "tags"):
+        connection.execute(
+            "CREATE INDEX IF NOT EXISTS ix_tags_name_lower ON tags(lower(name))"
+        )
 
 
 def _drop_legacy_ip_asset_addressing(connection: sqlite3.Connection) -> None:
@@ -188,6 +244,7 @@ def _drop_legacy_ip_asset_addressing(connection: sqlite3.Connection) -> None:
         CREATE TABLE ip_assets (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             ip_address TEXT NOT NULL UNIQUE,
+            ip_int INTEGER,
             type TEXT NOT NULL CHECK (type IN ('VM', 'OS', 'BMC', 'VIP', 'OTHER')),
             project_id INTEGER REFERENCES projects(id),
             host_id INTEGER REFERENCES hosts(id),
@@ -203,6 +260,7 @@ def _drop_legacy_ip_asset_addressing(connection: sqlite3.Connection) -> None:
         INSERT INTO ip_assets (
             id,
             ip_address,
+            ip_int,
             type,
             project_id,
             host_id,
@@ -214,6 +272,7 @@ def _drop_legacy_ip_asset_addressing(connection: sqlite3.Connection) -> None:
         SELECT
             id,
             ip_address,
+            NULL,
             type,
             project_id,
             {select_host_id},
@@ -224,4 +283,5 @@ def _drop_legacy_ip_asset_addressing(connection: sqlite3.Connection) -> None:
         FROM ip_assets_old
         """
     )
+    _backfill_ip_asset_int_column(connection)
     connection.execute("DROP TABLE ip_assets_old")
