@@ -179,6 +179,32 @@ def test_flash_helpers_and_cookie_roundtrip() -> None:
     assert response.headers.get("set-cookie") is None
 
 
+def test_get_session_secret_uses_configured_env_value(monkeypatch) -> None:
+    monkeypatch.setenv("SESSION_SECRET", "configured-secret")
+    monkeypatch.setattr(ui_session_utils, "_is_testing_environment", lambda: False)
+
+    assert ui_session_utils._get_session_secret() == b"configured-secret"
+
+
+def test_get_session_secret_requires_env_outside_testing(monkeypatch) -> None:
+    monkeypatch.delenv("SESSION_SECRET", raising=False)
+    monkeypatch.setattr(ui_session_utils, "_is_testing_environment", lambda: False)
+
+    with pytest.raises(RuntimeError, match="SESSION_SECRET"):
+        ui_session_utils._get_session_secret()
+
+    monkeypatch.setenv("SESSION_SECRET", "   ")
+    with pytest.raises(RuntimeError, match="SESSION_SECRET"):
+        ui_session_utils._get_session_secret()
+
+
+def test_get_session_secret_allows_testing_fallback(monkeypatch) -> None:
+    monkeypatch.delenv("SESSION_SECRET", raising=False)
+    monkeypatch.setattr(ui_session_utils, "_is_testing_environment", lambda: True)
+
+    assert ui_session_utils._get_session_secret() == b"test-session-secret"
+
+
 def test_flash_helpers_truncate_long_messages_for_cookie_safety() -> None:
     long_message = "x" * 10000
     encoded = ui_utils._encode_flash_payload(

@@ -7,6 +7,7 @@ import hmac
 import json
 import os
 import secrets
+import sys
 from typing import Optional
 
 from fastapi import Depends, HTTPException, Request, status
@@ -17,11 +18,33 @@ from app.dependencies import get_connection, get_db_path
 from app.models import UserRole
 
 SESSION_COOKIE = "ipocket_session"
-SESSION_SECRET = os.getenv("SESSION_SECRET", "dev-session-secret").encode("utf-8")
 FLASH_COOKIE = "ipocket_flash"
 FLASH_ALLOWED_TYPES = {"success", "info", "error", "warning"}
 FLASH_MAX_MESSAGES = 5
 FLASH_MAX_MESSAGE_LENGTH = 400
+
+
+def _is_testing_environment() -> bool:
+    explicit_env = os.getenv("IPOCKET_ENV", "").strip().lower()
+    if explicit_env in {"test", "testing"}:
+        return True
+    if os.getenv("PYTEST_CURRENT_TEST"):
+        return True
+    return "pytest" in sys.modules
+
+
+def _get_session_secret() -> bytes:
+    configured_secret = os.getenv("SESSION_SECRET")
+    if configured_secret and configured_secret.strip():
+        return configured_secret.encode("utf-8")
+    if _is_testing_environment():
+        return b"test-session-secret"
+    raise RuntimeError(
+        "SESSION_SECRET environment variable is required outside testing environments."
+    )
+
+
+SESSION_SECRET = _get_session_secret()
 
 
 def _sign_session_value(value: str) -> str:

@@ -52,6 +52,7 @@ ipocket is a lightweight IP inventory app to track addresses and their project a
 - The sidebar account section shows Login when signed out and Logout when signed in.
 - Password hashing now uses `passlib` with `bcrypt` (legacy SHA-256 hashes are upgraded to bcrypt after successful login).
 - API bearer tokens and UI session cookies now resolve to persistent records in the SQLite `sessions` table, so authenticated sessions survive server restarts and multi-process scaling.
+- UI session signing now requires `SESSION_SECRET` to be configured in non-testing environments; startup fails fast if it is missing or blank.
 - Authenticated users can open **Change Password** from the sidebar account section (`/ui/account/password`) to rotate their own password by providing current password + new password confirmation.
 - In the sidebar account section, authenticated actions are grouped as a compact stack (`Change Password` + `Logout`) so account actions stay visually connected.
 - User access model now distinguishes `Editor` (data write) from `Superuser` (user management only); read routes stay public except audit log, which still requires authentication.
