@@ -1,177 +1,354 @@
-<section class="card table-card projects-existing-card">
-  <div class="card-header">
-    <div>
-      <h2>Existing vendors</h2>
-      <p class="subtitle">Keep host vendor values consistent.</p>
-    </div>
-  </div>
-  <div class="table-wrapper">
-    <table class="table">
-      <thead><tr><th>Name</th><th>IPs</th><th>Actions</th></tr></thead>
-      <tbody>
-        {% if vendors %}
-        {% for vendor in vendors %}
-        <tr>
-          <td>{{ vendor.name }}</td>
-          <td>{{ vendor_ip_counts.get(vendor.id, 0) }}</td>
-          <td class="asset-actions-cell">
-            <div class="table-actions">
-              <button
-                class="btn btn-secondary btn-small"
-                type="button"
-                data-vendor-edit="{{ vendor.id }}"
-                data-vendor-name="{{ vendor.name }}"
-              >
-                Edit
-              </button>
-              <button
-                class="btn btn-danger btn-small"
-                type="button"
-                data-vendor-delete="{{ vendor.id }}"
-                data-vendor-delete-name="{{ vendor.name }}"
-              >
-                Delete
-              </button>
-            </div>
-          </td>
-        </tr>
-        {% endfor %}
-        {% else %}<tr><td colspan="3" class="empty-state">No vendors yet.</td></tr>{% endif %}
-      </tbody>
-    </table>
-  </div>
-</section>
+{% import 'macros/drawer.html' as drawer_macros %}
+<div
+  x-data="{
+    createOpen: {{ 'true' if errors else 'false' }},
+    createName: {{ form_state.name|tojson|forceescape }},
+    createInitial: {},
 
-<div class="ip-drawer-overlay" data-vendor-create-overlay aria-hidden="true"></div>
-<aside class="ip-drawer" data-vendor-create-drawer data-vendor-open="{{ 'true' if errors else 'false' }}" role="dialog" aria-modal="true" aria-label="Add vendor">
-  <div class="ip-drawer-header">
-    <div class="ip-drawer-header-row">
+    editOpen: {{ 'true' if (edit_errors or edit_vendor) else 'false' }},
+    editVendorId: {{ (edit_vendor.id if edit_vendor else '')|tojson|forceescape }},
+    editName: {{ edit_form_state.name|tojson|forceescape }},
+    editInitial: {},
+
+    deleteOpen: {{ 'true' if delete_vendor else 'false' }},
+    deleteVendorId: {{ (delete_vendor.id if delete_vendor else '')|tojson|forceescape }},
+    deleteVendorName: {{ (delete_vendor.name if delete_vendor else '')|tojson|forceescape }},
+    deleteAck: false,
+    deleteConfirmName: {{ delete_confirm_value|tojson|forceescape }},
+
+    init() {
+      this.syncCreateInitial();
+      this.syncEditInitial();
+    },
+
+    normalize(value) {
+      return (value || '').trim();
+    },
+
+    syncCreateInitial() {
+      this.createInitial = {
+        name: this.normalize(this.createName),
+      };
+    },
+
+    createIsDirty() {
+      return this.normalize(this.createName) !== (this.createInitial.name || '');
+    },
+
+    createIsValid() {
+      return Boolean(this.normalize(this.createName));
+    },
+
+    createCanSave() {
+      return this.createIsDirty() && this.createIsValid();
+    },
+
+    createStatus() {
+      return this.createIsDirty() ? 'Ready to create' : 'Enter details';
+    },
+
+    openCreate() {
+      this.createOpen = true;
+      this.$nextTick(() => this.$refs.createNameInput?.focus());
+    },
+
+    closeCreate() {
+      if (this.createIsDirty() && !window.confirm('Discard changes?')) {
+        return;
+      }
+      this.createOpen = false;
+    },
+
+    syncEditInitial() {
+      this.editInitial = {
+        name: this.normalize(this.editName),
+      };
+    },
+
+    editIsDirty() {
+      return this.normalize(this.editName) !== (this.editInitial.name || '');
+    },
+
+    editIsValid() {
+      return Boolean(this.editVendorId) && Boolean(this.normalize(this.editName));
+    },
+
+    editCanSave() {
+      return this.editIsDirty() && this.editIsValid();
+    },
+
+    editStatus() {
+      if (!this.editVendorId) {
+        return 'Choose vendor';
+      }
+      return this.editIsDirty() ? 'Ready to save' : 'No changes yet';
+    },
+
+    editAction() {
+      if (!this.editVendorId) {
+        return '#';
+      }
+      return '/ui/vendors/' + this.editVendorId + '/edit';
+    },
+
+    openEdit(vendor) {
+      this.editVendorId = String(vendor.id || '');
+      this.editName = vendor.name || '';
+      this.syncEditInitial();
+      this.editOpen = true;
+      this.$nextTick(() => this.$refs.editNameInput?.focus());
+    },
+
+    closeEdit() {
+      if (this.editIsDirty() && !window.confirm('Discard changes?')) {
+        return;
+      }
+      this.editOpen = false;
+    },
+
+    deleteAction() {
+      if (!this.deleteVendorId) {
+        return '#';
+      }
+      return '/ui/vendors/' + this.deleteVendorId + '/delete';
+    },
+
+    deleteIsValid() {
+      if (!this.deleteVendorId || !this.deleteVendorName) {
+        return false;
+      }
+      if (!this.deleteAck) {
+        return false;
+      }
+      return this.normalize(this.deleteConfirmName) === this.deleteVendorName;
+    },
+
+    deleteStatus() {
+      if (!this.deleteVendorId) {
+        return 'Choose vendor';
+      }
+      if (!this.deleteAck) {
+        return 'Acknowledge delete';
+      }
+      return this.deleteIsValid() ? 'Ready to delete' : 'Type exact vendor name';
+    },
+
+    openDelete(vendor) {
+      this.deleteVendorId = String(vendor.id || '');
+      this.deleteVendorName = vendor.name || '';
+      this.deleteAck = false;
+      this.deleteConfirmName = '';
+      this.deleteOpen = true;
+      this.$nextTick(() => this.$refs.deleteConfirmInput?.focus());
+    },
+
+    closeDelete() {
+      this.deleteOpen = false;
+    },
+
+    closeOnEscape() {
+      if (this.createOpen) {
+        this.closeCreate();
+        return;
+      }
+      if (this.editOpen) {
+        this.closeEdit();
+        return;
+      }
+      if (this.deleteOpen) {
+        this.closeDelete();
+      }
+    }
+  }"
+  @vendor-create-open.window="openCreate()"
+  @keydown.escape.window="closeOnEscape()"
+>
+  <section class="card table-card projects-existing-card">
+    <div class="card-header">
       <div>
-        <h2 class="ip-drawer-title">Create Vendor</h2>
-        <p class="ip-drawer-subtitle">Add vendor names for host selection.</p>
+        <h2>Existing vendors</h2>
+        <p class="subtitle">Keep host vendor values consistent.</p>
       </div>
-      <button class="ip-drawer-close" type="button" aria-label="Close drawer" data-vendor-create-close>✕</button>
     </div>
-  </div>
-  <div class="ip-drawer-body">
-    {% if errors %}
-    <div class="alert alert-error">
-      <ul>{% for error in errors %}<li>{{ error }}</li>{% endfor %}</ul>
+    <div class="table-wrapper">
+      <table class="table table-compact">
+        <thead><tr><th>Name</th><th>IPs</th><th>Actions</th></tr></thead>
+        <tbody>
+          {% if vendors %}
+          {% for vendor in vendors %}
+          <tr>
+            <td>{{ vendor.name }}</td>
+            <td>{{ vendor_ip_counts.get(vendor.id, 0) }}</td>
+            <td class="asset-actions-cell">
+              <div class="table-actions">
+                <button
+                  class="btn btn-secondary btn-small"
+                  type="button"
+                  data-vendor-edit="{{ vendor.id }}"
+                  data-vendor-name="{{ vendor.name }}"
+                  @click="openEdit({
+                    id: $el.dataset.vendorEdit,
+                    name: $el.dataset.vendorName
+                  })"
+                >
+                  Edit
+                </button>
+                <button
+                  class="btn btn-danger btn-small"
+                  type="button"
+                  data-vendor-delete="{{ vendor.id }}"
+                  data-vendor-delete-name="{{ vendor.name }}"
+                  @click="openDelete({
+                    id: $el.dataset.vendorDelete,
+                    name: $el.dataset.vendorDeleteName
+                  })"
+                >
+                  Delete
+                </button>
+              </div>
+            </td>
+          </tr>
+          {% endfor %}
+          {% else %}<tr><td colspan="3" class="empty-state">No vendors yet.</td></tr>{% endif %}
+        </tbody>
+      </table>
     </div>
-    {% endif %}
-    <form class="ip-drawer-form" method="post" action="/ui/vendors" data-vendor-create-form id="vendor-create-form">
-      <section class="ip-drawer-section">
-        <h3>Vendor details</h3>
-        <label class="field">
-          <span>Name</span>
-          <input class="input" type="text" name="name" value="{{ form_state.name }}" data-vendor-input="name" required />
-        </label>
-      </section>
-    </form>
-  </div>
-  <div class="ip-drawer-footer">
-    <span class="ip-drawer-footer-status" data-vendor-create-dirty>Enter details</span>
-    <div class="ip-drawer-footer-actions">
-      <button class="btn btn-secondary" type="button" data-vendor-create-cancel>Cancel</button>
-      <button class="btn btn-primary" type="submit" form="vendor-create-form" data-vendor-create-save disabled>Create vendor</button>
-    </div>
-  </div>
-</aside>
+  </section>
 
-<div class="ip-drawer-overlay" data-vendor-edit-overlay aria-hidden="true"></div>
-<aside class="ip-drawer" data-vendor-edit-drawer data-vendor-edit-open="{{ 'true' if (edit_errors or edit_vendor) else 'false' }}" role="dialog" aria-modal="true" aria-label="Edit vendor">
-  <div class="ip-drawer-header">
-    <div class="ip-drawer-header-row">
-      <div>
-        <h2 class="ip-drawer-title">Edit Vendor</h2>
-        <p class="ip-drawer-subtitle">Update vendor name used in host forms.</p>
+  {% call(section) drawer_macros.drawer(
+    'vendor-create-drawer',
+    'Create Vendor',
+    'Add vendor names for host selection.',
+    'data-vendor-create-overlay x-show="createOpen" x-transition.opacity.duration.150ms :class="{ &#39;is-open&#39;: createOpen }" x-bind:aria-hidden="(!createOpen).toString()" @click="closeCreate()"',
+    'data-vendor-create-drawer x-show="createOpen" x-transition:enter="transition ease-out duration-150" x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100" x-transition:leave="transition ease-in duration-100" x-transition:leave-start="opacity-100" x-transition:leave-end="opacity-0" :class="{ &#39;is-open&#39;: createOpen }" x-bind:aria-hidden="(!createOpen).toString()"',
+    'data-vendor-open',
+    errors,
+    'Add vendor',
+    'data-vendor-create-close @click="closeCreate()"'
+  ) %}
+    {% if section == 'body' %}
+      {% if errors %}
+      <div class="alert alert-error">
+        <ul>{% for error in errors %}<li>{{ error }}</li>{% endfor %}</ul>
       </div>
-      <button class="ip-drawer-close" type="button" aria-label="Close drawer" data-vendor-edit-close>✕</button>
-    </div>
-  </div>
-  <div class="ip-drawer-body">
-    {% if edit_errors %}
-    <div class="alert alert-error">
-      <ul>{% for error in edit_errors %}<li>{{ error }}</li>{% endfor %}</ul>
-    </div>
-    {% endif %}
-    <form
-      class="ip-drawer-form"
-      method="post"
-      action="{% if edit_vendor %}/ui/vendors/{{ edit_vendor.id }}/edit{% else %}#{% endif %}"
-      data-vendor-edit-form
-      id="vendor-edit-form"
-      data-vendor-edit-id="{{ edit_vendor.id if edit_vendor else '' }}"
-    >
-      <section class="ip-drawer-section">
-        <h3>Vendor details</h3>
-        <label class="field">
-          <span>Name</span>
-          <input class="input" type="text" name="name" value="{{ edit_form_state.name }}" data-vendor-edit-input="name" required />
-        </label>
-      </section>
-    </form>
-  </div>
-  <div class="ip-drawer-footer">
-    <span class="ip-drawer-footer-status" data-vendor-edit-dirty>Choose vendor</span>
-    <div class="ip-drawer-footer-actions">
-      <button class="btn btn-secondary" type="button" data-vendor-edit-cancel>Cancel</button>
-      <button class="btn btn-primary" type="submit" form="vendor-edit-form" data-vendor-edit-save disabled>Save changes</button>
-    </div>
-  </div>
-</aside>
-
-<div class="ip-drawer-overlay" data-vendor-delete-overlay aria-hidden="true"></div>
-<aside class="ip-drawer" data-vendor-delete-drawer data-vendor-delete-open="{{ 'true' if delete_vendor else 'false' }}" role="dialog" aria-modal="true" aria-label="Delete vendor">
-  <div class="ip-drawer-header">
-    <div class="ip-drawer-header-row">
-      <div>
-        <h2 class="ip-drawer-title">Delete Vendor</h2>
-        <p class="ip-drawer-subtitle" data-vendor-delete-subtitle>Permanent removal</p>
+      {% endif %}
+      <form class="ip-drawer-form" method="post" action="/ui/vendors" data-vendor-create-form id="vendor-create-form" @submit="if (!createCanSave()) { $event.preventDefault(); }">
+        <section class="ip-drawer-section">
+          <h3>Vendor details</h3>
+          <label class="field">
+            <span>Name</span>
+            <input class="input" type="text" name="name" value="{{ form_state.name }}" x-model="createName" data-vendor-input="name" x-ref="createNameInput" required />
+          </label>
+        </section>
+      </form>
+    {% elif section == 'footer' %}
+      <div class="ip-drawer-footer">
+        <span class="ip-drawer-footer-status" data-vendor-create-dirty x-text="createStatus()">Enter details</span>
+        <div class="ip-drawer-footer-actions">
+          <button class="btn btn-secondary" type="button" data-vendor-create-cancel @click="closeCreate()">Cancel</button>
+          <button class="btn btn-primary" type="submit" form="vendor-create-form" data-vendor-create-save :disabled="!createCanSave()">Create vendor</button>
+        </div>
       </div>
-      <button class="ip-drawer-close" type="button" aria-label="Close drawer" data-vendor-delete-close>✕</button>
-    </div>
-  </div>
-  <div class="ip-drawer-body">
-    {% if delete_errors %}
-    <div class="alert alert-error">
-      <ul>{% for error in delete_errors %}<li>{{ error }}</li>{% endfor %}</ul>
-    </div>
     {% endif %}
-    <form
-      class="ip-drawer-form ip-drawer-delete-form"
-      method="post"
-      action="{% if delete_vendor %}/ui/vendors/{{ delete_vendor.id }}/delete{% else %}#{% endif %}"
-      data-vendor-delete-form
-      id="vendor-delete-form"
-      data-vendor-delete-id="{{ delete_vendor.id if delete_vendor else '' }}"
-      data-vendor-delete-name="{{ delete_vendor.name if delete_vendor else '' }}"
-    >
-      <section class="ip-drawer-section">
-        <h3 class="ip-drawer-delete-heading">Delete this vendor?</h3>
-        <p class="ip-drawer-delete-warning">Linked hosts will have no vendor selected.</p>
-        <dl class="ip-drawer-delete-details">
-          <div><dt>Name</dt><dd data-vendor-delete-name-display>{{ delete_vendor.name if delete_vendor else '—' }}</dd></div>
-        </dl>
-        <label class="field field-inline">
-          <input class="checkbox" type="checkbox" data-vendor-delete-ack />
-          <span>I understand this cannot be undone</span>
-        </label>
-        <label class="field">
-          <span>Type the vendor name to confirm: <strong data-vendor-delete-name-inline>{{ delete_vendor.name if delete_vendor else '—' }}</strong></span>
-          <input class="input" type="text" name="confirm_name" autocomplete="off" data-vendor-delete-confirm value="{{ delete_confirm_value }}" />
-        </label>
-      </section>
-    </form>
-  </div>
-  <div class="ip-drawer-footer">
-    <span class="ip-drawer-footer-status" data-vendor-delete-dirty>Choose vendor</span>
-    <div class="ip-drawer-footer-actions">
-      <button class="btn btn-secondary" type="button" data-vendor-delete-cancel>Cancel</button>
-      <button class="btn btn-danger" type="submit" form="vendor-delete-form" data-vendor-delete-submit disabled>Delete permanently</button>
-    </div>
-  </div>
-</aside>
+  {% endcall %}
 
-<script src="/static/js/drawer.js" defer></script>
-<script src="/static/js/vendors.js" defer></script>
+  {% call(section) drawer_macros.drawer(
+    'vendor-edit-drawer',
+    'Edit Vendor',
+    'Update vendor name used in host forms.',
+    'data-vendor-edit-overlay x-show="editOpen" x-transition.opacity.duration.150ms :class="{ &#39;is-open&#39;: editOpen }" x-bind:aria-hidden="(!editOpen).toString()" @click="closeEdit()"',
+    'data-vendor-edit-drawer x-show="editOpen" x-transition:enter="transition ease-out duration-150" x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100" x-transition:leave="transition ease-in duration-100" x-transition:leave-start="opacity-100" x-transition:leave-end="opacity-0" :class="{ &#39;is-open&#39;: editOpen }" x-bind:aria-hidden="(!editOpen).toString()"',
+    'data-vendor-edit-open',
+    (edit_errors or edit_vendor),
+    'Edit vendor',
+    'data-vendor-edit-close @click="closeEdit()"'
+  ) %}
+    {% if section == 'body' %}
+      {% if edit_errors %}
+      <div class="alert alert-error">
+        <ul>{% for error in edit_errors %}<li>{{ error }}</li>{% endfor %}</ul>
+      </div>
+      {% endif %}
+      <form
+        class="ip-drawer-form"
+        method="post"
+        :action="editAction()"
+        data-vendor-edit-form
+        id="vendor-edit-form"
+        :data-vendor-edit-id="editVendorId"
+        @submit="if (!editCanSave()) { $event.preventDefault(); }"
+      >
+        <section class="ip-drawer-section">
+          <h3>Vendor details</h3>
+          <label class="field">
+            <span>Name</span>
+            <input class="input" type="text" name="name" value="{{ edit_form_state.name }}" x-model="editName" data-vendor-edit-input="name" x-ref="editNameInput" required />
+          </label>
+        </section>
+      </form>
+    {% elif section == 'footer' %}
+      <div class="ip-drawer-footer">
+        <span class="ip-drawer-footer-status" data-vendor-edit-dirty x-text="editStatus()">Choose vendor</span>
+        <div class="ip-drawer-footer-actions">
+          <button class="btn btn-secondary" type="button" data-vendor-edit-cancel @click="closeEdit()">Cancel</button>
+          <button class="btn btn-primary" type="submit" form="vendor-edit-form" data-vendor-edit-save :disabled="!editCanSave()">Save changes</button>
+        </div>
+      </div>
+    {% endif %}
+  {% endcall %}
+
+  {% call(section) drawer_macros.drawer(
+    'vendor-delete-drawer',
+    'Delete Vendor',
+    'Permanent removal',
+    'data-vendor-delete-overlay x-show="deleteOpen" x-transition.opacity.duration.150ms :class="{ &#39;is-open&#39;: deleteOpen }" x-bind:aria-hidden="(!deleteOpen).toString()" @click="closeDelete()"',
+    'data-vendor-delete-drawer x-show="deleteOpen" x-transition:enter="transition ease-out duration-150" x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100" x-transition:leave="transition ease-in duration-100" x-transition:leave-start="opacity-100" x-transition:leave-end="opacity-0" :class="{ &#39;is-open&#39;: deleteOpen }" x-bind:aria-hidden="(!deleteOpen).toString()"',
+    'data-vendor-delete-open',
+    delete_vendor,
+    'Delete vendor',
+    'data-vendor-delete-close @click="closeDelete()"',
+    'data-vendor-delete-subtitle x-text="deleteVendorName || &#39;Permanent removal&#39;"'
+  ) %}
+    {% if section == 'body' %}
+      {% if delete_errors %}
+      <div class="alert alert-error">
+        <ul>{% for error in delete_errors %}<li>{{ error }}</li>{% endfor %}</ul>
+      </div>
+      {% endif %}
+      <form
+        class="ip-drawer-form ip-drawer-delete-form"
+        method="post"
+        :action="deleteAction()"
+        data-vendor-delete-form
+        id="vendor-delete-form"
+        :data-vendor-delete-id="deleteVendorId"
+        :data-vendor-delete-name="deleteVendorName"
+        @submit="if (!deleteIsValid()) { $event.preventDefault(); }"
+      >
+        <section class="ip-drawer-section">
+          <h3 class="ip-drawer-delete-heading">Delete this vendor?</h3>
+          <p class="ip-drawer-delete-warning">Linked hosts will have no vendor selected.</p>
+          <dl class="ip-drawer-delete-details">
+            <div><dt>Name</dt><dd data-vendor-delete-name-display x-text="deleteVendorName || '—'">{{ delete_vendor.name if delete_vendor else '—' }}</dd></div>
+          </dl>
+          <label class="field field-inline">
+            <input class="checkbox" type="checkbox" data-vendor-delete-ack x-model="deleteAck" />
+            <span>I understand this cannot be undone</span>
+          </label>
+          <label class="field">
+            <span>Type the vendor name to confirm: <strong data-vendor-delete-name-inline x-text="deleteVendorName || '—'">{{ delete_vendor.name if delete_vendor else '—' }}</strong></span>
+            <input class="input" type="text" name="confirm_name" autocomplete="off" data-vendor-delete-confirm value="{{ delete_confirm_value }}" x-model="deleteConfirmName" x-ref="deleteConfirmInput" />
+          </label>
+        </section>
+      </form>
+    {% elif section == 'footer' %}
+      <div class="ip-drawer-footer">
+        <span class="ip-drawer-footer-status" data-vendor-delete-dirty x-text="deleteStatus()">Choose vendor</span>
+        <div class="ip-drawer-footer-actions">
+          <button class="btn btn-secondary" type="button" data-vendor-delete-cancel @click="closeDelete()">Cancel</button>
+          <button class="btn btn-danger" type="submit" form="vendor-delete-form" data-vendor-delete-submit :disabled="!deleteIsValid()">Delete permanently</button>
+        </div>
+      </div>
+    {% endif %}
+  {% endcall %}
+</div>

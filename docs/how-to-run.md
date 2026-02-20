@@ -84,7 +84,7 @@ Defaults for the bootstrap superuser are:
 Docker deployments default to local/static assets (CSS + JS like htmx) so the UI
 renders without downloading from public CDNs. Non-Docker runs will load the
 Inter font from Google Fonts and htmx/Alpine.js from CDNs by default. Library
-Projects and Tags drawers are Alpine-driven in the Jinja templates, and the Tags
+Projects, Tags, and Vendors drawers are Alpine-driven in the Jinja templates, and the Tags
 create drawer auto-suggests a random color when not prefilled. In local asset mode
 (`IPOCKET_DOCKER_ASSETS=1`), Library Projects drawer interactivity falls back to
 local scripts (`/static/js/projects.js` + `/static/js/drawer.js`) so that runtime
