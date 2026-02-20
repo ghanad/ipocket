@@ -166,13 +166,11 @@ def test_tags_page_uses_drawers_for_create_edit_delete(client) -> None:
     assert f'data-tag-color="{tag.color}"' in response.text
     assert "<th>IPs</th>" in response.text
     assert ">1</td>" in response.text
-    tags_js = Path(__file__).resolve().parents[2] / "app/static/js/tags.js"
-    tags_js_content = tags_js.read_text(encoding="utf-8")
-    assert "data-tag-create-overlay" in tags_js_content
-    assert "data-tag-edit-overlay" in tags_js_content
-    assert "data-tag-delete-overlay" in tags_js_content
-    assert "/static/js/tags.js" in response.text
-    assert "/static/js/drawer.js" in response.text
+    assert '@tag-create-open.window="openCreate()"' in response.text
+    assert "randomHexColor()" in response.text
+    assert "/ui/tags/" in response.text
+    assert "/static/js/tags.js" not in response.text
+    assert "/static/js/drawer.js" not in response.text
     assert 'class="card table-card tags-existing-card"' in response.text
 
 
@@ -198,7 +196,8 @@ def test_tag_delete_requires_exact_name_confirmation(client) -> None:
 
     assert response.status_code == 400
     assert "Tag name confirmation does not match." in response.text
-    assert f'action="/ui/tags/{tag.id}/delete"' in response.text
+    assert ':action="deleteAction()"' in response.text
+    assert f"deleteTagId: {tag.id}" in response.text
 
 
 def test_ip_assets_list_uses_drawer_actions_for_edit_and_delete(client) -> None:

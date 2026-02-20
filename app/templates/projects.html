@@ -9,7 +9,7 @@
   </div>
   <div class="page-header-actions">
     {% if active_tab == "tags" %}
-    <button class="btn btn-primary" type="button" data-tag-add>New Tag</button>
+    <button class="btn btn-primary" type="button" data-tag-add @click="$dispatch('tag-create-open')">New Tag</button>
     {% elif active_tab == "vendors" %}
     <button class="btn btn-primary" type="button" data-vendor-add>New Vendor</button>
     {% else %}

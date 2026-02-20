@@ -199,7 +199,10 @@ def test_tags_tab_create_drawer_uses_random_suggested_color(
     response = client.get("/ui/projects?tab=tags")
 
     assert response.status_code == 200
-    assert 'name="color" value="#123abc" data-tag-input="color"' in response.text
+    assert 'name="color"' in response.text
+    assert 'value="#123abc"' in response.text
+    assert 'data-tag-input="color"' in response.text
+    assert 'x-model="createColor"' in response.text
 
 
 def test_tags_route_renders_unified_library_page(client) -> None:

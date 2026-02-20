@@ -1,202 +1,419 @@
-<section class="card table-card tags-existing-card">
-  <div class="card-header">
-    <div>
-      <h2>Existing tags</h2>
-      <p class="subtitle">Edit, recolor, or remove tags as needed.</p>
-    </div>
-  </div>
-  <div class="table-wrapper">
-    <table class="table table-compact">
-      <thead>
-        <tr>
-          <th>Name</th>
-          <th>Color</th>
-          <th>Preview</th>
-          <th>IPs</th>
-          <th>Actions</th>
-        </tr>
-      </thead>
-      <tbody>
-        {% if tags %}
-        {% for tag in tags %}
-        <tr>
-          <td>{{ tag.name }}</td>
-          <td><input class="input input-color" type="color" value="{{ tag.color }}" disabled /></td>
-          <td>
-            <span class="tag tag-color" style="--tag-color: {{ tag.color }}">{{ tag.name }}</span>
-          </td>
-          <td>{{ tag_ip_counts.get(tag.id, 0) }}</td>
-          <td class="asset-actions-cell">
-            <div class="table-actions">
-              <button
-                class="btn btn-secondary btn-small"
-                type="button"
-                data-tag-edit="{{ tag.id }}"
-                data-tag-name="{{ tag.name }}"
-                data-tag-color="{{ tag.color }}"
-              >
-                Edit
-              </button>
-              <button
-                class="btn btn-danger btn-small"
-                type="button"
-                data-tag-delete="{{ tag.id }}"
-                data-tag-delete-name="{{ tag.name }}"
-              >
-                Delete
-              </button>
-            </div>
-          </td>
-        </tr>
-        {% endfor %}
-        {% else %}
-        <tr>
-          <td colspan="5" class="empty-state">No tags yet.</td>
-        </tr>
-        {% endif %}
-      </tbody>
-    </table>
-  </div>
-</section>
+{% import 'macros/drawer.html' as drawer_macros %}
+<div
+  x-data="{
+    createOpen: {{ 'true' if errors else 'false' }},
+    createName: {{ form_state.name|tojson|forceescape }},
+    createColor: {{ form_state.color|tojson|forceescape }},
+    createInitial: {},
 
-<div class="ip-drawer-overlay" data-tag-create-overlay aria-hidden="true"></div>
-<aside class="ip-drawer" data-tag-create-drawer data-tag-open="{{ 'true' if errors else 'false' }}" role="dialog" aria-modal="true" aria-label="Add tag">
-  <div class="ip-drawer-header">
-    <div class="ip-drawer-header-row">
+    editOpen: {{ 'true' if (edit_errors or edit_tag) else 'false' }},
+    editTagId: {{ (edit_tag.id if edit_tag else '')|tojson|forceescape }},
+    editName: {{ edit_form_state.name|tojson|forceescape }},
+    editColor: {{ edit_form_state.color|tojson|forceescape }},
+    editInitial: {},
+
+    deleteOpen: {{ 'true' if delete_tag else 'false' }},
+    deleteTagId: {{ (delete_tag.id if delete_tag else '')|tojson|forceescape }},
+    deleteTagName: {{ (delete_tag.name if delete_tag else '')|tojson|forceescape }},
+    deleteAck: false,
+    deleteConfirmName: {{ delete_confirm_value|tojson|forceescape }},
+
+    init() {
+      if (!this.normalize(this.createColor)) {
+        this.createColor = this.randomHexColor();
+      }
+      this.syncCreateInitial();
+      this.syncEditInitial();
+    },
+
+    normalize(value) {
+      return (value || '').trim();
+    },
+
+    randomHexColor() {
+      const value = Math.floor(Math.random() * 0xffffff);
+      return '#' + value.toString(16).padStart(6, '0');
+    },
+
+    syncCreateInitial() {
+      this.createInitial = {
+        name: this.normalize(this.createName),
+        color: this.normalize(this.createColor),
+      };
+    },
+
+    createIsDirty() {
+      return (
+        this.normalize(this.createName) !== (this.createInitial.name || '') ||
+        this.normalize(this.createColor) !== (this.createInitial.color || '')
+      );
+    },
+
+    createIsValid() {
+      return Boolean(this.normalize(this.createName));
+    },
+
+    createCanSave() {
+      return this.createIsDirty() && this.createIsValid();
+    },
+
+    createStatus() {
+      return this.createIsDirty() ? 'Ready to create' : 'Enter details';
+    },
+
+    openCreate() {
+      this.createOpen = true;
+      this.$nextTick(() => this.$refs.createNameInput?.focus());
+    },
+
+    closeCreate() {
+      if (this.createIsDirty() && !window.confirm('Discard changes?')) {
+        return;
+      }
+      this.createOpen = false;
+    },
+
+    syncEditInitial() {
+      this.editInitial = {
+        name: this.normalize(this.editName),
+        color: this.normalize(this.editColor),
+      };
+    },
+
+    editIsDirty() {
+      return (
+        this.normalize(this.editName) !== (this.editInitial.name || '') ||
+        this.normalize(this.editColor) !== (this.editInitial.color || '')
+      );
+    },
+
+    editIsValid() {
+      return Boolean(this.editTagId) && Boolean(this.normalize(this.editName));
+    },
+
+    editCanSave() {
+      return this.editIsDirty() && this.editIsValid();
+    },
+
+    editStatus() {
+      if (!this.editTagId) {
+        return 'Choose tag';
+      }
+      return this.editIsDirty() ? 'Ready to save' : 'No changes yet';
+    },
+
+    editAction() {
+      if (!this.editTagId) {
+        return '#';
+      }
+      return '/ui/tags/' + this.editTagId + '/edit';
+    },
+
+    openEdit(tag) {
+      this.editTagId = String(tag.id || '');
+      this.editName = tag.name || '';
+      this.editColor = tag.color || '#22c55e';
+      this.syncEditInitial();
+      this.editOpen = true;
+      this.$nextTick(() => this.$refs.editNameInput?.focus());
+    },
+
+    closeEdit() {
+      if (this.editIsDirty() && !window.confirm('Discard changes?')) {
+        return;
+      }
+      this.editOpen = false;
+    },
+
+    deleteAction() {
+      if (!this.deleteTagId) {
+        return '#';
+      }
+      return '/ui/tags/' + this.deleteTagId + '/delete';
+    },
+
+    deleteIsValid() {
+      if (!this.deleteTagId || !this.deleteTagName) {
+        return false;
+      }
+      if (!this.deleteAck) {
+        return false;
+      }
+      return this.normalize(this.deleteConfirmName) === this.deleteTagName;
+    },
+
+    deleteStatus() {
+      if (!this.deleteTagId) {
+        return 'Choose tag';
+      }
+      if (!this.deleteAck) {
+        return 'Acknowledge delete';
+      }
+      return this.deleteIsValid() ? 'Ready to delete' : 'Type exact tag name';
+    },
+
+    openDelete(tag) {
+      this.deleteTagId = String(tag.id || '');
+      this.deleteTagName = tag.name || '';
+      this.deleteAck = false;
+      this.deleteConfirmName = '';
+      this.deleteOpen = true;
+      this.$nextTick(() => this.$refs.deleteConfirmInput?.focus());
+    },
+
+    closeDelete() {
+      this.deleteOpen = false;
+    },
+
+    closeOnEscape() {
+      if (this.createOpen) {
+        this.closeCreate();
+        return;
+      }
+      if (this.editOpen) {
+        this.closeEdit();
+        return;
+      }
+      if (this.deleteOpen) {
+        this.closeDelete();
+      }
+    }
+  }"
+  @tag-create-open.window="openCreate()"
+  @keydown.escape.window="closeOnEscape()"
+>
+  <section class="card table-card tags-existing-card">
+    <div class="card-header">
       <div>
-        <h2 class="ip-drawer-title">Create Tag</h2>
-        <p class="ip-drawer-subtitle">Add reusable labels for IP assets.</p>
+        <h2>Existing tags</h2>
+        <p class="subtitle">Edit, recolor, or remove tags as needed.</p>
       </div>
-      <button class="ip-drawer-close" type="button" aria-label="Close drawer" data-tag-create-close>✕</button>
     </div>
-  </div>
-  <div class="ip-drawer-body">
-    {% if errors %}
-    <div class="alert alert-error">
-      <ul>{% for error in errors %}<li>{{ error }}</li>{% endfor %}</ul>
+    <div class="table-wrapper">
+      <table class="table table-compact">
+        <thead>
+          <tr>
+            <th>Name</th>
+            <th>Color</th>
+            <th>Preview</th>
+            <th>IPs</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% if tags %}
+          {% for tag in tags %}
+          <tr>
+            <td>{{ tag.name }}</td>
+            <td><input class="input input-color" type="color" value="{{ tag.color }}" disabled /></td>
+            <td>
+              <span class="tag tag-color" style="--tag-color: {{ tag.color }}">{{ tag.name }}</span>
+            </td>
+            <td>{{ tag_ip_counts.get(tag.id, 0) }}</td>
+            <td class="asset-actions-cell">
+              <div class="table-actions">
+                <button
+                  class="btn btn-secondary btn-small"
+                  type="button"
+                  data-tag-edit="{{ tag.id }}"
+                  data-tag-name="{{ tag.name }}"
+                  data-tag-color="{{ tag.color }}"
+                  @click="openEdit({
+                    id: $el.dataset.tagEdit,
+                    name: $el.dataset.tagName,
+                    color: $el.dataset.tagColor
+                  })"
+                >
+                  Edit
+                </button>
+                <button
+                  class="btn btn-danger btn-small"
+                  type="button"
+                  data-tag-delete="{{ tag.id }}"
+                  data-tag-delete-name="{{ tag.name }}"
+                  @click="openDelete({
+                    id: $el.dataset.tagDelete,
+                    name: $el.dataset.tagDeleteName
+                  })"
+                >
+                  Delete
+                </button>
+              </div>
+            </td>
+          </tr>
+          {% endfor %}
+          {% else %}
+          <tr>
+            <td colspan="5" class="empty-state">No tags yet.</td>
+          </tr>
+          {% endif %}
+        </tbody>
+      </table>
     </div>
-    {% endif %}
-    <form class="ip-drawer-form" method="post" action="/ui/tags" data-tag-create-form id="tag-create-form">
-      <section class="ip-drawer-section">
-        <h3>Tag details</h3>
-        <label class="field">
-          <span>Name</span>
-          <input class="input" type="text" name="name" value="{{ form_state.name }}" data-tag-input="name" required />
-        </label>
-        <label class="field">
-          <span>Color</span>
-          <input class="input input-color" type="color" name="color" value="{{ form_state.color }}" data-tag-input="color" />
-        </label>
-      </section>
-    </form>
-  </div>
-  <div class="ip-drawer-footer">
-    <span class="ip-drawer-footer-status" data-tag-create-dirty>Enter details</span>
-    <div class="ip-drawer-footer-actions">
-      <button class="btn btn-secondary" type="button" data-tag-create-cancel>Cancel</button>
-      <button class="btn btn-primary" type="submit" form="tag-create-form" data-tag-create-save disabled>Create tag</button>
-    </div>
-  </div>
-</aside>
+  </section>
 
-<div class="ip-drawer-overlay" data-tag-edit-overlay aria-hidden="true"></div>
-<aside class="ip-drawer" data-tag-edit-drawer data-tag-edit-open="{{ 'true' if (edit_errors or edit_tag) else 'false' }}" role="dialog" aria-modal="true" aria-label="Edit tag">
-  <div class="ip-drawer-header">
-    <div class="ip-drawer-header-row">
-      <div>
-        <h2 class="ip-drawer-title">Edit Tag</h2>
-        <p class="ip-drawer-subtitle">Update tag label and color.</p>
+  {% call(section) drawer_macros.drawer(
+    'tag-create-drawer',
+    'Create Tag',
+    'Add reusable labels for IP assets.',
+    'data-tag-create-overlay x-show="createOpen" x-transition.opacity.duration.150ms :class="{ &#39;is-open&#39;: createOpen }" x-bind:aria-hidden="(!createOpen).toString()" @click="closeCreate()"',
+    'data-tag-create-drawer x-show="createOpen" x-transition:enter="transition ease-out duration-150" x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100" x-transition:leave="transition ease-in duration-100" x-transition:leave-start="opacity-100" x-transition:leave-end="opacity-0" :class="{ &#39;is-open&#39;: createOpen }" x-bind:aria-hidden="(!createOpen).toString()"',
+    'data-tag-open',
+    errors,
+    'Add tag',
+    'data-tag-create-close @click="closeCreate()"'
+  ) %}
+    {% if section == 'body' %}
+      {% if errors %}
+      <div class="alert alert-error">
+        <ul>
+          {% for error in errors %}
+          <li>{{ error }}</li>
+          {% endfor %}
+        </ul>
       </div>
-      <button class="ip-drawer-close" type="button" aria-label="Close drawer" data-tag-edit-close>✕</button>
-    </div>
-  </div>
-  <div class="ip-drawer-body">
-    {% if edit_errors %}
-    <div class="alert alert-error">
-      <ul>{% for error in edit_errors %}<li>{{ error }}</li>{% endfor %}</ul>
-    </div>
-    {% endif %}
-    <form
-      class="ip-drawer-form"
-      method="post"
-      action="{% if edit_tag %}/ui/tags/{{ edit_tag.id }}/edit{% else %}#{% endif %}"
-      data-tag-edit-form
-      id="tag-edit-form"
-      data-tag-edit-id="{{ edit_tag.id if edit_tag else '' }}"
-    >
-      <section class="ip-drawer-section">
-        <h3>Tag details</h3>
-        <label class="field">
-          <span>Name</span>
-          <input class="input" type="text" name="name" value="{{ edit_form_state.name }}" data-tag-edit-input="name" required />
-        </label>
-        <label class="field">
-          <span>Color</span>
-          <input class="input input-color" type="color" name="color" value="{{ edit_form_state.color }}" data-tag-edit-input="color" />
-        </label>
-      </section>
-    </form>
-  </div>
-  <div class="ip-drawer-footer">
-    <span class="ip-drawer-footer-status" data-tag-edit-dirty>Choose tag</span>
-    <div class="ip-drawer-footer-actions">
-      <button class="btn btn-secondary" type="button" data-tag-edit-cancel>Cancel</button>
-      <button class="btn btn-primary" type="submit" form="tag-edit-form" data-tag-edit-save disabled>Save changes</button>
-    </div>
-  </div>
-</aside>
-
-<div class="ip-drawer-overlay" data-tag-delete-overlay aria-hidden="true"></div>
-<aside class="ip-drawer" data-tag-delete-drawer data-tag-delete-open="{{ 'true' if delete_tag else 'false' }}" role="dialog" aria-modal="true" aria-label="Delete tag">
-  <div class="ip-drawer-header">
-    <div class="ip-drawer-header-row">
-      <div>
-        <h2 class="ip-drawer-title">Delete Tag</h2>
-        <p class="ip-drawer-subtitle" data-tag-delete-subtitle>Permanent removal</p>
+      {% endif %}
+      <form class="ip-drawer-form" method="post" action="/ui/tags" data-tag-create-form id="tag-create-form" @submit="if (!createCanSave()) { $event.preventDefault(); }">
+        <section class="ip-drawer-section">
+          <h3>Tag details</h3>
+          <label class="field">
+            <span>Name</span>
+            <input class="input" type="text" name="name" value="{{ form_state.name }}" x-model="createName" data-tag-input="name" x-ref="createNameInput" required />
+          </label>
+          <label class="field">
+            <span>Color</span>
+            <input class="input input-color" type="color" name="color" value="{{ form_state.color }}" x-model="createColor" data-tag-input="color" />
+          </label>
+        </section>
+      </form>
+    {% elif section == 'footer' %}
+      <div class="ip-drawer-footer">
+        <span class="ip-drawer-footer-status" data-tag-create-dirty x-text="createStatus()">Enter details</span>
+        <div class="ip-drawer-footer-actions">
+          <button class="btn btn-secondary" type="button" data-tag-create-cancel @click="closeCreate()">Cancel</button>
+          <button class="btn btn-primary" type="submit" form="tag-create-form" data-tag-create-save :disabled="!createCanSave()">Create tag</button>
+        </div>
       </div>
-      <button class="ip-drawer-close" type="button" aria-label="Close drawer" data-tag-delete-close>✕</button>
-    </div>
-  </div>
-  <div class="ip-drawer-body">
-    {% if delete_errors %}
-    <div class="alert alert-error">
-      <ul>{% for error in delete_errors %}<li>{{ error }}</li>{% endfor %}</ul>
-    </div>
     {% endif %}
-    <form
-      class="ip-drawer-form ip-drawer-delete-form"
-      method="post"
-      action="{% if delete_tag %}/ui/tags/{{ delete_tag.id }}/delete{% else %}#{% endif %}"
-      data-tag-delete-form
-      id="tag-delete-form"
-      data-tag-delete-id="{{ delete_tag.id if delete_tag else '' }}"
-      data-tag-delete-name="{{ delete_tag.name if delete_tag else '' }}"
-    >
-      <section class="ip-drawer-section">
-        <h3 class="ip-drawer-delete-heading">Delete this tag?</h3>
-        <p class="ip-drawer-delete-warning">The tag will be removed from all linked IP assets.</p>
-        <dl class="ip-drawer-delete-details">
-          <div><dt>Name</dt><dd data-tag-delete-name-display>{{ delete_tag.name if delete_tag else '—' }}</dd></div>
-        </dl>
-        <label class="field field-inline">
-          <input class="checkbox" type="checkbox" data-tag-delete-ack />
-          <span>I understand this cannot be undone</span>
-        </label>
-        <label class="field">
-          <span>Type the tag name to confirm: <strong data-tag-delete-name-inline>{{ delete_tag.name if delete_tag else '—' }}</strong></span>
-          <input class="input" type="text" name="confirm_name" autocomplete="off" data-tag-delete-confirm value="{{ delete_confirm_value }}" />
-        </label>
-      </section>
-    </form>
-  </div>
-  <div class="ip-drawer-footer">
-    <span class="ip-drawer-footer-status" data-tag-delete-dirty>Choose tag</span>
-    <div class="ip-drawer-footer-actions">
-      <button class="btn btn-secondary" type="button" data-tag-delete-cancel>Cancel</button>
-      <button class="btn btn-danger" type="submit" form="tag-delete-form" data-tag-delete-submit disabled>Delete permanently</button>
-    </div>
-  </div>
-</aside>
+  {% endcall %}
 
-<script src="/static/js/drawer.js" defer></script>
-<script src="/static/js/tags.js" defer></script>
+  {% call(section) drawer_macros.drawer(
+    'tag-edit-drawer',
+    'Edit Tag',
+    'Update tag label and color.',
+    'data-tag-edit-overlay x-show="editOpen" x-transition.opacity.duration.150ms :class="{ &#39;is-open&#39;: editOpen }" x-bind:aria-hidden="(!editOpen).toString()" @click="closeEdit()"',
+    'data-tag-edit-drawer x-show="editOpen" x-transition:enter="transition ease-out duration-150" x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100" x-transition:leave="transition ease-in duration-100" x-transition:leave-start="opacity-100" x-transition:leave-end="opacity-0" :class="{ &#39;is-open&#39;: editOpen }" x-bind:aria-hidden="(!editOpen).toString()"',
+    'data-tag-edit-open',
+    (edit_errors or edit_tag),
+    'Edit tag',
+    'data-tag-edit-close @click="closeEdit()"'
+  ) %}
+    {% if section == 'body' %}
+      {% if edit_errors %}
+      <div class="alert alert-error">
+        <ul>
+          {% for error in edit_errors %}
+          <li>{{ error }}</li>
+          {% endfor %}
+        </ul>
+      </div>
+      {% endif %}
+      <form
+        class="ip-drawer-form"
+        method="post"
+        :action="editAction()"
+        data-tag-edit-form
+        id="tag-edit-form"
+        :data-tag-edit-id="editTagId"
+        @submit="if (!editCanSave()) { $event.preventDefault(); }"
+      >
+        <section class="ip-drawer-section">
+          <h3>Tag details</h3>
+          <label class="field">
+            <span>Name</span>
+            <input class="input" type="text" name="name" value="{{ edit_form_state.name }}" x-model="editName" data-tag-edit-input="name" x-ref="editNameInput" required />
+          </label>
+          <label class="field">
+            <span>Color</span>
+            <input class="input input-color" type="color" name="color" value="{{ edit_form_state.color }}" x-model="editColor" data-tag-edit-input="color" />
+          </label>
+        </section>
+      </form>
+    {% elif section == 'footer' %}
+      <div class="ip-drawer-footer">
+        <span class="ip-drawer-footer-status" data-tag-edit-dirty x-text="editStatus()">Choose tag</span>
+        <div class="ip-drawer-footer-actions">
+          <button class="btn btn-secondary" type="button" data-tag-edit-cancel @click="closeEdit()">Cancel</button>
+          <button class="btn btn-primary" type="submit" form="tag-edit-form" data-tag-edit-save :disabled="!editCanSave()">Save changes</button>
+        </div>
+      </div>
+    {% endif %}
+  {% endcall %}
+
+  {% call(section) drawer_macros.drawer(
+    'tag-delete-drawer',
+    'Delete Tag',
+    'Permanent removal',
+    'data-tag-delete-overlay x-show="deleteOpen" x-transition.opacity.duration.150ms :class="{ &#39;is-open&#39;: deleteOpen }" x-bind:aria-hidden="(!deleteOpen).toString()" @click="closeDelete()"',
+    'data-tag-delete-drawer x-show="deleteOpen" x-transition:enter="transition ease-out duration-150" x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100" x-transition:leave="transition ease-in duration-100" x-transition:leave-start="opacity-100" x-transition:leave-end="opacity-0" :class="{ &#39;is-open&#39;: deleteOpen }" x-bind:aria-hidden="(!deleteOpen).toString()"',
+    'data-tag-delete-open',
+    delete_tag,
+    'Delete tag',
+    'data-tag-delete-close @click="closeDelete()"',
+    'data-tag-delete-subtitle x-text="deleteTagName || &#39;Permanent removal&#39;"'
+  ) %}
+    {% if section == 'body' %}
+      {% if delete_errors %}
+      <div class="alert alert-error">
+        <ul>
+          {% for error in delete_errors %}
+          <li>{{ error }}</li>
+          {% endfor %}
+        </ul>
+      </div>
+      {% endif %}
+      <form
+        class="ip-drawer-form ip-drawer-delete-form"
+        method="post"
+        :action="deleteAction()"
+        data-tag-delete-form
+        id="tag-delete-form"
+        :data-tag-delete-id="deleteTagId"
+        :data-tag-delete-name="deleteTagName"
+      >
+        <section class="ip-drawer-section">
+          <h3 class="ip-drawer-delete-heading">Delete this tag?</h3>
+          <p class="ip-drawer-delete-warning">The tag will be removed from all linked IP assets.</p>
+          <dl class="ip-drawer-delete-details">
+            <div><dt>Name</dt><dd data-tag-delete-name-display x-text="deleteTagName || '—'">{{ delete_tag.name if delete_tag else '—' }}</dd></div>
+          </dl>
+          <label class="field field-inline">
+            <input class="checkbox" type="checkbox" data-tag-delete-ack x-model="deleteAck" />
+            <span>I understand this cannot be undone</span>
+          </label>
+          <label class="field">
+            <span>Type the tag name to confirm: <strong data-tag-delete-name-inline x-text="deleteTagName || '—'">{{ delete_tag.name if delete_tag else '—' }}</strong></span>
+            <input
+              class="input"
+              type="text"
+              name="confirm_name"
+              autocomplete="off"
+              data-tag-delete-confirm
+              value="{{ delete_confirm_value }}"
+              x-model="deleteConfirmName"
+              x-ref="deleteConfirmInput"
+            />
+          </label>
+        </section>
+      </form>
+    {% elif section == 'footer' %}
+      <div class="ip-drawer-footer">
+        <span class="ip-drawer-footer-status" data-tag-delete-dirty x-text="deleteStatus()">Choose tag</span>
+        <div class="ip-drawer-footer-actions">
+          <button class="btn btn-secondary" type="button" data-tag-delete-cancel @click="closeDelete()">Cancel</button>
+          <button class="btn btn-danger" type="submit" form="tag-delete-form" data-tag-delete-submit :disabled="!deleteIsValid()">Delete permanently</button>
+        </div>
+      </div>
+    {% endif %}
+  {% endcall %}
+</div>
