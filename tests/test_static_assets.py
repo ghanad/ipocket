@@ -139,11 +139,11 @@ def test_projects_templates_use_shared_drawer_macro() -> None:
     )
 
     assert '{% from "macros/drawer.html" import drawer %}' in projects_template
-    assert '{% macro drawer(' in drawer_macro
+    assert "{% macro drawer(" in drawer_macro
     assert "{{ caller('body') }}" in drawer_macro
     assert "{{ caller('footer') }}" in drawer_macro
     assert projects_partial.count("{% call(section) drawer(") == 3
-    assert "<aside class=\"ip-drawer\"" not in projects_partial
+    assert '<aside class="ip-drawer"' not in projects_partial
 
 
 def test_hosts_drawer_css_matches_ip_drawer_layout_baseline() -> None:
