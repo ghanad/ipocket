@@ -1,6 +1,7 @@
 {% extends "base.html" %}
 
 {% block content %}
+<div x-data="{}" data-library-page>
 <section class="page-header">
   <div>
     <p class="eyebrow">Library</p>
@@ -31,4 +32,5 @@
 {% else %}
   {% include "partials/projects_tab_content.html" %}
 {% endif %}
+</div>
 {% endblock %}

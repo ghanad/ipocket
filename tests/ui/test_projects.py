@@ -225,6 +225,8 @@ def test_tags_route_renders_unified_library_page(client) -> None:
 def test_library_page_has_single_header_and_dynamic_primary_action(client) -> None:
     projects_response = client.get("/ui/projects")
     assert projects_response.status_code == 200
+    assert "data-library-page" in projects_response.text
+    assert 'x-data="{}"' in projects_response.text
     assert projects_response.text.count("<h1>Catalog Settings</h1>") == 1
     assert "<h1>Projects</h1>" not in projects_response.text
     assert "data-project-add" in projects_response.text
