@@ -5,9 +5,11 @@ from urllib.parse import urlencode
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from fastapi.responses import HTMLResponse, RedirectResponse, Response
+from pydantic import ValidationError
 from sqlalchemy.exc import IntegrityError
 
 from app.dependencies import get_session
+from app.routes.api.schemas import VendorCreate, VendorUpdate
 from app.routes.ui.utils import (
     _parse_form_data,
     _redirect_with_flash,
@@ -20,6 +22,20 @@ from . import repository
 from .common import _vendors_template_context
 
 router = APIRouter()
+
+
+def _vendor_form_errors(validation_error: ValidationError) -> list[str]:
+    errors: list[str] = []
+    for detail in validation_error.errors():
+        location = detail.get("loc") or ()
+        field = location[-1] if location else ""
+        if field == "name":
+            message = "Vendor name is required."
+        else:
+            message = detail.get("msg", "Invalid input.")
+        if message not in errors:
+            errors.append(message)
+    return errors
 
 
 @router.get("/ui/vendors", response_class=HTMLResponse)
@@ -96,13 +112,21 @@ async def ui_create_vendor(
         repository.get_vendor_by_id(session, delete) if delete is not None else None
     )
 
-    if not name:
+    vendor_input: VendorCreate | None = None
+    try:
+        vendor_input = VendorCreate(name=name or None)
+    except ValidationError as exc:
+        errors = _vendor_form_errors(exc)
+    else:
+        errors = []
+
+    if errors:
         return _render_template(
             request,
             "projects.html",
             _vendors_template_context(
                 session,
-                errors=["Vendor name is required."],
+                errors=errors,
                 form_state={"name": name},
                 edit_vendor=edit_vendor,
                 delete_vendor=delete_vendor,
@@ -110,8 +134,10 @@ async def ui_create_vendor(
             status_code=400,
             active_nav="library",
         )
+
+    assert vendor_input is not None
     try:
-        repository.create_vendor(session, name=name)
+        repository.create_vendor(session, name=vendor_input.name)
     except IntegrityError:
         return _render_template(
             request,
@@ -144,7 +170,15 @@ async def ui_edit_vendor(
 ) -> HTMLResponse:
     form_data = await _parse_form_data(request)
     name = (form_data.get("name") or "").strip()
-    if not name:
+    vendor_input: VendorUpdate | None = None
+    try:
+        vendor_input = VendorUpdate(name=name or None)
+    except ValidationError as exc:
+        errors = _vendor_form_errors(exc)
+    else:
+        errors = []
+
+    if errors:
         edit_vendor = repository.get_vendor_by_id(session, vendor_id)
         if edit_vendor is None:
             return Response(status_code=404)
@@ -153,15 +187,17 @@ async def ui_edit_vendor(
             "projects.html",
             _vendors_template_context(
                 session,
-                edit_errors=["Vendor name is required."],
+                edit_errors=errors,
                 edit_vendor=edit_vendor,
                 edit_form_state={"name": name},
             ),
             status_code=400,
             active_nav="library",
         )
+
+    assert vendor_input is not None
     try:
-        updated = repository.update_vendor(session, vendor_id, name)
+        updated = repository.update_vendor(session, vendor_id, vendor_input.name)
     except IntegrityError:
         edit_vendor = repository.get_vendor_by_id(session, vendor_id)
         if edit_vendor is None:

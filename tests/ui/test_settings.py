@@ -135,6 +135,10 @@ def test_tag_routes_redirect_and_validation_paths(client, _setup_connection) -> 
             "/ui/tags",
             data={"name": "bad name", "color": "#22c55e"},
         )
+        missing_name = client.post(
+            "/ui/tags",
+            data={"name": "", "color": "#22c55e"},
+        )
         duplicate = client.post(
             "/ui/tags",
             data={"name": "prod", "color": "#22c55e"},
@@ -159,6 +163,8 @@ def test_tag_routes_redirect_and_validation_paths(client, _setup_connection) -> 
         "Tag name may include letters, digits, dash, and underscore only."
         in invalid_name.text
     )
+    assert missing_name.status_code == 400
+    assert "Tag name is required." in missing_name.text
     assert duplicate.status_code == 409
     assert "Tag name already exists." in duplicate.text
     assert edit_missing_tag.status_code == 404
@@ -194,6 +200,10 @@ def test_vendor_routes_cover_redirect_validation_and_delete_404(
             f"/ui/vendors/{vendor.id}/edit",
             data={"name": "Arista"},
         )
+        edit_empty = client.post(
+            f"/ui/vendors/{vendor.id}/edit",
+            data={"name": ""},
+        )
         edit_missing = client.post("/ui/vendors/999/edit", data={"name": ""})
         delete_missing = client.post(
             "/ui/vendors/999/delete", data={"confirm_name": "whatever"}
@@ -215,6 +225,8 @@ def test_vendor_routes_cover_redirect_validation_and_delete_404(
     assert "Vendor name already exists." in create_duplicate.text
     assert edit_duplicate.status_code == 409
     assert "Vendor name already exists." in edit_duplicate.text
+    assert edit_empty.status_code == 400
+    assert "Vendor name is required." in edit_empty.text
     assert edit_missing.status_code == 404
     assert delete_missing.status_code == 404
 
