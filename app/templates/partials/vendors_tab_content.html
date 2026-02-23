@@ -352,3 +352,7 @@
     {% endif %}
   {% endcall %}
 </div>
+{% if use_local_assets %}
+<script src="/static/js/drawer.js" defer></script>
+<script src="/static/js/vendors.js" defer></script>
+{% endif %}

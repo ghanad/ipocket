@@ -172,7 +172,13 @@ def test_tags_templates_use_alpine_for_drawer_interactions() -> None:
     assert 'x-model="createName"' in tags_partial
     assert 'x-model="editName"' in tags_partial
     assert 'x-model="deleteConfirmName"' in tags_partial
-    assert "/static/js/tags.js" not in tags_partial
+    assert "{% if use_local_assets %}" in tags_partial
+    assert '<script src="/static/js/drawer.js" defer></script>' in tags_partial
+    assert '<script src="/static/js/tags.js" defer></script>' in tags_partial
+    tags_js = (repo_root / "app/static/js/tags.js").read_text(encoding="utf-8")
+    assert "data-tag-add" in tags_js
+    assert "data-tag-create-overlay" in tags_js
+    assert "/ui/tags/" in tags_js
 
 
 def test_vendors_templates_use_alpine_for_drawer_interactions() -> None:
@@ -194,8 +200,13 @@ def test_vendors_templates_use_alpine_for_drawer_interactions() -> None:
     assert 'x-model="createName"' in vendors_partial
     assert 'x-model="editName"' in vendors_partial
     assert 'x-model="deleteConfirmName"' in vendors_partial
-    assert "/static/js/vendors.js" not in vendors_partial
-    assert not (repo_root / "app/static/js/vendors.js").exists()
+    assert "{% if use_local_assets %}" in vendors_partial
+    assert '<script src="/static/js/drawer.js" defer></script>' in vendors_partial
+    assert '<script src="/static/js/vendors.js" defer></script>' in vendors_partial
+    vendors_js = (repo_root / "app/static/js/vendors.js").read_text(encoding="utf-8")
+    assert "data-vendor-add" in vendors_js
+    assert "data-vendor-create-overlay" in vendors_js
+    assert "/ui/vendors/" in vendors_js
 
 
 def test_hosts_drawer_css_matches_ip_drawer_layout_baseline() -> None:
