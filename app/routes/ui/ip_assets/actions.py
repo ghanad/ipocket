@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from urllib.parse import parse_qs, urlencode, urlparse, urlunparse
 from typing import Optional
 
 import app.routes.ui.ip_assets as ip_assets_routes
@@ -13,12 +14,23 @@ from app.models import IPAssetType
 from app.routes.ui.utils import (
     _append_query_param,
     _normalize_asset_type,
+    _parse_optional_str,
     require_ui_editor,
 )
 
 from .helpers import _delete_requires_exact_ip, _parse_selected_tags
 
 router = APIRouter()
+
+_TOAST_QUERY_KEYS = {"bulk-error", "bulk-success", "delete-error", "delete-success"}
+
+
+def _strip_toast_query_params(url: str) -> str:
+    parsed = urlparse(url)
+    query = parse_qs(parsed.query)
+    for key in _TOAST_QUERY_KEYS:
+        query.pop(key, None)
+    return urlunparse(parsed._replace(query=urlencode(query, doseq=True)))
 
 
 @router.post("/ui/ip-assets/bulk-edit", response_class=HTMLResponse)
@@ -29,7 +41,7 @@ async def ui_bulk_edit_ip_assets(
 ):
     form = await request.form()
     asset_ids_raw = form.getlist("asset_ids")
-    return_to = form.get("return_to") or "/ui/ip-assets"
+    return_to = _strip_toast_query_params(form.get("return_to") or "/ui/ip-assets")
     errors: list[str] = []
     asset_ids: list[int] = []
     for asset_id in asset_ids_raw:
@@ -71,10 +83,25 @@ async def ui_bulk_edit_ip_assets(
         connection, remove_tags_raw
     )
     errors.extend(remove_tag_errors)
+    notes_mode = str(form.get("notes_mode") or "").strip().lower()
+    set_notes = False
+    notes_value: Optional[str] = None
+    if notes_mode:
+        if notes_mode == "set":
+            set_notes = True
+            notes_value = _parse_optional_str(form.get("notes"))
+            if notes_value is None:
+                errors.append("Enter notes to overwrite, or choose clear notes.")
+        elif notes_mode == "clear":
+            set_notes = True
+            notes_value = None
+        else:
+            errors.append("Select a valid notes action.")
 
     if (
         not asset_type_enum
         and not set_project_id
+        and not set_notes
         and not tags_to_add
         and not tags_to_remove
     ):
@@ -93,6 +120,8 @@ async def ui_bulk_edit_ip_assets(
         asset_type=asset_type_enum,
         project_id=project_id_value,
         set_project_id=set_project_id,
+        notes=notes_value,
+        set_notes=set_notes,
         tags_to_add=tags_to_add,
         tags_to_remove=tags_to_remove,
         current_user=user,
@@ -177,7 +206,9 @@ async def ui_delete_ip_asset(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
 
     form_data = await request.form()
-    return_to = str(form_data.get("return_to") or "/ui/ip-assets").strip()
+    return_to = _strip_toast_query_params(
+        str(form_data.get("return_to") or "/ui/ip-assets").strip()
+    )
     confirmation_ack_raw = (
         str(form_data.get("confirm_delete_ack") or "").strip().lower()
     )

@@ -15,6 +15,14 @@ Create behavior with archived records:
 - If a create request uses an `ip_address` that exists only as an archived record, ipocket restores that same row (`archived=0`) and updates its fields instead of creating a second row.
 - If the same `ip_address` already exists as an active record, create still fails with duplicate-address conflict.
 
+Bulk edit note behavior:
+- In **IP Assets → Bulk update**, notes are controlled via **Notes action** (`Keep current`, `Overwrite with value below`, `Clear all notes`).
+- `Overwrite with value below` requires a non-empty note value.
+- `Clear all notes` removes notes from all selected rows.
+
+UI redirect behavior:
+- IP Assets bulk/update/delete flows strip stale toast query parameters (`bulk-error`, `bulk-success`, `delete-error`, `delete-success`) before appending a new result message.
+
 ## Project
 - `name` (unique)
 - `description` (optional)

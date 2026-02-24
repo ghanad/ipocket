@@ -301,6 +301,18 @@
           {% endfor %}
         </select>
       </label>
+      <label class="field">
+        <span>Notes action</span>
+        <select class="select" name="notes_mode" form="bulk-edit-form" data-bulk-input>
+          <option value="">Keep current</option>
+          <option value="set">Overwrite with value below</option>
+          <option value="clear">Clear all notes</option>
+        </select>
+      </label>
+      <label class="field">
+        <span>Notes</span>
+        <textarea class="textarea" name="notes" rows="3" form="bulk-edit-form" data-bulk-input placeholder="Used when Notes action = Overwrite with value below"></textarea>
+      </label>
     </section>
   </div>
   <div class="ip-drawer-footer">

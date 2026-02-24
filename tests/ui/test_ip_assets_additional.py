@@ -158,6 +158,145 @@ def test_bulk_edit_validates_invalid_ids_type_and_project_selection(
     assert "bulk-success=Updated+1+IP+assets." in unassign_project.headers["location"]
 
 
+def test_bulk_edit_overwrite_notes_only_action(client, _setup_connection) -> None:
+    connection = _setup_connection()
+    try:
+        editor = repository.create_user(
+            connection,
+            username="editor-bulk-notes",
+            hashed_password="x",
+            role=UserRole.EDITOR,
+        )
+        asset = repository.create_ip_asset(
+            connection,
+            ip_address="10.81.1.20",
+            asset_type=IPAssetType.VM,
+            notes="legacy note",
+        )
+    finally:
+        connection.close()
+
+    app.dependency_overrides[ui.require_ui_editor] = lambda: editor
+    try:
+        overwrite = client.post(
+            "/ui/ip-assets/bulk-edit",
+            data={
+                "asset_ids": [str(asset.id)],
+                "notes_mode": "set",
+                "notes": "normalized note",
+            },
+            follow_redirects=False,
+        )
+        clear = client.post(
+            "/ui/ip-assets/bulk-edit",
+            data={
+                "asset_ids": [str(asset.id)],
+                "notes_mode": "clear",
+            },
+            follow_redirects=False,
+        )
+    finally:
+        app.dependency_overrides.pop(ui.require_ui_editor, None)
+
+    assert overwrite.status_code == 303
+    assert "bulk-success=Updated+1+IP+assets." in overwrite.headers["location"]
+    assert clear.status_code == 303
+    assert "bulk-success=Updated+1+IP+assets." in clear.headers["location"]
+
+    connection = _setup_connection()
+    try:
+        updated = repository.get_ip_asset_by_ip(connection, "10.81.1.20")
+    finally:
+        connection.close()
+    assert updated is not None
+    assert updated.notes is None
+
+
+def test_bulk_edit_notes_mode_set_requires_non_empty_notes(
+    client, _setup_connection
+) -> None:
+    connection = _setup_connection()
+    try:
+        editor = repository.create_user(
+            connection,
+            username="editor-bulk-notes-empty",
+            hashed_password="x",
+            role=UserRole.EDITOR,
+        )
+        asset = repository.create_ip_asset(
+            connection, ip_address="10.81.1.22", asset_type=IPAssetType.VM
+        )
+    finally:
+        connection.close()
+
+    app.dependency_overrides[ui.require_ui_editor] = lambda: editor
+    try:
+        response = client.post(
+            "/ui/ip-assets/bulk-edit",
+            data={
+                "asset_ids": [str(asset.id)],
+                "notes_mode": "set",
+                "notes": "",
+            },
+            follow_redirects=False,
+        )
+    finally:
+        app.dependency_overrides.pop(ui.require_ui_editor, None)
+
+    assert response.status_code == 303
+    assert (
+        "bulk-error=Enter+notes+to+overwrite%2C+or+choose+clear+notes."
+        in response.headers["location"]
+    )
+
+
+def test_bulk_edit_success_redirect_clears_stale_bulk_error_query(
+    client, _setup_connection
+) -> None:
+    connection = _setup_connection()
+    try:
+        editor = repository.create_user(
+            connection,
+            username="editor-bulk-clear-toast",
+            hashed_password="x",
+            role=UserRole.EDITOR,
+        )
+        asset = repository.create_ip_asset(
+            connection, ip_address="10.81.1.21", asset_type=IPAssetType.VM
+        )
+    finally:
+        connection.close()
+
+    app.dependency_overrides[ui.require_ui_editor] = lambda: editor
+    try:
+        failed = client.post(
+            "/ui/ip-assets/bulk-edit",
+            data={"asset_ids": [str(asset.id)]},
+            follow_redirects=False,
+        )
+        assert failed.status_code == 303
+        assert (
+            "bulk-error=Choose+at+least+one+bulk+update+action."
+            in failed.headers["location"]
+        )
+
+        succeeded = client.post(
+            "/ui/ip-assets/bulk-edit",
+            data={
+                "asset_ids": [str(asset.id)],
+                "type": "VIP",
+                "return_to": failed.headers["location"],
+            },
+            follow_redirects=False,
+        )
+    finally:
+        app.dependency_overrides.pop(ui.require_ui_editor, None)
+
+    assert succeeded.status_code == 303
+    assert "bulk-success=Updated+1+IP+assets." in succeeded.headers["location"]
+    assert "bulk-error=" not in succeeded.headers["location"]
+
+
 def test_create_ip_validation_paths_and_duplicate_conflict(
     client, _setup_connection
 ) -> None:

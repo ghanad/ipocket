@@ -16,6 +16,8 @@ Note: Vendor catalog/host vendor selection does not introduce new Prometheus met
 
 UI note: unassigned-related metrics are still available even though the dedicated **Needs Assignment** page was removed; use the IP Assets list filters for assignment workflows.
 UI note: range-address search/status/pagination changes are presentation-only and do not affect `/metrics` payloads.
+UI note: IP Assets bulk note overwrite is an inventory edit workflow change only and does not add or alter `/metrics` counters.
+UI note: IP Assets toast-query cleanup on bulk/update/delete redirects is a navigation behavior change only and does not affect `/metrics` payloads.
 
 Connector note: connectors import through the same IP upsert pipeline (Prometheus preserves non-empty notes and existing `type` on update, and UI dry-run shows per-IP field-level change previews; vCenter overwrites type, merges connector tags, and only writes notes when existing notes are empty), but they do not add exporter-side Prometheus metrics in ipocket; `/metrics` remains limited to IP inventory counters listed above.
 

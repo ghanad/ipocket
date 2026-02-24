@@ -601,6 +601,8 @@ def bulk_update_ip_assets(
     asset_type: Optional[IPAssetType] = None,
     project_id: Optional[int] = None,
     set_project_id: bool = False,
+    notes: Optional[str] = None,
+    set_notes: bool = False,
     tags_to_add: Optional[list[str]] = None,
     tags_to_remove: Optional[list[str]] = None,
     current_user: Optional[User] = None,
@@ -620,12 +622,16 @@ def bulk_update_ip_assets(
         for asset in assets:
             next_type = asset_type or asset.asset_type
             next_project_id = project_id if set_project_id else asset.project_id
+            next_notes = notes if set_notes else asset.notes
+            if set_notes and (next_notes is None or not next_notes.strip()):
+                next_notes = None
             session.execute(
                 update(db_schema.IPAsset)
                 .where(db_schema.IPAsset.id == asset.id)
                 .values(
                     type=next_type.value,
                     project_id=next_project_id,
+                    notes=next_notes,
                     updated_at=func.current_timestamp(),
                 )
             )

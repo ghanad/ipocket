@@ -32,7 +32,7 @@ ipocket is a lightweight IP inventory app to track addresses and their project a
 - IP assets list shows inline Edit/Delete actions side-by-side in the Actions column.
 - Deleting an IP from the list now uses the same right-side drawer shell as Add/Edit but with strict modes: delete mode hides all edit inputs, shows a compact destructive confirmation summary (IP/Project/Type/Host), keeps the acknowledgement checkbox inline with its label, and for high-risk assets requires typing the exact IP before “Delete permanently” is enabled.
 - IP asset detail page now uses the shared card/chip visual language, including metadata chips in the header, a key-value Details card, badge-styled audit actions with optional raw detail expansion, and in-page delete via the same right-side delete drawer mode used on the list view.
-- IP assets list includes bulk edit controls to update type, project assignment, or add tags across multiple IPs at once.
+- IP assets list includes bulk edit controls to update type, project assignment, add/remove tags, or overwrite notes across multiple IPs at once.
 - IP assets list keeps tag cells compact: up to 3 chips are shown in-row, and extra tags move into a `+N more` popover (open on hover or click, with keyboard/outside-click close and inline tag search).
 - IP assets list keeps Notes cells single-line to preserve row height; full note text appears in a hover/focus tooltip after a short pointer delay.
 - IP assets table uses a fixed responsive layout so long Notes/Tags content does not force horizontal page scrolling.
@@ -41,6 +41,7 @@ ipocket is a lightweight IP inventory app to track addresses and their project a
 - Bulk edit tag picker no longer shows an empty suggestions panel by default; the suggestions dropdown now stays hidden until you focus/type in `Add tags...`.
 - Bulk updates now open in a right-side drawer (matching Add/Edit/Delete flows) after selecting rows, keeping the table header compact while applying Type/Project/Tag changes to all selected IP assets.
 - Bulk update drawer now shows **Common tags** across selected rows and lets operators mark shared tags for removal (sent as `remove_tags`) while still supporting additive tags in the same action.
+- Bulk/update/delete redirects now clear stale toast query parameters (`bulk-error`, `bulk-success`, `delete-error`, `delete-success`) so old notifications are not re-shown after a later successful action.
 - Tag chips now auto-pick a high-contrast text color (dark/light) based on each tag background color across the IP edit/add drawers, IP assets table tags, and tag popovers.
 - Tags page now uses the same right-side drawer pattern as Projects/Vendors for create/edit/delete, including destructive confirmation by typing the exact tag name. The tags table also shows an **IPs** count column with how many active IP assets currently use each tag.
 - Tag create drawer suggests a random tag color by default (instead of one fixed color), and users can override it before saving.

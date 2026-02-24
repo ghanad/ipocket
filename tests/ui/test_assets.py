@@ -237,6 +237,7 @@ def test_ip_assets_list_uses_drawer_actions_for_edit_and_delete(client) -> None:
     assert "Bulk update IP assets" in response.text
     assert "data-bulk-common-tags-list" in response.text
     assert "data-bulk-remove-hidden" in response.text
+    assert 'name="notes_mode"' in response.text
     assert 'data-bulk-tags="edge"' in response.text
     assert f'data-ip-edit="{asset.id}"' in response.text
     assert 'data-ip-address="10.30.0.10"' in response.text
@@ -473,11 +474,13 @@ def test_ip_assets_bulk_edit_updates_selected_assets(client) -> None:
             ip_address="10.70.0.10",
             asset_type=IPAssetType.VM,
             tags=["prod"],
+            notes="legacy-a",
         )
         asset_two = repository.create_ip_asset(
             connection,
             ip_address="10.70.0.11",
             asset_type=IPAssetType.OS,
+            notes="legacy-b",
         )
     finally:
         connection.close()
@@ -491,6 +494,8 @@ def test_ip_assets_bulk_edit_updates_selected_assets(client) -> None:
                 "type": "VIP",
                 "project_id": str(project.id),
                 "tags": ["edge", "core"],
+                "notes_mode": "set",
+                "notes": "standard note",
                 "return_to": "/ui/ip-assets",
             },
             follow_redirects=False,
@@ -516,6 +521,8 @@ def test_ip_assets_bulk_edit_updates_selected_assets(client) -> None:
         assert updated_two.asset_type == IPAssetType.VIP
         assert updated_one.project_id == project.id
         assert updated_two.project_id == project.id
+        assert updated_one.notes == "standard note"
+        assert updated_two.notes == "standard note"
         tag_map = repository.list_tags_for_ip_assets(
             connection, [asset_one.id, asset_two.id]
         )

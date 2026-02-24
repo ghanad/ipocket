@@ -438,15 +438,18 @@
 
   const resetBulkInputs = () => {
     bulkInputs.forEach((input) => {
-      if (!(input instanceof HTMLSelectElement)) {
-        return;
-      }
-      if (input.multiple) {
-        Array.from(input.options).forEach((option) => {
-          option.selected = false;
-        });
-      } else {
+      if (input instanceof HTMLSelectElement) {
+        if (input.multiple) {
+          Array.from(input.options).forEach((option) => {
+            option.selected = false;
+          });
+        } else {
+          input.value = '';
+        }
+      } else if (input instanceof HTMLTextAreaElement) {
         input.value = '';
+      } else if (input instanceof HTMLInputElement && input.type === 'checkbox') {
+        input.checked = false;
       }
       input.dispatchEvent(new Event('change', { bubbles: true }));
       input.dispatchEvent(new Event('input', { bubbles: true }));

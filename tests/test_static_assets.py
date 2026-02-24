@@ -83,6 +83,7 @@ def test_refactored_templates_load_external_page_assets() -> None:
     assert "data-bulk-common-tags-list" in templates["ip_assets"].read_text(
         encoding="utf-8"
     )
+    assert 'name="notes_mode"' in templates["ip_assets"].read_text(encoding="utf-8")
     assert "data-bulk-tags=" in templates["ip_assets_rows"].read_text(encoding="utf-8")
     assert "<style>" not in templates["ip_assets"].read_text(encoding="utf-8")
     assert "<script>" not in templates["ip_assets"].read_text(encoding="utf-8")
