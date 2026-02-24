@@ -139,6 +139,52 @@ def test_bulk_update_ip_assets_supports_removing_common_tags(_setup_connection) 
     assert tag_map[asset_two.id] == ["db", "edge"]
 
 
+def test_bulk_update_ip_assets_overwrites_notes_when_requested(
+    _setup_connection,
+) -> None:
+    connection = _setup_connection()
+    asset_one = create_ip_asset(
+        connection,
+        ip_address="10.30.0.31",
+        asset_type=IPAssetType.VM,
+        notes="legacy one",
+    )
+    asset_two = create_ip_asset(
+        connection,
+        ip_address="10.30.0.32",
+        asset_type=IPAssetType.OS,
+        notes="legacy two",
+    )
+
+    updated_assets = bulk_update_ip_assets(
+        connection,
+        [asset_one.id, asset_two.id],
+        notes="standardized",
+        set_notes=True,
+    )
+    assert len(updated_assets) == 2
+
+    updated_one = get_ip_asset_by_ip(connection, "10.30.0.31")
+    updated_two = get_ip_asset_by_ip(connection, "10.30.0.32")
+    assert updated_one is not None
+    assert updated_two is not None
+    assert updated_one.notes == "standardized"
+    assert updated_two.notes == "standardized"
+
+    bulk_update_ip_assets(
+        connection,
+        [asset_one.id, asset_two.id],
+        notes="",
+        set_notes=True,
+    )
+    cleared_one = get_ip_asset_by_ip(connection, "10.30.0.31")
+    cleared_two = get_ip_asset_by_ip(connection, "10.30.0.32")
+    assert cleared_one is not None
+    assert cleared_two is not None
+    assert cleared_one.notes is None
+    assert cleared_two.notes is None
+
+
 def test_create_bmc_without_host_creates_server_host_and_links_asset(
     _setup_connection,
 ) -> None:
