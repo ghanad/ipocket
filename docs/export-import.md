@@ -22,6 +22,7 @@ Open `/ui/import` and use the tabs:
 - `Export` tab for downloads (bundle plus per-entity IP Assets/Hosts links)
 
 The Export tab uses the same responsive multi-card layout pattern as Import.
+`ip-assets.csv` export rows are sorted by numeric IP value (for example `10.0.0.2` before `10.0.0.10`), with fallback numeric parsing when `ip_int` is null.
 
 On the `Import` tab upload:
 

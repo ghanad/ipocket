@@ -120,6 +120,22 @@ def _seed_host_export_pair_data(db_path) -> None:
         connection.close()
 
 
+def _seed_export_order_data_with_null_ip_int(db_path) -> None:
+    connection = db.connect(str(db_path))
+    try:
+        db.init_db(connection)
+        for ip_address in ("10.0.0.10", "10.0.0.2", "10.0.0.1"):
+            repository.create_ip_asset(
+                connection,
+                ip_address=ip_address,
+                asset_type=IPAssetType.VM,
+            )
+        connection.execute("UPDATE ip_assets SET ip_int = NULL")
+        connection.commit()
+    finally:
+        connection.close()
+
+
 def _parse_csv_rows(payload: str) -> list[dict[str, str]]:
     reader = csv.DictReader(io.StringIO(payload))
     return list(reader)
@@ -194,6 +210,27 @@ def test_bundle_json_schema(client) -> None:
     data = payload["data"]
     assert set(data.keys()) == {"vendors", "projects", "hosts", "ip_assets"}
     assert data["ip_assets"][0]["tags"] == ["edge", "prod"]
+
+
+def test_ip_assets_csv_export_orders_ips_numerically_when_ip_int_is_null(
+    client,
+) -> None:
+    test_client, db_path = client
+    _create_user(db_path, "sort-user", "sort-pass")
+    _seed_export_order_data_with_null_ip_int(db_path)
+    session_cookie = _login_ui(test_client, "sort-user", "sort-pass")
+
+    response = test_client.get(
+        "/export/ip-assets.csv", headers=_auth_headers(session_cookie)
+    )
+    assert response.status_code == 200
+
+    rows = _parse_csv_rows(response.text)
+    assert [row["ip_address"] for row in rows] == [
+        "10.0.0.1",
+        "10.0.0.2",
+        "10.0.0.10",
+    ]
 
 
 def test_ui_export_page_has_bundle_link(client) -> None:
