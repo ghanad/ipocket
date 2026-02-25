@@ -3,6 +3,7 @@ from __future__ import annotations
 import time
 
 from app import db, repository
+from app.connectors.elasticsearch import ElasticsearchNodeRecord
 from app.connectors.prometheus import PrometheusMetricRecord
 from app.connectors.vcenter import VCenterHostRecord, VCenterVmRecord
 from app.imports.models import ImportApplyResult, ImportEntitySummary, ImportSummary
@@ -27,9 +28,11 @@ def test_connectors_page_renders_sidebar_link_and_tabs(client) -> None:
     assert 'href="/ui/connectors?tab=overview"' in response.text
     assert 'href="/ui/connectors?tab=vcenter"' in response.text
     assert 'href="/ui/connectors?tab=prometheus"' in response.text
+    assert 'href="/ui/connectors?tab=elasticsearch"' in response.text
     assert "Available Connectors" in response.text
     assert "vCenter" in response.text
     assert "Prometheus" in response.text
+    assert "Elasticsearch" in response.text
 
 
 def test_connectors_vcenter_tab_renders_connector_commands(client) -> None:
@@ -50,6 +53,17 @@ def test_connectors_prometheus_tab_renders_connector_form(client) -> None:
     assert 'action="/ui/connectors/prometheus/run"' in response.text
     assert 'name="query"' in response.text
     assert 'name="ip_label"' in response.text
+    assert "Execution log" not in response.text
+
+
+def test_connectors_elasticsearch_tab_renders_connector_form(client) -> None:
+    response = client.get("/ui/connectors?tab=elasticsearch")
+
+    assert response.status_code == 200
+    assert "Run Elasticsearch Connector" in response.text
+    assert 'action="/ui/connectors/elasticsearch/run"' in response.text
+    assert 'name="elasticsearch_url"' in response.text
+    assert 'name="api_key"' in response.text
     assert "Execution log" not in response.text
 
 
@@ -509,6 +523,115 @@ def test_prometheus_connector_failure_uses_toast_without_inline_error(
     assert "toast-error" in response.text
 
 
+def test_elasticsearch_connector_apply_mode_requires_editor_role(client) -> None:
+    app.dependency_overrides[ui.get_current_ui_user] = lambda: User(
+        10, "viewer", "x", UserRole.VIEWER, True
+    )
+    try:
+        response = client.post(
+            "/ui/connectors/elasticsearch/run",
+            follow_redirects=True,
+            data={
+                "elasticsearch_url": "https://127.0.0.1:9200",
+                "api_key": "abc123:def456",
+                "mode": "apply",
+            },
+        )
+    finally:
+        app.dependency_overrides.pop(ui.get_current_ui_user, None)
+
+    assert response.status_code == 403
+    assert "Apply mode is restricted to editor accounts." in response.text
+    assert "toast-error" in response.text
+
+
+def test_elasticsearch_connector_dry_run_allows_non_editor(client, monkeypatch) -> None:
+    app.dependency_overrides[ui.get_current_ui_user] = lambda: User(
+        10, "viewer", "x", UserRole.VIEWER, True
+    )
+    monkeypatch.setattr(
+        connectors_routes,
+        "_run_elasticsearch_connector",
+        lambda **_kwargs: (["Import mode: dry-run."], [], 0, 0),
+    )
+    try:
+        response = client.post(
+            "/ui/connectors/elasticsearch/run",
+            follow_redirects=True,
+            data={
+                "elasticsearch_url": "https://127.0.0.1:9200",
+                "api_key": "abc123:def456",
+                "mode": "dry-run",
+            },
+        )
+    finally:
+        app.dependency_overrides.pop(ui.get_current_ui_user, None)
+
+    response = _resolve_connector_response(client, response)
+    assert response.status_code == 200
+    assert "Import mode: dry-run." in response.text
+    assert "Elasticsearch dry-run: Connector completed successfully." in response.text
+    assert "toast-success" in response.text
+
+
+def test_elasticsearch_connector_ui_validates_auth_fields(client) -> None:
+    app.dependency_overrides[ui.get_current_ui_user] = lambda: User(
+        2, "editor", "x", UserRole.EDITOR, True
+    )
+    try:
+        response = client.post(
+            "/ui/connectors/elasticsearch/run",
+            follow_redirects=True,
+            data={
+                "elasticsearch_url": "https://127.0.0.1:9200",
+                "username": "elastic",
+                "password": "",
+                "api_key": "",
+                "mode": "dry-run",
+            },
+        )
+    finally:
+        app.dependency_overrides.pop(ui.get_current_ui_user, None)
+
+    assert response.status_code == 400
+    assert (
+        "Authentication is required: provide API key or both username and password."
+        in response.text
+    )
+
+
+def test_elasticsearch_connector_failure_uses_toast_without_inline_error(
+    client, monkeypatch
+) -> None:
+    app.dependency_overrides[ui.get_current_ui_user] = lambda: User(
+        2, "editor", "x", UserRole.EDITOR, True
+    )
+    monkeypatch.setattr(
+        connectors_routes,
+        "_run_elasticsearch_connector",
+        lambda **_kwargs: (_ for _ in ()).throw(
+            connectors_routes.ElasticsearchConnectorError("boom")
+        ),
+    )
+    try:
+        response = client.post(
+            "/ui/connectors/elasticsearch/run",
+            follow_redirects=True,
+            data={
+                "elasticsearch_url": "https://127.0.0.1:9200",
+                "api_key": "abc123:def456",
+                "mode": "dry-run",
+            },
+        )
+    finally:
+        app.dependency_overrides.pop(ui.get_current_ui_user, None)
+
+    response = _resolve_connector_response(client, response)
+    assert response.status_code == 200
+    assert "Elasticsearch connector execution failed." in response.text
+    assert "toast-error" in response.text
+
+
 def test_vcenter_connector_apply_writes_import_run_audit_log(
     client, monkeypatch
 ) -> None:
@@ -602,6 +725,125 @@ def test_prometheus_connector_dry_run_does_not_write_import_run_audit_log(
                 "prometheus_url": "http://127.0.0.1:9090",
                 "query": 'up{job="node"}',
                 "ip_label": "instance",
+                "mode": "dry-run",
+            },
+        )
+    finally:
+        app.dependency_overrides.pop(ui.get_current_ui_user, None)
+
+    response = _resolve_connector_response(client, response)
+    assert response.status_code == 200
+    connection = db.connect(os.environ["IPAM_DB_PATH"])
+    try:
+        logs = repository.list_audit_logs(
+            connection, target_type="IMPORT_RUN", limit=10
+        )
+        assert logs == []
+    finally:
+        connection.close()
+
+
+def test_elasticsearch_connector_apply_writes_import_run_audit_log(
+    client, monkeypatch
+) -> None:
+    import os
+
+    connection = db.connect(os.environ["IPAM_DB_PATH"])
+    try:
+        db.init_db(connection)
+        actor = repository.create_user(
+            connection,
+            username="connector-editor-es",
+            hashed_password="x",
+            role=UserRole.EDITOR,
+        )
+    finally:
+        connection.close()
+
+    app.dependency_overrides[ui.get_current_ui_user] = lambda: actor
+    monkeypatch.setattr(
+        connectors_routes,
+        "fetch_elasticsearch_nodes",
+        lambda **_kwargs: [
+            ElasticsearchNodeRecord(
+                node_id="node-1",
+                name="es-1",
+                http_publish_address="10.50.0.10:9200",
+                transport_publish_address=None,
+                ip=None,
+                host=None,
+            )
+        ],
+    )
+    try:
+        response = client.post(
+            "/ui/connectors/elasticsearch/run",
+            follow_redirects=True,
+            data={
+                "elasticsearch_url": "https://127.0.0.1:9200",
+                "api_key": "abc123:def456",
+                "mode": "apply",
+            },
+        )
+    finally:
+        app.dependency_overrides.pop(ui.get_current_ui_user, None)
+
+    response = _resolve_connector_response(client, response)
+    assert response.status_code == 200
+    connection = db.connect(os.environ["IPAM_DB_PATH"])
+    try:
+        logs = []
+        for _ in range(20):
+            logs = repository.list_audit_logs(
+                connection, target_type="IMPORT_RUN", limit=10
+            )
+            if logs:
+                break
+            time.sleep(0.05)
+        assert any(log.target_label == "connector_elasticsearch" for log in logs)
+    finally:
+        connection.close()
+
+
+def test_elasticsearch_connector_dry_run_does_not_write_import_run_audit_log(
+    client, monkeypatch
+) -> None:
+    import os
+
+    connection = db.connect(os.environ["IPAM_DB_PATH"])
+    try:
+        db.init_db(connection)
+        actor = repository.create_user(
+            connection,
+            username="connector-viewer-es",
+            hashed_password="x",
+            role=UserRole.VIEWER,
+        )
+    finally:
+        connection.close()
+
+    app.dependency_overrides[ui.get_current_ui_user] = lambda: actor
+    monkeypatch.setattr(
+        connectors_routes,
+        "fetch_elasticsearch_nodes",
+        lambda **_kwargs: [
+            ElasticsearchNodeRecord(
+                node_id="node-1",
+                name="es-1",
+                http_publish_address="10.50.0.11:9200",
+                transport_publish_address=None,
+                ip=None,
+                host=None,
+            )
+        ],
+    )
+    try:
+        response = client.post(
+            "/ui/connectors/elasticsearch/run",
+            follow_redirects=True,
+            data={
+                "elasticsearch_url": "https://127.0.0.1:9200",
+                "api_key": "abc123:def456",
                 "mode": "dry-run",
             },
         )

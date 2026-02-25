@@ -1,3 +1,8 @@
+from app.connectors.elasticsearch import (
+    ElasticsearchNodeRecord,
+    build_import_bundle_from_elasticsearch,
+    fetch_elasticsearch_nodes,
+)
 from app.connectors.prometheus import (
     PrometheusMetricRecord,
     build_import_bundle_from_prometheus,
@@ -11,6 +16,9 @@ from app.connectors.vcenter import (
 )
 
 __all__ = [
+    "ElasticsearchNodeRecord",
+    "fetch_elasticsearch_nodes",
+    "build_import_bundle_from_elasticsearch",
     "PrometheusMetricRecord",
     "fetch_prometheus_query_result",
     "build_import_bundle_from_prometheus",

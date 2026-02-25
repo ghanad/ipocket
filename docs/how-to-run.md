@@ -205,7 +205,7 @@ UI design reference templates live in `/ui_template` for layout and styling guid
 8) Open **Data Ops** from the sidebar to import or export data using one unified page with tabs. `hosts.csv` exports now include `project_name`, `os_ip`, and `bmc_ip` for round-trip compatibility with CSV import.
    `ip-assets.csv` exports are sorted by numeric IP order (for example `10.0.0.2` appears before `10.0.0.10`), including legacy rows where `ip_int` is null.
    Import upload guardrails: each uploaded file (`bundle.json`, CSV, Nmap XML) is limited to `10 MB`; oversize files are rejected with HTTP `413`.
-9) Open **Connectors** from the sidebar and use **vCenter** or **Prometheus** tabs to run connectors directly from UI (`dry-run` or `apply`) as background jobs, then refresh the tab URL (with `job_id`) to review status and execution logs.
+9) Open **Connectors** from the sidebar and use **vCenter**, **Prometheus**, or **Elasticsearch** tabs to run connectors directly from UI (`dry-run` or `apply`) as background jobs, then refresh the tab URL (with `job_id`) to review status and execution logs.
 10) When assigning tags on IP Assets or Range Address drawers, use the chip picker (`Add tags...`) to search and select existing tags only (create new tag names first in **Library → Tags**).
 11) For multi-row assignment changes, select IPs in **IP Assets** and use **Bulk update** to open the right-side drawer for batch Type/Project/Tag updates; shared tags appear under **Common tags** and can be removed for all selected rows in one apply. For notes, use **Notes action**: keep current notes, overwrite with a provided value, or clear notes for all selected rows.
 12) Open **Audit Log** to review run-level `apply` entries for Data Ops and Connectors (`IMPORT_RUN`); dry-run executions are intentionally excluded from run-level audit logging.
@@ -353,6 +353,64 @@ python -m app.connectors.prometheus \
 ```
 
 See `/docs/prometheus-connector.md` for full options and edge-case behavior.
+
+## Elasticsearch connector (node inventory import)
+
+Use the Elasticsearch connector when you want to import IPv4 node addresses from
+Elasticsearch cluster inventory (`/_nodes/http,transport`) into IP assets.
+
+Notes:
+- Authentication supports either `api_key` (Base64 or `id:key`) or `username/password`.
+- TLS certificate verification is skipped by default and has no toggle.
+- Existing IP updates can overwrite `type` and `project` (when provided), append
+  tags, and overwrite note only when `note` is provided in the connector run.
+
+UI flow:
+- Open **Connectors → Elasticsearch**
+- Fill:
+  - Elasticsearch URL
+  - auth: API key OR username/password
+  - optional `type` / `project` / `tags` / `note`
+- Start with `dry-run`, inspect logs, then run `apply`.
+
+CLI examples:
+
+Write bundle file only:
+
+```bash
+python -m app.connectors.elasticsearch \
+  --elasticsearch-url https://127.0.0.1:9200 \
+  --api-key '<base64-or-id:key>' \
+  --asset-type OTHER \
+  --mode file \
+  --output ./elasticsearch-bundle.json
+```
+
+Direct dry-run into local DB:
+
+```bash
+python -m app.connectors.elasticsearch \
+  --elasticsearch-url https://127.0.0.1:9200 \
+  --username elastic \
+  --password '<password>' \
+  --tags elasticsearch,nodes \
+  --mode dry-run \
+  --db-path ./ipocket.db
+```
+
+Direct apply into local DB:
+
+```bash
+python -m app.connectors.elasticsearch \
+  --elasticsearch-url https://127.0.0.1:9200 \
+  --api-key '<base64-or-id:key>' \
+  --project-name Core \
+  --note 'Imported from Elasticsearch nodes' \
+  --mode apply \
+  --db-path ./ipocket.db
+```
+
+See `/docs/elasticsearch-connector.md` for full options and mapping details.
 
 ## CI (quality + full tests)
 The GitHub Actions workflow runs code quality checks and the full pytest suite

@@ -541,6 +541,133 @@ def test_bundle_apply_prometheus_style_update_preserves_existing_type(client) ->
         connection.close()
 
 
+def test_bundle_apply_elasticsearch_style_update_merges_tags_overwrites_note_type_and_project(
+    client,
+) -> None:
+    test_client, db_path = client
+    _create_user(db_path, "editor-es-update", "editor-pass", UserRole.EDITOR)
+    editor_token = _login(test_client, "editor-es-update", "editor-pass")
+
+    connection = db.connect(str(db_path))
+    try:
+        db.init_db(connection)
+        legacy_project = repository.create_project(connection, name="Legacy")
+        core_project = repository.create_project(connection, name="Core")
+        existing = repository.create_ip_asset(
+            connection,
+            ip_address="10.0.0.92",
+            asset_type=IPAssetType.VM,
+            project_id=legacy_project.id,
+            notes="manual note",
+            tags=["legacy"],
+        )
+        assert existing is not None
+        assert core_project is not None
+    finally:
+        connection.close()
+
+    payload = {
+        "app": "ipocket",
+        "schema_version": "1",
+        "exported_at": "2024-01-01T12:00:00+00:00",
+        "data": {
+            "vendors": [],
+            "projects": [],
+            "hosts": [],
+            "ip_assets": [
+                {
+                    "ip_address": "10.0.0.92",
+                    "type": "OS",
+                    "project_name": "Core",
+                    "tags": ["elasticsearch"],
+                    "merge_tags": True,
+                    "notes": "Imported from Elasticsearch nodes",
+                    "notes_provided": True,
+                    "archived": False,
+                }
+            ],
+        },
+    }
+    response = test_client.post(
+        "/import/bundle",
+        headers=_auth_headers(editor_token),
+        files={"file": ("bundle.json", json.dumps(payload), "application/json")},
+    )
+    assert response.status_code == 200
+    assert response.json()["summary"]["ip_assets"]["would_update"] == 1
+
+    connection = db.connect(str(db_path))
+    try:
+        updated = repository.get_ip_asset_by_ip(connection, "10.0.0.92")
+        assert updated is not None
+        assert updated.asset_type == IPAssetType.OS
+        assert updated.project_id == core_project.id
+        assert updated.notes == "Imported from Elasticsearch nodes"
+        tag_map = repository.list_tags_for_ip_assets(connection, [updated.id])
+        assert tag_map[updated.id] == ["elasticsearch", "legacy"]
+    finally:
+        connection.close()
+
+
+def test_bundle_apply_elasticsearch_style_update_without_note_keeps_existing_note(
+    client,
+) -> None:
+    test_client, db_path = client
+    _create_user(db_path, "editor-es-note-keep", "editor-pass", UserRole.EDITOR)
+    editor_token = _login(test_client, "editor-es-note-keep", "editor-pass")
+
+    connection = db.connect(str(db_path))
+    try:
+        db.init_db(connection)
+        repository.create_ip_asset(
+            connection,
+            ip_address="10.0.0.93",
+            asset_type=IPAssetType.OTHER,
+            notes="manual keep",
+            tags=["legacy"],
+        )
+    finally:
+        connection.close()
+
+    payload = {
+        "app": "ipocket",
+        "schema_version": "1",
+        "exported_at": "2024-01-01T12:00:00+00:00",
+        "data": {
+            "vendors": [],
+            "projects": [],
+            "hosts": [],
+            "ip_assets": [
+                {
+                    "ip_address": "10.0.0.93",
+                    "type": "OS",
+                    "tags": ["elasticsearch"],
+                    "merge_tags": True,
+                    "archived": False,
+                }
+            ],
+        },
+    }
+    response = test_client.post(
+        "/import/bundle",
+        headers=_auth_headers(editor_token),
+        files={"file": ("bundle.json", json.dumps(payload), "application/json")},
+    )
+    assert response.status_code == 200
+    assert response.json()["summary"]["ip_assets"]["would_update"] == 1
+
+    connection = db.connect(str(db_path))
+    try:
+        updated = repository.get_ip_asset_by_ip(connection, "10.0.0.93")
+        assert updated is not None
+        assert updated.asset_type == IPAssetType.OS
+        assert updated.notes == "manual keep"
+        tag_map = repository.list_tags_for_ip_assets(connection, [updated.id])
+        assert tag_map[updated.id] == ["elasticsearch", "legacy"]
+    finally:
+        connection.close()
+
+
 def test_bundle_apply_preserve_existing_note_still_sets_note_when_existing_is_empty(
     client,
 ) -> None:

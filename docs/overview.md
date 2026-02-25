@@ -89,10 +89,11 @@ ipocket is a lightweight IP inventory app to track addresses and their project a
 - Import data from bundle.json or CSV with dry-run support and upserts from the Data Ops Import tab.
 - Upload Nmap XML from the Data Ops Import tab to discover reachable IPs and add them as `OTHER` assets, with inline example commands.
 - Data Ops and API import uploads enforce a per-file size cap of `10 MB` and return HTTP `413` when exceeded.
-- Sidebar includes a **Connectors** page with tabs (`Overview` / `vCenter` / `Prometheus`) so operators can run import connectors directly from UI.
+- Sidebar includes a **Connectors** page with tabs (`Overview` / `vCenter` / `Prometheus` / `Elasticsearch`) so operators can run import connectors directly from UI.
 - **Connectors → vCenter** supports both `dry-run` and `apply` execution modes, now runs as a background job from UI to avoid long request blocking, and shows an in-page execution log/status on the connector tab.
 - Manual vCenter connector is available via `python -m app.connectors.vcenter` (ESXi hosts as `OS` + tag `esxi`, VMs as `VM`) with file export mode and local DB dry-run/apply modes (`--db-path`); on update it always overwrites `type`, merges connector tags into existing tags, and only writes connector notes when the existing note is empty.
 - **Connectors → Prometheus** imports IPs from Prometheus `api/v1/query` vector results by extracting IPv4 values from a chosen label (for node_exporter this is commonly `instance`), supports `dry-run`/`apply` from UI background jobs, keeps a CLI path via `python -m app.connectors.prometheus`, preserves non-empty existing IP notes and existing `type` during updates, and shows per-IP dry-run change details (`CREATE`/`UPDATE`/`SKIP` with field-level diffs).
+- **Connectors → Elasticsearch** imports node IPs from Elasticsearch `/_nodes/http,transport`, supports `dry-run`/`apply` from UI background jobs and CLI via `python -m app.connectors.elasticsearch`, always merges connector tags into existing tags, overwrites `type`/`project` when provided, and overwrites notes only when a connector note is provided.
 - Connector dry-run/apply imports execute in-process with the active DB connection (no loopback HTTP request to ipocket `/import/bundle`).
 - Successful `apply` executions for bundle/CSV imports and connector runs now write run-level audit entries (`target_type=IMPORT_RUN`) with source + create/update/skip/warning/error summary; `dry-run` executions are not audited at run level.
 - Prometheus metrics on `/metrics`
