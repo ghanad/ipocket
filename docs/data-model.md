@@ -102,7 +102,7 @@ Self-service password changes (`/ui/account/password`) do not add fields/tables;
 `IMPORT_RUN` convention:
 - Recorded only for successful `apply` executions (not `dry-run`).
 - Uses `target_id=0` as a run-level sentinel.
-- `target_label` stores the run source (for example `api_import_bundle`, `ui_import_csv`, `connector_vcenter`, `connector_prometheus`).
+- `target_label` stores the run source (for example `api_import_bundle`, `ui_import_csv`, `connector_vcenter`, `connector_prometheus`, `connector_elasticsearch`).
 - `changes` stores a compact text summary including input type and create/update/skip/warnings/errors counts.
 
 
@@ -116,7 +116,7 @@ Self-service password changes (`/ui/account/password`) do not add fields/tables;
 - Range address drill-down (`/ui/ranges/{id}/addresses`) now adds UI-only search/status/pagination controls; this does not change persisted schema or entity fields.
 
 ## Connector ingestion note
-- Prometheus and vCenter connectors do not introduce new database tables or fields.
+- Prometheus, vCenter, and Elasticsearch connectors do not introduce new database tables or fields.
 - Connector runs generate standard import bundles (`schema_version=1`) and upsert through the existing IPAsset import pipeline.
 - UI connector runs execute as background jobs so long-running remote calls do not block a single web request.
 - Upserts only change optional fields when those values are explicitly included in connector output; Prometheus updates keep existing `type`, while vCenter updates can overwrite `type`.
@@ -124,3 +124,4 @@ Self-service password changes (`/ui/account/password`) do not add fields/tables;
 - Prometheus connector entries also set `preserve_existing_type=true`, so existing IP records keep their current `type` during update while new records still use the connector-selected `type`.
 - Prometheus connector UI dry-run now renders per-IP change previews (`CREATE`/`UPDATE`/`SKIP`) with field-level differences before apply.
 - vCenter connector entries set `preserve_existing_notes=true` and `merge_tags=true`; this keeps non-empty manual notes, merges connector tags with existing tags, and still updates the connector-provided `type`.
+- Elasticsearch connector entries set `merge_tags=true` and do not set preserve flags; updates can overwrite `type` and `project` when provided, and overwrite notes only when connector `note` is explicitly provided.

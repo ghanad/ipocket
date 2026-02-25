@@ -1,0 +1,96 @@
+<section class="card connector-run-card">
+  <div class="card-header card-header-padded">
+    <div>
+      <h2>Run Elasticsearch Connector</h2>
+      <p class="subtitle">Read Elasticsearch node inventory and import node IP addresses to ipocket in dry-run or apply mode.</p>
+    </div>
+  </div>
+  <div class="card-body">
+    {% if elasticsearch_errors %}
+    <div class="alert alert-error connector-errors">
+      {% for error in elasticsearch_errors %}
+      <p>{{ error }}</p>
+      {% endfor %}
+    </div>
+    {% endif %}
+
+    <form class="form-grid form-grid-two connector-form" method="post" action="/ui/connectors/elasticsearch/run">
+      <label class="field field-span">
+        <span>Elasticsearch URL</span>
+        <input class="input" type="text" name="elasticsearch_url" value="{{ elasticsearch_form_state.elasticsearch_url }}" placeholder="https://127.0.0.1:9200" required />
+      </label>
+      <label class="field">
+        <span>Username (optional)</span>
+        <input class="input" type="text" name="username" value="{{ elasticsearch_form_state.username }}" placeholder="elastic" />
+      </label>
+      <label class="field">
+        <span>Password (optional)</span>
+        <input class="input" type="password" name="password" value="" autocomplete="new-password" placeholder="********" />
+      </label>
+      <label class="field field-span">
+        <span>API Key (optional)</span>
+        <input class="input" type="password" name="api_key" value="" autocomplete="new-password" placeholder="base64 OR id:key" />
+      </label>
+      <label class="field">
+        <span>Asset type</span>
+        <select class="select" name="asset_type">
+          {% for choice in ["OS", "BMC", "VM", "VIP", "OTHER"] %}
+          <option value="{{ choice }}"{% if elasticsearch_form_state.asset_type == choice %} selected{% endif %}>{{ choice }}</option>
+          {% endfor %}
+        </select>
+      </label>
+      <label class="field">
+        <span>Project name (optional)</span>
+        <input class="input" type="text" name="project_name" value="{{ elasticsearch_form_state.project_name }}" placeholder="Core" />
+      </label>
+      <label class="field">
+        <span>Tags (optional)</span>
+        <input class="input" type="text" name="tags" value="{{ elasticsearch_form_state.tags }}" placeholder="elasticsearch,nodes" />
+      </label>
+      <label class="field">
+        <span>Note (optional)</span>
+        <input class="input" type="text" name="note" value="{{ elasticsearch_form_state.note }}" placeholder="Imported from Elasticsearch nodes" />
+      </label>
+      <label class="field">
+        <span>Timeout (seconds)</span>
+        <input class="input" type="number" min="1" name="timeout" value="{{ elasticsearch_form_state.timeout }}" required />
+      </label>
+      <label class="field">
+        <span>Mode</span>
+        <select class="select" name="mode">
+          <option value="dry-run"{% if elasticsearch_form_state.mode == "dry-run" %} selected{% endif %}>dry-run</option>
+          <option value="apply"{% if elasticsearch_form_state.mode == "apply" %} selected{% endif %}>apply</option>
+        </select>
+      </label>
+      <div class="form-actions">
+        <button type="submit" class="btn btn-primary">Run Connector</button>
+      </div>
+    </form>
+
+    {% if elasticsearch_logs %}
+    <div class="connector-log-wrap">
+      <p class="label">Execution log</p>
+      <pre class="connector-log" data-connector-log><code>{% for line in elasticsearch_logs %}{{ line }}
+{% endfor %}</code></pre>
+    </div>
+    {% endif %}
+  </div>
+</section>
+
+<section class="card">
+  <div class="card-header card-header-padded">
+    <div>
+      <h2>CLI (kept as-is)</h2>
+      <p class="subtitle">You can also run the Elasticsearch connector manually from terminal.</p>
+    </div>
+  </div>
+  <div class="card-body">
+    <pre class="connector-code-block"><code>python -m app.connectors.elasticsearch \
+  --elasticsearch-url https://127.0.0.1:9200 \
+  --api-key '&lt;base64-or-id:key&gt;' \
+  --asset-type OTHER \
+  --mode dry-run \
+  --db-path ./ipocket.db</code></pre>
+    <p>For full mapping/options, see <code>/docs/elasticsearch-connector.md</code>.</p>
+  </div>
+</section>
