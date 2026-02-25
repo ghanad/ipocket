@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import sqlite3
-from typing import Iterable, Optional
+from typing import Iterable, Mapping, Optional
 
 from sqlalchemy import case, func, select, update, delete
 from sqlalchemy.exc import IntegrityError
@@ -40,6 +40,20 @@ def _asset_columns():
         db_schema.IPAsset.archived,
         db_schema.IPAsset.created_at,
         db_schema.IPAsset.updated_at,
+    )
+
+
+def _ip_asset_export_sort_key(row: Mapping[str, object]) -> tuple[bool, int, str]:
+    ip_address = str(row.get("ip_address") or "")
+    ip_int = row.get("ip_int")
+    if isinstance(ip_int, int):
+        resolved_ip_int = ip_int
+    else:
+        resolved_ip_int = ipv4_to_int(ip_address)
+    return (
+        resolved_ip_int is None,
+        int(resolved_ip_int or 0),
+        ip_address,
     )
 
 
@@ -356,6 +370,7 @@ def list_ip_assets_for_export(
         select(
             db_schema.IPAsset.id.label("asset_id"),
             db_schema.IPAsset.ip_address.label("ip_address"),
+            db_schema.IPAsset.ip_int.label("ip_int"),
             db_schema.IPAsset.type.label("asset_type"),
             db_schema.Project.name.label("project_name"),
             db_schema.Host.name.label("host_name"),
@@ -388,7 +403,10 @@ def list_ip_assets_for_export(
         db_schema.IPAsset.ip_address,
     )
     with session_scope(connection_or_session) as session:
-        rows = session.execute(statement).mappings().all()
+        rows = sorted(
+            session.execute(statement).mappings().all(),
+            key=_ip_asset_export_sort_key,
+        )
     tag_map = list_tags_for_ip_assets(
         connection_or_session, [int(row["asset_id"]) for row in rows]
     )
