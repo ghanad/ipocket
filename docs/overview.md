@@ -98,6 +98,7 @@ ipocket is a lightweight IP inventory app to track addresses and their project a
 - Successful `apply` executions for bundle/CSV imports and connector runs now write run-level audit entries (`target_type=IMPORT_RUN`) with source + create/update/skip/warning/error summary; `dry-run` executions are not audited at run level.
 - Prometheus metrics on `/metrics`
 - Prometheus SD endpoint on `/sd/node` with project grouping
+- Kubernetes deployment via Helm chart (`helm/ipocket`) with configurable image, persistence, ingress, and bootstrap/session secrets
 - Audit logging for IP asset create/update/delete actions, surfaced on the IP detail page and a global Audit Log view (both require authentication).
 - Database schema managed through Alembic migrations
 - SQLite connections are configured for concurrent request handling (`journal_mode=WAL`, `synchronous=NORMAL`, `busy_timeout=5000`).

@@ -1,0 +1,6 @@
+apiVersion: v2
+name: ipocket
+description: Helm chart for deploying the ipocket IP inventory application
+type: application
+version: 0.1.0
+appVersion: "latest"
