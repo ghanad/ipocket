@@ -1,0 +1,13 @@
+1. Access the application inside the cluster:
+
+  kubectl port-forward svc/{{ include "ipocket.fullname" . }} {{ .Values.service.port }}:{{ .Values.service.port }}
+
+2. Open in browser:
+
+  http://127.0.0.1:{{ .Values.service.port }}/ui/login
+
+3. Optional endpoints:
+
+  http://127.0.0.1:{{ .Values.service.port }}/health
+  http://127.0.0.1:{{ .Values.service.port }}/metrics
+  http://127.0.0.1:{{ .Values.service.port }}/sd/node

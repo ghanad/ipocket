@@ -81,6 +81,39 @@ Defaults for the bootstrap superuser are:
 - `ADMIN_BOOTSTRAP_USERNAME=admin`
 - `ADMIN_BOOTSTRAP_PASSWORD=admin-pass`
 
+## Run with Helm (Kubernetes)
+The repository includes a Helm chart at `helm/ipocket`.
+
+Create a values file (recommended) with at least a strong session secret and
+bootstrap superuser credentials:
+
+```yaml
+sessionSecret: "replace-with-a-long-random-secret"
+adminBootstrap:
+  username: "admin"
+  password: "change-me"
+image:
+  repository: ipocket
+  tag: "latest"
+```
+
+Install into namespace `ipocket`:
+
+```bash
+kubectl create namespace ipocket --dry-run=client -o yaml | kubectl apply -f -
+helm upgrade --install ipocket ./helm/ipocket -n ipocket -f values-ipocket.yaml
+```
+
+Port-forward and open the UI:
+
+```bash
+kubectl -n ipocket port-forward svc/ipocket-ipocket 8000:8000
+```
+
+The chart runs `alembic upgrade head` before starting the app, exposes the
+service on port `8000`, and stores SQLite data at `/data/ipocket.db`
+(persistent volume enabled by default).
+
 ## Offline environments
 Docker deployments default to local/static assets (CSS + JS like htmx) so the UI
 renders without downloading from public CDNs. Non-Docker runs will load the
