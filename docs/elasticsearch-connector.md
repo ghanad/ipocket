@@ -8,13 +8,13 @@ through the standard bundle import pipeline.
 
 Required inputs:
 - `elasticsearch_url` (example: `https://127.0.0.1:9200`)
-- Authentication:
-  - `api_key` (Base64 string or `id:key`)
-  - or `username` + `password`
 - `asset_type` (`OS`, `BMC`, `VM`, `VIP`, `OTHER`; default `OTHER`)
 - `mode` (`dry-run` or `apply` in UI; `file`/`dry-run`/`apply` in CLI)
 
 Optional inputs:
+- Authentication (optional):
+  - `api_key` (Base64 string or `id:key`)
+  - or `username` + `password`
 - `project_name`
 - `tags` (comma-separated)
 - `note` (fixed text; when provided it overwrites existing note on update)
@@ -26,7 +26,7 @@ TLS behavior:
 ## UI usage
 
 1. Open **Connectors → Elasticsearch**.
-2. Fill URL and authentication (`API key` or `username/password`).
+2. Fill URL. Authentication is optional; if needed, use `API key` or `username/password`.
 3. Set optional mapping fields (`type/project/tags/note`).
 4. Run **dry-run** first and review execution log.
 5. Run **apply** as an editor account.
