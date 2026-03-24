@@ -1055,10 +1055,10 @@ async def ui_run_elasticsearch_connector(
         errors.append(
             "Provide either API key or username/password authentication, not both."
         )
-    elif not has_api_key and not (has_username and has_password):
-        errors.append(
-            "Authentication is required: provide API key or both username and password."
-        )
+    elif has_username and not has_password:
+        errors.append("Password is required when username is provided.")
+    elif has_password and not has_username:
+        errors.append("Username is required when password is provided.")
 
     try:
         timeout = int(timeout_raw)

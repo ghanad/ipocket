@@ -574,9 +574,14 @@ def test_elasticsearch_connector_dry_run_allows_non_editor(client, monkeypatch) 
     assert "toast-success" in response.text
 
 
-def test_elasticsearch_connector_ui_validates_auth_fields(client) -> None:
+def test_elasticsearch_connector_ui_authentication_is_optional(client, monkeypatch) -> None:
     app.dependency_overrides[ui.get_current_ui_user] = lambda: User(
         2, "editor", "x", UserRole.EDITOR, True
+    )
+    monkeypatch.setattr(
+        connectors_routes,
+        "_run_elasticsearch_connector",
+        lambda **_kwargs: (["Import mode: dry-run."], [], 0, 0),
     )
     try:
         response = client.post(
@@ -584,20 +589,17 @@ def test_elasticsearch_connector_ui_validates_auth_fields(client) -> None:
             follow_redirects=True,
             data={
                 "elasticsearch_url": "https://127.0.0.1:9200",
-                "username": "elastic",
-                "password": "",
-                "api_key": "",
                 "mode": "dry-run",
             },
         )
     finally:
         app.dependency_overrides.pop(ui.get_current_ui_user, None)
 
-    assert response.status_code == 400
-    assert (
-        "Authentication is required: provide API key or both username and password."
-        in response.text
-    )
+    response = _resolve_connector_response(client, response)
+    assert response.status_code == 200
+    assert "Import mode: dry-run." in response.text
+    assert "Elasticsearch dry-run: Connector completed successfully." in response.text
+    assert "toast-success" in response.text
 
 
 def test_elasticsearch_connector_failure_uses_toast_without_inline_error(

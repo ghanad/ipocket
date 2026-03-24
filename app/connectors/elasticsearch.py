@@ -436,15 +436,10 @@ def _validate_cli_args(
 
     if has_api_key and (has_username or has_password):
         parser.error("Provide either --api-key or --username/--password, not both")
-    if not has_api_key:
-        if has_username and not has_password:
-            parser.error("--password is required when --username is provided")
-        if has_password and not has_username:
-            parser.error("--username is required when --password is provided")
-        if not has_username and not has_password:
-            parser.error(
-                "Authentication is required: use --api-key or --username/--password"
-            )
+    if has_username and not has_password:
+        parser.error("--password is required when --username is provided")
+    if has_password and not has_username:
+        parser.error("--username is required when --password is provided")
 
 
 def main(argv: Optional[Sequence[str]] = None) -> int:

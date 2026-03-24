@@ -393,7 +393,7 @@ Use the Elasticsearch connector when you want to import IPv4 node addresses from
 Elasticsearch cluster inventory (`/_nodes/http,transport`) into IP assets.
 
 Notes:
-- Authentication supports either `api_key` (Base64 or `id:key`) or `username/password`.
+- Authentication is optional. If required by your Elasticsearch deployment, use either `api_key` (Base64 or `id:key`) or `username/password`.
 - TLS certificate verification is skipped by default and has no toggle.
 - Existing IP updates can overwrite `type` and `project` (when provided), append
   tags, and overwrite note only when `note` is provided in the connector run.
@@ -402,7 +402,7 @@ UI flow:
 - Open **Connectors → Elasticsearch**
 - Fill:
   - Elasticsearch URL
-  - auth: API key OR username/password
+  - optional auth: API key OR username/password
   - optional `type` / `project` / `tags` / `note`
 - Start with `dry-run`, inspect logs, then run `apply`.
 

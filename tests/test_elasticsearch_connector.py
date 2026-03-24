@@ -3,6 +3,8 @@ from __future__ import annotations
 import json
 import ssl
 
+import pytest
+
 from app.connectors import elasticsearch
 from app.connectors.elasticsearch import (
     ElasticsearchNodeRecord,
@@ -275,3 +277,38 @@ def test_import_bundle_via_pipeline_calls_run_import(monkeypatch) -> None:
         "schema_version": "1",
         "data": {},
     }
+
+
+def test_validate_cli_args_allows_no_authentication() -> None:
+    parser = elasticsearch._build_parser()
+    args = parser.parse_args(
+        [
+            "--elasticsearch-url",
+            "https://es.example.local",
+            "--mode",
+            "file",
+            "--output",
+            "./bundle.json",
+        ]
+    )
+
+    elasticsearch._validate_cli_args(parser, args)
+
+
+def test_validate_cli_args_rejects_username_without_password() -> None:
+    parser = elasticsearch._build_parser()
+    args = parser.parse_args(
+        [
+            "--elasticsearch-url",
+            "https://es.example.local",
+            "--mode",
+            "file",
+            "--output",
+            "./bundle.json",
+            "--username",
+            "elastic",
+        ]
+    )
+
+    with pytest.raises(SystemExit):
+        elasticsearch._validate_cli_args(parser, args)
