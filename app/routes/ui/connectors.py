@@ -237,6 +237,7 @@ def _connectors_context(
     elasticsearch_errors: Optional[list[str]] = None,
     elasticsearch_logs: Optional[list[str]] = None,
     toast_messages: Optional[list[dict[str, str]]] = None,
+    connector_job_poll_url: Optional[str] = None,
 ) -> dict[str, object]:
     return {
         "title": "ipocket - Connectors",
@@ -253,6 +254,7 @@ def _connectors_context(
         "elasticsearch_errors": elasticsearch_errors or [],
         "elasticsearch_logs": elasticsearch_logs or [],
         "toast_messages": toast_messages or [],
+        "connector_job_poll_url": connector_job_poll_url,
     }
 
 
@@ -337,6 +339,9 @@ def ui_connectors(
                 )
                 context["elasticsearch_logs"] = logs
             if status_value in {"queued", "running"}:
+                context["connector_job_poll_url"] = (
+                    f"/ui/connectors?tab={active_tab}&job_id={job_id}"
+                )
                 context["toast_messages"] = [
                     {
                         "type": "warning",

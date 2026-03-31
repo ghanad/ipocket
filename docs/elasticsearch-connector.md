@@ -28,7 +28,7 @@ TLS behavior:
 1. Open **Connectors → Elasticsearch**.
 2. Fill URL. Authentication is optional; if needed, use `API key` or `username/password`.
 3. Set optional mapping fields (`type/project/tags/note`).
-4. Run **dry-run** first and review execution log.
+4. Run **dry-run** first and review execution log. The tab auto-refreshes while the run is still queued/running.
 5. Run **apply** as an editor account.
 
 ## CLI usage
