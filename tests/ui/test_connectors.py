@@ -72,15 +72,17 @@ def test_connectors_page_auto_polls_when_job_is_running(client, monkeypatch) -> 
     monkeypatch.setattr(
         connectors_routes,
         "_get_connector_job",
-        lambda _job_id: {
-            "active_tab": "elasticsearch",
-            "status": "running",
-            "logs": [],
-            "toast_messages": [],
-            "form_state": connectors_routes._default_elasticsearch_form_state(),
-        }
-        if _job_id == job_id
-        else None,
+        lambda _job_id: (
+            {
+                "active_tab": "elasticsearch",
+                "status": "running",
+                "logs": [],
+                "toast_messages": [],
+                "form_state": connectors_routes._default_elasticsearch_form_state(),
+            }
+            if _job_id == job_id
+            else None
+        ),
     )
 
     response = client.get(f"/ui/connectors?tab=elasticsearch&job_id={job_id}")
@@ -97,15 +99,17 @@ def test_connectors_page_stops_polling_after_job_completion(
     monkeypatch.setattr(
         connectors_routes,
         "_get_connector_job",
-        lambda _job_id: {
-            "active_tab": "elasticsearch",
-            "status": "completed",
-            "logs": ["done"],
-            "toast_messages": [{"type": "success", "message": "done"}],
-            "form_state": connectors_routes._default_elasticsearch_form_state(),
-        }
-        if _job_id == job_id
-        else None,
+        lambda _job_id: (
+            {
+                "active_tab": "elasticsearch",
+                "status": "completed",
+                "logs": ["done"],
+                "toast_messages": [{"type": "success", "message": "done"}],
+                "form_state": connectors_routes._default_elasticsearch_form_state(),
+            }
+            if _job_id == job_id
+            else None
+        ),
     )
 
     response = client.get(f"/ui/connectors?tab=elasticsearch&job_id={job_id}")
@@ -621,7 +625,9 @@ def test_elasticsearch_connector_dry_run_allows_non_editor(client, monkeypatch) 
     assert "toast-success" in response.text
 
 
-def test_elasticsearch_connector_ui_authentication_is_optional(client, monkeypatch) -> None:
+def test_elasticsearch_connector_ui_authentication_is_optional(
+    client, monkeypatch
+) -> None:
     app.dependency_overrides[ui.get_current_ui_user] = lambda: User(
         2, "editor", "x", UserRole.EDITOR, True
     )
