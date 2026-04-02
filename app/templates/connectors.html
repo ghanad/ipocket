@@ -25,4 +25,12 @@
 {% else %}
   {% include "partials/connectors_overview_tab_content.html" %}
 {% endif %}
+
+{% if connector_job_poll_url %}
+<script>
+  setTimeout(function () {
+    window.location.replace({{ connector_job_poll_url|tojson }});
+  }, 1000);
+</script>
+{% endif %}
 {% endblock %}
