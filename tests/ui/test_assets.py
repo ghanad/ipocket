@@ -1269,7 +1269,10 @@ def test_ip_asset_detail_shows_os_bmc_pair_for_host_linked_assets(client) -> Non
     try:
         db.init_db(connection)
         user = repository.create_user(
-            connection, username="pair-viewer", hashed_password="x", role=UserRole.VIEWER
+            connection,
+            username="pair-viewer",
+            hashed_password="x",
+            role=UserRole.VIEWER,
         )
         host = repository.create_host(connection, name="pair-node")
         os_asset = repository.create_ip_asset(
