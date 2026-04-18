@@ -90,6 +90,86 @@ def test_hosts_list_uses_edit_drawer_actions(client) -> None:
     assert "Save changes" in response.text
 
 
+def test_host_detail_uses_shared_detail_layout(client) -> None:
+    import os
+
+    connection = db.connect(os.environ["IPAM_DB_PATH"])
+    try:
+        db.init_db(connection)
+        vendor = repository.create_vendor(connection, name="Supermicro")
+        project = repository.create_project(connection, name="Compute", color="#0f766e")
+        host = repository.create_host(
+            connection, name="compute-08", vendor=vendor.name, notes="rack 4"
+        )
+        os_asset = repository.create_ip_asset(
+            connection,
+            ip_address="10.80.0.8",
+            asset_type=IPAssetType.OS,
+            project_id=project.id,
+            host_id=host.id,
+            notes="primary",
+            tags=["prod", "linux"],
+        )
+        bmc_asset = repository.create_ip_asset(
+            connection,
+            ip_address="10.80.1.8",
+            asset_type=IPAssetType.BMC,
+            project_id=project.id,
+            host_id=host.id,
+            tags=["oob"],
+        )
+        repository.create_ip_asset(
+            connection,
+            ip_address="10.80.2.8",
+            asset_type=IPAssetType.VIP,
+            host_id=host.id,
+        )
+    finally:
+        connection.close()
+
+    response = client.get(f"/ui/hosts/{host.id}")
+
+    assert response.status_code == 200
+    assert 'class="page-header ip-detail-header"' in response.text
+    assert "Vendor: Supermicro" in response.text
+    assert "Status: 3 linked IPs" in response.text
+    assert "<h2>Details</h2>" in response.text
+    assert '<div class="detail-grid">' in response.text
+    assert "rack 4" in response.text
+    assert "Compute" in response.text
+    assert "--project-color: #0f766e" in response.text
+    assert "prod" in response.text
+    assert "linux" in response.text
+    assert "oob" in response.text
+    assert "No tags" in response.text
+    assert "<h2>OS IPs</h2>" in response.text
+    assert f'href="/ui/ip-assets/{os_asset.id}"' in response.text
+    assert "<h2>BMC IPs</h2>" in response.text
+    assert f'href="/ui/ip-assets/{bmc_asset.id}"' in response.text
+    assert "<h2>Other linked IPs</h2>" in response.text
+
+
+def test_host_detail_shows_empty_states_for_unlinked_host(client) -> None:
+    import os
+
+    connection = db.connect(os.environ["IPAM_DB_PATH"])
+    try:
+        db.init_db(connection)
+        host = repository.create_host(connection, name="empty-host")
+    finally:
+        connection.close()
+
+    response = client.get(f"/ui/hosts/{host.id}")
+
+    assert response.status_code == 200
+    assert "Vendor: Unassigned" in response.text
+    assert "Status: No linked IPs" in response.text
+    assert "No notes" in response.text
+    assert "No OS IPs linked." in response.text
+    assert "No BMC IPs linked." in response.text
+    assert "Other linked IPs" not in response.text
+
+
 def test_hosts_add_uses_side_panel(client) -> None:
     """Test that Add Host uses the side panel drawer instead of inline form."""
     response = client.get("/ui/hosts")

@@ -72,6 +72,7 @@ UI assignment flows only allow selecting from existing tags; they do not create 
 - `notes` (TEXT, nullable)
 - `vendor_id` (INTEGER, nullable; FK to `vendors.id`)
 
+Host detail grouping is presentation-only: active linked IP assets are grouped as OS, BMC, and other asset types with their existing project, tag, and notes metadata without changing the stored Host or IPAsset relationships.
 
 ## Vendor
 - `name` (TEXT, unique)
