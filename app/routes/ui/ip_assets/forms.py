@@ -194,8 +194,12 @@ def ui_ip_asset_detail(
     }
     host_lookup = {host.id: host.name for host in repository.list_hosts(connection)}
     tag_lookup = repository.list_tag_details_for_ip_assets(connection, [asset.id])
+    host_pair_lookup = repository.list_host_pair_ips_for_hosts(
+        connection,
+        [asset.host_id] if asset.host_id else [],
+    )
     view_model = _build_asset_view_models(
-        [asset], project_lookup, host_lookup, tag_lookup
+        [asset], project_lookup, host_lookup, tag_lookup, host_pair_lookup
     )[0]
     audit_logs = repository.get_audit_logs_for_ip(connection, asset.id)
     audit_log_rows = [

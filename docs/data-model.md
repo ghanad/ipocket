@@ -61,6 +61,12 @@ UI assignment flows only allow selecting from existing tags; they do not create 
 - If `host_id` is provided explicitly, no auto-host creation is performed.
 
 
+## OS/BMC host pairing
+- OS and BMC IP assets are paired through their shared `host_id`.
+- On an IP Asset detail page, OS records show linked BMC addresses for the same host, and BMC records show linked OS addresses for the same host.
+- Pair addresses are not shown for `VM`, `VIP`, or `OTHER` asset types.
+
+
 ## Host
 - `name` (TEXT, unique)
 - `notes` (TEXT, nullable)
