@@ -1226,9 +1226,18 @@ def test_ip_asset_detail_uses_enhanced_layout_and_delete_drawer(client) -> None:
     assert response.status_code == 200
     assert "<h2>Details</h2>" in response.text
     assert "Status: Assigned" in response.text
+    assert 'data-ip-edit="' in response.text
     assert 'data-ip-delete="' in response.text
-    assert 'data-ip-drawer-mode="delete"' in response.text
+    assert 'class="row-actions-menu ip-detail-actions"' not in response.text
+    assert 'href="/ui/ip-assets/' not in response.text.split("data-ip-edit=", 1)[0]
+    assert 'data-ip-drawer-mode="edit"' in response.text
+    assert "data-ip-edit-form" in response.text
+    assert 'data-ip-mode-panel="edit"' in response.text
+    assert 'data-ip-mode-action="edit"' in response.text
+    assert "Save changes" in response.text
     assert "data-ip-delete-form" in response.text
+    assert 'data-ip-mode-panel="delete"' in response.text
+    assert 'value="/ui/ip-assets" data-ip-delete-return-to' in response.text
     assert "/static/js/ip-assets.js" in response.text
     assert 'class="pill pill-success"' in response.text
     assert "Type: OS; Project ID:" in response.text

@@ -128,6 +128,11 @@ def test_refactored_templates_load_external_page_assets() -> None:
     )
     assert "computeCommonBulkTags" in ip_assets_js
     assert "name = 'remove_tags'" in ip_assets_js
+    assert "const getDeleteReturnUrl = (assetData) => {" in ip_assets_js
+    assert (
+        "window.location.pathname === `/ui/ip-assets/${payload.asset_id}`"
+        in ip_assets_js
+    )
 
 
 def test_projects_templates_use_alpine_for_drawer_interactions() -> None:

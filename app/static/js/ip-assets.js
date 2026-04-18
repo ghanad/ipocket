@@ -60,6 +60,13 @@
   let tagsPopoverOpenTimer = null;
   let tagsPopoverCloseTimer = null;
   const getCurrentListUrl = () => window.location.pathname + window.location.search;
+  const getDeleteReturnUrl = (assetData) => {
+    const detailPath = assetData?.id ? `/ui/ip-assets/${assetData.id}` : '';
+    if (detailPath && window.location.pathname === detailPath) {
+      return '/ui/ip-assets';
+    }
+    return getCurrentListUrl();
+  };
 
   const syncEditReturnTo = () => {
     if (!form) {
@@ -606,7 +613,7 @@
     }
     deleteForm.action = `/ui/ip-assets/${assetData.id}/delete`;
     if (deleteReturnTo) {
-      deleteReturnTo.value = getCurrentListUrl();
+      deleteReturnTo.value = getDeleteReturnUrl(assetData);
     }
     if (deleteAck) {
       deleteAck.checked = false;
@@ -1197,6 +1204,10 @@
           const row = document.querySelector(`[data-ip-asset-row-id="${payload.asset_id}"]`);
           if (row) {
             row.remove();
+          } else if (window.location.pathname === `/ui/ip-assets/${payload.asset_id}`) {
+            const message = encodeURIComponent(payload.message || 'IP asset deleted.');
+            window.location.href = `/ui/ip-assets?delete-success=${message}`;
+            return;
           }
           closeDrawer();
           showToast(payload.message || 'IP asset deleted.', 'success');

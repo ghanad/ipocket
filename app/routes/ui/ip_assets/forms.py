@@ -188,11 +188,14 @@ def ui_ip_asset_detail(
     asset = repository.get_ip_asset_by_id(connection, asset_id)
     if asset is None or asset.archived:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
+    projects = list(repository.list_projects(connection))
+    hosts = list(repository.list_hosts(connection))
+    tags = list(repository.list_tags(connection))
     project_lookup = {
         project.id: {"name": project.name, "color": project.color}
-        for project in repository.list_projects(connection)
+        for project in projects
     }
-    host_lookup = {host.id: host.name for host in repository.list_hosts(connection)}
+    host_lookup = {host.id: host.name for host in hosts}
     tag_lookup = repository.list_tag_details_for_ip_assets(connection, [asset.id])
     host_pair_lookup = repository.list_host_pair_ips_for_hosts(
         connection,
@@ -218,6 +221,11 @@ def ui_ip_asset_detail(
             "title": "ipocket - IP Detail",
             "asset": view_model,
             "audit_logs": audit_log_rows,
+            "projects": projects,
+            "hosts": hosts,
+            "tags": tags,
+            "types": [asset_type.value for asset_type in IPAssetType],
+            "return_to": f"/ui/ip-assets/{asset.id}",
         },
         active_nav="ip-assets",
     )
