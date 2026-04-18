@@ -126,6 +126,7 @@ Hosts can be linked to a vendor from the shared **Vendors** catalog.
 - Hosts list displays a project badge (with project color) based on linked IP assignments; multiple linked projects show a warning badge.
 - Hosts page includes a collapsible search panel to filter by host name, vendor, notes, or linked IPs.
 - Adding a host now uses the same right-side drawer interaction as editing, so create/edit actions stay visually consistent.
+- Host detail pages use the shared detail layout: header metadata chips, a Details card, and grouped OS/BMC/other linked-IP tables with project, tag, and notes context plus empty states.
 - Host deletion now uses the same right-side drawer pattern as host add/edit and IP delete flows, with destructive safeguards (acknowledgement checkbox + exact host-name confirmation) before enabling permanent delete. Deleting a host keeps all linked IP assets and automatically unassigns them from that host.
 
 ## Vendors

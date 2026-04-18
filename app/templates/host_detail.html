@@ -1,12 +1,23 @@
 {% extends "base.html" %}
 
 {% block content %}
-<section class="page-header">
+{% set os_count = os_assets|length %}
+{% set bmc_count = bmc_assets|length %}
+{% set other_count = other_assets|length %}
+{% set linked_count = os_count + bmc_count + other_count %}
+
+<section class="page-header ip-detail-header">
   <div>
     <p class="eyebrow">Host</p>
     <h1>{{ host.name }}</h1>
-    <p class="subtitle">{{ host.notes or "No notes" }}</p>
-    <p><strong>Vendor:</strong> {{ host.vendor or "-" }}</p>
+    <div class="ip-detail-meta">
+      <span class="tag">Vendor: {{ host.vendor or "Unassigned" }}</span>
+      <span class="tag{% if linked_count == 0 %} tag-warning{% endif %}">
+        Status: {% if linked_count == 0 %}No linked IPs{% else %}{{ linked_count }} linked IP{% if linked_count != 1 %}s{% endif %}{% endif %}
+      </span>
+      <span class="tag">OS: {{ os_count }}</span>
+      <span class="tag">BMC: {{ bmc_count }}</span>
+    </div>
   </div>
   <div class="header-actions">
     <a class="btn btn-secondary" href="/ui/hosts">Back to hosts</a>
@@ -14,31 +25,184 @@
 </section>
 
 <section class="card">
-  <h2>OS IPs</h2>
-  <ul>
-    {% for asset in os_assets %}
-    <li><a href="/ui/ip-assets/{{ asset.id }}">{{ asset.ip_address }}</a></li>
-    {% else %}<li>None</li>{% endfor %}
-  </ul>
+  <h2>Details</h2>
+  <div class="detail-grid">
+    <div class="detail-item">
+      <p class="detail-label">Host name</p>
+      <p class="detail-value">{{ host.name }}</p>
+    </div>
+    <div class="detail-item">
+      <p class="detail-label">Vendor</p>
+      <p class="detail-value">{{ host.vendor or "Unassigned" }}</p>
+    </div>
+    <div class="detail-item">
+      <p class="detail-label">Linked IPs</p>
+      <p class="detail-value">{{ linked_count }}</p>
+    </div>
+    <div class="detail-item">
+      <p class="detail-label">OS / BMC</p>
+      <p class="detail-value">{{ os_count }} / {{ bmc_count }}</p>
+    </div>
+    <div class="detail-item detail-item-wide">
+      <p class="detail-label">Notes</p>
+      <p class="detail-value">{{ host.notes or "No notes" }}</p>
+    </div>
+  </div>
 </section>
 
 <section class="card">
-  <h2>BMC IPs</h2>
-  <ul>
-    {% for asset in bmc_assets %}
-    <li><a href="/ui/ip-assets/{{ asset.id }}">{{ asset.ip_address }}</a></li>
-    {% else %}<li>None</li>{% endfor %}
-  </ul>
+  <div class="card-header">
+    <div>
+      <h2>OS IPs</h2>
+      <p class="subtitle">Operating-system addresses linked to this host.</p>
+    </div>
+    <span class="tag">{{ os_count }}</span>
+  </div>
+  {% if os_assets %}
+  <div class="table-wrapper">
+    <table class="table">
+      <thead>
+        <tr>
+          <th>IP address</th>
+          <th>Project</th>
+          <th>Tags</th>
+          <th>Notes</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for asset in os_assets %}
+        <tr>
+          <td><a class="mono" href="/ui/ip-assets/{{ asset.id }}">{{ asset.ip_address }}</a></td>
+          <td>
+            {% if asset.project_unassigned %}
+            <span class="tag tag-warning">Unassigned</span>
+            {% else %}
+            <span class="tag tag-project"{% if asset.project_color %} style="--project-color: {{ asset.project_color }}"{% endif %}>{{ asset.project_name }}</span>
+            {% endif %}
+          </td>
+          <td>
+            <div class="ip-detail-tags">
+              {% if asset.tags %}
+                {% for tag in asset.tags %}
+                <span class="tag tag-color" style="--tag-color: {{ tag.color }}">{{ tag.name }}</span>
+                {% endfor %}
+              {% else %}
+                <span class="tag">No tags</span>
+              {% endif %}
+            </div>
+          </td>
+          <td>{{ asset.notes or "—" }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <p class="empty-state">No OS IPs linked.</p>
+  {% endif %}
+</section>
+
+<section class="card">
+  <div class="card-header">
+    <div>
+      <h2>BMC IPs</h2>
+      <p class="subtitle">Out-of-band management addresses linked to this host.</p>
+    </div>
+    <span class="tag">{{ bmc_count }}</span>
+  </div>
+  {% if bmc_assets %}
+  <div class="table-wrapper">
+    <table class="table">
+      <thead>
+        <tr>
+          <th>IP address</th>
+          <th>Project</th>
+          <th>Tags</th>
+          <th>Notes</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for asset in bmc_assets %}
+        <tr>
+          <td><a class="mono" href="/ui/ip-assets/{{ asset.id }}">{{ asset.ip_address }}</a></td>
+          <td>
+            {% if asset.project_unassigned %}
+            <span class="tag tag-warning">Unassigned</span>
+            {% else %}
+            <span class="tag tag-project"{% if asset.project_color %} style="--project-color: {{ asset.project_color }}"{% endif %}>{{ asset.project_name }}</span>
+            {% endif %}
+          </td>
+          <td>
+            <div class="ip-detail-tags">
+              {% if asset.tags %}
+                {% for tag in asset.tags %}
+                <span class="tag tag-color" style="--tag-color: {{ tag.color }}">{{ tag.name }}</span>
+                {% endfor %}
+              {% else %}
+                <span class="tag">No tags</span>
+              {% endif %}
+            </div>
+          </td>
+          <td>{{ asset.notes or "—" }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <p class="empty-state">No BMC IPs linked.</p>
+  {% endif %}
 </section>
 
 {% if other_assets %}
 <section class="card">
-  <h2>Other linked IPs</h2>
-  <ul>
-    {% for asset in other_assets %}
-    <li><a href="/ui/ip-assets/{{ asset.id }}">{{ asset.ip_address }} ({{ asset.asset_type.value }})</a></li>
-    {% endfor %}
-  </ul>
+  <div class="card-header">
+    <div>
+      <h2>Other linked IPs</h2>
+      <p class="subtitle">VM, VIP, and other records currently attached to this host.</p>
+    </div>
+    <span class="tag">{{ other_count }}</span>
+  </div>
+  <div class="table-wrapper">
+    <table class="table">
+      <thead>
+        <tr>
+          <th>IP address</th>
+          <th>Type</th>
+          <th>Project</th>
+          <th>Tags</th>
+          <th>Notes</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for asset in other_assets %}
+        <tr>
+          <td><a class="mono" href="/ui/ip-assets/{{ asset.id }}">{{ asset.ip_address }}</a></td>
+          <td><span class="tag">{{ asset.type }}</span></td>
+          <td>
+            {% if asset.project_unassigned %}
+            <span class="tag tag-warning">Unassigned</span>
+            {% else %}
+            <span class="tag tag-project"{% if asset.project_color %} style="--project-color: {{ asset.project_color }}"{% endif %}>{{ asset.project_name }}</span>
+            {% endif %}
+          </td>
+          <td>
+            <div class="ip-detail-tags">
+              {% if asset.tags %}
+                {% for tag in asset.tags %}
+                <span class="tag tag-color" style="--tag-color: {{ tag.color }}">{{ tag.name }}</span>
+                {% endfor %}
+              {% else %}
+                <span class="tag">No tags</span>
+              {% endif %}
+            </div>
+          </td>
+          <td>{{ asset.notes or "—" }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
 </section>
 {% endif %}
 {% endblock %}

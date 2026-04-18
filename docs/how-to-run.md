@@ -232,7 +232,7 @@ UI design reference templates live in `/ui_template` for layout and styling guid
 3) Open **Library** from the sidebar and use tabs to create Projects, Tags, and Vendors.
    - The header **New Project / New Tag / New Vendor** button opens the matching create drawer for the active tab.
 4) In **Library → Tags**, the create drawer now suggests a random color by default; you can keep it or pick another color before saving.
-5) Create Hosts from the **Hosts** page and pick a Vendor when needed.
+5) Create Hosts from the **Hosts** page and pick a Vendor when needed. Open a Host name from the table to review vendor/status chips and grouped OS, BMC, and other linked IP tables with each IP's project, tags, and notes.
 6) Add IPs from the **IP Assets** page.
 7) When you paginate in **IP Assets**, edits from the drawer return you to the same filtered/paginated list state (current `page` and `per-page` are preserved).
 8) Open **Data Ops** from the sidebar to import or export data using one unified page with tabs. `hosts.csv` exports now include `project_name`, `os_ip`, and `bmc_ip` for round-trip compatibility with CSV import.
