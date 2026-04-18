@@ -59,6 +59,12 @@
       <p class="detail-label">Host</p>
       <p class="detail-value">{{ asset.host_name or "—" }}</p>
     </div>
+    {% if asset.type == "OS" or asset.type == "BMC" %}
+    <div class="detail-item">
+      <p class="detail-label">{% if asset.type == "OS" %}BMC address{% else %}OS address{% endif %}</p>
+      <p class="detail-value mono">{{ asset.host_pair or "—" }}</p>
+    </div>
+    {% endif %}
     <div class="detail-item">
       <p class="detail-label">Tags</p>
       <p class="detail-value ip-detail-tags">

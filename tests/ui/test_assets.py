@@ -1260,3 +1260,89 @@ def test_ip_asset_detail_shows_no_tags_and_no_notes_defaults(client) -> None:
     assert "No tags" in response.text
     assert "No notes" in response.text
     assert "Status: Needs assignment" in response.text
+
+
+def test_ip_asset_detail_shows_os_bmc_pair_for_host_linked_assets(client) -> None:
+    import os
+
+    connection = db.connect(os.environ["IPAM_DB_PATH"])
+    try:
+        db.init_db(connection)
+        user = repository.create_user(
+            connection,
+            username="pair-viewer",
+            hashed_password="x",
+            role=UserRole.VIEWER,
+        )
+        host = repository.create_host(connection, name="pair-node")
+        os_asset = repository.create_ip_asset(
+            connection,
+            ip_address="10.91.0.10",
+            asset_type=IPAssetType.OS,
+            host_id=host.id,
+        )
+        bmc_asset = repository.create_ip_asset(
+            connection,
+            ip_address="10.91.0.20",
+            asset_type=IPAssetType.BMC,
+            host_id=host.id,
+        )
+    finally:
+        connection.close()
+
+    app.dependency_overrides[ui.get_current_ui_user] = lambda: user
+    try:
+        os_response = client.get(f"/ui/ip-assets/{os_asset.id}")
+        bmc_response = client.get(f"/ui/ip-assets/{bmc_asset.id}")
+    finally:
+        app.dependency_overrides.pop(ui.get_current_ui_user, None)
+
+    assert os_response.status_code == 200
+    assert "BMC address" in os_response.text
+    assert "10.91.0.20" in os_response.text
+    assert "OS address" not in os_response.text
+
+    assert bmc_response.status_code == 200
+    assert "OS address" in bmc_response.text
+    assert "10.91.0.10" in bmc_response.text
+    assert "BMC address" not in bmc_response.text
+
+
+def test_ip_asset_detail_hides_pair_address_for_other_types(client) -> None:
+    import os
+
+    connection = db.connect(os.environ["IPAM_DB_PATH"])
+    try:
+        db.init_db(connection)
+        user = repository.create_user(
+            connection,
+            username="other-type-viewer",
+            hashed_password="x",
+            role=UserRole.VIEWER,
+        )
+        host = repository.create_host(connection, name="vm-node")
+        asset = repository.create_ip_asset(
+            connection,
+            ip_address="10.91.0.30",
+            asset_type=IPAssetType.VM,
+            host_id=host.id,
+        )
+        repository.create_ip_asset(
+            connection,
+            ip_address="10.91.0.31",
+            asset_type=IPAssetType.BMC,
+            host_id=host.id,
+        )
+    finally:
+        connection.close()
+
+    app.dependency_overrides[ui.get_current_ui_user] = lambda: user
+    try:
+        response = client.get(f"/ui/ip-assets/{asset.id}")
+    finally:
+        app.dependency_overrides.pop(ui.get_current_ui_user, None)
+
+    assert response.status_code == 200
+    assert "BMC address" not in response.text
+    assert "OS address" not in response.text
+    assert "10.91.0.31" not in response.text
