@@ -18,6 +18,7 @@ UI note: unassigned-related metrics are still available even though the dedicate
 UI note: range-address search/status/pagination changes are presentation-only and do not affect `/metrics` payloads.
 UI note: IP Assets bulk note overwrite is an inventory edit workflow change only and does not add or alter `/metrics` counters.
 UI note: IP Assets toast-query cleanup on bulk/update/delete redirects is a navigation behavior change only and does not affect `/metrics` payloads.
+UI note: IP Asset detail Edit/Delete drawer actions are presentation/navigation changes only and do not affect `/metrics` payloads.
 UI note: IP asset export numeric sort fallback (when `ip_int` is null) is export-order behavior only and does not affect `/metrics` payloads.
 UI note: IP Asset detail OS/BMC paired-address display is presentation-only and does not affect `/metrics` payloads.
 UI note: Host detail linked-IP grouping and per-IP project/tag display are presentation-only and do not affect `/metrics` payloads.

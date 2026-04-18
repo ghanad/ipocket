@@ -22,6 +22,7 @@ Bulk edit note behavior:
 
 UI redirect behavior:
 - IP Assets bulk/update/delete flows strip stale toast query parameters (`bulk-error`, `bulk-success`, `delete-error`, `delete-success`) before appending a new result message.
+- Deleting an IP Asset from its detail page returns to `/ui/ip-assets`; this is a navigation/UI behavior only and does not change stored relationships.
 
 Export ordering behavior:
 - IP asset exports (`/export/ip-assets.csv`, `/export/ip-assets.json`, bundle payload) are ordered by numeric IPv4 value.

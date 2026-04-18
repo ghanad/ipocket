@@ -31,7 +31,7 @@ ipocket is a lightweight IP inventory app to track addresses and their project a
 - IP assets list hides Host Pair to keep the table focused on assignment and editing fields.
 - IP assets list shows inline Edit/Delete actions side-by-side in the Actions column.
 - Deleting an IP from the list now uses the same right-side drawer shell as Add/Edit but with strict modes: delete mode hides all edit inputs, shows a compact destructive confirmation summary (IP/Project/Type/Host), keeps the acknowledgement checkbox inline with its label, and for high-risk assets requires typing the exact IP before “Delete permanently” is enabled.
-- IP asset detail page now uses the shared card/chip visual language, including metadata chips in the header, a key-value Details card, badge-styled audit actions with optional raw detail expansion, and in-page delete via the same right-side delete drawer mode used on the list view.
+- IP asset detail page now uses the shared card/chip visual language, including metadata chips in the header, a key-value Details card, badge-styled audit actions with optional raw detail expansion, and header Edit/Delete buttons that open the same right-side drawer modes used on the list view.
 - IP assets list includes bulk edit controls to update type, project assignment, add/remove tags, or overwrite notes across multiple IPs at once.
 - IP assets list keeps tag cells compact: up to 3 chips are shown in-row, and extra tags move into a `+N more` popover (open on hover or click, with keyboard/outside-click close and inline tag search).
 - IP assets list keeps Notes cells single-line to preserve row height; full note text appears in a hover/focus tooltip after a short pointer delay.
