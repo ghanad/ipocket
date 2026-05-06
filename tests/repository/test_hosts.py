@@ -61,21 +61,21 @@ def test_list_hosts_with_ip_counts_includes_os_and_bmc_ips(_setup_connection) ->
     connection = _setup_connection()
     host = create_host(connection, name="host-ips")
     project = create_project(connection, name="Edge", color="#1d4ed8")
-    create_ip_asset(
+    os_asset_a = create_ip_asset(
         connection,
         ip_address="10.20.0.10",
         asset_type=IPAssetType.OS,
         host_id=host.id,
         project_id=project.id,
     )
-    create_ip_asset(
+    os_asset_b = create_ip_asset(
         connection,
         ip_address="10.20.0.11",
         asset_type=IPAssetType.OS,
         host_id=host.id,
         project_id=project.id,
     )
-    create_ip_asset(
+    bmc_asset = create_ip_asset(
         connection,
         ip_address="10.20.0.20",
         asset_type=IPAssetType.BMC,
@@ -91,6 +91,13 @@ def test_list_hosts_with_ip_counts_includes_os_and_bmc_ips(_setup_connection) ->
     assert len(hosts) == 1
     assert hosts[0]["os_ips"] == "10.20.0.10, 10.20.0.11"
     assert hosts[0]["bmc_ips"] == "10.20.0.20"
+    assert hosts[0]["os_ip_links"] == [
+        {"id": os_asset_a.id, "ip_address": "10.20.0.10"},
+        {"id": os_asset_b.id, "ip_address": "10.20.0.11"},
+    ]
+    assert hosts[0]["bmc_ip_links"] == [
+        {"id": bmc_asset.id, "ip_address": "10.20.0.20"}
+    ]
     assert hosts[0]["project_count"] == 1
     assert hosts[0]["project_name"] == "Edge"
     assert hosts[0]["project_color"] == "#1d4ed8"

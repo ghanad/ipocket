@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import sqlite3
-from typing import Iterable, Optional
+from typing import Iterable, Mapping, Optional, Sequence
 
 from sqlalchemy import distinct, func, select, update, delete
 from sqlalchemy.exc import IntegrityError
@@ -329,6 +329,72 @@ def _list_hosts_with_counts_query(
     return statement
 
 
+def _host_os_bmc_ip_links(
+    session: Session, host_ids: list[int]
+) -> dict[int, dict[str, list[dict[str, object]]]]:
+    if not host_ids:
+        return {}
+
+    rows = (
+        session.execute(
+            select(
+                db_schema.IPAsset.id,
+                db_schema.IPAsset.host_id,
+                db_schema.IPAsset.ip_address,
+                db_schema.IPAsset.type,
+            )
+            .where(
+                db_schema.IPAsset.host_id.in_(host_ids),
+                db_schema.IPAsset.archived == 0,
+                db_schema.IPAsset.type.in_(
+                    [IPAssetType.OS.value, IPAssetType.BMC.value]
+                ),
+            )
+            .order_by(
+                db_schema.IPAsset.host_id,
+                db_schema.IPAsset.type,
+                db_schema.IPAsset.ip_address,
+            )
+        )
+        .mappings()
+        .all()
+    )
+
+    links: dict[int, dict[str, list[dict[str, object]]]] = {
+        host_id: {"os": [], "bmc": []} for host_id in host_ids
+    }
+    for row in rows:
+        host_id = int(row["host_id"])
+        link_type = "os" if row["type"] == IPAssetType.OS.value else "bmc"
+        links[host_id][link_type].append(
+            {"id": int(row["id"]), "ip_address": str(row["ip_address"])}
+        )
+    return links
+
+
+def _host_count_row_payloads(
+    rows: Sequence[Mapping[str, object]],
+    links_by_host: dict[int, dict[str, list[dict[str, object]]]],
+) -> list[dict[str, object]]:
+    return [
+        {
+            "id": int(row["id"]),
+            "name": str(row["name"]),
+            "notes": row["notes"],
+            "vendor": row["vendor"],
+            "project_count": int(row["project_count"] or 0),
+            "project_name": row["project_name"] or "",
+            "project_color": row["project_color"] or "",
+            "ip_count": int(row["ip_count"] or 0),
+            "os_ips": row["os_ips"] or "",
+            "bmc_ips": row["bmc_ips"] or "",
+            "os_ip_links": links_by_host.get(int(row["id"]), {}).get("os", []),
+            "bmc_ip_links": links_by_host.get(int(row["id"]), {}).get("bmc", []),
+        }
+        for row in rows
+    ]
+
+
 def list_hosts_with_ip_counts(
     connection_or_session: sqlite3.Connection | Session,
     *,
@@ -358,21 +424,10 @@ def list_hosts_with_ip_counts(
             .mappings()
             .all()
         )
-    return [
-        {
-            "id": int(row["id"]),
-            "name": str(row["name"]),
-            "notes": row["notes"],
-            "vendor": row["vendor"],
-            "project_count": int(row["project_count"] or 0),
-            "project_name": row["project_name"] or "",
-            "project_color": row["project_color"] or "",
-            "ip_count": int(row["ip_count"] or 0),
-            "os_ips": row["os_ips"] or "",
-            "bmc_ips": row["bmc_ips"] or "",
-        }
-        for row in rows
-    ]
+        links_by_host = _host_os_bmc_ip_links(
+            session, [int(row["id"]) for row in rows]
+        )
+    return _host_count_row_payloads(rows, links_by_host)
 
 
 def count_hosts(
@@ -440,21 +495,10 @@ def list_hosts_with_ip_counts_paginated(
             .mappings()
             .all()
         )
-    return [
-        {
-            "id": int(row["id"]),
-            "name": str(row["name"]),
-            "notes": row["notes"],
-            "vendor": row["vendor"],
-            "project_count": int(row["project_count"] or 0),
-            "project_name": row["project_name"] or "",
-            "project_color": row["project_color"] or "",
-            "ip_count": int(row["ip_count"] or 0),
-            "os_ips": row["os_ips"] or "",
-            "bmc_ips": row["bmc_ips"] or "",
-        }
-        for row in rows
-    ]
+        links_by_host = _host_os_bmc_ip_links(
+            session, [int(row["id"]) for row in rows]
+        )
+    return _host_count_row_payloads(rows, links_by_host)
 
 
 def get_host_linked_assets_grouped(

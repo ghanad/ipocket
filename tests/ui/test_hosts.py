@@ -17,13 +17,13 @@ def test_hosts_page_renders_edit_drawer_and_actions(client) -> None:
         host = repository.create_host(
             connection, name="edge-01", vendor=vendor.name, notes="rack-a"
         )
-        repository.create_ip_asset(
+        os_asset = repository.create_ip_asset(
             connection,
             ip_address="10.50.0.10",
             asset_type=IPAssetType.OS,
             host_id=host.id,
         )
-        repository.create_ip_asset(
+        bmc_asset = repository.create_ip_asset(
             connection,
             ip_address="10.50.0.11",
             asset_type=IPAssetType.BMC,
@@ -37,6 +37,8 @@ def test_hosts_page_renders_edit_drawer_and_actions(client) -> None:
     assert response.status_code == 200
     assert 'data-host-edit="' in response.text
     assert f'data-host-delete="{host.id}"' in response.text
+    assert f'href="/ui/ip-assets/{os_asset.id}"' in response.text
+    assert f'href="/ui/ip-assets/{bmc_asset.id}"' in response.text
     assert "Edit Host" in response.text
     assert "Save changes" in response.text
     assert "host-edit-row-" not in response.text

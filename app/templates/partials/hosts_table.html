@@ -29,8 +29,16 @@
             </span>
             {% endif %}
           </td>
-          <td>{{ host.os_ips or "" }}</td>
-          <td>{{ host.bmc_ips or "" }}</td>
+          <td>
+            {% for asset in host.os_ip_links %}
+            <a class="mono" href="/ui/ip-assets/{{ asset.id }}">{{ asset.ip_address }}</a>{% if not loop.last %}, {% endif %}
+            {% endfor %}
+          </td>
+          <td>
+            {% for asset in host.bmc_ip_links %}
+            <a class="mono" href="/ui/ip-assets/{{ asset.id }}">{{ asset.ip_address }}</a>{% if not loop.last %}, {% endif %}
+            {% endfor %}
+          </td>
           <td>{{ host.ip_count }}</td>
           <td class="asset-actions-cell">
             {% set vendor_match = namespace(id="") %}

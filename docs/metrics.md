@@ -18,6 +18,7 @@ UI note: unassigned-related metrics are still available even though the dedicate
 UI note: range-address search/status/pagination changes are presentation-only and do not affect `/metrics` payloads.
 UI note: Hosts list search/filter changes are presentation-only and do not affect `/metrics` payloads.
 UI note: Hosts text/select filters applying immediately with HTMX table updates is a UI behavior change only and does not affect `/metrics` payloads.
+UI note: Hosts list OS/BMC address links are navigation-only and do not affect `/metrics` payloads.
 UI note: IP Assets bulk note overwrite is an inventory edit workflow change only and does not add or alter `/metrics` counters.
 UI note: IP Assets toast-query cleanup on bulk/update/delete redirects is a navigation behavior change only and does not affect `/metrics` payloads.
 UI note: IP Asset detail Edit/Delete drawer actions are presentation/navigation changes only and do not affect `/metrics` payloads.
