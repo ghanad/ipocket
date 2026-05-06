@@ -7,6 +7,7 @@ from app.repository import (
     create_host,
     create_ip_asset,
     create_project,
+    create_vendor,
     delete_host,
     get_host_by_name,
     get_ip_asset_by_ip,
@@ -188,3 +189,88 @@ def test_list_hosts_with_ip_counts_paginated_returns_empty_for_large_offset(
     hosts = list_hosts_with_ip_counts_paginated(connection, limit=10, offset=100)
 
     assert hosts == []
+
+
+def test_list_hosts_with_ip_counts_filters_by_project_type_tag_and_status(
+    _setup_connection,
+) -> None:
+    connection = _setup_connection()
+    project = create_project(connection, name="Core", color="#2563eb")
+    matching = create_host(connection, name="core-host")
+    other = create_host(connection, name="edge-host")
+    free = create_host(connection, name="free-host")
+    create_ip_asset(
+        connection,
+        ip_address="10.70.0.10",
+        asset_type=IPAssetType.OS,
+        host_id=matching.id,
+        project_id=project.id,
+        tags=["prod"],
+    )
+    create_ip_asset(
+        connection,
+        ip_address="10.70.0.20",
+        asset_type=IPAssetType.BMC,
+        host_id=other.id,
+        tags=["oob"],
+    )
+
+    hosts = list_hosts_with_ip_counts_paginated(
+        connection,
+        limit=20,
+        offset=0,
+        project_id=project.id,
+        asset_type=IPAssetType.OS,
+        tag_names=["prod"],
+        status_filter="linked",
+    )
+    total = count_hosts(
+        connection,
+        project_id=project.id,
+        asset_type=IPAssetType.OS,
+        tag_names=["prod"],
+        status_filter="linked",
+    )
+    free_hosts = list_hosts_with_ip_counts_paginated(
+        connection, limit=20, offset=0, status_filter="free"
+    )
+
+    assert total == 1
+    assert [host["name"] for host in hosts] == ["core-host"]
+    assert [host["name"] for host in free_hosts] == [free.name]
+
+
+def test_list_hosts_with_ip_counts_filters_by_search_vendor_and_unassigned(
+    _setup_connection,
+) -> None:
+    connection = _setup_connection()
+    vendor = create_vendor(connection, name="Dell")
+    assigned_project = create_project(connection, name="Assigned")
+    matching = create_host(connection, name="tag-search-host", vendor=vendor.name)
+    assigned = create_host(connection, name="assigned-host", vendor=vendor.name)
+    create_ip_asset(
+        connection,
+        ip_address="10.71.0.10",
+        asset_type=IPAssetType.OS,
+        host_id=matching.id,
+        tags=["prod"],
+    )
+    create_ip_asset(
+        connection,
+        ip_address="10.71.0.20",
+        asset_type=IPAssetType.OS,
+        host_id=assigned.id,
+        project_id=assigned_project.id,
+        tags=["prod"],
+    )
+
+    hosts = list_hosts_with_ip_counts_paginated(
+        connection,
+        limit=20,
+        offset=0,
+        query_text="prod",
+        vendor_id=vendor.id,
+        unassigned_only=True,
+    )
+
+    assert [host["name"] for host in hosts] == ["tag-search-host"]

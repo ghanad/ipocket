@@ -22,6 +22,16 @@
   const dirtyStatus = document.querySelector("[data-host-drawer-dirty]");
   const inputs = form ? form.querySelectorAll("[data-host-input]") : [];
   const errorMessages = form ? form.querySelectorAll("[data-host-error]") : [];
+  const filterForm = document.querySelector("[data-host-filters]");
+  const tagFilterInput = filterForm
+    ? filterForm.querySelector("[data-host-tag-filter-input]")
+    : null;
+  const tagFilterSelected = filterForm
+    ? filterForm.querySelector("[data-host-tag-filter-selected]")
+    : null;
+  const tagFilterSuggestions = filterForm
+    ? filterForm.querySelector("[data-host-tag-filter-suggestions]")
+    : null;
   let initialValues = {};
   let isAddMode = false;
   let isDeleteMode = false;
@@ -75,6 +85,91 @@
     form.style.display = isDeleteMode ? "none" : "flex";
     deleteForm.hidden = !isDeleteMode;
     deleteForm.style.display = isDeleteMode ? "flex" : "none";
+  };
+
+  const normalizeTagValue = (value) => String(value || "").trim().toLowerCase();
+
+  const getTagColor = (rawValue) => {
+    if (!tagFilterSuggestions) {
+      return "";
+    }
+    const normalized = normalizeTagValue(rawValue);
+    const option = Array.from(tagFilterSuggestions.options).find(
+      (entry) => normalizeTagValue(entry.value) === normalized,
+    );
+    return option ? option.dataset.tagColor || "" : "";
+  };
+
+  const applyTagFilterChipColor = (chip, rawValue) => {
+    if (!(chip instanceof HTMLElement)) {
+      return;
+    }
+    const color = getTagColor(rawValue);
+    if (color) {
+      chip.style.setProperty("--tag-color", color);
+    }
+    if (typeof window.ipocketApplyTagContrast === "function") {
+      window.ipocketApplyTagContrast(chip);
+    }
+  };
+
+  const listSelectedTags = () => {
+    if (!tagFilterSelected) {
+      return [];
+    }
+    return Array.from(tagFilterSelected.querySelectorAll('input[name="tag"]')).map(
+      (input) => normalizeTagValue(input.value),
+    );
+  };
+
+  const submitTagFilter = () => {
+    if (filterForm) {
+      filterForm.submit();
+    }
+  };
+
+  const addTagFilter = (rawValue) => {
+    if (!tagFilterSelected) {
+      return false;
+    }
+    const value = normalizeTagValue(rawValue);
+    if (!value || listSelectedTags().includes(value)) {
+      return false;
+    }
+    const entry = document.createElement("span");
+    entry.className = "tag-filter-entry";
+    entry.dataset.hostTagFilterEntry = value;
+
+    const hidden = document.createElement("input");
+    hidden.type = "hidden";
+    hidden.name = "tag";
+    hidden.value = value;
+
+    const chip = document.createElement("button");
+    chip.className = "tag tag-color tag-filter-chip";
+    chip.type = "button";
+    chip.dataset.hostRemoveTagFilter = value;
+    chip.textContent = `${value} ×`;
+    applyTagFilterChipColor(chip, value);
+
+    entry.append(hidden, chip);
+    tagFilterSelected.appendChild(entry);
+    return true;
+  };
+
+  const removeTagFilter = (value) => {
+    if (!tagFilterSelected) {
+      return false;
+    }
+    const normalized = normalizeTagValue(value);
+    const entry = tagFilterSelected.querySelector(
+      `[data-host-tag-filter-entry="${normalized}"]`,
+    );
+    if (!entry) {
+      return false;
+    }
+    entry.remove();
+    return true;
   };
 
   const isValidIPv4 = (value) => {
@@ -353,6 +448,41 @@
     input.addEventListener("input", () => {
       updateSaveState();
     });
+  });
+
+  if (tagFilterSelected) {
+    tagFilterSelected.querySelectorAll("[data-host-remove-tag-filter]").forEach((chip) => {
+      applyTagFilterChipColor(chip, chip.getAttribute("data-host-remove-tag-filter") || "");
+    });
+  }
+
+  if (tagFilterInput) {
+    tagFilterInput.addEventListener("change", () => {
+      if (addTagFilter(tagFilterInput.value)) {
+        tagFilterInput.value = "";
+        submitTagFilter();
+      }
+    });
+    tagFilterInput.addEventListener("keydown", (event) => {
+      if (event.key === "Enter" || event.key === ",") {
+        event.preventDefault();
+        if (addTagFilter(tagFilterInput.value)) {
+          tagFilterInput.value = "";
+          submitTagFilter();
+        }
+      }
+    });
+  }
+
+  document.body.addEventListener("click", (event) => {
+    const removeTagButton = event.target.closest("[data-host-remove-tag-filter]");
+    if (!removeTagButton) {
+      return;
+    }
+    event.preventDefault();
+    if (removeTagFilter(removeTagButton.dataset.hostRemoveTagFilter || "")) {
+      submitTagFilter();
+    }
   });
 
   form.addEventListener("submit", (event) => {

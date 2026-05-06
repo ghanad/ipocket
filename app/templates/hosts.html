@@ -27,7 +27,7 @@
       </div>
       <span class="collapsible-indicator" aria-hidden="true">▸</span>
     </summary>
-    <form class="filters-grid" method="get" action="/ui/hosts">
+    <form class="filters-grid" method="get" action="/ui/hosts" data-host-filters>
       <label class="field">
         <span>Search</span>
         <input
@@ -37,6 +37,73 @@
           value="{{ filters.q }}"
           placeholder="Name, vendor, project, notes, or IP"
         />
+      </label>
+      <label class="field">
+        <span>Project</span>
+        <select class="select" name="project_id">
+          <option value=""{% if filters.project_filter == "" %} selected{% endif %}>All</option>
+          <option value="unassigned"{% if filters.project_filter == "unassigned" %} selected{% endif %}>Unassigned</option>
+          {% for project in projects %}
+          <option value="{{ project.id }}"{% if filters.project_filter == (project.id ~ "") %} selected{% endif %}>{{ project.name }}</option>
+          {% endfor %}
+        </select>
+      </label>
+      <label class="field">
+        <span>Assignment</span>
+        <select class="select" name="unassigned-only">
+          <option value="false"{% if not filters.unassigned_only %} selected{% endif %}>All</option>
+          <option value="true"{% if filters.unassigned_only %} selected{% endif %}>Unassigned only</option>
+        </select>
+      </label>
+      <label class="field">
+        <span>Status</span>
+        <select class="select" name="status">
+          <option value=""{% if filters.status == "" %} selected{% endif %}>All</option>
+          <option value="linked"{% if filters.status == "linked" %} selected{% endif %}>Linked IPs</option>
+          <option value="free"{% if filters.status == "free" %} selected{% endif %}>No linked IPs</option>
+        </select>
+      </label>
+      <label class="field">
+        <span>Vendor</span>
+        <select class="select" name="vendor_id">
+          <option value=""{% if not filters.vendor_id %} selected{% endif %}>All</option>
+          {% for vendor in vendors %}
+          <option value="{{ vendor.id }}"{% if filters.vendor_id == vendor.id %} selected{% endif %}>{{ vendor.name }}</option>
+          {% endfor %}
+        </select>
+      </label>
+      <label class="field field-tag-filter">
+        <span>Tags</span>
+        <div class="tag-filter-controls">
+          <input
+            class="input"
+            type="text"
+            placeholder="Type tag and press Enter"
+            list="host-tag-filter-suggestions"
+            data-host-tag-filter-input
+          />
+        </div>
+        <datalist id="host-tag-filter-suggestions" data-host-tag-filter-suggestions>
+          {% for tag in tags %}
+          <option value="{{ tag.name }}" data-tag-color="{{ tag.color }}"></option>
+          {% endfor %}
+        </datalist>
+        <div class="tag-filter-selected" data-host-tag-filter-selected>
+          {% for selected_tag in filters.tag %}
+          {% set selected_tag_obj = (tags | selectattr("name", "equalto", selected_tag) | list | first) %}
+          <span class="tag-filter-entry" data-host-tag-filter-entry="{{ selected_tag }}">
+            <input type="hidden" name="tag" value="{{ selected_tag }}" />
+            <button
+              class="tag tag-color tag-filter-chip"
+              type="button"
+              data-host-remove-tag-filter="{{ selected_tag }}"
+              {% if selected_tag_obj %}
+              style="--tag-color: {{ selected_tag_obj.color }}"
+              {% endif %}
+            >{{ selected_tag }} ×</button>
+          </span>
+          {% endfor %}
+        </div>
       </label>
       <div class="form-actions">
         <button class="btn btn-primary" type="submit">Apply</button>
@@ -134,9 +201,9 @@
     <div class="table-footer-controls">
       <div class="table-per-page">
         <form method="get" action="/ui/hosts" class="per-page-form">
-          {% if filters.q %}
-          <input type="hidden" name="q" value="{{ filters.q }}" />
-          {% endif %}
+          {% for key, value in pagination.preserved_query_items %}
+          <input type="hidden" name="{{ key }}" value="{{ value }}" />
+          {% endfor %}
           <label class="field field-inline">
             <span>Rows</span>
             <select

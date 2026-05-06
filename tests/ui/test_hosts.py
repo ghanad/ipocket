@@ -208,6 +208,183 @@ def test_hosts_list_search_trims_whitespace(client) -> None:
     assert "core-02" not in response.text
 
 
+def test_hosts_list_renders_comprehensive_filters(client) -> None:
+    import os
+
+    connection = db.connect(os.environ["IPAM_DB_PATH"])
+    try:
+        db.init_db(connection)
+        repository.create_project(connection, name="Core")
+        repository.create_vendor(connection, name="Dell")
+        repository.create_tag(connection, name="prod", color="#22c55e")
+    finally:
+        connection.close()
+
+    response = client.get("/ui/hosts")
+
+    assert response.status_code == 200
+    assert 'name="project_id"' in response.text
+    assert 'name="type"' not in response.text
+    assert 'name="unassigned-only"' in response.text
+    assert 'name="status"' in response.text
+    assert 'name="vendor_id"' in response.text
+    assert "Type tag and press Enter" in response.text
+    assert '<option value="unassigned"' in response.text
+    assert '<option value="linked"' in response.text
+
+
+def test_hosts_list_filters_by_project_tag_and_status(client) -> None:
+    import os
+
+    connection = db.connect(os.environ["IPAM_DB_PATH"])
+    try:
+        db.init_db(connection)
+        project = repository.create_project(connection, name="Core", color="#2563eb")
+        matching = repository.create_host(connection, name="core-host")
+        other = repository.create_host(connection, name="edge-host")
+        repository.create_host(connection, name="free-host")
+        repository.create_ip_asset(
+            connection,
+            ip_address="10.72.0.10",
+            asset_type=IPAssetType.OS,
+            project_id=project.id,
+            host_id=matching.id,
+            tags=["prod"],
+        )
+        repository.create_ip_asset(
+            connection,
+            ip_address="10.72.0.20",
+            asset_type=IPAssetType.BMC,
+            host_id=other.id,
+            tags=["oob"],
+        )
+    finally:
+        connection.close()
+
+    response = client.get(
+        "/ui/hosts",
+        params={
+            "project_id": str(project.id),
+            "tag": "prod",
+            "status": "linked",
+        },
+    )
+
+    assert response.status_code == 200
+    assert "core-host" in response.text
+    assert "edge-host" not in response.text
+    assert "free-host" not in response.text
+    assert 'name="tag" value="prod"' in response.text
+    assert "Showing 1-1 of 1" in response.text
+
+
+def test_hosts_list_filters_by_project_only(client) -> None:
+    import os
+
+    connection = db.connect(os.environ["IPAM_DB_PATH"])
+    try:
+        db.init_db(connection)
+        project = repository.create_project(connection, name="Core", color="#2563eb")
+        matching = repository.create_host(connection, name="core-project-host")
+        other = repository.create_host(connection, name="other-project-host")
+        repository.create_ip_asset(
+            connection,
+            ip_address="10.74.0.10",
+            asset_type=IPAssetType.OS,
+            project_id=project.id,
+            host_id=matching.id,
+        )
+        repository.create_ip_asset(
+            connection,
+            ip_address="10.74.0.20",
+            asset_type=IPAssetType.OS,
+            host_id=other.id,
+        )
+    finally:
+        connection.close()
+
+    response = client.get("/ui/hosts", params={"project_id": str(project.id)})
+
+    assert response.status_code == 200
+    assert "core-project-host" in response.text
+    assert "other-project-host" not in response.text
+    assert f'<option value="{project.id}" selected>Core</option>' in response.text
+
+
+def test_hosts_list_filters_by_project_with_default_form_values(client) -> None:
+    import os
+
+    connection = db.connect(os.environ["IPAM_DB_PATH"])
+    try:
+        db.init_db(connection)
+        project = repository.create_project(connection, name="Core", color="#2563eb")
+        matching = repository.create_host(connection, name="core-form-host")
+        other = repository.create_host(connection, name="other-form-host")
+        repository.create_ip_asset(
+            connection,
+            ip_address="10.75.0.10",
+            asset_type=IPAssetType.OS,
+            project_id=project.id,
+            host_id=matching.id,
+        )
+        repository.create_ip_asset(
+            connection,
+            ip_address="10.75.0.20",
+            asset_type=IPAssetType.OS,
+            host_id=other.id,
+        )
+    finally:
+        connection.close()
+
+    response = client.get(
+        "/ui/hosts",
+        params=[
+            ("q", ""),
+            ("project_id", str(project.id)),
+            ("unassigned-only", "false"),
+            ("status", ""),
+            ("vendor_id", ""),
+        ],
+    )
+
+    assert response.status_code == 200
+    assert "core-form-host" in response.text
+    assert "other-form-host" not in response.text
+    assert f'<option value="{project.id}" selected>Core</option>' in response.text
+
+
+def test_hosts_list_filters_by_unassigned_assignment(client) -> None:
+    import os
+
+    connection = db.connect(os.environ["IPAM_DB_PATH"])
+    try:
+        db.init_db(connection)
+        project = repository.create_project(connection, name="Core")
+        missing_project = repository.create_host(connection, name="missing-project")
+        assigned = repository.create_host(connection, name="assigned-project")
+        repository.create_ip_asset(
+            connection,
+            ip_address="10.73.0.10",
+            asset_type=IPAssetType.OS,
+            host_id=missing_project.id,
+        )
+        repository.create_ip_asset(
+            connection,
+            ip_address="10.73.0.20",
+            asset_type=IPAssetType.OS,
+            project_id=project.id,
+            host_id=assigned.id,
+        )
+    finally:
+        connection.close()
+
+    response = client.get("/ui/hosts", params={"unassigned-only": "true"})
+
+    assert response.status_code == 200
+    assert "missing-project" in response.text
+    assert "assigned-project" not in response.text
+
+
 def test_hosts_list_paginates_with_default_page_size(client) -> None:
     import os
 
