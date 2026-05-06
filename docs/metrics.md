@@ -23,7 +23,7 @@ UI note: IP asset export numeric sort fallback (when `ip_int` is null) is export
 UI note: IP Asset detail OS/BMC paired-address display is presentation-only and does not affect `/metrics` payloads.
 UI note: Host detail linked-IP grouping and per-IP project/tag display are presentation-only and do not affect `/metrics` payloads.
 
-Connector note: connectors import through the same IP upsert pipeline (Prometheus preserves non-empty notes and existing `type` on update and shows per-IP dry-run diffs; vCenter overwrites `type`, merges connector tags, and only writes notes when existing notes are empty; Elasticsearch merges tags, can overwrite `type`/`project`, and overwrites notes only when connector note is provided), but they do not add exporter-side Prometheus metrics in ipocket; `/metrics` remains limited to IP inventory counters listed above.
+Connector note: connectors import through the same IP upsert pipeline (Prometheus preserves non-empty notes and existing `type` on update and shows per-IP dry-run diffs; vCenter overwrites `type`, merges connector tags, and only writes notes when existing notes are empty; Elasticsearch merges tags, can optionally append a normalized cluster-name tag, can overwrite `type`/`project`, and overwrites notes only when connector note is provided), but they do not add exporter-side Prometheus metrics in ipocket; `/metrics` remains limited to IP inventory counters listed above.
 
 Account note: self-service password change (`/ui/account/password`) is a UI/audit behavior change only and does not add or alter `/metrics` counters.
 Auth/session note: bcrypt password hashing and database-backed session tokens do not add or alter `/metrics` counters.

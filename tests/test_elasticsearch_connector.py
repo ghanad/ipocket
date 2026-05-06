@@ -8,6 +8,7 @@ import pytest
 from app.connectors import elasticsearch
 from app.connectors.elasticsearch import (
     ElasticsearchNodeRecord,
+    ElasticsearchNodeRecords,
     build_import_bundle_from_elasticsearch,
     extract_ip_assets_from_nodes,
     fetch_elasticsearch_nodes,
@@ -64,6 +65,31 @@ def test_fetch_elasticsearch_nodes_parses_nodes_payload(monkeypatch) -> None:
             host="es-a.local",
         )
     ]
+    assert result.cluster_name is None
+
+
+def test_fetch_elasticsearch_nodes_preserves_cluster_name(monkeypatch) -> None:
+    payload = json.dumps(
+        {
+            "cluster_name": "Prod.ES 01",
+            "nodes": {
+                "node-a": {
+                    "name": "es-a",
+                    "http": {"publish_address": "10.10.0.1:9200"},
+                }
+            },
+        }
+    ).encode("utf-8")
+
+    def _fake_urlopen(request, timeout, context):
+        return _FakeResponse(payload)
+
+    monkeypatch.setattr(elasticsearch.urllib_request, "urlopen", _fake_urlopen)
+
+    result = fetch_elasticsearch_nodes(elasticsearch_url="https://es.example.local")
+
+    assert result.cluster_name == "Prod.ES 01"
+    assert result[0].cluster_name == "Prod.ES 01"
 
 
 def test_fetch_elasticsearch_nodes_uses_basic_auth(monkeypatch) -> None:
@@ -215,6 +241,70 @@ def test_extract_ip_assets_from_nodes_omits_notes_when_not_provided() -> None:
     assert "notes_provided" not in ip_assets[0]
 
 
+def test_extract_ip_assets_from_nodes_adds_normalized_cluster_name_tag() -> None:
+    records = ElasticsearchNodeRecords(
+        [
+            ElasticsearchNodeRecord(
+                node_id="a",
+                name="es-a",
+                http_publish_address="10.0.0.5:9200",
+                transport_publish_address=None,
+                ip=None,
+                host=None,
+                cluster_name="Prod.ES 01",
+            ),
+            ElasticsearchNodeRecord(
+                node_id="b",
+                name="es-b",
+                http_publish_address="10.0.0.6:9200",
+                transport_publish_address=None,
+                ip=None,
+                host=None,
+                cluster_name="Prod.ES 01",
+            ),
+        ],
+        cluster_name="Prod.ES 01",
+    )
+
+    ip_assets, warnings = extract_ip_assets_from_nodes(
+        records,
+        tags=["elasticsearch", "prod-es-01"],
+        include_cluster_name_tag=True,
+    )
+
+    assert warnings == []
+    assert [asset["tags"] for asset in ip_assets] == [
+        ["elasticsearch", "prod-es-01"],
+        ["elasticsearch", "prod-es-01"],
+    ]
+
+
+def test_extract_ip_assets_from_nodes_warns_for_missing_cluster_name_tag() -> None:
+    records = ElasticsearchNodeRecords(
+        [
+            ElasticsearchNodeRecord(
+                node_id="a",
+                name="es-a",
+                http_publish_address="10.0.0.5:9200",
+                transport_publish_address=None,
+                ip=None,
+                host=None,
+            )
+        ],
+        cluster_name="!!!",
+    )
+
+    ip_assets, warnings = extract_ip_assets_from_nodes(
+        records,
+        include_cluster_name_tag=True,
+    )
+
+    assert "tags" not in ip_assets[0]
+    assert warnings == [
+        "Elasticsearch cluster name tag skipped: cluster_name is missing or empty after normalization."
+    ]
+
+
 def test_build_import_bundle_from_elasticsearch_builds_schema_v1() -> None:
     ip_assets = [
         {
@@ -293,6 +383,72 @@ def test_validate_cli_args_allows_no_authentication() -> None:
     )
 
     elasticsearch._validate_cli_args(parser, args)
+    assert args.include_cluster_name_tag is False
+
+
+def test_cli_parser_accepts_include_cluster_name_tag() -> None:
+    parser = elasticsearch._build_parser()
+    args = parser.parse_args(
+        [
+            "--elasticsearch-url",
+            "https://es.example.local",
+            "--mode",
+            "file",
+            "--output",
+            "./bundle.json",
+            "--include-cluster-name-tag",
+        ]
+    )
+
+    elasticsearch._validate_cli_args(parser, args)
+    assert args.include_cluster_name_tag is True
+
+
+def test_cli_include_cluster_name_tag_affects_file_bundle(monkeypatch) -> None:
+    captured: dict[str, object] = {}
+
+    monkeypatch.setattr(
+        elasticsearch,
+        "fetch_elasticsearch_nodes",
+        lambda **_kwargs: ElasticsearchNodeRecords(
+            [
+                ElasticsearchNodeRecord(
+                    node_id="a",
+                    name="es-a",
+                    http_publish_address="10.0.0.5:9200",
+                    transport_publish_address=None,
+                    ip=None,
+                    host=None,
+                    cluster_name="Prod.ES 01",
+                )
+            ],
+            cluster_name="Prod.ES 01",
+        ),
+    )
+    monkeypatch.setattr(
+        elasticsearch,
+        "write_bundle_json",
+        lambda bundle, output_path: captured.update(
+            {"bundle": bundle, "output_path": output_path}
+        ),
+    )
+
+    result = elasticsearch.main(
+        [
+            "--elasticsearch-url",
+            "https://es.example.local",
+            "--mode",
+            "file",
+            "--output",
+            "./bundle.json",
+            "--include-cluster-name-tag",
+        ]
+    )
+
+    assert result == 0
+    assert captured["output_path"] == "./bundle.json"
+    assets = captured["bundle"]["data"]["ip_assets"]
+    assert assets[0]["tags"] == ["prod-es-01"]
 
 
 def test_validate_cli_args_rejects_username_without_password() -> None:

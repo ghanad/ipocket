@@ -399,6 +399,8 @@ Notes:
 - TLS certificate verification is skipped by default and has no toggle.
 - Existing IP updates can overwrite `type` and `project` (when provided), append
   tags, and overwrite note only when `note` is provided in the connector run.
+- Optional cluster-name tagging adds the top-level Elasticsearch `cluster_name`
+  as a normalized tag on every imported node IP.
 
 UI flow:
 - Open **Connectors → Elasticsearch**
@@ -406,6 +408,7 @@ UI flow:
   - Elasticsearch URL
   - optional auth: API key OR username/password
   - optional `type` / `project` / `tags` / `note`
+  - optional **Add cluster name as tag**
 - Start with `dry-run`, inspect logs, then run `apply`.
 
 CLI examples:
@@ -429,6 +432,7 @@ python -m app.connectors.elasticsearch \
   --username elastic \
   --password '<password>' \
   --tags elasticsearch,nodes \
+  --include-cluster-name-tag \
   --mode dry-run \
   --db-path ./ipocket.db
 ```
