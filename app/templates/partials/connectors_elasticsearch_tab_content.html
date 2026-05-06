@@ -51,9 +51,9 @@
         <span>Note (optional)</span>
         <input class="input" type="text" name="note" value="{{ elasticsearch_form_state.note }}" placeholder="Imported from Elasticsearch nodes" />
       </label>
-      <label class="field checkbox-field field-span">
+      <label class="checkbox-field field-span">
         <input type="checkbox" name="include_cluster_name_tag" value="1"{% if elasticsearch_form_state.include_cluster_name_tag %} checked{% endif %} />
-        <span>Add cluster name as tag</span>
+        Add cluster name as tag
       </label>
       <label class="field">
         <span>Timeout (seconds)</span>

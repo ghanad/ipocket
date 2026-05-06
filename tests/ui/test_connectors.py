@@ -64,6 +64,7 @@ def test_connectors_elasticsearch_tab_renders_connector_form(client) -> None:
     assert 'action="/ui/connectors/elasticsearch/run"' in response.text
     assert 'name="elasticsearch_url"' in response.text
     assert 'name="api_key"' in response.text
+    assert 'class="checkbox-field field-span"' in response.text
     assert 'name="include_cluster_name_tag"' in response.text
     assert "--include-cluster-name-tag" in response.text
     assert "Execution log" not in response.text
