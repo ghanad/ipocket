@@ -233,6 +233,7 @@ def test_hosts_list_renders_comprehensive_filters(client) -> None:
     assert 'hx-trigger="keyup changed delay:500ms, search"' in response.text
     assert "Type tag and press Enter" in response.text
     assert '<button class="btn btn-primary" type="submit">Apply</button>' not in response.text
+    assert '<a class="btn btn-secondary" href="/ui/hosts">Clear</a>' not in response.text
     assert '<option value="unassigned"' in response.text
     assert '<option value="linked"' in response.text
 
