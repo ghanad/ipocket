@@ -64,6 +64,8 @@ def test_connectors_elasticsearch_tab_renders_connector_form(client) -> None:
     assert 'action="/ui/connectors/elasticsearch/run"' in response.text
     assert 'name="elasticsearch_url"' in response.text
     assert 'name="api_key"' in response.text
+    assert 'name="include_cluster_name_tag"' in response.text
+    assert "--include-cluster-name-tag" in response.text
     assert "Execution log" not in response.text
 
 
@@ -623,6 +625,64 @@ def test_elasticsearch_connector_dry_run_allows_non_editor(client, monkeypatch) 
     assert "Import mode: dry-run." in response.text
     assert "Elasticsearch dry-run: Connector completed successfully." in response.text
     assert "toast-success" in response.text
+
+
+def test_elasticsearch_connector_passes_cluster_name_tag_option(
+    client, monkeypatch
+) -> None:
+    captured: dict[str, object] = {}
+
+    app.dependency_overrides[ui.get_current_ui_user] = lambda: User(
+        10, "viewer", "x", UserRole.VIEWER, True
+    )
+
+    def _fake_run_elasticsearch_connector(**kwargs):
+        captured.update(kwargs)
+        return (["Import mode: dry-run."], [], 0, 0)
+
+    monkeypatch.setattr(
+        connectors_routes,
+        "_run_elasticsearch_connector",
+        _fake_run_elasticsearch_connector,
+    )
+    try:
+        response = client.post(
+            "/ui/connectors/elasticsearch/run",
+            follow_redirects=True,
+            data={
+                "elasticsearch_url": "https://127.0.0.1:9200",
+                "mode": "dry-run",
+                "include_cluster_name_tag": "1",
+            },
+        )
+    finally:
+        app.dependency_overrides.pop(ui.get_current_ui_user, None)
+
+    response = _resolve_connector_response(client, response)
+    assert response.status_code == 200
+    assert captured["include_cluster_name_tag"] is True
+
+
+def test_elasticsearch_connector_validation_preserves_cluster_name_tag_checkbox(
+    client,
+) -> None:
+    app.dependency_overrides[ui.get_current_ui_user] = lambda: User(
+        10, "viewer", "x", UserRole.VIEWER, True
+    )
+    try:
+        response = client.post(
+            "/ui/connectors/elasticsearch/run",
+            data={
+                "mode": "dry-run",
+                "include_cluster_name_tag": "1",
+            },
+        )
+    finally:
+        app.dependency_overrides.pop(ui.get_current_ui_user, None)
+
+    assert response.status_code == 400
+    assert "Elasticsearch URL is required." in response.text
+    assert 'name="include_cluster_name_tag" value="1" checked' in response.text
 
 
 def test_elasticsearch_connector_ui_authentication_is_optional(

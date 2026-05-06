@@ -219,6 +219,7 @@ def _default_elasticsearch_form_state() -> dict[str, object]:
         "project_name": "",
         "tags": "",
         "note": "",
+        "include_cluster_name_tag": False,
         "mode": "dry-run",
         "timeout": "30",
     }
@@ -535,6 +536,7 @@ def _run_elasticsearch_connector_job(
     project_name: Optional[str],
     tags: Optional[list[str]],
     note: Optional[str],
+    include_cluster_name_tag: bool,
     timeout: int,
     mode: str,
 ) -> None:
@@ -555,6 +557,7 @@ def _run_elasticsearch_connector_job(
                 project_name=project_name,
                 tags=tags,
                 note=note,
+                include_cluster_name_tag=include_cluster_name_tag,
                 timeout=timeout,
                 dry_run=mode == "dry-run",
             )
@@ -750,6 +753,7 @@ def _run_elasticsearch_connector(
     project_name: Optional[str],
     tags: Optional[list[str]],
     note: Optional[str],
+    include_cluster_name_tag: bool,
     timeout: int,
     dry_run: bool,
 ) -> tuple[list[str], list[str], int, int]:
@@ -771,6 +775,7 @@ def _run_elasticsearch_connector(
         project_name=project_name,
         tags=tags,
         note=note,
+        include_cluster_name_tag=include_cluster_name_tag,
     )
     logs.append(f"Prepared {len(ip_assets)} IP assets from node inventory.")
     if dry_run:
@@ -1043,6 +1048,7 @@ async def ui_run_elasticsearch_connector(
     project_name_raw = (form_data.get("project_name") or "").strip()
     tags_raw = (form_data.get("tags") or "").strip()
     note_raw = (form_data.get("note") or "").strip()
+    include_cluster_name_tag = form_data.get("include_cluster_name_tag") == "1"
     mode = (form_data.get("mode") or "dry-run").strip().lower()
     timeout_raw = (form_data.get("timeout") or "30").strip()
 
@@ -1096,6 +1102,7 @@ async def ui_run_elasticsearch_connector(
         "project_name": project_name_raw,
         "tags": tags_raw,
         "note": note_raw,
+        "include_cluster_name_tag": include_cluster_name_tag,
         "mode": mode if mode in {"dry-run", "apply"} else "dry-run",
         "timeout": str(timeout),
     }
@@ -1144,6 +1151,7 @@ async def ui_run_elasticsearch_connector(
         project_name=project_name,
         tags=tags,
         note=note,
+        include_cluster_name_tag=include_cluster_name_tag,
         timeout=timeout,
         mode=mode,
     )

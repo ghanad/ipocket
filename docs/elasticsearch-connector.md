@@ -18,6 +18,7 @@ Optional inputs:
 - `project_name`
 - `tags` (comma-separated)
 - `note` (fixed text; when provided it overwrites existing note on update)
+- `include_cluster_name_tag` / `--include-cluster-name-tag` (off by default)
 - `timeout` (default `30`)
 
 TLS behavior:
@@ -28,8 +29,10 @@ TLS behavior:
 1. Open **Connectors → Elasticsearch**.
 2. Fill URL. Authentication is optional; if needed, use `API key` or `username/password`.
 3. Set optional mapping fields (`type/project/tags/note`).
-4. Run **dry-run** first and review execution log. The tab auto-refreshes while the run is still queued/running.
-5. Run **apply** as an editor account.
+4. Optionally check **Add cluster name as tag** to tag every imported node IP
+   with the Elasticsearch response `cluster_name`.
+5. Run **dry-run** first and review execution log. The tab auto-refreshes while the run is still queued/running.
+6. Run **apply** as an editor account.
 
 ## CLI usage
 
@@ -52,6 +55,7 @@ python -m app.connectors.elasticsearch \
   --username elastic \
   --password '<password>' \
   --tags elasticsearch,nodes \
+  --include-cluster-name-tag \
   --mode dry-run \
   --db-path ./ipocket.db
 ```
@@ -99,8 +103,18 @@ Update semantics for existing IPs:
 - `type` is overwritten from connector input.
 - `project` is overwritten when `project_name` is provided.
 - tags are appended (merged).
+- when cluster-name tagging is enabled, the top-level Elasticsearch
+  `cluster_name` is normalized and appended to `tags` for every imported IP.
 - when `note` is provided, existing note is overwritten.
 - when `note` is omitted, existing note is preserved.
+
+Cluster tag normalization:
+- The raw `cluster_name` is trimmed and lowercased.
+- Characters outside `a-z`, `0-9`, dash, and underscore become `-`.
+- Repeated dashes collapse and leading/trailing dashes are removed.
+- Example: `Prod.ES 01` becomes `prod-es-01`.
+- If the value is missing or normalizes to empty, the connector skips the
+  cluster tag and records a warning; node IP import still continues.
 
 ## Failure behavior
 

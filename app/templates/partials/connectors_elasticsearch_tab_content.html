@@ -51,6 +51,10 @@
         <span>Note (optional)</span>
         <input class="input" type="text" name="note" value="{{ elasticsearch_form_state.note }}" placeholder="Imported from Elasticsearch nodes" />
       </label>
+      <label class="field checkbox-field field-span">
+        <input type="checkbox" name="include_cluster_name_tag" value="1"{% if elasticsearch_form_state.include_cluster_name_tag %} checked{% endif %} />
+        <span>Add cluster name as tag</span>
+      </label>
       <label class="field">
         <span>Timeout (seconds)</span>
         <input class="input" type="number" min="1" name="timeout" value="{{ elasticsearch_form_state.timeout }}" required />
@@ -89,6 +93,7 @@
   --elasticsearch-url https://127.0.0.1:9200 \
   --api-key '&lt;base64-or-id:key&gt;' \
   --asset-type OTHER \
+  --include-cluster-name-tag \
   --mode dry-run \
   --db-path ./ipocket.db</code></pre>
     <p>For full mapping/options, see <code>/docs/elasticsearch-connector.md</code>.</p>

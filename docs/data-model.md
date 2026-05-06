@@ -132,4 +132,4 @@ Self-service password changes (`/ui/account/password`) do not add fields/tables;
 - Prometheus connector entries also set `preserve_existing_type=true`, so existing IP records keep their current `type` during update while new records still use the connector-selected `type`.
 - Prometheus connector UI dry-run now renders per-IP change previews (`CREATE`/`UPDATE`/`SKIP`) with field-level differences before apply.
 - vCenter connector entries set `preserve_existing_notes=true` and `merge_tags=true`; this keeps non-empty manual notes, merges connector tags with existing tags, and still updates the connector-provided `type`.
-- Elasticsearch connector entries set `merge_tags=true` and do not set preserve flags; updates can overwrite `type` and `project` when provided, and overwrite notes only when connector `note` is explicitly provided.
+- Elasticsearch connector entries set `merge_tags=true` and do not set preserve flags; updates can overwrite `type` and `project` when provided, optionally append a normalized `cluster_name` tag when the connector option is enabled, and overwrite notes only when connector `note` is explicitly provided.

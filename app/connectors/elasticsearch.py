@@ -6,6 +6,7 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 import ipaddress
 import json
+import re
 import ssl
 from typing import Optional, Sequence
 from urllib import error as urllib_error
@@ -29,6 +30,18 @@ class ElasticsearchNodeRecord:
     transport_publish_address: Optional[str]
     ip: Optional[str]
     host: Optional[str]
+    cluster_name: Optional[str] = None
+
+
+class ElasticsearchNodeRecords(list[ElasticsearchNodeRecord]):
+    def __init__(
+        self,
+        records: Sequence[ElasticsearchNodeRecord] = (),
+        *,
+        cluster_name: Optional[str] = None,
+    ):
+        super().__init__(records)
+        self.cluster_name = cluster_name
 
 
 def _build_api_key_auth_header(api_key: str) -> str:
@@ -87,6 +100,14 @@ def _extract_host_candidate(value: str) -> str:
     return candidate
 
 
+def _normalize_cluster_name_tag(cluster_name: Optional[str]) -> Optional[str]:
+    if cluster_name is None:
+        return None
+    normalized = re.sub(r"[^a-z0-9_-]+", "-", cluster_name.strip().lower())
+    normalized = re.sub(r"-+", "-", normalized).strip("-")
+    return normalized or None
+
+
 def fetch_elasticsearch_nodes(
     *,
     elasticsearch_url: str,
@@ -142,6 +163,12 @@ def fetch_elasticsearch_nodes(
             "Elasticsearch payload is missing a valid 'nodes' object."
         )
 
+    cluster_name = (
+        str(parsed.get("cluster_name")).strip()
+        if parsed.get("cluster_name") is not None
+        else None
+    )
+
     records: list[ElasticsearchNodeRecord] = []
     for node_id, node_payload in nodes.items():
         if not isinstance(node_payload, dict):
@@ -176,10 +203,11 @@ def fetch_elasticsearch_nodes(
                 transport_publish_address=transport_publish_address,
                 ip=ip_value,
                 host=host_value,
+                cluster_name=cluster_name,
             )
         )
 
-    return records
+    return ElasticsearchNodeRecords(records, cluster_name=cluster_name)
 
 
 def _pick_ip_candidate(
@@ -204,10 +232,26 @@ def extract_ip_assets_from_nodes(
     project_name: Optional[str] = None,
     tags: Optional[list[str]] = None,
     note: Optional[str] = None,
+    include_cluster_name_tag: bool = False,
 ) -> tuple[list[dict[str, object]], list[str]]:
     normalized_type = IPAssetType.normalize(default_type).value
-    prepared_tags = [tag.strip() for tag in tags if tag.strip()] if tags else None
     warnings: list[str] = []
+    prepared_tags = [tag.strip() for tag in tags if tag.strip()] if tags else []
+    if include_cluster_name_tag:
+        cluster_name = getattr(records, "cluster_name", None)
+        if cluster_name is None:
+            for record in records:
+                if record.cluster_name is not None:
+                    cluster_name = record.cluster_name
+                    break
+        cluster_tag = _normalize_cluster_name_tag(cluster_name)
+        if cluster_tag is None:
+            warnings.append(
+                "Elasticsearch cluster name tag skipped: cluster_name is missing or empty after normalization."
+            )
+        elif cluster_tag not in {tag.strip().lower() for tag in prepared_tags}:
+            prepared_tags.append(cluster_tag)
+
     ip_assets: list[dict[str, object]] = []
     seen_ips: set[str] = set()
 
@@ -411,6 +455,14 @@ def _build_parser() -> argparse.ArgumentParser:
         help="Optional fixed note to apply to imported IP assets.",
     )
     parser.add_argument(
+        "--include-cluster-name-tag",
+        action="store_true",
+        help=(
+            "Add the Elasticsearch cluster_name as a normalized tag on every "
+            "imported IP asset."
+        ),
+    )
+    parser.add_argument(
         "--timeout",
         type=int,
         default=30,
@@ -467,6 +519,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
             project_name=args.project_name,
             tags=split_tag_string(args.tags) if args.tags else None,
             note=note,
+            include_cluster_name_tag=args.include_cluster_name_tag,
         )
     except ElasticsearchConnectorError as exc:
         parser.exit(status=1, message=f"error: {exc}\n")
