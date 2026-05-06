@@ -36,6 +36,11 @@
           name="q"
           value="{{ filters.q }}"
           placeholder="Name, vendor, project, notes, or IP"
+          hx-get="/ui/hosts"
+          hx-trigger="keyup changed delay:500ms, search"
+          hx-target="#host-table-container"
+          hx-push-url="true"
+          hx-include="closest form"
         />
       </label>
       <label class="field">
