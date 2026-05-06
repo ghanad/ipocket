@@ -122,10 +122,22 @@
     );
   };
 
-  const submitTagFilter = () => {
-    if (filterForm) {
-      filterForm.submit();
+  const submitHostFilters = () => {
+    if (!filterForm) {
+      return;
     }
+    if (window.htmx && typeof window.htmx.ajax === "function") {
+      const url = new URL(filterForm.action || "/ui/hosts", window.location.origin);
+      const params = new URLSearchParams(new FormData(filterForm));
+      url.search = params.toString();
+      window.htmx.ajax("GET", url.toString(), {
+        target: "#host-table-container",
+        swap: "innerHTML",
+        pushURL: url.pathname + (url.search ? `?${url.searchParams.toString()}` : ""),
+      });
+      return;
+    }
+    filterForm.submit();
   };
 
   const addTagFilter = (rawValue) => {
@@ -377,42 +389,6 @@
     });
   });
 
-  // Edit buttons
-  document.querySelectorAll("[data-host-edit]").forEach((button) => {
-    button.addEventListener("click", () => {
-      const hostData = {
-        id: button.dataset.hostEdit,
-        name: button.dataset.hostName || "",
-        vendor_id: button.dataset.hostVendorId || "",
-        project_label: (() => {
-          const count = Number.parseInt(button.dataset.hostProjectCount || "0", 10);
-          if (Number.isNaN(count) || count === 0) {
-            return "Unassigned";
-          }
-          if (count > 1) {
-            return "Multiple";
-          }
-          return button.dataset.hostProjectName || "Unassigned";
-        })(),
-        os_ips: button.dataset.hostOsIps || "",
-        bmc_ips: button.dataset.hostBmcIps || "",
-        notes: button.dataset.hostNotes || "",
-        status: button.dataset.hostStatus || "Free",
-      };
-      openDrawerForEdit(hostData);
-    });
-  });
-
-  document.querySelectorAll("[data-host-delete]").forEach((button) => {
-    button.addEventListener("click", () => {
-      openDrawerForDelete({
-        id: button.dataset.hostDelete || "",
-        name: button.dataset.hostDeleteName || "",
-        linked_count: Number.parseInt(button.dataset.hostDeleteLinked || "0", 10) || 0,
-      });
-    });
-  });
-
   if (shouldOpenDeleteByDefault) {
     openDrawerForDelete(
       {
@@ -460,7 +436,7 @@
     tagFilterInput.addEventListener("change", () => {
       if (addTagFilter(tagFilterInput.value)) {
         tagFilterInput.value = "";
-        submitTagFilter();
+        submitHostFilters();
       }
     });
     tagFilterInput.addEventListener("keydown", (event) => {
@@ -468,20 +444,63 @@
         event.preventDefault();
         if (addTagFilter(tagFilterInput.value)) {
           tagFilterInput.value = "";
-          submitTagFilter();
+          submitHostFilters();
         }
       }
     });
   }
 
+  if (filterForm && !window.htmx) {
+    filterForm.querySelectorAll("select").forEach((select) => {
+      select.addEventListener("change", submitHostFilters);
+    });
+  }
+
   document.body.addEventListener("click", (event) => {
+    const editButton = event.target.closest("[data-host-edit]");
+    if (editButton) {
+      event.preventDefault();
+      const hostData = {
+        id: editButton.dataset.hostEdit,
+        name: editButton.dataset.hostName || "",
+        vendor_id: editButton.dataset.hostVendorId || "",
+        project_label: (() => {
+          const count = Number.parseInt(editButton.dataset.hostProjectCount || "0", 10);
+          if (Number.isNaN(count) || count === 0) {
+            return "Unassigned";
+          }
+          if (count > 1) {
+            return "Multiple";
+          }
+          return editButton.dataset.hostProjectName || "Unassigned";
+        })(),
+        os_ips: editButton.dataset.hostOsIps || "",
+        bmc_ips: editButton.dataset.hostBmcIps || "",
+        notes: editButton.dataset.hostNotes || "",
+        status: editButton.dataset.hostStatus || "Free",
+      };
+      openDrawerForEdit(hostData);
+      return;
+    }
+
+    const deleteHostButton = event.target.closest("[data-host-delete]");
+    if (deleteHostButton) {
+      event.preventDefault();
+      openDrawerForDelete({
+        id: deleteHostButton.dataset.hostDelete || "",
+        name: deleteHostButton.dataset.hostDeleteName || "",
+        linked_count: Number.parseInt(deleteHostButton.dataset.hostDeleteLinked || "0", 10) || 0,
+      });
+      return;
+    }
+
     const removeTagButton = event.target.closest("[data-host-remove-tag-filter]");
     if (!removeTagButton) {
       return;
     }
     event.preventDefault();
     if (removeTagFilter(removeTagButton.dataset.hostRemoveTagFilter || "")) {
-      submitTagFilter();
+      submitHostFilters();
     }
   });
 

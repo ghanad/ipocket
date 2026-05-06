@@ -116,9 +116,12 @@ def ui_list_hosts(
             len(linked["os"]) + len(linked["bmc"]) + len(linked["other"])
         )
 
+    is_htmx = request.headers.get("HX-Request") is not None
+    template_name = "partials/hosts_table.html" if is_htmx else "hosts.html"
+
     return _render_template(
         request,
-        "hosts.html",
+        template_name,
         {
             "title": "ipocket - Hosts",
             "hosts": hosts,

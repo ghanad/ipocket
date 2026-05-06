@@ -228,9 +228,43 @@ def test_hosts_list_renders_comprehensive_filters(client) -> None:
     assert 'name="unassigned-only"' in response.text
     assert 'name="status"' in response.text
     assert 'name="vendor_id"' in response.text
+    assert 'hx-target="#host-table-container"' in response.text
+    assert 'hx-push-url="true"' in response.text
     assert "Type tag and press Enter" in response.text
+    assert '<button class="btn btn-primary" type="submit">Apply</button>' not in response.text
     assert '<option value="unassigned"' in response.text
     assert '<option value="linked"' in response.text
+
+
+def test_hosts_list_htmx_filter_returns_table_partial(client) -> None:
+    import os
+
+    connection = db.connect(os.environ["IPAM_DB_PATH"])
+    try:
+        db.init_db(connection)
+        project = repository.create_project(connection, name="Core", color="#2563eb")
+        host = repository.create_host(connection, name="core-htmx-host")
+        repository.create_ip_asset(
+            connection,
+            ip_address="10.76.0.10",
+            asset_type=IPAssetType.OS,
+            project_id=project.id,
+            host_id=host.id,
+        )
+    finally:
+        connection.close()
+
+    response = client.get(
+        "/ui/hosts",
+        params={"project_id": str(project.id)},
+        headers={"HX-Request": "true"},
+    )
+
+    assert response.status_code == 200
+    assert "core-htmx-host" in response.text
+    assert '<section class="card table-card">' in response.text
+    assert "<h1>Hosts</h1>" not in response.text
+    assert "data-host-drawer" not in response.text
 
 
 def test_hosts_list_filters_by_project_tag_and_status(client) -> None:

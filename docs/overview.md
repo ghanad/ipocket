@@ -124,7 +124,7 @@ Hosts can be linked to a vendor from the shared **Vendors** catalog.
 - IP Asset detail pages show the paired host address only for OS/BMC assets: OS records show linked BMC addresses, and BMC records show linked OS addresses.
 - In Host edit, clearing an OS/BMC IP from the drawer and saving now unlinks that IP from the host (the IP asset is kept, only `host_id` is cleared).
 - Hosts list displays a project badge (with project color) based on linked IP assignments; multiple linked projects show a warning badge.
-- Hosts page includes a collapsible search panel with text search plus Vendor, Project, Assignment, linked/free Status, and tag filters. Host tag filters match tags on linked active IP assets.
+- Hosts page includes a collapsible search panel with text search plus Vendor, Project, Assignment, linked/free Status, and tag filters. Host select filters apply immediately with HTMX table updates instead of a full page reload, and tag filters match tags on linked active IP assets.
 - Adding a host now uses the same right-side drawer interaction as editing, so create/edit actions stay visually consistent.
 - Host detail pages use the shared detail layout: header metadata chips, a Details card, and grouped OS/BMC/other linked-IP tables with project, tag, and notes context plus empty states.
 - Host deletion now uses the same right-side drawer pattern as host add/edit and IP delete flows, with destructive safeguards (acknowledgement checkbox + exact host-name confirmation) before enabling permanent delete. Deleting a host keeps all linked IP assets and automatically unassigns them from that host.

@@ -133,6 +133,11 @@ def test_refactored_templates_load_external_page_assets() -> None:
         "window.location.pathname === `/ui/ip-assets/${payload.asset_id}`"
         in ip_assets_js
     )
+    hosts_js = (repo_root / "app/static/js/hosts.js").read_text(encoding="utf-8")
+    assert 'window.htmx.ajax("GET", url.toString(), {' in hosts_js
+    assert 'target: "#host-table-container"' in hosts_js
+    assert "if (filterForm && !window.htmx)" in hosts_js
+    assert 'select.addEventListener("change", submitHostFilters);' in hosts_js
 
 
 def test_projects_templates_use_alpine_for_drawer_interactions() -> None:
