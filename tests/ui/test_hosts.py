@@ -117,7 +117,7 @@ def test_hosts_list_renders_tags_from_linked_ip_assets(client) -> None:
     )
 
 
-def test_hosts_list_collapses_ip_tags_after_three(client) -> None:
+def test_hosts_list_collapses_ip_tags_after_two(client) -> None:
     import os
 
     connection = db.connect(os.environ["IPAM_DB_PATH"])
@@ -149,11 +149,11 @@ def test_hosts_list_collapses_ip_tags_after_three(client) -> None:
     assert '<div class="host-ip-tags-inline ip-tags-inline"' in response.text
     assert 'data-host-popover-tag="alpha"' in response.text
     assert 'data-host-popover-tag="beta"' in response.text
-    assert 'data-host-popover-tag="delta"' in response.text
+    assert 'data-host-popover-tag="delta"' not in response.text
     assert 'data-host-popover-tag="gamma"' not in response.text
     assert "data-tags-more-toggle" in response.text
     assert 'data-tags-ip="many-tags-host"' in response.text
-    assert "+2 more" in response.text
+    assert "+3 more" in response.text
 
 
 def test_hosts_list_uses_edit_drawer_actions(client) -> None:
