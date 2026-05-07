@@ -111,10 +111,7 @@ def test_hosts_list_renders_tags_from_linked_ip_assets(client) -> None:
     assert "--tag-color: #38bdf8" in response.text
     assert 'data-host-popover-tag="prod"' in response.text
     assert 'data-host-popover-tag="linux"' in response.text
-    assert (
-        'data-host-popover-tag="retired"'
-        not in response.text
-    )
+    assert 'data-host-popover-tag="retired"' not in response.text
 
 
 def test_hosts_list_collapses_ip_tags_after_two(client) -> None:
