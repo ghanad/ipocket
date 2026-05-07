@@ -36,6 +36,10 @@
   let isAddMode = false;
   let isDeleteMode = false;
   let currentHost = null;
+  let activeTagsPopoverTrigger = null;
+  let tagsPopover = null;
+  let tagsPopoverOpenTimer = null;
+  let tagsPopoverCloseTimer = null;
   const shouldOpenDeleteByDefault = drawer?.dataset.hostDeleteOpen === "true";
   const drawerController = window.ipocketCreateDrawerController
     ? window.ipocketCreateDrawerController({
@@ -49,6 +53,255 @@
       },
     })
     : null;
+
+  const ensureTagsPopover = () => {
+    if (tagsPopover) {
+      return tagsPopover;
+    }
+    tagsPopover = document.createElement("section");
+    tagsPopover.className = "ip-tags-popover";
+    tagsPopover.setAttribute("role", "dialog");
+    tagsPopover.setAttribute("aria-modal", "false");
+    tagsPopover.hidden = true;
+    tagsPopover.innerHTML = `
+      <header class="ip-tags-popover-header">
+        <h3 class="ip-tags-popover-title" data-tags-popover-title></h3>
+        <button type="button" class="ip-tags-popover-close" data-tags-popover-close aria-label="Close tags popover">✕</button>
+      </header>
+      <label class="field ip-tags-popover-search-field">
+        <span class="visually-hidden">Search tags</span>
+        <input class="input" type="search" placeholder="Filter tags" data-tags-popover-search />
+      </label>
+      <div class="ip-tags-popover-list" data-tags-popover-list></div>
+    `;
+    document.body.appendChild(tagsPopover);
+    const closeButton = tagsPopover.querySelector("[data-tags-popover-close]");
+    if (closeButton) {
+      closeButton.addEventListener("click", () => closeTagsPopover());
+    }
+    const searchInput = tagsPopover.querySelector("[data-tags-popover-search]");
+    if (searchInput) {
+      searchInput.addEventListener("input", renderTagsPopoverList);
+    }
+    tagsPopover.addEventListener("mouseenter", () => {
+      if (tagsPopoverCloseTimer) {
+        window.clearTimeout(tagsPopoverCloseTimer);
+        tagsPopoverCloseTimer = null;
+      }
+    });
+    tagsPopover.addEventListener("mouseleave", () => {
+      scheduleCloseTagsPopover();
+    });
+    return tagsPopover;
+  };
+
+  const scheduleOpenTagsPopover = (trigger, delay = 120) => {
+    if (!trigger) {
+      return;
+    }
+    if (tagsPopoverCloseTimer) {
+      window.clearTimeout(tagsPopoverCloseTimer);
+      tagsPopoverCloseTimer = null;
+    }
+    if (tagsPopoverOpenTimer) {
+      window.clearTimeout(tagsPopoverOpenTimer);
+      tagsPopoverOpenTimer = null;
+    }
+    tagsPopoverOpenTimer = window.setTimeout(() => {
+      openTagsPopover(trigger, { focusSearch: false });
+      tagsPopoverOpenTimer = null;
+    }, delay);
+  };
+
+  const scheduleCloseTagsPopover = (delay = 180) => {
+    if (tagsPopoverOpenTimer) {
+      window.clearTimeout(tagsPopoverOpenTimer);
+      tagsPopoverOpenTimer = null;
+    }
+    if (tagsPopoverCloseTimer) {
+      window.clearTimeout(tagsPopoverCloseTimer);
+      tagsPopoverCloseTimer = null;
+    }
+    tagsPopoverCloseTimer = window.setTimeout(() => {
+      closeTagsPopover();
+      tagsPopoverCloseTimer = null;
+    }, delay);
+  };
+
+  const closeTagsPopover = () => {
+    if (tagsPopoverOpenTimer) {
+      window.clearTimeout(tagsPopoverOpenTimer);
+      tagsPopoverOpenTimer = null;
+    }
+    if (tagsPopoverCloseTimer) {
+      window.clearTimeout(tagsPopoverCloseTimer);
+      tagsPopoverCloseTimer = null;
+    }
+    if (activeTagsPopoverTrigger) {
+      activeTagsPopoverTrigger.setAttribute("aria-expanded", "false");
+    }
+    activeTagsPopoverTrigger = null;
+    if (tagsPopover) {
+      tagsPopover.hidden = true;
+      tagsPopover.dataset.tagsPopoverItems = "[]";
+    }
+  };
+
+  const parseTagsPopoverItems = () => {
+    if (!tagsPopover) {
+      return [];
+    }
+    try {
+      const parsed = JSON.parse(tagsPopover.dataset.tagsPopoverItems || "[]");
+      return Array.isArray(parsed) ? parsed : [];
+    } catch (error) {
+      return [];
+    }
+  };
+
+  const renderTagsPopoverList = () => {
+    if (!tagsPopover) {
+      return;
+    }
+    const list = tagsPopover.querySelector("[data-tags-popover-list]");
+    const searchInput = tagsPopover.querySelector("[data-tags-popover-search]");
+    if (!list) {
+      return;
+    }
+    const term = ((searchInput && searchInput.value) || "").trim().toLowerCase();
+    const items = parseTagsPopoverItems().filter((item) => {
+      const name = String(item?.name || "").toLowerCase();
+      return !term || name.includes(term);
+    });
+    list.replaceChildren();
+    if (!items.length) {
+      const emptyMessage = document.createElement("p");
+      emptyMessage.className = "muted ip-tags-popover-empty";
+      emptyMessage.textContent = "No matching tags.";
+      list.appendChild(emptyMessage);
+      return;
+    }
+    items.forEach((item) => {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = "tag tag-color tag-filter-chip";
+      button.dataset.hostPopoverTag = String(item?.name || "");
+      button.style.setProperty("--tag-color", String(item?.color || "#94a3b8"));
+      if (typeof window.ipocketApplyTagContrast === "function") {
+        window.ipocketApplyTagContrast(button);
+      }
+      button.textContent = String(item?.name || "");
+      list.appendChild(button);
+    });
+  };
+
+  const positionTagsPopover = () => {
+    if (!tagsPopover || !activeTagsPopoverTrigger || tagsPopover.hidden) {
+      return;
+    }
+    const gutter = 12;
+    const rect = activeTagsPopoverTrigger.getBoundingClientRect();
+    const popoverWidth = Math.min(
+      window.innerWidth - gutter * 2,
+      window.innerWidth < 640 ? window.innerWidth - 16 : 340,
+    );
+    tagsPopover.style.width = `${popoverWidth}px`;
+    tagsPopover.style.maxWidth = `${popoverWidth}px`;
+    const popoverRect = tagsPopover.getBoundingClientRect();
+    const availableBelow = window.innerHeight - rect.bottom;
+    const top = availableBelow > popoverRect.height + gutter
+      ? rect.bottom + 6
+      : rect.top - popoverRect.height - 6;
+    const clampedTop = Math.min(
+      window.innerHeight - popoverRect.height - gutter,
+      Math.max(gutter, top),
+    );
+    const left = Math.min(
+      window.innerWidth - popoverRect.width - gutter,
+      Math.max(gutter, rect.left),
+    );
+    tagsPopover.style.top = `${clampedTop + window.scrollY}px`;
+    tagsPopover.style.left = `${left + window.scrollX}px`;
+  };
+
+  const openTagsPopover = (trigger, { focusSearch = true } = {}) => {
+    if (!trigger) {
+      return;
+    }
+    ensureTagsPopover();
+    if (!tagsPopover) {
+      return;
+    }
+    let items = [];
+    try {
+      const parsed = JSON.parse(trigger.dataset.tagsJson || "[]");
+      if (Array.isArray(parsed)) {
+        items = parsed;
+      }
+    } catch (error) {
+      items = [];
+    }
+    const hostName = trigger.dataset.tagsIp || "Host";
+    const title = tagsPopover.querySelector("[data-tags-popover-title]");
+    const searchInput = tagsPopover.querySelector("[data-tags-popover-search]");
+    if (activeTagsPopoverTrigger && activeTagsPopoverTrigger !== trigger) {
+      activeTagsPopoverTrigger.setAttribute("aria-expanded", "false");
+    }
+    activeTagsPopoverTrigger = trigger;
+    activeTagsPopoverTrigger.setAttribute("aria-expanded", "true");
+    tagsPopover.dataset.tagsPopoverItems = JSON.stringify(items);
+    if (title) {
+      title.textContent = `IP tags for ${hostName}`;
+    }
+    if (searchInput) {
+      searchInput.value = "";
+    }
+    tagsPopover.hidden = false;
+    renderTagsPopoverList();
+    positionTagsPopover();
+    if (searchInput && focusSearch) {
+      searchInput.focus();
+    }
+  };
+
+  const bindTagsMoreTriggers = (root = document) => {
+    root.querySelectorAll("[data-tags-more-toggle]").forEach((trigger) => {
+      if (trigger.dataset.tagsMoreBound) {
+        return;
+      }
+      trigger.dataset.tagsMoreBound = "true";
+      trigger.addEventListener("mouseenter", () => {
+        if (activeTagsPopoverTrigger === trigger && tagsPopover && !tagsPopover.hidden) {
+          if (tagsPopoverCloseTimer) {
+            window.clearTimeout(tagsPopoverCloseTimer);
+            tagsPopoverCloseTimer = null;
+          }
+          return;
+        }
+        scheduleOpenTagsPopover(trigger);
+      });
+      trigger.addEventListener("mouseleave", (event) => {
+        const nextTarget = event.relatedTarget;
+        if (
+          nextTarget &&
+          (trigger.contains(nextTarget) || (tagsPopover && tagsPopover.contains(nextTarget)))
+        ) {
+          return;
+        }
+        scheduleCloseTagsPopover();
+      });
+      trigger.addEventListener("focus", () => {
+        openTagsPopover(trigger);
+      });
+      trigger.addEventListener("blur", (event) => {
+        const nextTarget = event.relatedTarget;
+        if (nextTarget && tagsPopover && tagsPopover.contains(nextTarget)) {
+          return;
+        }
+        scheduleCloseTagsPopover(0);
+      });
+    });
+  };
 
   if (
     !overlay ||
@@ -457,6 +710,26 @@
   }
 
   document.body.addEventListener("click", (event) => {
+    const moreTagsButton = event.target.closest("[data-tags-more-toggle]");
+    if (moreTagsButton) {
+      event.preventDefault();
+      openTagsPopover(moreTagsButton);
+      return;
+    }
+    if (activeTagsPopoverTrigger && tagsPopover && !tagsPopover.contains(event.target)) {
+      closeTagsPopover();
+    }
+
+    const popoverTag = event.target.closest("[data-host-popover-tag]");
+    if (popoverTag) {
+      event.preventDefault();
+      if (addTagFilter(popoverTag.dataset.hostPopoverTag || "")) {
+        submitHostFilters();
+      }
+      closeTagsPopover();
+      return;
+    }
+
     const editButton = event.target.closest("[data-host-edit]");
     if (editButton) {
       event.preventDefault();
@@ -503,6 +776,13 @@
       submitHostFilters();
     }
   });
+
+  bindTagsMoreTriggers();
+  document.body.addEventListener("htmx:afterSwap", (event) => {
+    bindTagsMoreTriggers(event.target);
+  });
+  window.addEventListener("resize", positionTagsPopover);
+  window.addEventListener("scroll", positionTagsPopover, true);
 
   form.addEventListener("submit", (event) => {
     if (!validate()) {

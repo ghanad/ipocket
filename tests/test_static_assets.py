@@ -31,6 +31,8 @@ def test_ui_assets_are_local() -> None:
     assert "max-width: 72px;" in css
     assert ".ip-tags-inline > .ip-tags-more {" in css
     assert "flex-shrink: 0;" in css
+    assert ".host-ip-tags-inline > .tag {" in css
+    assert "max-width: 76px;" in css
     assert "color: var(--tag-color-text, #0f172a);" in css
     assert ".tag-picker-dropdown[hidden] {" in css
     assert "display: none;" in css
@@ -64,7 +66,7 @@ def test_refactored_templates_load_external_page_assets() -> None:
     assert '<script src="/static/js/drawer.js" defer></script>' in templates[
         "hosts"
     ].read_text(encoding="utf-8")
-    assert '<script src="/static/js/hosts.js" defer></script>' in templates[
+    assert '<script src="/static/js/hosts.js?v=hosts-ip-tags-more-click" defer></script>' in templates[
         "hosts"
     ].read_text(encoding="utf-8")
     assert "<style>" not in templates["hosts"].read_text(encoding="utf-8")
@@ -138,6 +140,8 @@ def test_refactored_templates_load_external_page_assets() -> None:
     assert 'target: "#host-table-container"' in hosts_js
     assert "if (filterForm && !window.htmx)" in hosts_js
     assert 'select.addEventListener("change", submitHostFilters);' in hosts_js
+    assert "data-tags-more-toggle" in hosts_js
+    assert "dataset.hostPopoverTag" in hosts_js
 
 
 def test_projects_templates_use_alpine_for_drawer_interactions() -> None:

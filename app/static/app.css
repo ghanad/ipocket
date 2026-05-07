@@ -1753,14 +1753,15 @@ p {
   }
 
   .host-ip-tags-inline {
-    display: flex;
-    align-items: center;
-    flex-wrap: wrap;
-    gap: 6px;
+    max-width: 100%;
   }
 
   .host-ip-tags-inline > .tag {
     flex: 0 0 auto;
+    max-width: 76px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
   .ip-note-preview {

@@ -52,10 +52,27 @@
           </td>
           <td class="host-ip-tags-cell col-host-ip-tags">
             {% if host.ip_tags %}
-            <div class="host-ip-tags-inline" aria-label="IP tags for {{ host.name }}">
-              {% for tag in host.ip_tags %}
-              <span class="tag tag-color" style="--tag-color: {{ tag.color }}">{{ tag.name }}</span>
+            <div class="host-ip-tags-inline ip-tags-inline" aria-label="IP tags for {{ host.name }}">
+              {% set visible_tags = host.ip_tags[:3] %}
+              {% for tag in visible_tags %}
+              <button
+                class="tag tag-color tag-filter-chip"
+                type="button"
+                data-host-popover-tag="{{ tag.name }}"
+                style="--tag-color: {{ tag.color }}"
+              >{{ tag.name }}</button>
               {% endfor %}
+              {% if host.ip_tags|length > 3 %}
+              <button
+                class="tag tag-muted ip-tags-more"
+                type="button"
+                data-tags-more-toggle
+                data-tags-ip="{{ host.name }}"
+                data-tags-json='{{ host.ip_tags | tojson | e }}'
+                aria-haspopup="dialog"
+                aria-expanded="false"
+              >+{{ host.ip_tags|length - 3 }} more</button>
+              {% endif %}
             </div>
             {% else %}
             <span class="muted">—</span>

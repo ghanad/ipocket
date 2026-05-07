@@ -103,16 +103,57 @@ def test_hosts_list_renders_tags_from_linked_ip_assets(client) -> None:
     assert 'class="table table-hosts"' in response.text
     assert '<th class="col-host-ip-tags">IP tags</th>' in response.text
     assert 'class="host-ip-tags-cell col-host-ip-tags"' in response.text
-    assert 'class="host-ip-tags-inline"' in response.text
+    assert 'class="host-ip-tags-inline ip-tags-inline"' in response.text
     assert "IP tags for tagged-host" in response.text
     assert "prod" in response.text
     assert "--tag-color: #22c55e" in response.text
     assert "linux" in response.text
     assert "--tag-color: #38bdf8" in response.text
+    assert 'data-host-popover-tag="prod"' in response.text
+    assert 'data-host-popover-tag="linux"' in response.text
     assert (
-        '<span class="tag tag-color" style="--tag-color: #e2e8f0">retired</span>'
+        'data-host-popover-tag="retired"'
         not in response.text
     )
+
+
+def test_hosts_list_collapses_ip_tags_after_three(client) -> None:
+    import os
+
+    connection = db.connect(os.environ["IPAM_DB_PATH"])
+    try:
+        db.init_db(connection)
+        tags = [
+            ("alpha", "#ef4444"),
+            ("beta", "#f59e0b"),
+            ("gamma", "#22c55e"),
+            ("delta", "#38bdf8"),
+            ("epsilon", "#6366f1"),
+        ]
+        for name, color in tags:
+            repository.create_tag(connection, name=name, color=color)
+        host = repository.create_host(connection, name="many-tags-host")
+        repository.create_ip_asset(
+            connection,
+            ip_address="10.41.0.20",
+            asset_type=IPAssetType.OS,
+            host_id=host.id,
+            tags=[name for name, _color in tags],
+        )
+    finally:
+        connection.close()
+
+    response = client.get("/ui/hosts")
+
+    assert response.status_code == 200
+    assert '<div class="host-ip-tags-inline ip-tags-inline"' in response.text
+    assert 'data-host-popover-tag="alpha"' in response.text
+    assert 'data-host-popover-tag="beta"' in response.text
+    assert 'data-host-popover-tag="delta"' in response.text
+    assert 'data-host-popover-tag="gamma"' not in response.text
+    assert "data-tags-more-toggle" in response.text
+    assert 'data-tags-ip="many-tags-host"' in response.text
+    assert "+2 more" in response.text
 
 
 def test_hosts_list_uses_edit_drawer_actions(client) -> None:
