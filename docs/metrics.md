@@ -23,6 +23,8 @@ UI note: Hosts list IP tag display is presentation-only, derived from linked act
 UI note: Hosts list collapsing extra IP tag chips behind `+N more` is presentation-only and does not affect `/metrics` payloads.
 UI note: Hosts list inline/popover tag-chip quick filtering is query/UI behavior only and does not affect `/metrics` payloads.
 UI note: Hosts list compact tag-chip sizing is presentation-only and does not affect `/metrics` payloads.
+UI note: Hosts list table-width compaction to avoid horizontal scrolling is presentation-only and does not affect `/metrics` payloads.
+UI note: Hosts list compact stacked action controls are presentation-only and do not affect `/metrics` payloads.
 UI note: IP Assets bulk note overwrite is an inventory edit workflow change only and does not add or alter `/metrics` counters.
 UI note: IP Assets toast-query cleanup on bulk/update/delete redirects is a navigation behavior change only and does not affect `/metrics` payloads.
 UI note: IP Asset detail Edit/Delete drawer actions are presentation/navigation changes only and do not affect `/metrics` payloads.

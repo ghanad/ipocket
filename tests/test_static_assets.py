@@ -11,6 +11,7 @@ def test_ui_assets_are_local() -> None:
     assert "{% if not use_local_assets %}" in base_html
     assert "fonts.googleapis.com" in base_html
     assert "cdn.jsdelivr.net/npm/alpinejs" in base_html
+    assert '<link rel="stylesheet" href="/static/app.css?v=hosts-table-fit" />' in base_html
     assert '<script src="/static/js/tag-picker.js" defer></script>' in base_html
 
     css = (repo_root / "app/static/app.css").read_text(encoding="utf-8")
@@ -23,6 +24,14 @@ def test_ui_assets_are_local() -> None:
     assert ".table.table-ip-assets .tag {" in css
     assert "padding: 3px 9px;" in css
     assert ".table.table-range-addresses .tag {" in css
+    assert ".table-wrapper-hosts {" in css
+    assert "overflow-x: hidden;" in css
+    assert ".table.table-hosts .host-col-tags {" in css
+    assert ".table.table-hosts .host-col-actions {" in css
+    assert "width: 12%;" in css
+    assert "flex-direction: column;" in css
+    assert "width: 54px;" in css
+    assert ".table.table-hosts .btn-danger.btn-small {" in css
     assert ".ip-tags-popover {" in css
     assert "z-index: 120;" in css
     assert ".ip-tags-popover .tag {" in css
@@ -137,6 +146,12 @@ def test_refactored_templates_load_external_page_assets() -> None:
         in ip_assets_js
     )
     hosts_js = (repo_root / "app/static/js/hosts.js").read_text(encoding="utf-8")
+    hosts_table = (
+        repo_root / "app/templates/partials/hosts_table.html"
+    ).read_text(encoding="utf-8")
+    assert 'class="table-wrapper table-wrapper-hosts"' in hosts_table
+    assert 'style="min-width: 1240px; table-layout: fixed;"' not in hosts_table
+    assert '<col class="host-col-tags" />' in hosts_table
     assert 'window.htmx.ajax("GET", url.toString(), {' in hosts_js
     assert 'target: "#host-table-container"' in hosts_js
     assert "if (filterForm && !window.htmx)" in hosts_js

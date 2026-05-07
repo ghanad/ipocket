@@ -427,6 +427,10 @@ p {
   overflow-x: auto;
 }
 
+.table-wrapper-hosts {
+  overflow-x: hidden;
+}
+
 .table {
   width: 100%;
   border-collapse: collapse;
@@ -504,44 +508,107 @@ p {
 }
 
 .table.table-hosts {
-  min-width: 1240px;
+  width: 100%;
   table-layout: fixed;
+  font-size: 13px;
+}
+
+.table.table-hosts th,
+.table.table-hosts td {
+  padding: 11px 10px;
+  overflow: hidden;
+  vertical-align: middle;
+}
+
+.table.table-hosts .host-col-name {
+  width: 16%;
+}
+
+.table.table-hosts .host-col-vendor {
+  width: 9%;
+}
+
+.table.table-hosts .host-col-project {
+  width: 12%;
+}
+
+.table.table-hosts .host-col-ip {
+  width: 13%;
+}
+
+.table.table-hosts .host-col-tags {
+  width: 19%;
+}
+
+.table.table-hosts .host-col-count {
+  width: 6%;
+}
+
+.table.table-hosts .host-col-actions {
+  width: 12%;
 }
 
 .table.table-hosts th:nth-child(1),
 .table.table-hosts td:nth-child(1) {
-  width: 190px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .table.table-hosts th:nth-child(2),
-.table.table-hosts td:nth-child(2) {
-  width: 110px;
-}
-
+.table.table-hosts td:nth-child(2),
 .table.table-hosts th:nth-child(3),
 .table.table-hosts td:nth-child(3) {
-  width: 130px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.table.table-hosts td:nth-child(1) a {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .table.table-hosts th:nth-child(4),
 .table.table-hosts td:nth-child(4),
 .table.table-hosts th:nth-child(5),
 .table.table-hosts td:nth-child(5) {
-  width: 160px;
+  overflow-wrap: anywhere;
 }
 
 .table.table-hosts .col-host-ip-tags {
-  width: 280px;
+  overflow: visible;
 }
 
 .table.table-hosts th:nth-child(7),
 .table.table-hosts td:nth-child(7) {
-  width: 90px;
+  text-align: center;
 }
 
 .table.table-hosts th:nth-child(8),
 .table.table-hosts td:nth-child(8) {
-  width: 130px;
+  overflow: visible;
+  text-align: center;
+}
+
+.table.table-hosts .table-actions {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 5px;
+  justify-content: center;
+}
+
+.table.table-hosts .btn-small {
+  width: 54px;
+  min-height: 24px;
+  padding: 4px 0;
+  border-radius: 8px;
+  text-align: center;
+}
+
+.table.table-hosts .btn-danger.btn-small {
+  background: #fff1f2;
 }
 
 .table th {
