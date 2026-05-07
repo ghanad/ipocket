@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import sqlite3
-from typing import Iterable, Optional
+from typing import Iterable, Mapping, Optional, Sequence
 
 from sqlalchemy import distinct, func, select, update, delete
 from sqlalchemy.exc import IntegrityError
@@ -126,7 +126,116 @@ def get_host_by_name(
     return _row_to_host(row) if row else None
 
 
-def _list_hosts_with_counts_query(limit: int | None = None, offset: int = 0):
+def _active_asset_exists(*criteria):
+    return (
+        select(db_schema.IPAsset.id)
+        .where(
+            db_schema.IPAsset.host_id == db_schema.Host.id,
+            db_schema.IPAsset.archived == 0,
+            *criteria,
+        )
+        .exists()
+    )
+
+
+def _apply_host_filters(
+    statement,
+    *,
+    query_text: Optional[str],
+    vendor_id: Optional[int],
+    project_id: Optional[int],
+    project_unassigned_only: bool,
+    asset_type: Optional[IPAssetType],
+    unassigned_only: bool,
+    status_filter: Optional[str],
+    tag_names: Optional[list[str]],
+):
+    if query_text:
+        like_value = f"%{query_text.lower()}%"
+        project_match = _active_asset_exists(
+            db_schema.IPAsset.project_id == db_schema.Project.id,
+            func.lower(db_schema.Project.name).like(like_value),
+        )
+        ip_match = _active_asset_exists(
+            func.lower(db_schema.IPAsset.ip_address).like(like_value)
+            | func.lower(func.coalesce(db_schema.IPAsset.notes, "")).like(like_value)
+        )
+        tag_match = (
+            select(db_schema.IPAssetTag.ip_asset_id)
+            .join(db_schema.Tag, db_schema.Tag.id == db_schema.IPAssetTag.tag_id)
+            .join(
+                db_schema.IPAsset,
+                db_schema.IPAsset.id == db_schema.IPAssetTag.ip_asset_id,
+            )
+            .where(
+                db_schema.IPAsset.host_id == db_schema.Host.id,
+                db_schema.IPAsset.archived == 0,
+                func.lower(db_schema.Tag.name).like(like_value),
+            )
+            .exists()
+        )
+        statement = statement.where(
+            func.lower(db_schema.Host.name).like(like_value)
+            | func.lower(func.coalesce(db_schema.Host.notes, "")).like(like_value)
+            | func.lower(func.coalesce(db_schema.Vendor.name, "")).like(like_value)
+            | project_match
+            | ip_match
+            | tag_match
+        )
+    if vendor_id is not None:
+        statement = statement.where(db_schema.Host.vendor_id == vendor_id)
+    if project_unassigned_only or unassigned_only:
+        assigned_project_exists = _active_asset_exists(
+            db_schema.IPAsset.project_id.is_not(None)
+        )
+        statement = statement.where(~assigned_project_exists)
+    elif project_id is not None:
+        statement = statement.where(
+            _active_asset_exists(db_schema.IPAsset.project_id == project_id)
+        )
+    if asset_type is not None:
+        statement = statement.where(
+            _active_asset_exists(db_schema.IPAsset.type == asset_type.value)
+        )
+    if status_filter == "linked":
+        statement = statement.where(_active_asset_exists())
+    elif status_filter == "free":
+        statement = statement.where(~_active_asset_exists())
+    normalized_tag_names = [
+        tag.strip().lower() for tag in (tag_names or []) if tag and tag.strip()
+    ]
+    if normalized_tag_names:
+        tag_exists = (
+            select(db_schema.IPAssetTag.ip_asset_id)
+            .join(db_schema.Tag, db_schema.Tag.id == db_schema.IPAssetTag.tag_id)
+            .join(
+                db_schema.IPAsset,
+                db_schema.IPAsset.id == db_schema.IPAssetTag.ip_asset_id,
+            )
+            .where(
+                db_schema.IPAsset.host_id == db_schema.Host.id,
+                db_schema.IPAsset.archived == 0,
+                func.lower(db_schema.Tag.name).in_(normalized_tag_names),
+            )
+            .exists()
+        )
+        statement = statement.where(tag_exists)
+    return statement
+
+
+def _list_hosts_with_counts_query(
+    limit: int | None = None,
+    offset: int = 0,
+    *,
+    query_text: Optional[str] = None,
+    vendor_id: Optional[int] = None,
+    project_id: Optional[int] = None,
+    project_unassigned_only: bool = False,
+    asset_type: Optional[IPAssetType] = None,
+    unassigned_only: bool = False,
+    status_filter: Optional[str] = None,
+    tag_names: Optional[list[str]] = None,
+):
     project_count_subquery = (
         select(func.count(distinct(db_schema.IPAsset.project_id)))
         .where(
@@ -210,16 +319,117 @@ def _list_hosts_with_counts_query(limit: int | None = None, offset: int = 0):
         )
         .order_by(db_schema.Host.name)
     )
+    statement = _apply_host_filters(
+        statement,
+        query_text=query_text,
+        vendor_id=vendor_id,
+        project_id=project_id,
+        project_unassigned_only=project_unassigned_only,
+        asset_type=asset_type,
+        unassigned_only=unassigned_only,
+        status_filter=status_filter,
+        tag_names=tag_names,
+    )
     if limit is not None:
         statement = statement.limit(limit).offset(offset)
     return statement
 
 
-def list_hosts_with_ip_counts(
-    connection_or_session: sqlite3.Connection | Session,
+def _host_os_bmc_ip_links(
+    session: Session, host_ids: list[int]
+) -> dict[int, dict[str, list[dict[str, object]]]]:
+    if not host_ids:
+        return {}
+
+    rows = (
+        session.execute(
+            select(
+                db_schema.IPAsset.id,
+                db_schema.IPAsset.host_id,
+                db_schema.IPAsset.ip_address,
+                db_schema.IPAsset.type,
+            )
+            .where(
+                db_schema.IPAsset.host_id.in_(host_ids),
+                db_schema.IPAsset.archived == 0,
+                db_schema.IPAsset.type.in_(
+                    [IPAssetType.OS.value, IPAssetType.BMC.value]
+                ),
+            )
+            .order_by(
+                db_schema.IPAsset.host_id,
+                db_schema.IPAsset.type,
+                db_schema.IPAsset.ip_address,
+            )
+        )
+        .mappings()
+        .all()
+    )
+
+    links: dict[int, dict[str, list[dict[str, object]]]] = {
+        host_id: {"os": [], "bmc": []} for host_id in host_ids
+    }
+    for row in rows:
+        host_id = int(row["host_id"])
+        link_type = "os" if row["type"] == IPAssetType.OS.value else "bmc"
+        links[host_id][link_type].append(
+            {"id": int(row["id"]), "ip_address": str(row["ip_address"])}
+        )
+    return links
+
+
+def _host_ip_tag_details(
+    session: Session, host_ids: list[int]
+) -> dict[int, list[dict[str, str]]]:
+    if not host_ids:
+        return {}
+
+    rows = (
+        session.execute(
+            select(
+                db_schema.IPAsset.host_id,
+                db_schema.Tag.name.label("tag_name"),
+                db_schema.Tag.color.label("tag_color"),
+            )
+            .join(
+                db_schema.IPAssetTag,
+                db_schema.IPAssetTag.ip_asset_id == db_schema.IPAsset.id,
+            )
+            .join(db_schema.Tag, db_schema.Tag.id == db_schema.IPAssetTag.tag_id)
+            .where(
+                db_schema.IPAsset.host_id.in_(host_ids),
+                db_schema.IPAsset.archived == 0,
+            )
+            .order_by(
+                db_schema.IPAsset.host_id,
+                db_schema.Tag.name,
+            )
+        )
+        .mappings()
+        .all()
+    )
+
+    tags_by_host: dict[int, list[dict[str, str]]] = {
+        host_id: [] for host_id in host_ids
+    }
+    seen: dict[int, set[str]] = {host_id: set() for host_id in host_ids}
+    for row in rows:
+        host_id = int(row["host_id"])
+        tag_name = str(row["tag_name"])
+        if tag_name in seen.setdefault(host_id, set()):
+            continue
+        seen[host_id].add(tag_name)
+        tags_by_host.setdefault(host_id, []).append(
+            {"name": tag_name, "color": str(row["tag_color"])}
+        )
+    return tags_by_host
+
+
+def _host_count_row_payloads(
+    rows: Sequence[Mapping[str, object]],
+    links_by_host: dict[int, dict[str, list[dict[str, object]]]],
+    tags_by_host: dict[int, list[dict[str, str]]],
 ) -> list[dict[str, object]]:
-    with session_scope(connection_or_session) as session:
-        rows = session.execute(_list_hosts_with_counts_query()).mappings().all()
     return [
         {
             "id": int(row["id"]),
@@ -232,14 +442,80 @@ def list_hosts_with_ip_counts(
             "ip_count": int(row["ip_count"] or 0),
             "os_ips": row["os_ips"] or "",
             "bmc_ips": row["bmc_ips"] or "",
+            "os_ip_links": links_by_host.get(int(row["id"]), {}).get("os", []),
+            "bmc_ip_links": links_by_host.get(int(row["id"]), {}).get("bmc", []),
+            "ip_tags": tags_by_host.get(int(row["id"]), []),
         }
         for row in rows
     ]
 
 
-def count_hosts(connection_or_session: sqlite3.Connection | Session) -> int:
+def list_hosts_with_ip_counts(
+    connection_or_session: sqlite3.Connection | Session,
+    *,
+    query_text: Optional[str] = None,
+    vendor_id: Optional[int] = None,
+    project_id: Optional[int] = None,
+    project_unassigned_only: bool = False,
+    asset_type: Optional[IPAssetType] = None,
+    unassigned_only: bool = False,
+    status_filter: Optional[str] = None,
+    tag_names: Optional[list[str]] = None,
+) -> list[dict[str, object]]:
     with session_scope(connection_or_session) as session:
-        total = session.scalar(select(func.count()).select_from(db_schema.Host))
+        rows = (
+            session.execute(
+                _list_hosts_with_counts_query(
+                    query_text=query_text,
+                    vendor_id=vendor_id,
+                    project_id=project_id,
+                    project_unassigned_only=project_unassigned_only,
+                    asset_type=asset_type,
+                    unassigned_only=unassigned_only,
+                    status_filter=status_filter,
+                    tag_names=tag_names,
+                )
+            )
+            .mappings()
+            .all()
+        )
+        host_ids = [int(row["id"]) for row in rows]
+        links_by_host = _host_os_bmc_ip_links(session, host_ids)
+        tags_by_host = _host_ip_tag_details(session, host_ids)
+    return _host_count_row_payloads(rows, links_by_host, tags_by_host)
+
+
+def count_hosts(
+    connection_or_session: sqlite3.Connection | Session,
+    *,
+    query_text: Optional[str] = None,
+    vendor_id: Optional[int] = None,
+    project_id: Optional[int] = None,
+    project_unassigned_only: bool = False,
+    asset_type: Optional[IPAssetType] = None,
+    unassigned_only: bool = False,
+    status_filter: Optional[str] = None,
+    tag_names: Optional[list[str]] = None,
+) -> int:
+    statement = _apply_host_filters(
+        select(func.count())
+        .select_from(db_schema.Host)
+        .join(
+            db_schema.Vendor,
+            db_schema.Vendor.id == db_schema.Host.vendor_id,
+            isouter=True,
+        ),
+        query_text=query_text,
+        vendor_id=vendor_id,
+        project_id=project_id,
+        project_unassigned_only=project_unassigned_only,
+        asset_type=asset_type,
+        unassigned_only=unassigned_only,
+        status_filter=status_filter,
+        tag_names=tag_names,
+    )
+    with session_scope(connection_or_session) as session:
+        total = session.scalar(statement)
     return int(total or 0)
 
 
@@ -247,28 +523,39 @@ def list_hosts_with_ip_counts_paginated(
     connection_or_session: sqlite3.Connection | Session,
     limit: int,
     offset: int,
+    *,
+    query_text: Optional[str] = None,
+    vendor_id: Optional[int] = None,
+    project_id: Optional[int] = None,
+    project_unassigned_only: bool = False,
+    asset_type: Optional[IPAssetType] = None,
+    unassigned_only: bool = False,
+    status_filter: Optional[str] = None,
+    tag_names: Optional[list[str]] = None,
 ) -> list[dict[str, object]]:
     with session_scope(connection_or_session) as session:
         rows = (
-            session.execute(_list_hosts_with_counts_query(limit=limit, offset=offset))
+            session.execute(
+                _list_hosts_with_counts_query(
+                    limit=limit,
+                    offset=offset,
+                    query_text=query_text,
+                    vendor_id=vendor_id,
+                    project_id=project_id,
+                    project_unassigned_only=project_unassigned_only,
+                    asset_type=asset_type,
+                    unassigned_only=unassigned_only,
+                    status_filter=status_filter,
+                    tag_names=tag_names,
+                )
+            )
             .mappings()
             .all()
         )
-    return [
-        {
-            "id": int(row["id"]),
-            "name": str(row["name"]),
-            "notes": row["notes"],
-            "vendor": row["vendor"],
-            "project_count": int(row["project_count"] or 0),
-            "project_name": row["project_name"] or "",
-            "project_color": row["project_color"] or "",
-            "ip_count": int(row["ip_count"] or 0),
-            "os_ips": row["os_ips"] or "",
-            "bmc_ips": row["bmc_ips"] or "",
-        }
-        for row in rows
-    ]
+        host_ids = [int(row["id"]) for row in rows]
+        links_by_host = _host_os_bmc_ip_links(session, host_ids)
+        tags_by_host = _host_ip_tag_details(session, host_ids)
+    return _host_count_row_payloads(rows, links_by_host, tags_by_host)
 
 
 def get_host_linked_assets_grouped(

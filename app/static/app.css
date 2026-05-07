@@ -427,6 +427,10 @@ p {
   overflow-x: auto;
 }
 
+.table-wrapper-hosts {
+  overflow-x: hidden;
+}
+
 .table {
   width: 100%;
   border-collapse: collapse;
@@ -501,6 +505,110 @@ p {
   padding: 3px 9px;
   border-radius: 7px;
   font-size: 12px;
+}
+
+.table.table-hosts {
+  width: 100%;
+  table-layout: fixed;
+  font-size: 13px;
+}
+
+.table.table-hosts th,
+.table.table-hosts td {
+  padding: 11px 10px;
+  overflow: hidden;
+  vertical-align: middle;
+}
+
+.table.table-hosts .host-col-name {
+  width: 16%;
+}
+
+.table.table-hosts .host-col-vendor {
+  width: 9%;
+}
+
+.table.table-hosts .host-col-project {
+  width: 12%;
+}
+
+.table.table-hosts .host-col-ip {
+  width: 13%;
+}
+
+.table.table-hosts .host-col-tags {
+  width: 19%;
+}
+
+.table.table-hosts .host-col-count {
+  width: 6%;
+}
+
+.table.table-hosts .host-col-actions {
+  width: 12%;
+}
+
+.table.table-hosts th:nth-child(1),
+.table.table-hosts td:nth-child(1) {
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.table.table-hosts th:nth-child(2),
+.table.table-hosts td:nth-child(2),
+.table.table-hosts th:nth-child(3),
+.table.table-hosts td:nth-child(3) {
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.table.table-hosts td:nth-child(1) a {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.table.table-hosts th:nth-child(4),
+.table.table-hosts td:nth-child(4),
+.table.table-hosts th:nth-child(5),
+.table.table-hosts td:nth-child(5) {
+  overflow-wrap: anywhere;
+}
+
+.table.table-hosts .col-host-ip-tags {
+  overflow: visible;
+}
+
+.table.table-hosts th:nth-child(7),
+.table.table-hosts td:nth-child(7) {
+  text-align: center;
+}
+
+.table.table-hosts th:nth-child(8),
+.table.table-hosts td:nth-child(8) {
+  overflow: visible;
+  text-align: center;
+}
+
+.table.table-hosts .table-actions {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 5px;
+  justify-content: center;
+}
+
+.table.table-hosts .btn-small {
+  width: 54px;
+  min-height: 24px;
+  padding: 4px 0;
+  border-radius: 8px;
+  text-align: center;
+}
+
+.table.table-hosts .btn-danger.btn-small {
+  background: #fff1f2;
 }
 
 .table th {
@@ -1704,6 +1812,29 @@ p {
 
   .ip-tags-inline > .ip-tags-more {
     flex-shrink: 0;
+  }
+
+  .host-ip-tags-cell {
+    min-width: 240px;
+    max-width: 320px;
+  }
+
+  .host-ip-tags-inline {
+    max-width: 100%;
+  }
+
+  .host-ip-tags-inline > .tag {
+    flex: 0 0 auto;
+    max-width: 72px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .table.table-hosts .host-ip-tags-inline > .tag {
+    padding: 3px 9px;
+    border-radius: 7px;
+    font-size: 12px;
   }
 
   .ip-note-preview {

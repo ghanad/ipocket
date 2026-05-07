@@ -120,11 +120,14 @@ Hosts can be linked to a vendor from the shared **Vendors** catalog.
 - Hosts list uses a right-side edit drawer for name, vendor, notes, single-value OS/BMC IP updates, and project/status context (with inline IPv4 validation); changing project updates linked IP assignments.
 - Host add form supports selecting a project plus inline OS/BMC IP inputs; when a project is selected, newly linked IP assets inherit that project during host creation.
 - Hosts list shows side-by-side Edit/Delete actions in the Actions column for quick access.
-- Hosts list shows linked OS and BMC IP addresses alongside the total linked IP count.
+- Hosts list shows linked OS and BMC IP addresses alongside the total linked IP count; OS/BMC addresses link directly to their IP asset detail pages.
+- Hosts list uses a compact fixed-layout table sized to the page width so normal desktop views do not need horizontal scrolling.
+- Hosts list action buttons are stacked in a narrow, equal-width control group to keep row actions readable inside the compact table.
+- Hosts list shows an **IP tags** column with deduplicated tags from linked active IP assets; these are IPAsset tags and do not create host-level tag storage. To keep the table compact and aligned with IP Assets, host tag chips use the same compact sizing, rows show up to 2 tag chips, and additional tags collapse behind a `+N more` popover. Clicking any inline or popover tag immediately applies that tag to the Hosts filter.
 - IP Asset detail pages show the paired host address only for OS/BMC assets: OS records show linked BMC addresses, and BMC records show linked OS addresses.
 - In Host edit, clearing an OS/BMC IP from the drawer and saving now unlinks that IP from the host (the IP asset is kept, only `host_id` is cleared).
 - Hosts list displays a project badge (with project color) based on linked IP assignments; multiple linked projects show a warning badge.
-- Hosts page includes a collapsible search panel to filter by host name, vendor, notes, or linked IPs.
+- Hosts page includes a collapsible search panel with text search plus Vendor, Project, Assignment, linked/free Status, and tag filters. Text and select filters apply with HTMX table updates instead of a full page reload, tag filters match tags on linked active IP assets, and the panel no longer shows a separate Clear button.
 - Adding a host now uses the same right-side drawer interaction as editing, so create/edit actions stay visually consistent.
 - Host detail pages use the shared detail layout: header metadata chips, a Details card, and grouped OS/BMC/other linked-IP tables with project, tag, and notes context plus empty states.
 - Host deletion now uses the same right-side drawer pattern as host add/edit and IP delete flows, with destructive safeguards (acknowledgement checkbox + exact host-name confirmation) before enabling permanent delete. Deleting a host keeps all linked IP assets and automatically unassigns them from that host.

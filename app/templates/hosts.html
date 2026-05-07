@@ -27,7 +27,7 @@
       </div>
       <span class="collapsible-indicator" aria-hidden="true">▸</span>
     </summary>
-    <form class="filters-grid" method="get" action="/ui/hosts">
+    <form class="filters-grid" method="get" action="/ui/hosts" data-host-filters>
       <label class="field">
         <span>Search</span>
         <input
@@ -36,150 +36,119 @@
           name="q"
           value="{{ filters.q }}"
           placeholder="Name, vendor, project, notes, or IP"
+          hx-get="/ui/hosts"
+          hx-trigger="keyup changed delay:500ms, search"
+          hx-target="#host-table-container"
+          hx-push-url="true"
+          hx-include="closest form"
         />
       </label>
-      <div class="form-actions">
-        <button class="btn btn-primary" type="submit">Apply</button>
-        <a class="btn btn-secondary" href="/ui/hosts">Clear</a>
-      </div>
+      <label class="field">
+        <span>Project</span>
+        <select
+          class="select"
+          name="project_id"
+          hx-get="/ui/hosts"
+          hx-trigger="change"
+          hx-target="#host-table-container"
+          hx-push-url="true"
+          hx-include="closest form"
+        >
+          <option value=""{% if filters.project_filter == "" %} selected{% endif %}>All</option>
+          <option value="unassigned"{% if filters.project_filter == "unassigned" %} selected{% endif %}>Unassigned</option>
+          {% for project in projects %}
+          <option value="{{ project.id }}"{% if filters.project_filter == (project.id ~ "") %} selected{% endif %}>{{ project.name }}</option>
+          {% endfor %}
+        </select>
+      </label>
+      <label class="field">
+        <span>Assignment</span>
+        <select
+          class="select"
+          name="unassigned-only"
+          hx-get="/ui/hosts"
+          hx-trigger="change"
+          hx-target="#host-table-container"
+          hx-push-url="true"
+          hx-include="closest form"
+        >
+          <option value="false"{% if not filters.unassigned_only %} selected{% endif %}>All</option>
+          <option value="true"{% if filters.unassigned_only %} selected{% endif %}>Unassigned only</option>
+        </select>
+      </label>
+      <label class="field">
+        <span>Status</span>
+        <select
+          class="select"
+          name="status"
+          hx-get="/ui/hosts"
+          hx-trigger="change"
+          hx-target="#host-table-container"
+          hx-push-url="true"
+          hx-include="closest form"
+        >
+          <option value=""{% if filters.status == "" %} selected{% endif %}>All</option>
+          <option value="linked"{% if filters.status == "linked" %} selected{% endif %}>Linked IPs</option>
+          <option value="free"{% if filters.status == "free" %} selected{% endif %}>No linked IPs</option>
+        </select>
+      </label>
+      <label class="field">
+        <span>Vendor</span>
+        <select
+          class="select"
+          name="vendor_id"
+          hx-get="/ui/hosts"
+          hx-trigger="change"
+          hx-target="#host-table-container"
+          hx-push-url="true"
+          hx-include="closest form"
+        >
+          <option value=""{% if not filters.vendor_id %} selected{% endif %}>All</option>
+          {% for vendor in vendors %}
+          <option value="{{ vendor.id }}"{% if filters.vendor_id == vendor.id %} selected{% endif %}>{{ vendor.name }}</option>
+          {% endfor %}
+        </select>
+      </label>
+      <label class="field field-tag-filter">
+        <span>Tags</span>
+        <div class="tag-filter-controls">
+          <input
+            class="input"
+            type="text"
+            placeholder="Type tag and press Enter"
+            list="host-tag-filter-suggestions"
+            data-host-tag-filter-input
+          />
+        </div>
+        <datalist id="host-tag-filter-suggestions" data-host-tag-filter-suggestions>
+          {% for tag in tags %}
+          <option value="{{ tag.name }}" data-tag-color="{{ tag.color }}"></option>
+          {% endfor %}
+        </datalist>
+        <div class="tag-filter-selected" data-host-tag-filter-selected>
+          {% for selected_tag in filters.tag %}
+          {% set selected_tag_obj = (tags | selectattr("name", "equalto", selected_tag) | list | first) %}
+          <span class="tag-filter-entry" data-host-tag-filter-entry="{{ selected_tag }}">
+            <input type="hidden" name="tag" value="{{ selected_tag }}" />
+            <button
+              class="tag tag-color tag-filter-chip"
+              type="button"
+              data-host-remove-tag-filter="{{ selected_tag }}"
+              {% if selected_tag_obj %}
+              style="--tag-color: {{ selected_tag_obj.color }}"
+              {% endif %}
+            >{{ selected_tag }} ×</button>
+          </span>
+          {% endfor %}
+        </div>
+      </label>
     </form>
   </details>
 </section>
 
-<section class="card table-card">
-  <div class="table-wrapper">
-    <table class="table">
-      <thead>
-        <tr>
-          <th>Host name</th>
-          <th>Vendor</th>
-          <th>Project</th>
-          <th>OS IPs</th>
-          <th>BMC IPs</th>
-          <th>Linked IPs</th>
-          <th>Actions</th>
-        </tr>
-      </thead>
-      <tbody>
-        {% if hosts %}
-        {% for host in hosts %}
-        <tr>
-          <td><a href="/ui/hosts/{{ host.id }}">{{ host.name }}</a></td>
-          <td>{{ host.vendor or "" }}</td>
-          <td>
-            {% if host.project_count == 0 %}
-            <span class="tag tag-warning">Unassigned</span>
-            {% elif host.project_count > 1 %}
-            <span class="tag tag-warning">Multiple</span>
-            {% else %}
-            <span class="tag tag-project" style="--project-color: {{ host.project_color or '#94a3b8' }}">
-              {{ host.project_name }}
-            </span>
-            {% endif %}
-          </td>
-          <td>{{ host.os_ips or "" }}</td>
-          <td>{{ host.bmc_ips or "" }}</td>
-          <td>{{ host.ip_count }}</td>
-          <td class="asset-actions-cell">
-            {% set vendor_match = namespace(id="") %}
-            {% for vendor in vendors %}
-            {% if host.vendor and vendor.name == host.vendor %}
-            {% set vendor_match.id = vendor.id %}
-            {% endif %}
-            {% endfor %}
-            <div class="table-actions">
-              <button
-                class="btn btn-secondary btn-small"
-                type="button"
-                data-host-edit="{{ host.id }}"
-                data-host-name="{{ host.name }}"
-                data-host-vendor-id="{{ vendor_match.id }}"
-                data-host-project-name="{{ host.project_name or '' }}"
-                data-host-project-count="{{ host.project_count }}"
-                data-host-os-ips="{{ host.os_ips or "" }}"
-                data-host-bmc-ips="{{ host.bmc_ips or "" }}"
-                data-host-notes="{{ host.notes or "" }}"
-                data-host-status="{{ 'Assigned' if host.ip_count > 0 else 'Free' }}"
-              >
-                Edit
-              </button>
-              <button
-                class="btn btn-danger btn-small"
-                type="button"
-                data-host-delete="{{ host.id }}"
-                data-host-delete-name="{{ host.name }}"
-                data-host-delete-linked="{{ host.ip_count }}"
-              >
-                Delete
-              </button>
-            </div>
-          </td>
-        </tr>
-        {% endfor %}
-        {% else %}
-        <tr><td colspan="7" class="empty-state">No hosts found.</td></tr>
-        {% endif %}
-      </tbody>
-    </table>
-  </div>
-  {% if hosts and pagination %}
-  <div class="table-footer">
-    <div class="table-meta">
-      {% if pagination.total %}
-      Showing {{ pagination.start_index }}-{{ pagination.end_index }} of {{ pagination.total }}
-      {% else %}
-      No results to display.
-      {% endif %}
-    </div>
-    <div class="table-footer-controls">
-      <div class="table-per-page">
-        <form method="get" action="/ui/hosts" class="per-page-form">
-          {% if filters.q %}
-          <input type="hidden" name="q" value="{{ filters.q }}" />
-          {% endif %}
-          <label class="field field-inline">
-            <span>Rows</span>
-            <select
-              class="select select-minimal"
-              name="per-page"
-              onchange="this.form.submit()"
-            >
-              {% for option in [10, 20, 50, 100] %}
-              <option value="{{ option }}"{% if pagination.per_page == option %} selected{% endif %}>{{ option }}</option>
-              {% endfor %}
-            </select>
-          </label>
-        </form>
-      </div>
-      {% if pagination.total_pages > 1 %}
-      <nav class="pagination" aria-label="Hosts pagination">
-        <a
-          class="btn btn-secondary btn-small{% if not pagination.has_prev %} btn-disabled{% endif %}"
-          href="/ui/hosts?{{ pagination.base_query }}&page={{ pagination.page - 1 }}"
-          {% if not pagination.has_prev %}
-          aria-disabled="true"
-          tabindex="-1"
-          {% endif %}
-        >
-          Previous
-        </a>
-        <span class="pagination-status">Page {{ pagination.page }} of {{ pagination.total_pages }}</span>
-        <a
-          class="btn btn-secondary btn-small{% if not pagination.has_next %} btn-disabled{% endif %}"
-          href="/ui/hosts?{{ pagination.base_query }}&page={{ pagination.page + 1 }}"
-          {% if not pagination.has_next %}
-          aria-disabled="true"
-          tabindex="-1"
-          {% endif %}
-        >
-          Next
-        </a>
-      </nav>
-      {% endif %}
-    </div>
-  </div>
-  {% endif %}
-</section>
+<div id="host-table-container">
+  {% include "partials/hosts_table.html" %}
+</div>
 
 <div class="host-drawer-overlay" data-host-drawer-overlay aria-hidden="true"></div>
 <aside
@@ -306,5 +275,5 @@
 
 
 <script src="/static/js/drawer.js" defer></script>
-<script src="/static/js/hosts.js" defer></script>
+<script src="/static/js/hosts.js?v=hosts-ip-tags-more-click" defer></script>
 {% endblock %}

@@ -1,0 +1,193 @@
+<section class="card table-card">
+  <div class="table-wrapper table-wrapper-hosts">
+    <table class="table table-hosts">
+      <colgroup>
+        <col class="host-col-name" />
+        <col class="host-col-vendor" />
+        <col class="host-col-project" />
+        <col class="host-col-ip" />
+        <col class="host-col-ip" />
+        <col class="host-col-tags" />
+        <col class="host-col-count" />
+        <col class="host-col-actions" />
+      </colgroup>
+      <thead>
+        <tr>
+          <th>Host name</th>
+          <th>Vendor</th>
+          <th>Project</th>
+          <th>OS IPs</th>
+          <th>BMC IPs</th>
+          <th class="col-host-ip-tags">IP tags</th>
+          <th>Linked IPs</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% if hosts %}
+        {% for host in hosts %}
+        <tr>
+          <td><a href="/ui/hosts/{{ host.id }}">{{ host.name }}</a></td>
+          <td>{{ host.vendor or "" }}</td>
+          <td>
+            {% if host.project_count == 0 %}
+            <span class="tag tag-warning">Unassigned</span>
+            {% elif host.project_count > 1 %}
+            <span class="tag tag-warning">Multiple</span>
+            {% else %}
+            <span class="tag tag-project" style="--project-color: {{ host.project_color or '#94a3b8' }}">
+              {{ host.project_name }}
+            </span>
+            {% endif %}
+          </td>
+          <td>
+            {% for asset in host.os_ip_links %}
+            <a class="mono" href="/ui/ip-assets/{{ asset.id }}">{{ asset.ip_address }}</a>{% if not loop.last %}, {% endif %}
+            {% endfor %}
+          </td>
+          <td>
+            {% for asset in host.bmc_ip_links %}
+            <a class="mono" href="/ui/ip-assets/{{ asset.id }}">{{ asset.ip_address }}</a>{% if not loop.last %}, {% endif %}
+            {% endfor %}
+          </td>
+          <td class="host-ip-tags-cell col-host-ip-tags">
+            {% if host.ip_tags %}
+            <div class="host-ip-tags-inline ip-tags-inline" aria-label="IP tags for {{ host.name }}">
+              {% set visible_tags = host.ip_tags[:2] %}
+              {% for tag in visible_tags %}
+              <button
+                class="tag tag-color tag-filter-chip"
+                type="button"
+                data-host-popover-tag="{{ tag.name }}"
+                style="--tag-color: {{ tag.color }}"
+              >{{ tag.name }}</button>
+              {% endfor %}
+              {% if host.ip_tags|length > 2 %}
+              <button
+                class="tag tag-muted ip-tags-more"
+                type="button"
+                data-tags-more-toggle
+                data-tags-ip="{{ host.name }}"
+                data-tags-json='{{ host.ip_tags | tojson | e }}'
+                aria-haspopup="dialog"
+                aria-expanded="false"
+              >+{{ host.ip_tags|length - 2 }} more</button>
+              {% endif %}
+            </div>
+            {% else %}
+            <span class="muted">—</span>
+            {% endif %}
+          </td>
+          <td>{{ host.ip_count }}</td>
+          <td class="asset-actions-cell">
+            {% set vendor_match = namespace(id="") %}
+            {% for vendor in vendors %}
+            {% if host.vendor and vendor.name == host.vendor %}
+            {% set vendor_match.id = vendor.id %}
+            {% endif %}
+            {% endfor %}
+            <div class="table-actions">
+              <button
+                class="btn btn-secondary btn-small"
+                type="button"
+                data-host-edit="{{ host.id }}"
+                data-host-name="{{ host.name }}"
+                data-host-vendor-id="{{ vendor_match.id }}"
+                data-host-project-name="{{ host.project_name or '' }}"
+                data-host-project-count="{{ host.project_count }}"
+                data-host-os-ips="{{ host.os_ips or "" }}"
+                data-host-bmc-ips="{{ host.bmc_ips or "" }}"
+                data-host-notes="{{ host.notes or "" }}"
+                data-host-status="{{ 'Assigned' if host.ip_count > 0 else 'Free' }}"
+              >
+                Edit
+              </button>
+              <button
+                class="btn btn-danger btn-small"
+                type="button"
+                data-host-delete="{{ host.id }}"
+                data-host-delete-name="{{ host.name }}"
+                data-host-delete-linked="{{ host.ip_count }}"
+              >
+                Delete
+              </button>
+            </div>
+          </td>
+        </tr>
+        {% endfor %}
+        {% else %}
+        <tr><td colspan="8" class="empty-state">No hosts found.</td></tr>
+        {% endif %}
+      </tbody>
+    </table>
+  </div>
+  {% if hosts and pagination %}
+  <div class="table-footer">
+    <div class="table-meta">
+      {% if pagination.total %}
+      Showing {{ pagination.start_index }}-{{ pagination.end_index }} of {{ pagination.total }}
+      {% else %}
+      No results to display.
+      {% endif %}
+    </div>
+    <div class="table-footer-controls">
+      <div class="table-per-page">
+        <form method="get" action="/ui/hosts" class="per-page-form" hx-get="/ui/hosts" hx-trigger="submit" hx-target="#host-table-container" hx-push-url="true">
+          {% for key, value in pagination.preserved_query_items %}
+          <input type="hidden" name="{{ key }}" value="{{ value }}" />
+          {% endfor %}
+          <label class="field field-inline">
+            <span>Rows</span>
+            <select
+              class="select select-minimal"
+              name="per-page"
+              hx-get="/ui/hosts"
+              hx-trigger="change"
+              hx-target="#host-table-container"
+              hx-push-url="true"
+              hx-include="closest form"
+            >
+              {% for option in [10, 20, 50, 100] %}
+              <option value="{{ option }}"{% if pagination.per_page == option %} selected{% endif %}>{{ option }}</option>
+              {% endfor %}
+            </select>
+          </label>
+        </form>
+      </div>
+      {% if pagination.total_pages > 1 %}
+      <nav class="pagination" aria-label="Hosts pagination">
+        <a
+          class="btn btn-secondary btn-small{% if not pagination.has_prev %} btn-disabled{% endif %}"
+          href="/ui/hosts?{{ pagination.base_query }}&page={{ pagination.page - 1 }}"
+          {% if pagination.has_prev %}
+          hx-get="/ui/hosts?{{ pagination.base_query }}&page={{ pagination.page - 1 }}"
+          hx-target="#host-table-container"
+          hx-push-url="true"
+          {% else %}
+          aria-disabled="true"
+          tabindex="-1"
+          {% endif %}
+        >
+          Previous
+        </a>
+        <span class="pagination-status">Page {{ pagination.page }} of {{ pagination.total_pages }}</span>
+        <a
+          class="btn btn-secondary btn-small{% if not pagination.has_next %} btn-disabled{% endif %}"
+          href="/ui/hosts?{{ pagination.base_query }}&page={{ pagination.page + 1 }}"
+          {% if pagination.has_next %}
+          hx-get="/ui/hosts?{{ pagination.base_query }}&page={{ pagination.page + 1 }}"
+          hx-target="#host-table-container"
+          hx-push-url="true"
+          {% else %}
+          aria-disabled="true"
+          tabindex="-1"
+          {% endif %}
+        >
+          Next
+        </a>
+      </nav>
+      {% endif %}
+    </div>
+  </div>
+  {% endif %}
+</section>
