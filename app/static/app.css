@@ -503,6 +503,47 @@ p {
   font-size: 12px;
 }
 
+.table.table-hosts {
+  min-width: 1240px;
+  table-layout: fixed;
+}
+
+.table.table-hosts th:nth-child(1),
+.table.table-hosts td:nth-child(1) {
+  width: 190px;
+}
+
+.table.table-hosts th:nth-child(2),
+.table.table-hosts td:nth-child(2) {
+  width: 110px;
+}
+
+.table.table-hosts th:nth-child(3),
+.table.table-hosts td:nth-child(3) {
+  width: 130px;
+}
+
+.table.table-hosts th:nth-child(4),
+.table.table-hosts td:nth-child(4),
+.table.table-hosts th:nth-child(5),
+.table.table-hosts td:nth-child(5) {
+  width: 160px;
+}
+
+.table.table-hosts .col-host-ip-tags {
+  width: 280px;
+}
+
+.table.table-hosts th:nth-child(7),
+.table.table-hosts td:nth-child(7) {
+  width: 90px;
+}
+
+.table.table-hosts th:nth-child(8),
+.table.table-hosts td:nth-child(8) {
+  width: 130px;
+}
+
 .table th {
   text-transform: uppercase;
   font-size: 11px;
@@ -1704,6 +1745,22 @@ p {
 
   .ip-tags-inline > .ip-tags-more {
     flex-shrink: 0;
+  }
+
+  .host-ip-tags-cell {
+    min-width: 240px;
+    max-width: 320px;
+  }
+
+  .host-ip-tags-inline {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+
+  .host-ip-tags-inline > .tag {
+    flex: 0 0 auto;
   }
 
   .ip-note-preview {

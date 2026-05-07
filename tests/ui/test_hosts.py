@@ -70,6 +70,51 @@ def test_hosts_list_renders_project_color_tag(client) -> None:
     assert "Core" in response.text
 
 
+def test_hosts_list_renders_tags_from_linked_ip_assets(client) -> None:
+    import os
+
+    connection = db.connect(os.environ["IPAM_DB_PATH"])
+    try:
+        db.init_db(connection)
+        repository.create_tag(connection, name="prod", color="#22c55e")
+        repository.create_tag(connection, name="linux", color="#38bdf8")
+        host = repository.create_host(connection, name="tagged-host")
+        repository.create_ip_asset(
+            connection,
+            ip_address="10.41.0.10",
+            asset_type=IPAssetType.OS,
+            host_id=host.id,
+            tags=["prod", "linux"],
+        )
+        archived_asset = repository.create_ip_asset(
+            connection,
+            ip_address="10.41.0.11",
+            asset_type=IPAssetType.BMC,
+            host_id=host.id,
+            tags=["retired"],
+        )
+        repository.archive_ip_asset(connection, archived_asset.ip_address)
+    finally:
+        connection.close()
+
+    response = client.get("/ui/hosts")
+
+    assert response.status_code == 200
+    assert 'class="table table-hosts"' in response.text
+    assert '<th class="col-host-ip-tags">IP tags</th>' in response.text
+    assert 'class="host-ip-tags-cell col-host-ip-tags"' in response.text
+    assert 'class="host-ip-tags-inline"' in response.text
+    assert "IP tags for tagged-host" in response.text
+    assert "prod" in response.text
+    assert "--tag-color: #22c55e" in response.text
+    assert "linux" in response.text
+    assert "--tag-color: #38bdf8" in response.text
+    assert (
+        '<span class="tag tag-color" style="--tag-color: #e2e8f0">retired</span>'
+        not in response.text
+    )
+
+
 def test_hosts_list_uses_edit_drawer_actions(client) -> None:
     import os
 
@@ -234,8 +279,13 @@ def test_hosts_list_renders_comprehensive_filters(client) -> None:
     assert 'hx-push-url="true"' in response.text
     assert 'hx-trigger="keyup changed delay:500ms, search"' in response.text
     assert "Type tag and press Enter" in response.text
-    assert '<button class="btn btn-primary" type="submit">Apply</button>' not in response.text
-    assert '<a class="btn btn-secondary" href="/ui/hosts">Clear</a>' not in response.text
+    assert (
+        '<button class="btn btn-primary" type="submit">Apply</button>'
+        not in response.text
+    )
+    assert (
+        '<a class="btn btn-secondary" href="/ui/hosts">Clear</a>' not in response.text
+    )
     assert '<option value="unassigned"' in response.text
     assert '<option value="linked"' in response.text
 

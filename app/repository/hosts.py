@@ -163,7 +163,10 @@ def _apply_host_filters(
         tag_match = (
             select(db_schema.IPAssetTag.ip_asset_id)
             .join(db_schema.Tag, db_schema.Tag.id == db_schema.IPAssetTag.tag_id)
-            .join(db_schema.IPAsset, db_schema.IPAsset.id == db_schema.IPAssetTag.ip_asset_id)
+            .join(
+                db_schema.IPAsset,
+                db_schema.IPAsset.id == db_schema.IPAssetTag.ip_asset_id,
+            )
             .where(
                 db_schema.IPAsset.host_id == db_schema.Host.id,
                 db_schema.IPAsset.archived == 0,
@@ -205,7 +208,10 @@ def _apply_host_filters(
         tag_exists = (
             select(db_schema.IPAssetTag.ip_asset_id)
             .join(db_schema.Tag, db_schema.Tag.id == db_schema.IPAssetTag.tag_id)
-            .join(db_schema.IPAsset, db_schema.IPAsset.id == db_schema.IPAssetTag.ip_asset_id)
+            .join(
+                db_schema.IPAsset,
+                db_schema.IPAsset.id == db_schema.IPAssetTag.ip_asset_id,
+            )
             .where(
                 db_schema.IPAsset.host_id == db_schema.Host.id,
                 db_schema.IPAsset.archived == 0,
@@ -372,9 +378,57 @@ def _host_os_bmc_ip_links(
     return links
 
 
+def _host_ip_tag_details(
+    session: Session, host_ids: list[int]
+) -> dict[int, list[dict[str, str]]]:
+    if not host_ids:
+        return {}
+
+    rows = (
+        session.execute(
+            select(
+                db_schema.IPAsset.host_id,
+                db_schema.Tag.name.label("tag_name"),
+                db_schema.Tag.color.label("tag_color"),
+            )
+            .join(
+                db_schema.IPAssetTag,
+                db_schema.IPAssetTag.ip_asset_id == db_schema.IPAsset.id,
+            )
+            .join(db_schema.Tag, db_schema.Tag.id == db_schema.IPAssetTag.tag_id)
+            .where(
+                db_schema.IPAsset.host_id.in_(host_ids),
+                db_schema.IPAsset.archived == 0,
+            )
+            .order_by(
+                db_schema.IPAsset.host_id,
+                db_schema.Tag.name,
+            )
+        )
+        .mappings()
+        .all()
+    )
+
+    tags_by_host: dict[int, list[dict[str, str]]] = {
+        host_id: [] for host_id in host_ids
+    }
+    seen: dict[int, set[str]] = {host_id: set() for host_id in host_ids}
+    for row in rows:
+        host_id = int(row["host_id"])
+        tag_name = str(row["tag_name"])
+        if tag_name in seen.setdefault(host_id, set()):
+            continue
+        seen[host_id].add(tag_name)
+        tags_by_host.setdefault(host_id, []).append(
+            {"name": tag_name, "color": str(row["tag_color"])}
+        )
+    return tags_by_host
+
+
 def _host_count_row_payloads(
     rows: Sequence[Mapping[str, object]],
     links_by_host: dict[int, dict[str, list[dict[str, object]]]],
+    tags_by_host: dict[int, list[dict[str, str]]],
 ) -> list[dict[str, object]]:
     return [
         {
@@ -390,6 +444,7 @@ def _host_count_row_payloads(
             "bmc_ips": row["bmc_ips"] or "",
             "os_ip_links": links_by_host.get(int(row["id"]), {}).get("os", []),
             "bmc_ip_links": links_by_host.get(int(row["id"]), {}).get("bmc", []),
+            "ip_tags": tags_by_host.get(int(row["id"]), []),
         }
         for row in rows
     ]
@@ -424,10 +479,10 @@ def list_hosts_with_ip_counts(
             .mappings()
             .all()
         )
-        links_by_host = _host_os_bmc_ip_links(
-            session, [int(row["id"]) for row in rows]
-        )
-    return _host_count_row_payloads(rows, links_by_host)
+        host_ids = [int(row["id"]) for row in rows]
+        links_by_host = _host_os_bmc_ip_links(session, host_ids)
+        tags_by_host = _host_ip_tag_details(session, host_ids)
+    return _host_count_row_payloads(rows, links_by_host, tags_by_host)
 
 
 def count_hosts(
@@ -443,7 +498,9 @@ def count_hosts(
     tag_names: Optional[list[str]] = None,
 ) -> int:
     statement = _apply_host_filters(
-        select(func.count()).select_from(db_schema.Host).join(
+        select(func.count())
+        .select_from(db_schema.Host)
+        .join(
             db_schema.Vendor,
             db_schema.Vendor.id == db_schema.Host.vendor_id,
             isouter=True,
@@ -495,10 +552,10 @@ def list_hosts_with_ip_counts_paginated(
             .mappings()
             .all()
         )
-        links_by_host = _host_os_bmc_ip_links(
-            session, [int(row["id"]) for row in rows]
-        )
-    return _host_count_row_payloads(rows, links_by_host)
+        host_ids = [int(row["id"]) for row in rows]
+        links_by_host = _host_os_bmc_ip_links(session, host_ids)
+        tags_by_host = _host_ip_tag_details(session, host_ids)
+    return _host_count_row_payloads(rows, links_by_host, tags_by_host)
 
 
 def get_host_linked_assets_grouped(

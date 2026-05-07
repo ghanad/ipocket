@@ -7,6 +7,7 @@ from app.repository import (
     create_host,
     create_ip_asset,
     create_project,
+    create_tag,
     create_vendor,
     delete_host,
     get_host_by_name,
@@ -101,6 +102,44 @@ def test_list_hosts_with_ip_counts_includes_os_and_bmc_ips(_setup_connection) ->
     assert hosts[0]["project_count"] == 1
     assert hosts[0]["project_name"] == "Edge"
     assert hosts[0]["project_color"] == "#1d4ed8"
+
+
+def test_list_hosts_with_ip_counts_includes_linked_active_ip_tags(
+    _setup_connection,
+) -> None:
+    connection = _setup_connection()
+    host = create_host(connection, name="host-tags")
+    create_tag(connection, name="prod", color="#22c55e")
+    create_tag(connection, name="linux", color="#38bdf8")
+    create_ip_asset(
+        connection,
+        ip_address="10.21.0.10",
+        asset_type=IPAssetType.OS,
+        host_id=host.id,
+        tags=["prod", "linux"],
+    )
+    create_ip_asset(
+        connection,
+        ip_address="10.21.0.11",
+        asset_type=IPAssetType.BMC,
+        host_id=host.id,
+        tags=["prod"],
+    )
+    archived_asset = create_ip_asset(
+        connection,
+        ip_address="10.21.0.12",
+        asset_type=IPAssetType.VM,
+        host_id=host.id,
+        tags=["retired"],
+    )
+    archive_ip_asset(connection, archived_asset.ip_address)
+
+    hosts = list_hosts_with_ip_counts(connection)
+
+    assert hosts[0]["ip_tags"] == [
+        {"name": "linux", "color": "#38bdf8"},
+        {"name": "prod", "color": "#22c55e"},
+    ]
 
 
 def test_list_host_pair_ips_for_hosts_maps_os_and_bmc(_setup_connection) -> None:

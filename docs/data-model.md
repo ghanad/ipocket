@@ -73,7 +73,7 @@ UI assignment flows only allow selecting from existing tags; they do not create 
 - `notes` (TEXT, nullable)
 - `vendor_id` (INTEGER, nullable; FK to `vendors.id`)
 
-Host detail grouping is presentation-only: active linked IP assets are grouped as OS, BMC, and other asset types with their existing project, tag, and notes metadata without changing the stored Host or IPAsset relationships. The Hosts list also renders OS/BMC linked IPs as navigation links to existing IPAsset detail pages; this does not add host-level address fields.
+Host detail grouping is presentation-only: active linked IP assets are grouped as OS, BMC, and other asset types with their existing project, tag, and notes metadata without changing the stored Host or IPAsset relationships. The Hosts list also renders OS/BMC linked IPs as navigation links to existing IPAsset detail pages and shows deduplicated tags from linked active IP assets; this does not add host-level address or tag fields.
 
 ## Vendor
 - `name` (TEXT, unique)
@@ -122,7 +122,7 @@ Self-service password changes (`/ui/account/password`) do not add fields/tables;
 - Project assignment is managed from the main **IP Assets** list using filters and edit actions.
 - There is no separate "Needs Assignment" page in the current UI.
 - Range address drill-down (`/ui/ranges/{id}/addresses`) now adds UI-only search/status/pagination controls; this does not change persisted schema or entity fields.
-- Hosts list filtering by text, project, assignment, status, vendor, and tags is UI/query behavior only. Text and select filters update the table immediately with HTMX. Host tag filters match tags on linked active IP assets and do not add host-level tag storage.
+- Hosts list filtering by text, project, assignment, status, vendor, and tags is UI/query behavior only. Text and select filters update the table immediately with HTMX. Host tag filters and the Hosts table **IP tags** column both use tags on linked active IP assets and do not add host-level tag storage.
 
 ## Connector ingestion note
 - Prometheus, vCenter, and Elasticsearch connectors do not introduce new database tables or fields.
