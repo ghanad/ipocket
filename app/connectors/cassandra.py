@@ -56,7 +56,9 @@ def parse_contact_points(value: str | Sequence[str]) -> list[str]:
             contact_points.append(candidate)
             seen.add(candidate)
     if not contact_points:
-        raise CassandraConnectorError("At least one Cassandra contact point is required.")
+        raise CassandraConnectorError(
+            "At least one Cassandra contact point is required."
+        )
     return contact_points
 
 
@@ -171,7 +173,9 @@ def fetch_cassandra_nodes(
         hosts = list(metadata.all_hosts())
         return _records_from_metadata_hosts(hosts, cluster_name=cluster_name)
     except Exception as exc:
-        raise CassandraConnectorError(f"Failed to read Cassandra cluster metadata: {exc}") from exc
+        raise CassandraConnectorError(
+            f"Failed to read Cassandra cluster metadata: {exc}"
+        ) from exc
     finally:
         if session is not None:
             session.shutdown()
