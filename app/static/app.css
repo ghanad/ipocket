@@ -1758,10 +1758,16 @@ p {
 
   .host-ip-tags-inline > .tag {
     flex: 0 0 auto;
-    max-width: 76px;
+    max-width: 72px;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+  }
+
+  .table.table-hosts .host-ip-tags-inline > .tag {
+    padding: 3px 9px;
+    border-radius: 7px;
+    font-size: 12px;
   }
 
   .ip-note-preview {

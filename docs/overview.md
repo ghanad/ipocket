@@ -121,7 +121,7 @@ Hosts can be linked to a vendor from the shared **Vendors** catalog.
 - Host add form supports selecting a project plus inline OS/BMC IP inputs; when a project is selected, newly linked IP assets inherit that project during host creation.
 - Hosts list shows side-by-side Edit/Delete actions in the Actions column for quick access.
 - Hosts list shows linked OS and BMC IP addresses alongside the total linked IP count; OS/BMC addresses link directly to their IP asset detail pages.
-- Hosts list shows an **IP tags** column with deduplicated tags from linked active IP assets; these are IPAsset tags and do not create host-level tag storage. To keep the table compact, rows show up to 3 tag chips and collapse additional tags behind a `+N more` popover. Clicking any inline or popover tag immediately applies that tag to the Hosts filter.
+- Hosts list shows an **IP tags** column with deduplicated tags from linked active IP assets; these are IPAsset tags and do not create host-level tag storage. To keep the table compact and aligned with IP Assets, host tag chips use the same compact sizing, rows show up to 3 tag chips, and additional tags collapse behind a `+N more` popover. Clicking any inline or popover tag immediately applies that tag to the Hosts filter.
 - IP Asset detail pages show the paired host address only for OS/BMC assets: OS records show linked BMC addresses, and BMC records show linked OS addresses.
 - In Host edit, clearing an OS/BMC IP from the drawer and saving now unlinks that IP from the host (the IP asset is kept, only `host_id` is cleared).
 - Hosts list displays a project badge (with project color) based on linked IP assignments; multiple linked projects show a warning badge.

@@ -122,7 +122,7 @@ Self-service password changes (`/ui/account/password`) do not add fields/tables;
 - Project assignment is managed from the main **IP Assets** list using filters and edit actions.
 - There is no separate "Needs Assignment" page in the current UI.
 - Range address drill-down (`/ui/ranges/{id}/addresses`) now adds UI-only search/status/pagination controls; this does not change persisted schema or entity fields.
-- Hosts list filtering by text, project, assignment, status, vendor, and tags is UI/query behavior only. Text and select filters update the table immediately with HTMX. Host tag filters and the Hosts table **IP tags** column both use tags on linked active IP assets and do not add host-level tag storage; clicking tag chips applies the existing tag filter, and collapsing extra tag chips behind `+N more` is presentation-only.
+- Hosts list filtering by text, project, assignment, status, vendor, and tags is UI/query behavior only. Text and select filters update the table immediately with HTMX. Host tag filters and the Hosts table **IP tags** column both use tags on linked active IP assets and do not add host-level tag storage; compact tag-chip sizing, clicking tag chips to apply the existing tag filter, and collapsing extra tag chips behind `+N more` are presentation-only.
 
 ## Connector ingestion note
 - Prometheus, vCenter, and Elasticsearch connectors do not introduce new database tables or fields.

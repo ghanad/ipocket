@@ -32,7 +32,8 @@ def test_ui_assets_are_local() -> None:
     assert ".ip-tags-inline > .ip-tags-more {" in css
     assert "flex-shrink: 0;" in css
     assert ".host-ip-tags-inline > .tag {" in css
-    assert "max-width: 76px;" in css
+    assert "max-width: 72px;" in css
+    assert ".table.table-hosts .host-ip-tags-inline > .tag {" in css
     assert "color: var(--tag-color-text, #0f172a);" in css
     assert ".tag-picker-dropdown[hidden] {" in css
     assert "display: none;" in css
