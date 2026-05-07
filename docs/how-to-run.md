@@ -4,6 +4,7 @@
 - Python 3.11+
 - SQLite (built-in)
 - HTTP client support comes from the pip-installed `httpx` package in `requirements.txt`; ipocket does not ship a local `httpx/` package in the repo to avoid import shadowing.
+- Cassandra connector support comes from the pip-installed `cassandra-driver` package in `requirements.txt`.
 
 ## Run locally
 Install dependencies:
@@ -186,6 +187,10 @@ Endpoints:
 - Health check: http://127.0.0.1:8000/health
 - Metrics: http://127.0.0.1:8000/metrics
 - Service discovery: http://127.0.0.1:8000/sd/node
+
+Connector CLI examples:
+- Cassandra node import: `python -m app.connectors.cassandra --contact-points 10.0.0.10,10.0.0.11 --mode dry-run --db-path ./ipocket.db`
+- Full Cassandra connector options are documented in `/docs/cassandra-connector.md`.
 
 ## UI login (browser)
 Bootstrap a local Superuser before startup:

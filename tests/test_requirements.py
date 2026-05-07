@@ -25,5 +25,11 @@ def test_requirements_include_httpx_dependency() -> None:
     assert "httpx==" in requirements
 
 
+def test_requirements_include_cassandra_driver_for_cassandra_connector() -> None:
+    requirements = (PROJECT_ROOT / "requirements.txt").read_text(encoding="utf-8")
+
+    assert "cassandra-driver==3.29.3" in requirements
+
+
 def test_repository_does_not_ship_local_httpx_package() -> None:
     assert not (PROJECT_ROOT / "httpx").exists()
