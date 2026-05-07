@@ -3,6 +3,7 @@ from __future__ import annotations
 import time
 
 from app import db, repository
+from app.connectors.cassandra import CassandraNodeRecord
 from app.connectors.elasticsearch import ElasticsearchNodeRecord
 from app.connectors.prometheus import PrometheusMetricRecord
 from app.connectors.vcenter import VCenterHostRecord, VCenterVmRecord
@@ -29,10 +30,12 @@ def test_connectors_page_renders_sidebar_link_and_tabs(client) -> None:
     assert 'href="/ui/connectors?tab=vcenter"' in response.text
     assert 'href="/ui/connectors?tab=prometheus"' in response.text
     assert 'href="/ui/connectors?tab=elasticsearch"' in response.text
+    assert 'href="/ui/connectors?tab=cassandra"' in response.text
     assert "Available Connectors" in response.text
     assert "vCenter" in response.text
     assert "Prometheus" in response.text
     assert "Elasticsearch" in response.text
+    assert "Cassandra" in response.text
 
 
 def test_connectors_vcenter_tab_renders_connector_commands(client) -> None:
@@ -64,6 +67,20 @@ def test_connectors_elasticsearch_tab_renders_connector_form(client) -> None:
     assert 'action="/ui/connectors/elasticsearch/run"' in response.text
     assert 'name="elasticsearch_url"' in response.text
     assert 'name="api_key"' in response.text
+    assert 'class="checkbox-field field-span"' in response.text
+    assert 'name="include_cluster_name_tag"' in response.text
+    assert "--include-cluster-name-tag" in response.text
+    assert "Execution log" not in response.text
+
+
+def test_connectors_cassandra_tab_renders_connector_form(client) -> None:
+    response = client.get("/ui/connectors?tab=cassandra")
+
+    assert response.status_code == 200
+    assert "Run Cassandra Connector" in response.text
+    assert 'action="/ui/connectors/cassandra/run"' in response.text
+    assert 'name="contact_points"' in response.text
+    assert 'name="use_tls"' in response.text
     assert 'class="checkbox-field field-span"' in response.text
     assert 'name="include_cluster_name_tag"' in response.text
     assert "--include-cluster-name-tag" in response.text
@@ -745,6 +762,232 @@ def test_elasticsearch_connector_failure_uses_toast_without_inline_error(
     response = _resolve_connector_response(client, response)
     assert response.status_code == 200
     assert "Elasticsearch connector execution failed." in response.text
+    assert "toast-error" in response.text
+
+
+def test_cassandra_connector_apply_mode_requires_editor_role(client) -> None:
+    app.dependency_overrides[ui.get_current_ui_user] = lambda: User(
+        10, "viewer", "x", UserRole.VIEWER, True
+    )
+    try:
+        response = client.post(
+            "/ui/connectors/cassandra/run",
+            follow_redirects=True,
+            data={
+                "contact_points": "10.0.0.10",
+                "mode": "apply",
+            },
+        )
+    finally:
+        app.dependency_overrides.pop(ui.get_current_ui_user, None)
+
+    assert response.status_code == 403
+    assert "Apply mode is restricted to editor accounts." in response.text
+    assert "toast-error" in response.text
+
+
+def test_cassandra_connector_dry_run_allows_non_editor(client, monkeypatch) -> None:
+    app.dependency_overrides[ui.get_current_ui_user] = lambda: User(
+        10, "viewer", "x", UserRole.VIEWER, True
+    )
+    monkeypatch.setattr(
+        connectors_routes,
+        "_run_cassandra_connector",
+        lambda **_kwargs: (["Import mode: dry-run."], [], 0, 0),
+    )
+    try:
+        response = client.post(
+            "/ui/connectors/cassandra/run",
+            follow_redirects=True,
+            data={
+                "contact_points": "10.0.0.10",
+                "mode": "dry-run",
+            },
+        )
+    finally:
+        app.dependency_overrides.pop(ui.get_current_ui_user, None)
+
+    response = _resolve_connector_response(client, response)
+    assert response.status_code == 200
+    assert "Import mode: dry-run." in response.text
+    assert "Cassandra dry-run: Connector completed successfully." in response.text
+    assert "toast-success" in response.text
+
+
+def test_cassandra_connector_passes_cluster_name_tag_option(
+    client, monkeypatch
+) -> None:
+    captured: dict[str, object] = {}
+
+    app.dependency_overrides[ui.get_current_ui_user] = lambda: User(
+        10, "viewer", "x", UserRole.VIEWER, True
+    )
+
+    def _fake_run_cassandra_connector(**kwargs):
+        captured.update(kwargs)
+        return (["Import mode: dry-run."], [], 0, 0)
+
+    monkeypatch.setattr(
+        connectors_routes,
+        "_run_cassandra_connector",
+        _fake_run_cassandra_connector,
+    )
+    try:
+        response = client.post(
+            "/ui/connectors/cassandra/run",
+            follow_redirects=True,
+            data={
+                "contact_points": "10.0.0.10,10.0.0.11",
+                "mode": "dry-run",
+                "include_cluster_name_tag": "1",
+                "use_tls": "1",
+                "insecure": "1",
+            },
+        )
+    finally:
+        app.dependency_overrides.pop(ui.get_current_ui_user, None)
+
+    response = _resolve_connector_response(client, response)
+    assert response.status_code == 200
+    assert captured["contact_points"] == ["10.0.0.10", "10.0.0.11"]
+    assert captured["include_cluster_name_tag"] is True
+    assert captured["use_tls"] is True
+    assert captured["insecure"] is True
+
+
+def test_cassandra_connector_validation_preserves_cluster_name_tag_checkbox(
+    client,
+) -> None:
+    app.dependency_overrides[ui.get_current_ui_user] = lambda: User(
+        10, "viewer", "x", UserRole.VIEWER, True
+    )
+    try:
+        response = client.post(
+            "/ui/connectors/cassandra/run",
+            data={
+                "mode": "dry-run",
+                "include_cluster_name_tag": "1",
+            },
+        )
+    finally:
+        app.dependency_overrides.pop(ui.get_current_ui_user, None)
+
+    assert response.status_code == 400
+    assert "At least one Cassandra contact point is required." in response.text
+    assert 'name="include_cluster_name_tag" value="1" checked' in response.text
+
+
+def test_cassandra_connector_ui_validates_port_timeout_and_auth(client) -> None:
+    app.dependency_overrides[ui.get_current_ui_user] = lambda: User(
+        2, "editor", "x", UserRole.EDITOR, True
+    )
+    try:
+        response = client.post(
+            "/ui/connectors/cassandra/run",
+            follow_redirects=True,
+            data={
+                "contact_points": "10.0.0.10",
+                "port": "0",
+                "username": "cassandra",
+                "timeout": "0",
+                "insecure": "1",
+                "mode": "dry-run",
+            },
+        )
+    finally:
+        app.dependency_overrides.pop(ui.get_current_ui_user, None)
+
+    assert response.status_code == 400
+    assert "Port must be a valid number between 1 and 65535." in response.text
+    assert "Password is required when username is provided." in response.text
+    assert "Insecure TLS requires TLS to be enabled." in response.text
+    assert "Timeout must be a positive integer." in response.text
+
+
+def test_cassandra_connector_ui_runs_dry_run_and_shows_logs(
+    client, monkeypatch
+) -> None:
+    app.dependency_overrides[ui.get_current_ui_user] = lambda: User(
+        2, "editor", "x", UserRole.EDITOR, True
+    )
+    monkeypatch.setattr(
+        connectors_routes,
+        "fetch_cassandra_nodes",
+        lambda **_kwargs: [
+            CassandraNodeRecord(
+                address="10.20.30.40",
+                host_id="node-a",
+                cluster_name="Prod.Cassandra 01",
+            )
+        ],
+    )
+    monkeypatch.setattr(
+        connectors_routes,
+        "import_cassandra_bundle_via_pipeline",
+        lambda *_args, **_kwargs: ImportApplyResult(
+            summary=ImportSummary(
+                vendors=ImportEntitySummary(),
+                projects=ImportEntitySummary(),
+                hosts=ImportEntitySummary(),
+                ip_assets=ImportEntitySummary(
+                    would_create=1, would_update=0, would_skip=0
+                ),
+            ),
+            errors=[],
+            warnings=[],
+        ),
+    )
+    try:
+        response = client.post(
+            "/ui/connectors/cassandra/run",
+            follow_redirects=True,
+            data={
+                "contact_points": "10.20.30.10",
+                "mode": "dry-run",
+                "include_cluster_name_tag": "1",
+            },
+        )
+    finally:
+        app.dependency_overrides.pop(ui.get_current_ui_user, None)
+
+    response = _resolve_connector_response(client, response)
+    assert response.status_code == 200
+    assert "Execution log" in response.text
+    assert "Collected 1 nodes from Cassandra metadata." in response.text
+    assert "Prepared 1 IP assets from node metadata." in response.text
+    assert "Import mode: dry-run." in response.text
+    assert "Cassandra dry-run: Connector completed successfully." in response.text
+    assert "toast-success" in response.text
+
+
+def test_cassandra_connector_failure_uses_toast_without_inline_error(
+    client, monkeypatch
+) -> None:
+    app.dependency_overrides[ui.get_current_ui_user] = lambda: User(
+        2, "editor", "x", UserRole.EDITOR, True
+    )
+    monkeypatch.setattr(
+        connectors_routes,
+        "_run_cassandra_connector",
+        lambda **_kwargs: (_ for _ in ()).throw(
+            connectors_routes.CassandraConnectorError("boom")
+        ),
+    )
+    try:
+        response = client.post(
+            "/ui/connectors/cassandra/run",
+            follow_redirects=True,
+            data={
+                "contact_points": "10.0.0.10",
+                "mode": "dry-run",
+            },
+        )
+    finally:
+        app.dependency_overrides.pop(ui.get_current_ui_user, None)
+
+    response = _resolve_connector_response(client, response)
+    assert response.status_code == 200
+    assert "Cassandra connector execution failed." in response.text
     assert "toast-error" in response.text
 
 

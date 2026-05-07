@@ -14,6 +14,7 @@
   <a class="tab{% if active_tab == 'vcenter' %} tab-active{% endif %}" href="/ui/connectors?tab=vcenter" role="tab" aria-selected="{{ 'true' if active_tab == 'vcenter' else 'false' }}">vCenter</a>
   <a class="tab{% if active_tab == 'prometheus' %} tab-active{% endif %}" href="/ui/connectors?tab=prometheus" role="tab" aria-selected="{{ 'true' if active_tab == 'prometheus' else 'false' }}">Prometheus</a>
   <a class="tab{% if active_tab == 'elasticsearch' %} tab-active{% endif %}" href="/ui/connectors?tab=elasticsearch" role="tab" aria-selected="{{ 'true' if active_tab == 'elasticsearch' else 'false' }}">Elasticsearch</a>
+  <a class="tab{% if active_tab == 'cassandra' %} tab-active{% endif %}" href="/ui/connectors?tab=cassandra" role="tab" aria-selected="{{ 'true' if active_tab == 'cassandra' else 'false' }}">Cassandra</a>
 </div>
 
 {% if active_tab == "vcenter" %}
@@ -22,6 +23,8 @@
   {% include "partials/connectors_prometheus_tab_content.html" %}
 {% elif active_tab == "elasticsearch" %}
   {% include "partials/connectors_elasticsearch_tab_content.html" %}
+{% elif active_tab == "cassandra" %}
+  {% include "partials/connectors_cassandra_tab_content.html" %}
 {% else %}
   {% include "partials/connectors_overview_tab_content.html" %}
 {% endif %}

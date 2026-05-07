@@ -1,3 +1,8 @@
+from app.connectors.cassandra import (
+    CassandraNodeRecord,
+    build_import_bundle_from_cassandra,
+    fetch_cassandra_nodes,
+)
 from app.connectors.elasticsearch import (
     ElasticsearchNodeRecord,
     build_import_bundle_from_elasticsearch,
@@ -16,6 +21,9 @@ from app.connectors.vcenter import (
 )
 
 __all__ = [
+    "CassandraNodeRecord",
+    "fetch_cassandra_nodes",
+    "build_import_bundle_from_cassandra",
     "ElasticsearchNodeRecord",
     "fetch_elasticsearch_nodes",
     "build_import_bundle_from_elasticsearch",

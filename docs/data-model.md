@@ -125,7 +125,7 @@ Self-service password changes (`/ui/account/password`) do not add fields/tables;
 - Hosts list filtering by text, project, assignment, status, vendor, and tags is UI/query behavior only. Text and select filters update the table immediately with HTMX. Host tag filters and the Hosts table **IP tags** column both use tags on linked active IP assets and do not add host-level tag storage; fixed-width table fitting, compact action controls, compact tag-chip sizing, clicking tag chips to apply the existing tag filter, and collapsing extra tag chips behind `+N more` are presentation-only.
 
 ## Connector ingestion note
-- Prometheus, vCenter, and Elasticsearch connectors do not introduce new database tables or fields.
+- Prometheus, vCenter, Elasticsearch, and Cassandra connectors do not introduce new database tables or fields.
 - Connector runs generate standard import bundles (`schema_version=1`) and upsert through the existing IPAsset import pipeline.
 - UI connector runs execute as background jobs so long-running remote calls do not block a single web request.
 - Upserts only change optional fields when those values are explicitly included in connector output; Prometheus updates keep existing `type`, while vCenter updates can overwrite `type`.
@@ -134,3 +134,4 @@ Self-service password changes (`/ui/account/password`) do not add fields/tables;
 - Prometheus connector UI dry-run now renders per-IP change previews (`CREATE`/`UPDATE`/`SKIP`) with field-level differences before apply.
 - vCenter connector entries set `preserve_existing_notes=true` and `merge_tags=true`; this keeps non-empty manual notes, merges connector tags with existing tags, and still updates the connector-provided `type`.
 - Elasticsearch connector entries set `merge_tags=true` and do not set preserve flags; updates can overwrite `type` and `project` when provided, optionally append a normalized `cluster_name` tag when the connector option is enabled, and overwrite notes only when connector `note` is explicitly provided.
+- Cassandra connector entries set `merge_tags=true` and do not set preserve flags; updates can overwrite `type` and `project` when provided, optionally append a normalized Cassandra `cluster_name` tag when the connector option is enabled, and overwrite notes only when connector `note` is explicitly provided.

@@ -10,3 +10,4 @@ pyvmomi==8.0.3.0.1
 passlib==1.7.4
 bcrypt==4.2.0
 defusedxml==0.7.1
+cassandra-driver==3.29.3
