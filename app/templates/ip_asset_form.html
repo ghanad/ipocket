@@ -47,12 +47,20 @@
     </label>
     <label class="field">
       <span>Host</span>
+      <input
+        class="input host-select-search"
+        type="search"
+        placeholder="Search and select host"
+        autocomplete="off"
+        data-ip-host-search
+      />
       <select class="select" name="host_id">
         <option value="">UNASSIGNED</option>
         {% for host in hosts %}
         <option value="{{ host.id }}"{% if asset.host_id == host.id %} selected{% endif %}>{{ host.name }}</option>
         {% endfor %}
       </select>
+      <p class="ip-drawer-helper" data-ip-host-search-empty hidden>No matching hosts.</p>
     </label>
     <label class="field field-span">
       <span>Tags</span>

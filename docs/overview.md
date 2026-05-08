@@ -27,6 +27,7 @@ ipocket is a lightweight IP inventory app to track addresses and their project a
 - Editing or creating an IP from the drawer now preserves the currently visible pagination state (`page`/`per-page`) when returning to the list, including after HTMX page switches.
 - After saving in the drawer, the list view restores the prior scroll position.
 - Host assignment in the drawer only appears when the IP type is OS or BMC.
+- Host assignment controls in IP Asset edit/create flows include a local host search box so large host inventories can be filtered before selecting a host.
 - BMC IPs without a host assignment show a drawer action to create and assign a host named `server_<ip>`.
 - IP assets list hides Host Pair to keep the table focused on assignment and editing fields.
 - IP assets list shows inline Edit/Delete actions side-by-side in the Actions column.

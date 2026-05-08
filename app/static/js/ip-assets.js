@@ -390,8 +390,15 @@
       if (hostSelect) {
         hostSelect.value = '';
       }
+      resetHostSearch();
     }
     updateAutoHostVisibility();
+  };
+
+  const resetHostSearch = () => {
+    if (hostField && typeof window.ipocketResetHostSearch === 'function') {
+      window.ipocketResetHostSearch(hostField);
+    }
   };
 
   const updateAutoHostVisibility = () => {
@@ -561,6 +568,7 @@
     projectPill.textContent = `Project: ${assetData.project_label || 'Unassigned'}`;
     hostPill.textContent = `Host: ${assetData.host_label || '—'}`;
     updateHostVisibility();
+    resetHostSearch();
     initialValues = {
       ip_address: assetData.ip_address || '',
       type: assetData.type || '',
@@ -668,6 +676,7 @@
       notes: '',
     };
     updateHostVisibility();
+    resetHostSearch();
     updateSaveState();
     openBaseDrawer();
     if (autoHostName) {
@@ -1106,6 +1115,7 @@
           hostSelect.appendChild(option);
         }
         hostSelect.value = hostId;
+        resetHostSearch();
       }
       if (hostPill) {
         hostPill.textContent = `Host: ${payload.host_name || '—'}`;
