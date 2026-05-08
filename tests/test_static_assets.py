@@ -134,7 +134,9 @@ def test_refactored_templates_load_external_page_assets() -> None:
         repo_root / "app/static/js/host-select-search.js"
     ).read_text(encoding="utf-8")
     assert "data-ip-host-search" in host_select_search_js
-    assert "option.hidden =" in host_select_search_js
+    assert "host-select-combobox" in host_select_search_js
+    assert "hostSelect.classList.add('host-select-native')" in host_select_search_js
+    assert "setSelectedValue(option.value" in host_select_search_js
     assert "window.ipocketResetHostSearch" in host_select_search_js
     tag_picker_js = (repo_root / "app/static/js/tag-picker.js").read_text(
         encoding="utf-8"

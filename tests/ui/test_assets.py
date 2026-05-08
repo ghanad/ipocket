@@ -355,7 +355,7 @@ def test_ip_asset_direct_form_template_includes_host_search() -> None:
     ).read_text(encoding="utf-8")
 
     assert 'data-ip-host-search' in template_source
-    assert 'placeholder="Search hosts"' in template_source
+    assert 'placeholder="Search and select host"' in template_source
     assert "No matching hosts." in template_source
 
 
