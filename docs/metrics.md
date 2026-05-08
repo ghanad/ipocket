@@ -30,6 +30,7 @@ UI note: IP Assets toast-query cleanup on bulk/update/delete redirects is a navi
 UI note: IP Asset detail Edit/Delete drawer actions are presentation/navigation changes only and do not affect `/metrics` payloads.
 UI note: IP asset export numeric sort fallback (when `ip_int` is null) is export-order behavior only and does not affect `/metrics` payloads.
 UI note: IP Asset detail OS/BMC paired-address display is presentation-only and does not affect `/metrics` payloads.
+UI note: IP Asset detail links for IP address, Host, and paired OS/BMC addresses are navigation-only and do not affect `/metrics` payloads.
 UI note: Host detail linked-IP grouping and per-IP project/tag display are presentation-only and do not affect `/metrics` payloads.
 
 Connector note: connectors import through the same IP upsert pipeline (Prometheus preserves non-empty notes and existing `type` on update and shows per-IP dry-run diffs; vCenter overwrites `type`, merges connector tags, and only writes notes when existing notes are empty; Elasticsearch merges tags, can optionally append a normalized cluster-name tag, can overwrite `type`/`project`, and overwrites notes only when connector note is provided), but they do not add exporter-side Prometheus metrics in ipocket; `/metrics` remains limited to IP inventory counters listed above.

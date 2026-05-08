@@ -64,7 +64,7 @@ UI assignment flows only allow selecting from existing tags; they do not create 
 
 ## OS/BMC host pairing
 - OS and BMC IP assets are paired through their shared `host_id`.
-- On an IP Asset detail page, OS records show linked BMC addresses for the same host, and BMC records show linked OS addresses for the same host.
+- On an IP Asset detail page, OS records show linked BMC addresses for the same host, and BMC records show linked OS addresses for the same host. The IP address, Host, and paired OS/BMC address values are navigation links to the corresponding detail pages.
 - Pair addresses are not shown for `VM`, `VIP`, or `OTHER` asset types.
 
 

@@ -204,6 +204,16 @@ def ui_ip_asset_detail(
     view_model = _build_asset_view_models(
         [asset], project_lookup, host_lookup, tag_lookup, host_pair_lookup
     )[0]
+    view_model["host_pair_assets"] = []
+    if asset.host_id and asset.asset_type in (IPAssetType.OS, IPAssetType.BMC):
+        grouped_host_assets = repository.get_host_linked_assets_grouped(
+            connection, asset.host_id
+        )
+        pair_key = "bmc" if asset.asset_type == IPAssetType.OS else "os"
+        view_model["host_pair_assets"] = [
+            {"id": pair.id, "ip_address": pair.ip_address}
+            for pair in grouped_host_assets[pair_key]
+        ]
     audit_logs = repository.get_audit_logs_for_ip(connection, asset.id)
     audit_log_rows = [
         {
