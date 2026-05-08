@@ -274,12 +274,15 @@ def test_ip_assets_list_uses_drawer_actions_for_edit_and_delete(client) -> None:
     assert "Save" in response.text
     assert "/static/js/ip-assets.js" in response.text
     assert "data-ip-host-field" in response.text
+    assert "data-ip-host-search" in response.text
+    assert "No matching hosts." in response.text
     assert "data-tag-picker" in response.text
     app_css = Path(__file__).resolve().parents[2] / "app/static/app.css"
     css_source = app_css.read_text(encoding="utf-8")
     assert ".table.table-ip-assets th.col-ip-address" in css_source
     assert ".table.table-ip-assets th.col-project" in css_source
     assert ".table.table-ip-assets th.col-type" in css_source
+    assert ".host-select-search" in css_source
 
 
 def test_ip_assets_list_renders_note_preview_with_hover_content(client) -> None:
@@ -341,8 +344,19 @@ def test_ip_assets_js_rebinds_actions_after_htmx_pagination_swap() -> None:
     assert "form.action = `/ui/ip-assets/${assetData.id}/edit`;" in js_source
     assert "form.action = '/ui/ip-assets/new';" in js_source
     assert js_source.count("syncEditReturnTo();") >= 3
+    assert "window.ipocketResetHostSearch(hostField);" in js_source
     assert "data-per-page-control" in table_template
     assert "data-per-page-select" in table_template
+
+
+def test_ip_asset_direct_form_template_includes_host_search() -> None:
+    template_source = (
+        Path(__file__).resolve().parents[2] / "app/templates/ip_asset_form.html"
+    ).read_text(encoding="utf-8")
+
+    assert 'data-ip-host-search' in template_source
+    assert 'placeholder="Search hosts"' in template_source
+    assert "No matching hosts." in template_source
 
 
 def test_ip_assets_edit_can_clear_project_assignment(client) -> None:

@@ -200,12 +200,20 @@
         </div>
         <label class="field" data-ip-host-field>
           <span>Host</span>
+          <input
+            class="input host-select-search"
+            type="search"
+            placeholder="Search hosts"
+            autocomplete="off"
+            data-ip-host-search
+          />
           <select class="select" name="host_id" data-ip-input="host_id">
             <option value="">Unassigned</option>
             {% for host in hosts %}
             <option value="{{ host.id }}">{{ host.name }}</option>
             {% endfor %}
           </select>
+          <p class="ip-drawer-helper" data-ip-host-search-empty hidden>No matching hosts.</p>
         </label>
         <div class="ip-drawer-auto-host" data-ip-auto-host>
           <button class="btn btn-outline btn-small" type="button" data-ip-auto-host-button>

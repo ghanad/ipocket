@@ -965,6 +965,10 @@ p {
   border-color: var(--color-primary);
 }
 
+.host-select-search {
+  width: 100%;
+}
+
 .checkbox-field {
   display: flex;
   align-items: center;
