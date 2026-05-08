@@ -54,7 +54,9 @@
   <div class="detail-grid">
     <div class="detail-item">
       <p class="detail-label">IP address</p>
-      <p class="detail-value mono">{{ asset.ip_address }}</p>
+      <p class="detail-value">
+        <a class="link mono" href="/ui/ip-assets/{{ asset.id }}">{{ asset.ip_address }}</a>
+      </p>
     </div>
     <div class="detail-item">
       <p class="detail-label">Type</p>
@@ -66,12 +68,26 @@
     </div>
     <div class="detail-item">
       <p class="detail-label">Host</p>
-      <p class="detail-value">{{ asset.host_name or "—" }}</p>
+      <p class="detail-value">
+        {% if asset.host_id and asset.host_name %}
+          <a class="link" href="/ui/hosts/{{ asset.host_id }}">{{ asset.host_name }}</a>
+        {% else %}
+          —
+        {% endif %}
+      </p>
     </div>
     {% if asset.type == "OS" or asset.type == "BMC" %}
     <div class="detail-item">
       <p class="detail-label">{% if asset.type == "OS" %}BMC address{% else %}OS address{% endif %}</p>
-      <p class="detail-value mono">{{ asset.host_pair or "—" }}</p>
+      <p class="detail-value">
+        {% if asset.host_pair_assets %}
+          {% for pair in asset.host_pair_assets %}
+            <a class="link mono" href="/ui/ip-assets/{{ pair.id }}">{{ pair.ip_address }}</a>{% if not loop.last %}, {% endif %}
+          {% endfor %}
+        {% else %}
+          —
+        {% endif %}
+      </p>
     </div>
     {% endif %}
     <div class="detail-item">

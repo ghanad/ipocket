@@ -1226,6 +1226,8 @@ def test_ip_asset_detail_uses_enhanced_layout_and_delete_drawer(client) -> None:
     assert response.status_code == 200
     assert "<h2>Details</h2>" in response.text
     assert "Status: Assigned" in response.text
+    assert f'href="/ui/ip-assets/{asset.id}"' in response.text
+    assert f'href="/ui/hosts/{host.id}"' in response.text
     assert 'data-ip-edit="' in response.text
     assert 'data-ip-delete="' in response.text
     assert 'class="row-actions-menu ip-detail-actions"' not in response.text
@@ -1308,12 +1310,12 @@ def test_ip_asset_detail_shows_os_bmc_pair_for_host_linked_assets(client) -> Non
 
     assert os_response.status_code == 200
     assert "BMC address" in os_response.text
-    assert "10.91.0.20" in os_response.text
+    assert f'href="/ui/ip-assets/{bmc_asset.id}">10.91.0.20</a>' in os_response.text
     assert "OS address" not in os_response.text
 
     assert bmc_response.status_code == 200
     assert "OS address" in bmc_response.text
-    assert "10.91.0.10" in bmc_response.text
+    assert f'href="/ui/ip-assets/{os_asset.id}">10.91.0.10</a>' in bmc_response.text
     assert "BMC address" not in bmc_response.text
 
 
