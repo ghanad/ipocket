@@ -6,6 +6,7 @@ from app import db, repository
 from app.connectors.cassandra import CassandraNodeRecord
 from app.connectors.ceph import CephHostRecord
 from app.connectors.elasticsearch import ElasticsearchNodeRecord
+from app.connectors.kubernetes import KubernetesNodeRecord
 from app.connectors.prometheus import PrometheusMetricRecord
 from app.connectors.vcenter import VCenterHostRecord, VCenterVmRecord
 from app.imports.models import ImportApplyResult, ImportEntitySummary, ImportSummary
@@ -33,12 +34,14 @@ def test_connectors_page_renders_sidebar_link_and_tabs(client) -> None:
     assert 'href="/ui/connectors?tab=elasticsearch"' in response.text
     assert 'href="/ui/connectors?tab=cassandra"' in response.text
     assert 'href="/ui/connectors?tab=ceph"' in response.text
+    assert 'href="/ui/connectors?tab=kubernetes"' in response.text
     assert "Available Connectors" in response.text
     assert "vCenter" in response.text
     assert "Prometheus" in response.text
     assert "Elasticsearch" in response.text
     assert "Cassandra" in response.text
     assert "Ceph" in response.text
+    assert "Kubernetes" in response.text
 
 
 def test_connectors_vcenter_tab_renders_connector_commands(client) -> None:
@@ -97,6 +100,20 @@ def test_connectors_ceph_tab_renders_connector_form(client) -> None:
     assert "Run Ceph Connector" in response.text
     assert 'action="/ui/connectors/ceph/run"' in response.text
     assert 'name="ceph_url"' in response.text
+    assert 'name="include_cluster_name_tag"' in response.text
+    assert 'name="include_label_tags"' in response.text
+    assert "--include-label-tags" in response.text
+    assert "Execution log" not in response.text
+
+
+def test_connectors_kubernetes_tab_renders_connector_form(client) -> None:
+    response = client.get("/ui/connectors?tab=kubernetes")
+
+    assert response.status_code == 200
+    assert "Run Kubernetes Connector" in response.text
+    assert 'action="/ui/connectors/kubernetes/run"' in response.text
+    assert 'name="api_url"' in response.text
+    assert 'name="token"' in response.text
     assert 'name="include_cluster_name_tag"' in response.text
     assert 'name="include_label_tags"' in response.text
     assert "--include-label-tags" in response.text
@@ -1569,3 +1586,185 @@ def test_ceph_connector_dry_run_does_not_write_import_run_audit_log(
         assert logs == []
     finally:
         connection.close()
+
+
+def test_kubernetes_connector_apply_mode_requires_editor_role(client) -> None:
+    app.dependency_overrides[ui.get_current_ui_user] = lambda: User(
+        10, "viewer", "x", UserRole.VIEWER, True
+    )
+    try:
+        response = client.post(
+            "/ui/connectors/kubernetes/run",
+            follow_redirects=True,
+            data={
+                "api_url": "https://k8s.example.local:6443",
+                "token": "secret-token",
+                "mode": "apply",
+            },
+        )
+    finally:
+        app.dependency_overrides.pop(ui.get_current_ui_user, None)
+
+    assert response.status_code == 403
+    assert "Apply mode is restricted to editor accounts." in response.text
+    assert "toast-error" in response.text
+    assert "secret-token" not in response.text
+
+
+def test_kubernetes_connector_ui_validates_required_fields(client) -> None:
+    app.dependency_overrides[ui.get_current_ui_user] = lambda: User(
+        2, "editor", "x", UserRole.EDITOR, True
+    )
+    try:
+        response = client.post(
+            "/ui/connectors/kubernetes/run",
+            follow_redirects=True,
+            data={"api_url": "", "token": "", "mode": "dry-run"},
+        )
+    finally:
+        app.dependency_overrides.pop(ui.get_current_ui_user, None)
+
+    assert response.status_code == 400
+    assert "Kubernetes API URL is required." in response.text
+    assert "Kubernetes bearer token is required." in response.text
+
+
+def test_kubernetes_connector_ui_runs_dry_run_and_redacts_token(
+    client, monkeypatch
+) -> None:
+    app.dependency_overrides[ui.get_current_ui_user] = lambda: User(
+        2, "editor", "x", UserRole.EDITOR, True
+    )
+    monkeypatch.setattr(
+        connectors_routes,
+        "_run_kubernetes_connector",
+        lambda **_kwargs: (
+            [
+                "Collected 1 nodes from Kubernetes.",
+                "Prepared 1 hosts and 1 IP assets from Kubernetes node inventory.",
+                "Import mode: dry-run.",
+            ],
+            [],
+            0,
+            0,
+        ),
+    )
+    try:
+        response = client.post(
+            "/ui/connectors/kubernetes/run",
+            follow_redirects=True,
+            data={
+                "api_url": "https://k8s.example.local:6443",
+                "token": "secret-token",
+                "mode": "dry-run",
+            },
+        )
+    finally:
+        app.dependency_overrides.pop(ui.get_current_ui_user, None)
+
+    response = _resolve_connector_response(client, response)
+    assert response.status_code == 200
+    assert "Execution log" in response.text
+    assert "Collected 1 nodes from Kubernetes." in response.text
+    assert "Kubernetes dry-run: Connector completed successfully." in response.text
+    assert "toast-success" in response.text
+    assert "secret-token" not in response.text
+
+
+def test_kubernetes_connector_passes_label_and_cluster_tag_options(
+    client, monkeypatch
+) -> None:
+    captured: dict[str, object] = {}
+    app.dependency_overrides[ui.get_current_ui_user] = lambda: User(
+        10, "viewer", "x", UserRole.VIEWER, True
+    )
+
+    def _fake_run_kubernetes_connector(**kwargs):
+        captured.update(kwargs)
+        return (["Import mode: dry-run."], [], 0, 0)
+
+    monkeypatch.setattr(
+        connectors_routes,
+        "_run_kubernetes_connector",
+        _fake_run_kubernetes_connector,
+    )
+    try:
+        response = client.post(
+            "/ui/connectors/kubernetes/run",
+            follow_redirects=True,
+            data={
+                "api_url": "https://k8s.example.local:6443",
+                "token": "secret-token",
+                "mode": "dry-run",
+                "cluster_name": "Prod Cluster",
+                "include_cluster_name_tag": "1",
+                "include_label_tags": "1",
+            },
+        )
+    finally:
+        app.dependency_overrides.pop(ui.get_current_ui_user, None)
+
+    response = _resolve_connector_response(client, response)
+    assert response.status_code == 200
+    assert captured["cluster_name"] == "Prod Cluster"
+    assert captured["include_cluster_name_tag"] is True
+    assert captured["include_label_tags"] is True
+    assert captured["token"] == "secret-token"
+    assert "secret-token" not in response.text
+
+
+def test_kubernetes_connector_dry_run_logs_ip_preview_and_summaries(
+    monkeypatch,
+) -> None:
+    monkeypatch.setattr(
+        connectors_routes,
+        "fetch_kubernetes_nodes",
+        lambda **_kwargs: [
+            KubernetesNodeRecord(name="worker-a", internal_ips=("10.70.0.10",)),
+            KubernetesNodeRecord(name="worker-b", internal_ips=("10.70.0.11",)),
+        ],
+    )
+    monkeypatch.setattr(
+        connectors_routes,
+        "import_kubernetes_bundle_via_pipeline",
+        lambda *_args, **_kwargs: ImportApplyResult(
+            summary=ImportSummary(
+                vendors=ImportEntitySummary(),
+                projects=ImportEntitySummary(),
+                hosts=ImportEntitySummary(would_create=2),
+                ip_assets=ImportEntitySummary(
+                    would_create=1, would_update=1, would_skip=0
+                ),
+            ),
+            errors=[],
+            warnings=[],
+        ),
+    )
+
+    logs, warnings, _warning_count, _error_count = (
+        connectors_routes._run_kubernetes_connector(
+            connection=None,
+            user=None,
+            api_url="https://k8s.example.local:6443",
+            token="secret-token",
+            insecure=False,
+            asset_type="OS",
+            project_name=None,
+            tags=None,
+            note=None,
+            cluster_name=None,
+            include_cluster_name_tag=False,
+            include_label_tags=False,
+            timeout=30,
+            dry_run=True,
+        )
+    )
+
+    assert warnings == []
+    assert any(
+        "Dry-run IP preview (2): 10.70.0.10, 10.70.0.11" in line for line in logs
+    )
+    assert any("Hosts summary: create=2, update=0, skip=0." in line for line in logs)
+    assert any(
+        "IP assets summary: create=1, update=1, skip=0." in line for line in logs
+    )

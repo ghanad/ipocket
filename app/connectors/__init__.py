@@ -13,6 +13,11 @@ from app.connectors.elasticsearch import (
     build_import_bundle_from_elasticsearch,
     fetch_elasticsearch_nodes,
 )
+from app.connectors.kubernetes import (
+    KubernetesNodeRecord,
+    build_import_bundle_from_kubernetes,
+    fetch_kubernetes_nodes,
+)
 from app.connectors.prometheus import (
     PrometheusMetricRecord,
     build_import_bundle_from_prometheus,
@@ -35,6 +40,9 @@ __all__ = [
     "ElasticsearchNodeRecord",
     "fetch_elasticsearch_nodes",
     "build_import_bundle_from_elasticsearch",
+    "KubernetesNodeRecord",
+    "fetch_kubernetes_nodes",
+    "build_import_bundle_from_kubernetes",
     "PrometheusMetricRecord",
     "fetch_prometheus_query_result",
     "build_import_bundle_from_prometheus",

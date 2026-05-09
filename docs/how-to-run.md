@@ -191,8 +191,10 @@ Endpoints:
 Connector CLI examples:
 - Cassandra node import: `python -m app.connectors.cassandra --contact-points 10.0.0.10,10.0.0.11 --mode dry-run --db-path ./ipocket.db`
 - Ceph host import: `python -m app.connectors.ceph --ceph-url https://ceph-mgr.example.local:8443 --username admin --password '<password>' --mode dry-run --db-path ./ipocket.db`
+- Kubernetes node import: `python -m app.connectors.kubernetes --api-url https://kubernetes.example.local:6443 --token '<service-account-token>' --mode dry-run --db-path ./ipocket.db`
 - Full Cassandra connector options are documented in `/docs/cassandra-connector.md`.
 - Full Ceph connector options are documented in `/docs/ceph-connector.md`.
+- Full Kubernetes connector options are documented in `/docs/kubernetes-connector.md`.
 
 ## UI login (browser)
 Bootstrap a local Superuser before startup:
@@ -245,7 +247,7 @@ UI design reference templates live in `/ui_template` for layout and styling guid
 8) Open **Data Ops** from the sidebar to import or export data using one unified page with tabs. `hosts.csv` exports now include `project_name`, `os_ip`, and `bmc_ip` for round-trip compatibility with CSV import.
    `ip-assets.csv` exports are sorted by numeric IP order (for example `10.0.0.2` appears before `10.0.0.10`), including legacy rows where `ip_int` is null.
    Import upload guardrails: each uploaded file (`bundle.json`, CSV, Nmap XML) is limited to `10 MB`; oversize files are rejected with HTTP `413`.
-9) Open **Connectors** from the sidebar and use **vCenter**, **Prometheus**, **Elasticsearch**, **Cassandra**, or **Ceph** tabs to run connectors directly from UI (`dry-run` or `apply`) as background jobs; while a run is queued/running, the tab auto-refreshes (same `job_id` URL) to show final status and logs without manual refresh.
+9) Open **Connectors** from the sidebar and use **vCenter**, **Prometheus**, **Elasticsearch**, **Cassandra**, **Ceph**, or **Kubernetes** tabs to run connectors directly from UI (`dry-run` or `apply`) as background jobs; while a run is queued/running, the tab auto-refreshes (same `job_id` URL) to show final status and logs without manual refresh.
 10) When assigning tags on IP Assets or Range Address drawers, use the chip picker (`Add tags...`) to search and select existing tags only (create new tag names first in **Library → Tags**).
 11) For multi-row assignment changes, select IPs in **IP Assets** and use **Bulk update** to open the right-side drawer for batch Type/Project/Tag updates; shared tags appear under **Common tags** and can be removed for all selected rows in one apply. For notes, use **Notes action**: keep current notes, overwrite with a provided value, or clear notes for all selected rows.
 12) On an IP Asset detail page, use the header **Edit** and **Delete** buttons to open the same right-side drawer workflow used by the IP Assets list; deleting from detail returns to the IP Assets list.
@@ -522,6 +524,32 @@ python -m app.connectors.ceph \
 ```
 
 See `/docs/ceph-connector.md` for full options and mapping details.
+
+## Kubernetes connector (Node InternalIP import)
+
+Use the Kubernetes connector when you want to import Kubernetes node InternalIP
+addresses into ipocket and link each address to a Host named from the Kubernetes
+Node.
+
+- Open **Connectors → Kubernetes**.
+- Fill Kubernetes API URL and bearer token.
+- Set optional mapping fields (`type/project/tags/note`) and optional
+  cluster/label tag options.
+- Run **dry-run** first, then **apply** as an editor account.
+
+CLI example:
+
+```bash
+python -m app.connectors.kubernetes \
+  --api-url https://kubernetes.example.local:6443 \
+  --token '<service-account-token>' \
+  --asset-type OS \
+  --include-label-tags \
+  --mode dry-run \
+  --db-path ./ipocket.db
+```
+
+See `/docs/kubernetes-connector.md` for full options and mapping details.
 
 ## CI (quality + full tests)
 The GitHub Actions workflow runs code quality checks and the full pytest suite

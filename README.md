@@ -7,7 +7,7 @@ The project is now beyond MVP and includes a broader operational workflow:
 - IP asset inventory with project-based assignment workflows
 - Host, vendor, tag, and IP range management
 - Import/export data operations (CSV, JSON, bundle, Nmap XML)
-- Connector-driven ingestion (vCenter, Prometheus, Elasticsearch, Cassandra, and Ceph)
+- Connector-driven ingestion (vCenter, Prometheus, Elasticsearch, Cassandra, Ceph, and Kubernetes)
 - Management dashboard, audit logging, and service discovery endpoint
 - Prometheus metrics at `GET /metrics`
 
@@ -74,6 +74,7 @@ For Docker/Compose, env vars, and full setup, see `docs/how-to-run.md`.
   - `docs/elasticsearch-connector.md`
   - `docs/cassandra-connector.md`
   - `docs/ceph-connector.md`
+  - `docs/kubernetes-connector.md`
 
 ## Contributing
 Read `AGENTS.md` before making changes.
