@@ -190,7 +190,9 @@ Endpoints:
 
 Connector CLI examples:
 - Cassandra node import: `python -m app.connectors.cassandra --contact-points 10.0.0.10,10.0.0.11 --mode dry-run --db-path ./ipocket.db`
+- Ceph host import: `python -m app.connectors.ceph --ceph-url https://ceph-mgr.example.local:8443 --username admin --password '<password>' --mode dry-run --db-path ./ipocket.db`
 - Full Cassandra connector options are documented in `/docs/cassandra-connector.md`.
+- Full Ceph connector options are documented in `/docs/ceph-connector.md`.
 
 ## UI login (browser)
 Bootstrap a local Superuser before startup:
@@ -243,7 +245,7 @@ UI design reference templates live in `/ui_template` for layout and styling guid
 8) Open **Data Ops** from the sidebar to import or export data using one unified page with tabs. `hosts.csv` exports now include `project_name`, `os_ip`, and `bmc_ip` for round-trip compatibility with CSV import.
    `ip-assets.csv` exports are sorted by numeric IP order (for example `10.0.0.2` appears before `10.0.0.10`), including legacy rows where `ip_int` is null.
    Import upload guardrails: each uploaded file (`bundle.json`, CSV, Nmap XML) is limited to `10 MB`; oversize files are rejected with HTTP `413`.
-9) Open **Connectors** from the sidebar and use **vCenter**, **Prometheus**, or **Elasticsearch** tabs to run connectors directly from UI (`dry-run` or `apply`) as background jobs; while a run is queued/running, the tab auto-refreshes (same `job_id` URL) to show final status and logs without manual refresh.
+9) Open **Connectors** from the sidebar and use **vCenter**, **Prometheus**, **Elasticsearch**, **Cassandra**, or **Ceph** tabs to run connectors directly from UI (`dry-run` or `apply`) as background jobs; while a run is queued/running, the tab auto-refreshes (same `job_id` URL) to show final status and logs without manual refresh.
 10) When assigning tags on IP Assets or Range Address drawers, use the chip picker (`Add tags...`) to search and select existing tags only (create new tag names first in **Library → Tags**).
 11) For multi-row assignment changes, select IPs in **IP Assets** and use **Bulk update** to open the right-side drawer for batch Type/Project/Tag updates; shared tags appear under **Common tags** and can be removed for all selected rows in one apply. For notes, use **Notes action**: keep current notes, overwrite with a provided value, or clear notes for all selected rows.
 12) On an IP Asset detail page, use the header **Edit** and **Delete** buttons to open the same right-side drawer workflow used by the IP Assets list; deleting from detail returns to the IP Assets list.
@@ -455,6 +457,71 @@ python -m app.connectors.elasticsearch \
 ```
 
 See `/docs/elasticsearch-connector.md` for full options and mapping details.
+
+## Ceph connector (Dashboard host inventory import)
+
+Use the Ceph connector when you want to import IPv4 host addresses from Ceph
+Dashboard host inventory (`GET /api/host`) into IP assets and link them to
+ipocket Hosts.
+
+Notes:
+- The connector authenticates with `POST /api/auth` and uses the returned JWT
+  for host inventory requests.
+- Existing IP updates can overwrite `type`, `project`, and host link, append
+  tags, and overwrite note only when `note` is provided in the connector run.
+- Optional cluster-name and label tagging add normalized tags to imported IPs.
+
+UI flow:
+- Open **Connectors → Ceph**.
+- Fill:
+  - Ceph Dashboard URL
+  - username/password
+  - optional `type` / `project` / `tags` / `note`
+  - optional **Add cluster name as tag** or **Add Ceph labels as tags**
+- Start with `dry-run`, inspect logs, then run `apply`.
+
+CLI examples:
+
+Write bundle file only:
+
+```bash
+python -m app.connectors.ceph \
+  --ceph-url https://ceph-mgr.example.local:8443 \
+  --username admin \
+  --password '<password>' \
+  --asset-type OTHER \
+  --mode file \
+  --output ./ceph-bundle.json
+```
+
+Direct dry-run into local DB:
+
+```bash
+python -m app.connectors.ceph \
+  --ceph-url https://ceph-mgr.example.local:8443 \
+  --username admin \
+  --password '<password>' \
+  --insecure \
+  --tags ceph,nodes \
+  --include-label-tags \
+  --mode dry-run \
+  --db-path ./ipocket.db
+```
+
+Direct apply into local DB:
+
+```bash
+python -m app.connectors.ceph \
+  --ceph-url https://ceph-mgr.example.local:8443 \
+  --username admin \
+  --password '<password>' \
+  --project-name Storage \
+  --note 'Imported from Ceph Dashboard hosts' \
+  --mode apply \
+  --db-path ./ipocket.db
+```
+
+See `/docs/ceph-connector.md` for full options and mapping details.
 
 ## CI (quality + full tests)
 The GitHub Actions workflow runs code quality checks and the full pytest suite

@@ -4,6 +4,7 @@ import time
 
 from app import db, repository
 from app.connectors.cassandra import CassandraNodeRecord
+from app.connectors.ceph import CephHostRecord
 from app.connectors.elasticsearch import ElasticsearchNodeRecord
 from app.connectors.prometheus import PrometheusMetricRecord
 from app.connectors.vcenter import VCenterHostRecord, VCenterVmRecord
@@ -31,11 +32,13 @@ def test_connectors_page_renders_sidebar_link_and_tabs(client) -> None:
     assert 'href="/ui/connectors?tab=prometheus"' in response.text
     assert 'href="/ui/connectors?tab=elasticsearch"' in response.text
     assert 'href="/ui/connectors?tab=cassandra"' in response.text
+    assert 'href="/ui/connectors?tab=ceph"' in response.text
     assert "Available Connectors" in response.text
     assert "vCenter" in response.text
     assert "Prometheus" in response.text
     assert "Elasticsearch" in response.text
     assert "Cassandra" in response.text
+    assert "Ceph" in response.text
 
 
 def test_connectors_vcenter_tab_renders_connector_commands(client) -> None:
@@ -84,6 +87,19 @@ def test_connectors_cassandra_tab_renders_connector_form(client) -> None:
     assert 'class="checkbox-field field-span"' in response.text
     assert 'name="include_cluster_name_tag"' in response.text
     assert "--include-cluster-name-tag" in response.text
+    assert "Execution log" not in response.text
+
+
+def test_connectors_ceph_tab_renders_connector_form(client) -> None:
+    response = client.get("/ui/connectors?tab=ceph")
+
+    assert response.status_code == 200
+    assert "Run Ceph Connector" in response.text
+    assert 'action="/ui/connectors/ceph/run"' in response.text
+    assert 'name="ceph_url"' in response.text
+    assert 'name="include_cluster_name_tag"' in response.text
+    assert 'name="include_label_tags"' in response.text
+    assert "--include-label-tags" in response.text
     assert "Execution log" not in response.text
 
 
@@ -991,6 +1007,239 @@ def test_cassandra_connector_failure_uses_toast_without_inline_error(
     assert "toast-error" in response.text
 
 
+def test_ceph_connector_apply_mode_requires_editor_role(client) -> None:
+    app.dependency_overrides[ui.get_current_ui_user] = lambda: User(
+        10, "viewer", "x", UserRole.VIEWER, True
+    )
+    try:
+        response = client.post(
+            "/ui/connectors/ceph/run",
+            follow_redirects=True,
+            data={
+                "ceph_url": "https://ceph.example.local:8443",
+                "username": "admin",
+                "password": "secret",
+                "mode": "apply",
+            },
+        )
+    finally:
+        app.dependency_overrides.pop(ui.get_current_ui_user, None)
+
+    assert response.status_code == 403
+    assert "Apply mode is restricted to editor accounts." in response.text
+    assert "toast-error" in response.text
+
+
+def test_ceph_connector_dry_run_allows_non_editor(client, monkeypatch) -> None:
+    app.dependency_overrides[ui.get_current_ui_user] = lambda: User(
+        10, "viewer", "x", UserRole.VIEWER, True
+    )
+    monkeypatch.setattr(
+        connectors_routes,
+        "_run_ceph_connector",
+        lambda **_kwargs: (["Import mode: dry-run."], [], 0, 0),
+    )
+    try:
+        response = client.post(
+            "/ui/connectors/ceph/run",
+            follow_redirects=True,
+            data={
+                "ceph_url": "https://ceph.example.local:8443",
+                "username": "admin",
+                "password": "secret",
+                "mode": "dry-run",
+            },
+        )
+    finally:
+        app.dependency_overrides.pop(ui.get_current_ui_user, None)
+
+    response = _resolve_connector_response(client, response)
+    assert response.status_code == 200
+    assert "Import mode: dry-run." in response.text
+    assert "Ceph dry-run: Connector completed successfully." in response.text
+    assert "toast-success" in response.text
+
+
+def test_ceph_connector_passes_tag_options(client, monkeypatch) -> None:
+    captured: dict[str, object] = {}
+
+    app.dependency_overrides[ui.get_current_ui_user] = lambda: User(
+        10, "viewer", "x", UserRole.VIEWER, True
+    )
+
+    def _fake_run_ceph_connector(**kwargs):
+        captured.update(kwargs)
+        return (["Import mode: dry-run."], [], 0, 0)
+
+    monkeypatch.setattr(
+        connectors_routes, "_run_ceph_connector", _fake_run_ceph_connector
+    )
+    try:
+        response = client.post(
+            "/ui/connectors/ceph/run",
+            follow_redirects=True,
+            data={
+                "ceph_url": "https://ceph.example.local:8443",
+                "username": "admin",
+                "password": "secret",
+                "mode": "dry-run",
+                "insecure": "1",
+                "include_cluster_name_tag": "1",
+                "include_label_tags": "1",
+                "tags": "ceph,nodes",
+            },
+        )
+    finally:
+        app.dependency_overrides.pop(ui.get_current_ui_user, None)
+
+    response = _resolve_connector_response(client, response)
+    assert response.status_code == 200
+    assert captured["ceph_url"] == "https://ceph.example.local:8443"
+    assert captured["username"] == "admin"
+    assert captured["password"] == "secret"
+    assert captured["insecure"] is True
+    assert captured["include_cluster_name_tag"] is True
+    assert captured["include_label_tags"] is True
+    assert captured["tags"] == ["ceph", "nodes"]
+
+
+def test_ceph_connector_validation_preserves_checkboxes(client) -> None:
+    app.dependency_overrides[ui.get_current_ui_user] = lambda: User(
+        10, "viewer", "x", UserRole.VIEWER, True
+    )
+    try:
+        response = client.post(
+            "/ui/connectors/ceph/run",
+            data={
+                "mode": "dry-run",
+                "include_cluster_name_tag": "1",
+                "include_label_tags": "1",
+            },
+        )
+    finally:
+        app.dependency_overrides.pop(ui.get_current_ui_user, None)
+
+    assert response.status_code == 400
+    assert "Ceph Dashboard URL is required." in response.text
+    assert "Ceph username is required." in response.text
+    assert "Ceph password is required." in response.text
+    assert 'name="include_cluster_name_tag" value="1" checked' in response.text
+    assert 'name="include_label_tags" value="1" checked' in response.text
+
+
+def test_ceph_connector_ui_validates_timeout(client) -> None:
+    app.dependency_overrides[ui.get_current_ui_user] = lambda: User(
+        2, "editor", "x", UserRole.EDITOR, True
+    )
+    try:
+        response = client.post(
+            "/ui/connectors/ceph/run",
+            follow_redirects=True,
+            data={
+                "ceph_url": "https://ceph.example.local:8443",
+                "username": "admin",
+                "password": "secret",
+                "timeout": "0",
+                "mode": "dry-run",
+            },
+        )
+    finally:
+        app.dependency_overrides.pop(ui.get_current_ui_user, None)
+
+    assert response.status_code == 400
+    assert "Timeout must be a positive integer." in response.text
+
+
+def test_ceph_connector_ui_runs_dry_run_and_shows_logs(client, monkeypatch) -> None:
+    app.dependency_overrides[ui.get_current_ui_user] = lambda: User(
+        2, "editor", "x", UserRole.EDITOR, True
+    )
+    monkeypatch.setattr(
+        connectors_routes,
+        "fetch_ceph_hosts",
+        lambda **_kwargs: [
+            CephHostRecord(
+                hostname="ceph-a",
+                addr="10.20.30.40",
+                labels=("mon",),
+                status="online",
+            )
+        ],
+    )
+    monkeypatch.setattr(
+        connectors_routes,
+        "import_ceph_bundle_via_pipeline",
+        lambda *_args, **_kwargs: ImportApplyResult(
+            summary=ImportSummary(
+                vendors=ImportEntitySummary(),
+                projects=ImportEntitySummary(),
+                hosts=ImportEntitySummary(would_create=1, would_update=0, would_skip=0),
+                ip_assets=ImportEntitySummary(
+                    would_create=1, would_update=0, would_skip=0
+                ),
+            ),
+            errors=[],
+            warnings=[],
+        ),
+    )
+    try:
+        response = client.post(
+            "/ui/connectors/ceph/run",
+            follow_redirects=True,
+            data={
+                "ceph_url": "https://ceph.example.local:8443",
+                "username": "admin",
+                "password": "secret",
+                "mode": "dry-run",
+                "include_label_tags": "1",
+            },
+        )
+    finally:
+        app.dependency_overrides.pop(ui.get_current_ui_user, None)
+
+    response = _resolve_connector_response(client, response)
+    assert response.status_code == 200
+    assert "Execution log" in response.text
+    assert "Collected 1 hosts from Ceph Dashboard." in response.text
+    assert "Prepared 1 hosts and 1 IP assets from Ceph host inventory." in response.text
+    assert "Import mode: dry-run." in response.text
+    assert "Ceph dry-run: Connector completed successfully." in response.text
+    assert "toast-success" in response.text
+
+
+def test_ceph_connector_failure_uses_toast_without_inline_error(
+    client, monkeypatch
+) -> None:
+    app.dependency_overrides[ui.get_current_ui_user] = lambda: User(
+        2, "editor", "x", UserRole.EDITOR, True
+    )
+    monkeypatch.setattr(
+        connectors_routes,
+        "_run_ceph_connector",
+        lambda **_kwargs: (_ for _ in ()).throw(
+            connectors_routes.CephConnectorError("boom")
+        ),
+    )
+    try:
+        response = client.post(
+            "/ui/connectors/ceph/run",
+            follow_redirects=True,
+            data={
+                "ceph_url": "https://ceph.example.local:8443",
+                "username": "admin",
+                "password": "secret",
+                "mode": "dry-run",
+            },
+        )
+    finally:
+        app.dependency_overrides.pop(ui.get_current_ui_user, None)
+
+    response = _resolve_connector_response(client, response)
+    assert response.status_code == 200
+    assert "Ceph connector execution failed." in response.text
+    assert "toast-error" in response.text
+
+
 def test_vcenter_connector_apply_writes_import_run_audit_log(
     client, monkeypatch
 ) -> None:
@@ -1203,6 +1452,107 @@ def test_elasticsearch_connector_dry_run_does_not_write_import_run_audit_log(
             data={
                 "elasticsearch_url": "https://127.0.0.1:9200",
                 "api_key": "abc123:def456",
+                "mode": "dry-run",
+            },
+        )
+    finally:
+        app.dependency_overrides.pop(ui.get_current_ui_user, None)
+
+    response = _resolve_connector_response(client, response)
+    assert response.status_code == 200
+    connection = db.connect(os.environ["IPAM_DB_PATH"])
+    try:
+        logs = repository.list_audit_logs(
+            connection, target_type="IMPORT_RUN", limit=10
+        )
+        assert logs == []
+    finally:
+        connection.close()
+
+
+def test_ceph_connector_apply_writes_import_run_audit_log(client, monkeypatch) -> None:
+    import os
+
+    connection = db.connect(os.environ["IPAM_DB_PATH"])
+    try:
+        db.init_db(connection)
+        actor = repository.create_user(
+            connection,
+            username="connector-editor-ceph",
+            hashed_password="x",
+            role=UserRole.EDITOR,
+        )
+    finally:
+        connection.close()
+
+    app.dependency_overrides[ui.get_current_ui_user] = lambda: actor
+    monkeypatch.setattr(
+        connectors_routes,
+        "fetch_ceph_hosts",
+        lambda **_kwargs: [CephHostRecord(hostname="ceph-a", addr="10.60.0.10")],
+    )
+    try:
+        response = client.post(
+            "/ui/connectors/ceph/run",
+            follow_redirects=True,
+            data={
+                "ceph_url": "https://ceph.example.local:8443",
+                "username": "admin",
+                "password": "secret",
+                "mode": "apply",
+            },
+        )
+    finally:
+        app.dependency_overrides.pop(ui.get_current_ui_user, None)
+
+    response = _resolve_connector_response(client, response)
+    assert response.status_code == 200
+    connection = db.connect(os.environ["IPAM_DB_PATH"])
+    try:
+        logs = []
+        for _ in range(20):
+            logs = repository.list_audit_logs(
+                connection, target_type="IMPORT_RUN", limit=10
+            )
+            if logs:
+                break
+            time.sleep(0.05)
+        assert any(log.target_label == "connector_ceph" for log in logs)
+    finally:
+        connection.close()
+
+
+def test_ceph_connector_dry_run_does_not_write_import_run_audit_log(
+    client, monkeypatch
+) -> None:
+    import os
+
+    connection = db.connect(os.environ["IPAM_DB_PATH"])
+    try:
+        db.init_db(connection)
+        actor = repository.create_user(
+            connection,
+            username="connector-viewer-ceph",
+            hashed_password="x",
+            role=UserRole.VIEWER,
+        )
+    finally:
+        connection.close()
+
+    app.dependency_overrides[ui.get_current_ui_user] = lambda: actor
+    monkeypatch.setattr(
+        connectors_routes,
+        "fetch_ceph_hosts",
+        lambda **_kwargs: [CephHostRecord(hostname="ceph-a", addr="10.60.0.11")],
+    )
+    try:
+        response = client.post(
+            "/ui/connectors/ceph/run",
+            follow_redirects=True,
+            data={
+                "ceph_url": "https://ceph.example.local:8443",
+                "username": "admin",
+                "password": "secret",
                 "mode": "dry-run",
             },
         )
