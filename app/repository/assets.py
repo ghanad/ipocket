@@ -259,6 +259,9 @@ def count_active_ip_assets(
     unassigned_only: bool = False,
     query_text: Optional[str] = None,
     tag_names: Optional[list[str]] = None,
+    tag_all_names: Optional[list[str]] = None,
+    tag_any_names: Optional[list[str]] = None,
+    tag_not_names: Optional[list[str]] = None,
     archived_only: bool = False,
 ) -> int:
     return count_active_assets(
@@ -269,6 +272,9 @@ def count_active_ip_assets(
         unassigned_only=unassigned_only,
         query_text=query_text,
         tag_names=tag_names,
+        tag_all_names=tag_all_names,
+        tag_any_names=tag_any_names,
+        tag_not_names=tag_not_names,
         archived_only=archived_only,
     )
 
@@ -281,6 +287,9 @@ def list_active_ip_assets_paginated(
     unassigned_only: bool = False,
     query_text: Optional[str] = None,
     tag_names: Optional[list[str]] = None,
+    tag_all_names: Optional[list[str]] = None,
+    tag_any_names: Optional[list[str]] = None,
+    tag_not_names: Optional[list[str]] = None,
     limit: int = 20,
     offset: int = 0,
     archived_only: bool = False,
@@ -293,6 +302,9 @@ def list_active_ip_assets_paginated(
         unassigned_only=unassigned_only,
         query_text=query_text,
         tag_names=tag_names,
+        tag_all_names=tag_all_names,
+        tag_any_names=tag_any_names,
+        tag_not_names=tag_not_names,
         archived_only=archived_only,
         limit=limit,
         offset=offset,

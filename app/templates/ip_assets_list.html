@@ -93,7 +93,7 @@
         <option value="true"{% if filters.archived_only %} selected{% endif %}>Archived only</option>
       </select>
     </label>
-    <label class="field field-tag-filter">
+    <div class="field field-tag-filter">
       <span>Tags</span>
       <div class="tag-filter-controls">
         <input
@@ -103,29 +103,80 @@
           list="tag-filter-suggestions"
           data-tag-filter-input
         />
+        <div class="tag-filter-mode-controls" role="group" aria-label="Tag filter mode">
+          <button class="tag-filter-mode is-active" type="button" data-tag-filter-mode="tag_any">OR</button>
+          <button class="tag-filter-mode" type="button" data-tag-filter-mode="tag_all">AND</button>
+          <button class="tag-filter-mode" type="button" data-tag-filter-mode="tag_not">NOT</button>
+        </div>
       </div>
       <datalist id="tag-filter-suggestions" data-tag-filter-suggestions>
         {% for tag in tags %}
         <option value="{{ tag.name }}" data-tag-color="{{ tag.color }}"></option>
         {% endfor %}
       </datalist>
-      <div class="tag-filter-selected" data-tag-filter-selected>
-        {% for selected_tag in filters.tag %}
-        {% set selected_tag_obj = (tags | selectattr("name", "equalto", selected_tag) | list | first) %}
-        <span class="tag-filter-entry" data-tag-filter-entry="{{ selected_tag }}">
-          <input type="hidden" name="tag" value="{{ selected_tag }}" />
-          <button
-            class="tag tag-color tag-filter-chip"
-            type="button"
-            data-remove-tag-filter="{{ selected_tag }}"
-            {% if selected_tag_obj %}
-            style="--tag-color: {{ selected_tag_obj.color }}"
-            {% endif %}
-          >{{ selected_tag }} ×</button>
-        </span>
-        {% endfor %}
+      <div class="tag-filter-groups">
+        <div class="tag-filter-group" data-tag-filter-group="tag_any">
+          <span class="tag-filter-group-label">OR</span>
+          <div class="tag-filter-selected" data-tag-filter-selected="tag_any">
+            {% for selected_tag in filters.tag_any %}
+            {% set selected_tag_obj = (tags | selectattr("name", "equalto", selected_tag) | list | first) %}
+            <span class="tag-filter-entry" data-tag-filter-entry="tag_any:{{ selected_tag }}">
+              <input type="hidden" name="tag_any" value="{{ selected_tag }}" />
+              <button
+                class="tag tag-color tag-filter-chip"
+                type="button"
+                data-remove-tag-filter="{{ selected_tag }}"
+                data-tag-filter-param="tag_any"
+                {% if selected_tag_obj %}
+                style="--tag-color: {{ selected_tag_obj.color }}"
+                {% endif %}
+              >{{ selected_tag }} ×</button>
+            </span>
+            {% endfor %}
+          </div>
+        </div>
+        <div class="tag-filter-group" data-tag-filter-group="tag_all">
+          <span class="tag-filter-group-label">AND</span>
+          <div class="tag-filter-selected" data-tag-filter-selected="tag_all">
+            {% for selected_tag in filters.tag_all %}
+            {% set selected_tag_obj = (tags | selectattr("name", "equalto", selected_tag) | list | first) %}
+            <span class="tag-filter-entry" data-tag-filter-entry="tag_all:{{ selected_tag }}">
+              <input type="hidden" name="tag_all" value="{{ selected_tag }}" />
+              <button
+                class="tag tag-color tag-filter-chip"
+                type="button"
+                data-remove-tag-filter="{{ selected_tag }}"
+                data-tag-filter-param="tag_all"
+                {% if selected_tag_obj %}
+                style="--tag-color: {{ selected_tag_obj.color }}"
+                {% endif %}
+              >{{ selected_tag }} ×</button>
+            </span>
+            {% endfor %}
+          </div>
+        </div>
+        <div class="tag-filter-group" data-tag-filter-group="tag_not">
+          <span class="tag-filter-group-label">NOT</span>
+          <div class="tag-filter-selected" data-tag-filter-selected="tag_not">
+            {% for selected_tag in filters.tag_not %}
+            {% set selected_tag_obj = (tags | selectattr("name", "equalto", selected_tag) | list | first) %}
+            <span class="tag-filter-entry" data-tag-filter-entry="tag_not:{{ selected_tag }}">
+              <input type="hidden" name="tag_not" value="{{ selected_tag }}" />
+              <button
+                class="tag tag-color tag-filter-chip"
+                type="button"
+                data-remove-tag-filter="{{ selected_tag }}"
+                data-tag-filter-param="tag_not"
+                {% if selected_tag_obj %}
+                style="--tag-color: {{ selected_tag_obj.color }}"
+                {% endif %}
+              >{{ selected_tag }} ×</button>
+            </span>
+            {% endfor %}
+          </div>
+        </div>
       </div>
-    </label>
+    </div>
   </form>
 </section>
 

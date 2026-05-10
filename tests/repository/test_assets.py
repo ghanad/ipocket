@@ -455,6 +455,131 @@ def test_list_active_ip_assets_paginated_with_tag_filter_any(_setup_connection) 
     assert [asset.ip_address for asset in assets] == ["10.61.0.10", "10.61.0.11"]
 
 
+def test_list_active_ip_assets_paginated_with_tag_filter_all(_setup_connection) -> None:
+    connection = _setup_connection()
+    create_ip_asset(
+        connection,
+        ip_address="10.61.2.10",
+        asset_type=IPAssetType.VM,
+        tags=["prod", "edge"],
+    )
+    create_ip_asset(
+        connection,
+        ip_address="10.61.2.11",
+        asset_type=IPAssetType.VM,
+        tags=["prod"],
+    )
+    create_ip_asset(
+        connection,
+        ip_address="10.61.2.12",
+        asset_type=IPAssetType.VM,
+        tags=["edge", "ops"],
+    )
+
+    total = count_active_ip_assets(connection, tag_all_names=["prod", "edge"])
+    assets = list_active_ip_assets_paginated(
+        connection, tag_all_names=["prod", "edge"], limit=10, offset=0
+    )
+
+    assert total == 1
+    assert [asset.ip_address for asset in assets] == ["10.61.2.10"]
+
+
+def test_list_active_ip_assets_paginated_with_tag_filter_any_names(
+    _setup_connection,
+) -> None:
+    connection = _setup_connection()
+    create_ip_asset(
+        connection, ip_address="10.61.3.10", asset_type=IPAssetType.VM, tags=["edge"]
+    )
+    create_ip_asset(
+        connection, ip_address="10.61.3.11", asset_type=IPAssetType.VM, tags=["db"]
+    )
+    create_ip_asset(
+        connection, ip_address="10.61.3.12", asset_type=IPAssetType.VM, tags=["ops"]
+    )
+
+    total = count_active_ip_assets(connection, tag_any_names=["edge", "db"])
+    assets = list_active_ip_assets_paginated(
+        connection, tag_any_names=["edge", "db"], limit=10, offset=0
+    )
+
+    assert total == 2
+    assert [asset.ip_address for asset in assets] == ["10.61.3.10", "10.61.3.11"]
+
+
+def test_list_active_ip_assets_paginated_with_tag_filter_not(_setup_connection) -> None:
+    connection = _setup_connection()
+    create_ip_asset(
+        connection, ip_address="10.61.4.10", asset_type=IPAssetType.VM, tags=["prod"]
+    )
+    create_ip_asset(
+        connection,
+        ip_address="10.61.4.11",
+        asset_type=IPAssetType.VM,
+        tags=["prod", "deprecated"],
+    )
+    create_ip_asset(
+        connection, ip_address="10.61.4.12", asset_type=IPAssetType.VM, tags=["edge"]
+    )
+
+    total = count_active_ip_assets(connection, tag_not_names=["deprecated"])
+    assets = list_active_ip_assets_paginated(
+        connection, tag_not_names=["deprecated"], limit=10, offset=0
+    )
+
+    assert total == 2
+    assert [asset.ip_address for asset in assets] == ["10.61.4.10", "10.61.4.12"]
+
+
+def test_list_active_ip_assets_paginated_combines_advanced_tag_filters(
+    _setup_connection,
+) -> None:
+    connection = _setup_connection()
+    create_ip_asset(
+        connection,
+        ip_address="10.61.5.10",
+        asset_type=IPAssetType.VM,
+        tags=["prod", "edge", "api"],
+    )
+    create_ip_asset(
+        connection,
+        ip_address="10.61.5.11",
+        asset_type=IPAssetType.VM,
+        tags=["prod", "db"],
+    )
+    create_ip_asset(
+        connection,
+        ip_address="10.61.5.12",
+        asset_type=IPAssetType.VM,
+        tags=["prod", "edge", "deprecated"],
+    )
+    create_ip_asset(
+        connection,
+        ip_address="10.61.5.13",
+        asset_type=IPAssetType.VM,
+        tags=["edge", "api"],
+    )
+
+    total = count_active_ip_assets(
+        connection,
+        tag_all_names=["prod"],
+        tag_any_names=["edge", "db"],
+        tag_not_names=["deprecated"],
+    )
+    assets = list_active_ip_assets_paginated(
+        connection,
+        tag_all_names=["prod"],
+        tag_any_names=["edge", "db"],
+        tag_not_names=["deprecated"],
+        limit=10,
+        offset=0,
+    )
+
+    assert total == 2
+    assert [asset.ip_address for asset in assets] == ["10.61.5.10", "10.61.5.11"]
+
+
 def test_tag_filter_is_case_insensitive_for_count_and_list(_setup_connection) -> None:
     connection = _setup_connection()
     create_ip_asset(

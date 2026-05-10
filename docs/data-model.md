@@ -48,6 +48,7 @@ Export ordering behavior:
 Tag names are normalized by trimming whitespace and lowercasing. Allowed characters are letters, digits, dashes, and
 underscores (`^[a-z0-9_-]+$`).
 UI assignment flows only allow selecting from existing tags; they do not create new tags during IP assignment.
+IP Assets tag filtering is UI/query behavior only and does not change tag relationships. The list supports **OR** (`tag_any`), **AND** (`tag_all`), and **NOT** (`tag_not`) filter groups; legacy repeated `tag` query values are treated as **OR** filters for compatibility.
 
 
 ## IPAssetTag

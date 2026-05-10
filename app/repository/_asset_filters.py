@@ -22,6 +22,9 @@ def _apply_asset_filters(
     unassigned_only: bool,
     query_text: Optional[str],
     tag_names: Optional[list[str]],
+    tag_all_names: Optional[list[str]],
+    tag_any_names: Optional[list[str]],
+    tag_not_names: Optional[list[str]],
     archived_only: bool,
 ):
     statement = statement.where(
@@ -44,17 +47,49 @@ def _apply_asset_filters(
     normalized_tag_names = [
         tag.strip().lower() for tag in (tag_names or []) if tag and tag.strip()
     ]
-    if normalized_tag_names:
+    normalized_tag_any_names = [
+        tag.strip().lower() for tag in (tag_any_names or []) if tag and tag.strip()
+    ]
+    normalized_tag_all_names = [
+        tag.strip().lower() for tag in (tag_all_names or []) if tag and tag.strip()
+    ]
+    normalized_tag_not_names = [
+        tag.strip().lower() for tag in (tag_not_names or []) if tag and tag.strip()
+    ]
+    any_tag_names = [*normalized_tag_names, *normalized_tag_any_names]
+    if any_tag_names:
         tag_exists = (
             select(db_schema.IPAssetTag.ip_asset_id)
             .join(db_schema.Tag, db_schema.Tag.id == db_schema.IPAssetTag.tag_id)
             .where(
                 db_schema.IPAssetTag.ip_asset_id == db_schema.IPAsset.id,
-                func.lower(db_schema.Tag.name).in_(normalized_tag_names),
+                func.lower(db_schema.Tag.name).in_(any_tag_names),
             )
             .exists()
         )
         statement = statement.where(tag_exists)
+    for tag_name in normalized_tag_all_names:
+        required_tag_exists = (
+            select(db_schema.IPAssetTag.ip_asset_id)
+            .join(db_schema.Tag, db_schema.Tag.id == db_schema.IPAssetTag.tag_id)
+            .where(
+                db_schema.IPAssetTag.ip_asset_id == db_schema.IPAsset.id,
+                func.lower(db_schema.Tag.name) == tag_name,
+            )
+            .exists()
+        )
+        statement = statement.where(required_tag_exists)
+    if normalized_tag_not_names:
+        excluded_tag_exists = (
+            select(db_schema.IPAssetTag.ip_asset_id)
+            .join(db_schema.Tag, db_schema.Tag.id == db_schema.IPAssetTag.tag_id)
+            .where(
+                db_schema.IPAssetTag.ip_asset_id == db_schema.IPAsset.id,
+                func.lower(db_schema.Tag.name).in_(normalized_tag_not_names),
+            )
+            .exists()
+        )
+        statement = statement.where(~excluded_tag_exists)
     return statement
 
 
@@ -82,6 +117,9 @@ def count_active_assets(
     query_text: Optional[str],
     tag_names: Optional[list[str]],
     archived_only: bool,
+    tag_all_names: Optional[list[str]] = None,
+    tag_any_names: Optional[list[str]] = None,
+    tag_not_names: Optional[list[str]] = None,
 ) -> int:
     statement = _apply_asset_filters(
         select(func.count()).select_from(db_schema.IPAsset),
@@ -91,6 +129,9 @@ def count_active_assets(
         unassigned_only=unassigned_only,
         query_text=query_text,
         tag_names=tag_names,
+        tag_all_names=tag_all_names,
+        tag_any_names=tag_any_names,
+        tag_not_names=tag_not_names,
         archived_only=archived_only,
     )
     with session_scope(connection_or_session) as session:
@@ -107,6 +148,9 @@ def list_active_assets(
     query_text: Optional[str],
     tag_names: Optional[list[str]],
     archived_only: bool,
+    tag_all_names: Optional[list[str]] = None,
+    tag_any_names: Optional[list[str]] = None,
+    tag_not_names: Optional[list[str]] = None,
     limit: Optional[int] = None,
     offset: int = 0,
 ) -> list[IPAsset]:
@@ -118,6 +162,9 @@ def list_active_assets(
         unassigned_only=unassigned_only,
         query_text=query_text,
         tag_names=tag_names,
+        tag_all_names=tag_all_names,
+        tag_any_names=tag_any_names,
+        tag_not_names=tag_not_names,
         archived_only=archived_only,
     )
     statement = statement.order_by(

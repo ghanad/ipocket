@@ -2191,11 +2191,72 @@ p {
     flex: 1;
   }
 
+  .tag-filter-mode-controls {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+    flex: 0 0 auto;
+  }
+
+  .tag-filter-mode {
+    border: 1px solid #cbd5e1;
+    background: #ffffff;
+    color: #475569;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 12px;
+    font-weight: 700;
+    padding: 4px 8px;
+  }
+
+  .tag-filter-mode.is-active {
+    background: #0f172a;
+    border-color: #0f172a;
+    color: #ffffff;
+  }
+
+  .tag-filter-groups {
+    display: grid;
+    gap: 6px;
+    margin-top: 6px;
+  }
+
+  .tag-filter-group {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .tag-filter-group:not(:has(.tag-filter-entry)) {
+    display: none;
+  }
+
+  .tag-filter-group-label {
+    min-width: 48px;
+    color: #64748b;
+    font-size: 12px;
+    font-weight: 700;
+  }
+
   .tag-filter-selected {
-    margin-top: 8px;
     display: flex;
     flex-wrap: wrap;
     gap: 6px;
+  }
+
+  @media (max-width: 760px) {
+    .tag-filter-controls {
+      align-items: stretch;
+      flex-direction: column;
+    }
+
+    .tag-filter-mode-controls {
+      width: 100%;
+    }
+
+    .tag-filter-mode {
+      flex: 1;
+    }
   }
 
   .tag-picker-native {
