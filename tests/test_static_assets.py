@@ -12,6 +12,10 @@ def test_ui_assets_are_local() -> None:
     assert "fonts.googleapis.com" in base_html
     assert "cdn.jsdelivr.net/npm/alpinejs" in base_html
     assert (
+        '<link rel="icon" type="image/png" sizes="32x32" href="/static/favicon.png" />'
+        in base_html
+    )
+    assert (
         '<link rel="stylesheet" href="/static/app.css?v=hosts-table-fit" />'
         in base_html
     )
@@ -55,6 +59,17 @@ def test_ui_assets_are_local() -> None:
     assert ".bulk-drawer-selection {" in css
     assert ".bulk-common-tags {" in css
     assert ".bulk-common-tag-chip.is-marked {" in css
+
+
+def test_favicon_asset_is_available() -> None:
+    repo_root = Path(__file__).resolve().parents[1]
+    favicon = repo_root / "app/static/favicon.png"
+    favicon_bytes = favicon.read_bytes()
+
+    assert favicon.exists()
+    assert favicon_bytes.startswith(b"\x89PNG\r\n\x1a\n")
+    assert int.from_bytes(favicon_bytes[16:20], "big") == 32
+    assert int.from_bytes(favicon_bytes[20:24], "big") == 32
 
 
 def test_use_local_assets_env_override(monkeypatch) -> None:

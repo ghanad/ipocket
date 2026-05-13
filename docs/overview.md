@@ -49,6 +49,7 @@ ipocket is a lightweight IP inventory app to track addresses and their project a
 - Management overview dashboard with quick totals for IPs, hosts, vendors, and projects, with cards linking to the relevant detail lists.
 - CIDR-based subnet utilization report on the Management overview page that shows used vs. free IPs per range.
 - Sidebar remains fixed-height with its own scroll to keep navigation and account actions accessible on long pages.
+- UI pages advertise a local `/static/favicon.png` icon so browser tabs/bookmarks show the ipocket brand without external asset loading.
 - The old fixed top header has been removed from the main layout to give pages more vertical space; branding remains in the left sidebar.
 - UI templates generally keep behavior and page-specific styling in static assets (`app/static/js/*.js` and `app/static/app.css`), with the Library Projects, Tags, and Vendors tabs using in-template Alpine directives for drawer/form state.
 - The sidebar account section shows Login when signed out and Logout when signed in.

@@ -124,6 +124,7 @@ create drawer auto-suggests a random color when not prefilled. In local asset mo
 (`IPOCKET_DOCKER_ASSETS=1`), Library drawer interactivity falls back to local scripts
 (`/static/js/projects.js`, `/static/js/tags.js`, `/static/js/vendors.js`, and
 `/static/js/drawer.js`) so all Library tab drawer actions stay available offline.
+The browser favicon is always served locally from `/static/favicon.png`.
 To force local assets in any environment, set:
 
 ```
