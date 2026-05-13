@@ -41,7 +41,12 @@
   const inputs = form ? form.querySelectorAll('[data-ip-input]') : [];
   const filterForm = document.querySelector('.filters-grid');
   const tagFilterInput = filterForm ? filterForm.querySelector('[data-tag-filter-input]') : null;
-  const tagFilterSelected = filterForm ? filterForm.querySelector('[data-tag-filter-selected]') : null;
+  const tagFilterSelectedGroups = filterForm
+    ? filterForm.querySelectorAll('[data-tag-filter-selected]')
+    : [];
+  const tagFilterModeButtons = filterForm
+    ? filterForm.querySelectorAll('[data-tag-filter-mode]')
+    : [];
   const tagFilterSuggestions = filterForm
     ? filterForm.querySelector('[data-tag-filter-suggestions]')
     : null;
@@ -59,6 +64,7 @@
   let tagsPopover = null;
   let tagsPopoverOpenTimer = null;
   let tagsPopoverCloseTimer = null;
+  let activeTagFilterParam = 'tag_any';
   const getCurrentListUrl = () => window.location.pathname + window.location.search;
   const getDeleteReturnUrl = (assetData) => {
     const detailPath = assetData?.id ? `/ui/ip-assets/${assetData.id}` : '';
@@ -966,11 +972,19 @@
     return normalized;
   };
 
-  const listSelectedTags = () => {
-    if (!tagFilterSelected) {
+  const getTagFilterSelectedGroup = (paramName = activeTagFilterParam) => {
+    if (!filterForm) {
+      return null;
+    }
+    return filterForm.querySelector(`[data-tag-filter-selected="${paramName}"]`);
+  };
+
+  const listSelectedTags = (paramName = activeTagFilterParam) => {
+    const selectedGroup = getTagFilterSelectedGroup(paramName);
+    if (!selectedGroup) {
       return [];
     }
-    return Array.from(tagFilterSelected.querySelectorAll('input[name="tag"]')).map((input) => input.value);
+    return Array.from(selectedGroup.querySelectorAll(`input[name="${paramName}"]`)).map((input) => input.value);
   };
 
   const getTagColor = (rawValue) => {
@@ -1000,32 +1014,44 @@
     }
   };
 
-  const addTagFilter = (rawValue) => {
-    if (!tagFilterSelected) {
+  const setActiveTagFilterParam = (paramName) => {
+    if (!['tag_any', 'tag_all', 'tag_not'].includes(paramName)) {
+      return;
+    }
+    activeTagFilterParam = paramName;
+    tagFilterModeButtons.forEach((button) => {
+      button.classList.toggle('is-active', button.dataset.tagFilterMode === paramName);
+    });
+  };
+
+  const addTagFilter = (rawValue, paramName = activeTagFilterParam) => {
+    const selectedGroup = getTagFilterSelectedGroup(paramName);
+    if (!selectedGroup) {
       return false;
     }
     const value = normalizeTagValue(rawValue);
     if (!value) {
       return false;
     }
-    if (listSelectedTags().includes(value)) {
+    if (listSelectedTags(paramName).includes(value)) {
       return false;
     }
     const entry = document.createElement('span');
     entry.className = 'tag-filter-entry';
-    entry.dataset.tagFilterEntry = value;
-    entry.innerHTML = `<input type="hidden" name="tag" value="${value}" /><button class="tag tag-color tag-filter-chip" type="button" data-remove-tag-filter="${value}">${value} ×</button>`;
-    const chip = entry.querySelector(`[data-remove-tag-filter="${value}"]`);
+    entry.dataset.tagFilterEntry = `${paramName}:${value}`;
+    entry.innerHTML = `<input type="hidden" name="${paramName}" value="${value}" /><button class="tag tag-color tag-filter-chip" type="button" data-remove-tag-filter="${value}" data-tag-filter-param="${paramName}">${value} ×</button>`;
+    const chip = entry.querySelector(`[data-remove-tag-filter="${value}"][data-tag-filter-param="${paramName}"]`);
     applyTagFilterChipColor(chip, value);
-    tagFilterSelected.appendChild(entry);
+    selectedGroup.appendChild(entry);
     return true;
   };
 
-  const removeTagFilter = (value) => {
-    if (!tagFilterSelected) {
+  const removeTagFilter = (value, paramName = activeTagFilterParam) => {
+    const selectedGroup = getTagFilterSelectedGroup(paramName);
+    if (!selectedGroup) {
       return false;
     }
-    const entry = tagFilterSelected.querySelector(`[data-tag-filter-entry="${value}"]`);
+    const entry = selectedGroup.querySelector(`[data-tag-filter-entry="${paramName}:${value}"]`);
     if (!entry) {
       return false;
     }
@@ -1064,9 +1090,10 @@
       if (!normalizedValue) {
         return;
       }
-      const changed = listSelectedTags().includes(normalizedValue)
-        ? removeTagFilter(normalizedValue)
-        : addTagFilter(normalizedValue);
+      const targetParam = activeTagFilterParam;
+      const changed = listSelectedTags(targetParam).includes(normalizedValue)
+        ? removeTagFilter(normalizedValue, targetParam)
+        : addTagFilter(normalizedValue, targetParam);
       if (changed) {
         submitTagFilter();
       }
@@ -1247,9 +1274,19 @@
         window.sessionStorage.setItem(SCROLL_KEY, String(window.scrollY || 0));
       });
     }
-    if (tagFilterSelected) {
-      tagFilterSelected.querySelectorAll('[data-remove-tag-filter]').forEach((chip) => {
+    if (tagFilterSelectedGroups.length) {
+      tagFilterSelectedGroups.forEach((selectedGroup) => selectedGroup.querySelectorAll('[data-remove-tag-filter]').forEach((chip) => {
         applyTagFilterChipColor(chip, chip.getAttribute('data-remove-tag-filter') || '');
+      }));
+    }
+    if (tagFilterModeButtons.length) {
+      tagFilterModeButtons.forEach((button) => {
+        button.addEventListener('click', () => {
+          setActiveTagFilterParam(button.dataset.tagFilterMode || 'tag_any');
+          if (tagFilterInput) {
+            tagFilterInput.focus();
+          }
+        });
       });
     }
     if (tagFilterInput) {
@@ -1293,7 +1330,10 @@
       const removeTagButton = event.target.closest('[data-remove-tag-filter]');
       if (removeTagButton) {
         event.preventDefault();
-        if (removeTagFilter(removeTagButton.dataset.removeTagFilter || '')) {
+        if (removeTagFilter(
+          removeTagButton.dataset.removeTagFilter || '',
+          removeTagButton.dataset.tagFilterParam || 'tag_any'
+        )) {
           submitTagFilter();
         }
         return;

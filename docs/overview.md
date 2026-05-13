@@ -10,12 +10,12 @@ ipocket is a lightweight IP inventory app to track addresses and their project a
 - Project filter on IP assets now includes an `Unassigned` option to show only IPs without a project directly from the Project dropdown.
 - Project assignment review is handled directly in the IP Assets list via the **Assignment** filter (`Unassigned only`); the dedicated Needs Assignment page has been removed.
 - IP assets search results are sorted by numeric IP value (so `192.168.1.2` appears before `192.168.1.11`) instead of plain text ordering.
-- IP assets list supports one-click filtering from table values: clicking a Project/Type chip applies that filter instantly, and Tag filtering now uses an autocomplete textbox with multi-tag ANY matching.
+- IP assets list supports one-click filtering from table values: clicking a Project/Type chip applies that filter instantly, and Tag filtering uses an autocomplete builder with **OR**, **AND**, and **NOT** groups. Legacy `tag=...` URLs still map to **OR** matching.
 - Selected tags in the top Tags filter keep each tag's configured catalog color, including chips added live from the autocomplete input.
 - IP assets list includes an archived-only filter for reviewing soft-deleted records when needed.
 - IP assets list includes pagination with a user-selectable page size (default 20) to keep large inventories manageable.
 - Rows-per-page selector in the IP assets table footer is isolated from global table click handlers, so its dropdown stays open reliably while choosing a page size.
-- Changing rows-per-page now preserves active IP assets filters (search text, project/type, assignment, archived state, tags) instead of resetting the list query.
+- Changing rows-per-page now preserves active IP assets filters (search text, project/type, assignment, archived state, and OR/AND/NOT tag filters) instead of resetting the list query.
 - IP assets list keeps row actions (Edit/Delete) and bulk-selection controls active after HTMX pagination/filter updates (no manual page refresh needed).
 - IP assets pagination/filtering/sorting now execute directly in SQL (including `LIMIT/OFFSET`) using persisted IPv4 integer values (`ip_int`) for fast numeric ordering, with text fallback ordering for non-IPv4 values.
 - IP assets list rows use compact spacing for IP text and Project/Type chips to keep more records visible per page.
@@ -49,6 +49,7 @@ ipocket is a lightweight IP inventory app to track addresses and their project a
 - Management overview dashboard with quick totals for IPs, hosts, vendors, and projects, with cards linking to the relevant detail lists.
 - CIDR-based subnet utilization report on the Management overview page that shows used vs. free IPs per range.
 - Sidebar remains fixed-height with its own scroll to keep navigation and account actions accessible on long pages.
+- UI pages advertise a local `/static/favicon.png` icon so browser tabs/bookmarks show the ipocket brand without external asset loading.
 - The old fixed top header has been removed from the main layout to give pages more vertical space; branding remains in the left sidebar.
 - UI templates generally keep behavior and page-specific styling in static assets (`app/static/js/*.js` and `app/static/app.css`), with the Library Projects, Tags, and Vendors tabs using in-template Alpine directives for drawer/form state.
 - The sidebar account section shows Login when signed out and Logout when signed in.

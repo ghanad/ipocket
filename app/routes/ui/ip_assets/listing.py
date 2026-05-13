@@ -22,12 +22,24 @@ from app.routes.ui.utils import (
 router = APIRouter()
 
 
+def _normalize_query_tags(values: Optional[list[str]]) -> list[str]:
+    if not values:
+        return []
+    try:
+        return normalize_tag_names(values)
+    except ValueError:
+        return []
+
+
 @router.get("/ui/ip-assets", response_class=HTMLResponse)
 def ui_list_ip_assets(
     request: Request,
     q: Optional[str] = None,
     project_id: Optional[str] = None,
     tag: Optional[list[str]] = Query(default=None),
+    tag_all: Optional[list[str]] = Query(default=None),
+    tag_any: Optional[list[str]] = Query(default=None),
+    tag_not: Optional[list[str]] = Query(default=None),
     asset_type: Optional[str] = Query(default=None, alias="type"),
     unassigned_only: bool = Query(default=False, alias="unassigned-only"),
     archived_only: bool = Query(default=False, alias="archived-only"),
@@ -57,11 +69,11 @@ def ui_list_ip_assets(
         asset_type_enum = None
     q_value = (q or "").strip()
     query_text = q_value or None
-    raw_tag_values = tag or []
-    try:
-        tag_values = normalize_tag_names(raw_tag_values) if raw_tag_values else []
-    except ValueError:
-        tag_values = []
+    tag_all_values = _normalize_query_tags(tag_all)
+    tag_any_values = normalize_tag_names(
+        [*_normalize_query_tags(tag or []), *_normalize_query_tags(tag_any)]
+    )
+    tag_not_values = _normalize_query_tags(tag_not)
     total_count = repository.count_active_ip_assets(
         connection,
         project_id=parsed_project_id,
@@ -69,7 +81,9 @@ def ui_list_ip_assets(
         asset_type=asset_type_enum,
         unassigned_only=unassigned_only,
         query_text=query_text,
-        tag_names=tag_values,
+        tag_all_names=tag_all_values,
+        tag_any_names=tag_any_values,
+        tag_not_names=tag_not_values,
         archived_only=archived_only,
     )
     total_pages = max(1, math.ceil(total_count / per_page_value)) if total_count else 1
@@ -82,7 +96,9 @@ def ui_list_ip_assets(
         asset_type=asset_type_enum,
         unassigned_only=unassigned_only,
         query_text=query_text,
-        tag_names=tag_values,
+        tag_all_names=tag_all_values,
+        tag_any_names=tag_any_values,
+        tag_not_names=tag_not_values,
         limit=per_page_value,
         offset=offset,
         archived_only=archived_only,
@@ -124,8 +140,12 @@ def ui_list_ip_assets(
         pagination_params["project_id"] = "unassigned"
     elif parsed_project_id is not None:
         pagination_params["project_id"] = parsed_project_id
-    if tag_values:
-        pagination_params["tag"] = tag_values
+    if tag_all_values:
+        pagination_params["tag_all"] = tag_all_values
+    if tag_any_values:
+        pagination_params["tag_any"] = tag_any_values
+    if tag_not_values:
+        pagination_params["tag_not"] = tag_not_values
     if asset_type_enum:
         pagination_params["type"] = asset_type_enum.value
     if unassigned_only:
@@ -186,7 +206,10 @@ def ui_list_ip_assets(
                         if project_unassigned_only
                         else str(parsed_project_id or "")
                     ),
-                    "tag": tag_values,
+                    "tag": tag_any_values,
+                    "tag_all": tag_all_values,
+                    "tag_any": tag_any_values,
+                    "tag_not": tag_not_values,
                     "type": asset_type_enum.value if asset_type_enum else "",
                     "unassigned_only": unassigned_only,
                     "archived_only": archived_only,

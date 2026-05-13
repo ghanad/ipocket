@@ -260,6 +260,9 @@ def test_ip_assets_list_uses_drawer_actions_for_edit_and_delete(client) -> None:
     assert "Save changes" in response.text
     ip_assets_js = Path(__file__).resolve().parents[2] / "app/static/js/ip-assets.js"
     js_source = ip_assets_js.read_text(encoding="utf-8")
+    css_source = (Path(__file__).resolve().parents[2] / "app/static/app.css").read_text(
+        encoding="utf-8"
+    )
     assert "ipocket.ip-assets.scrollY" in js_source
     assert "drawer.dataset.ipDrawerMode = normalizedMode" in js_source
     assert (
@@ -268,6 +271,9 @@ def test_ip_assets_list_uses_drawer_actions_for_edit_and_delete(client) -> None:
     assert "const openButton = bulkForm.querySelector('[data-bulk-open]');" in js_source
     assert "computeCommonBulkTags" in js_source
     assert "data-bulk-remove-tag" in js_source
+    assert "const targetParam = activeTagFilterParam" in js_source
+    assert "addTagFilter(normalizedValue, targetParam)" in js_source
+    assert ".tag-filter-group:not(:has(.tag-filter-entry))" in css_source
     assert "form.style.display = isDeleteMode ? 'none' : 'flex'" in js_source
     assert "deleteForm.style.display = isDeleteMode ? 'flex' : 'none'" in js_source
     assert "data-ip-drawer-title" in response.text
@@ -892,8 +898,16 @@ def test_ip_assets_list_supports_multi_tag_filter_and_clickable_filter_chips(
 
     assert list_response.status_code == 200
     assert 'name="tag"' not in list_response.text
-    assert "data-tag-filter-selected" in list_response.text
+    assert 'data-tag-filter-selected="tag_any"' in list_response.text
+    assert 'data-tag-filter-selected="tag_all"' in list_response.text
+    assert 'data-tag-filter-selected="tag_not"' in list_response.text
     assert "data-tag-filter-input" in list_response.text
+    assert 'data-tag-filter-mode="tag_any"' in list_response.text
+    assert 'data-tag-filter-mode="tag_all"' in list_response.text
+    assert 'data-tag-filter-mode="tag_not"' in list_response.text
+    assert ">OR</button>" in list_response.text
+    assert ">AND</button>" in list_response.text
+    assert ">NOT</button>" in list_response.text
     assert "tag-filter-suggestions" in list_response.text
     assert "data-tag-filter-suggestions" in list_response.text
     assert (
@@ -914,7 +928,69 @@ def test_ip_assets_list_supports_multi_tag_filter_and_clickable_filter_chips(
     assert "10.31.0.22" in filtered_response.text
     assert "10.31.0.23" not in filtered_response.text
     assert 'data-remove-tag-filter="prod"' in filtered_response.text
+    assert 'data-tag-filter-param="tag_any"' in filtered_response.text
+    assert 'name="tag_any" value="prod"' in filtered_response.text
     assert "--tag-color: #22c55e" in filtered_response.text
+
+
+def test_ip_assets_list_supports_advanced_tag_filters(client) -> None:
+    import os
+
+    connection = db.connect(os.environ["IPAM_DB_PATH"])
+    try:
+        db.init_db(connection)
+        repository.create_tag(connection, name="prod", color="#22c55e")
+        repository.create_tag(connection, name="edge", color="#0ea5e9")
+        repository.create_tag(connection, name="db", color="#a855f7")
+        repository.create_tag(connection, name="deprecated", color="#ef4444")
+        repository.create_ip_asset(
+            connection,
+            ip_address="10.31.1.21",
+            asset_type=IPAssetType.VM,
+            tags=["prod", "edge"],
+        )
+        repository.create_ip_asset(
+            connection,
+            ip_address="10.31.1.22",
+            asset_type=IPAssetType.OS,
+            tags=["prod", "db"],
+        )
+        repository.create_ip_asset(
+            connection,
+            ip_address="10.31.1.23",
+            asset_type=IPAssetType.OS,
+            tags=["prod", "edge", "deprecated"],
+        )
+        repository.create_ip_asset(
+            connection,
+            ip_address="10.31.1.24",
+            asset_type=IPAssetType.OS,
+            tags=["edge"],
+        )
+    finally:
+        connection.close()
+
+    response = client.get(
+        "/ui/ip-assets",
+        params=[
+            ("tag_all", "prod"),
+            ("tag_any", "edge"),
+            ("tag_any", "db"),
+            ("tag_not", "deprecated"),
+        ],
+    )
+
+    assert response.status_code == 200
+    assert "10.31.1.21" in response.text
+    assert "10.31.1.22" in response.text
+    assert "10.31.1.23" not in response.text
+    assert "10.31.1.24" not in response.text
+    assert 'name="tag_all" value="prod"' in response.text
+    assert 'name="tag_any" value="edge"' in response.text
+    assert 'name="tag_any" value="db"' in response.text
+    assert 'name="tag_not" value="deprecated"' in response.text
+    assert 'data-tag-filter-entry="tag_all:prod"' in response.text
+    assert 'data-tag-filter-entry="tag_not:deprecated"' in response.text
 
 
 def test_ip_assets_list_includes_archived_filter(client) -> None:
@@ -982,6 +1058,9 @@ def test_ip_assets_per_page_form_preserves_active_filters(client) -> None:
             "type": "VM",
             "unassigned-only": "true",
             "archived-only": "true",
+            "tag_all": "prod",
+            "tag_any": ["edge", "db"],
+            "tag_not": "deprecated",
         },
     )
 
@@ -994,6 +1073,10 @@ def test_ip_assets_per_page_form_preserves_active_filters(client) -> None:
     assert 'type="hidden" name="type" value="VM"' in per_page_form
     assert 'type="hidden" name="unassigned-only" value="true"' in per_page_form
     assert 'type="hidden" name="archived-only" value="true"' in per_page_form
+    assert 'type="hidden" name="tag_all" value="prod"' in per_page_form
+    assert 'type="hidden" name="tag_any" value="edge"' in per_page_form
+    assert 'type="hidden" name="tag_any" value="db"' in per_page_form
+    assert 'type="hidden" name="tag_not" value="deprecated"' in per_page_form
 
 
 def test_ip_asset_detail_page_requires_authentication(client) -> None:

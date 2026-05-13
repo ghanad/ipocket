@@ -124,6 +124,7 @@ create drawer auto-suggests a random color when not prefilled. In local asset mo
 (`IPOCKET_DOCKER_ASSETS=1`), Library drawer interactivity falls back to local scripts
 (`/static/js/projects.js`, `/static/js/tags.js`, `/static/js/vendors.js`, and
 `/static/js/drawer.js`) so all Library tab drawer actions stay available offline.
+The browser favicon is always served locally from `/static/favicon.png`.
 To force local assets in any environment, set:
 
 ```
@@ -242,7 +243,7 @@ UI design reference templates live in `/ui_template` for layout and styling guid
    - The header **New Project / New Tag / New Vendor** button opens the matching create drawer for the active tab.
 4) In **Library → Tags**, the create drawer now suggests a random color by default; you can keep it or pick another color before saving.
 5) Create Hosts from the **Hosts** page and pick a Vendor when needed. Use the Hosts search panel to filter by text, Vendor, Project, Assignment, linked/free Status, or tags from linked active IPs. Text and select filters update the table immediately with HTMX and no full page reload; there is no separate Clear button in this panel. The compact Hosts table is sized to the page width to avoid horizontal scrolling in normal desktop views, with stacked equal-width Edit/Delete controls in the Actions column. The OS IPs and BMC IPs columns link directly to each address detail page, and the **IP tags** column shows deduplicated tags from linked active IP assets (not host-level tags) with compact chip sizing matching IP Assets, only the first 2 shown inline, and the rest available through `+N more`; clicking any shown tag applies it as a Hosts tag filter immediately. Open a Host name from the table to review vendor/status chips and grouped OS, BMC, and other linked IP tables with each IP's project, tags, and notes.
-6) Add IPs from the **IP Assets** page. In IP create/edit forms, use the searchable Host combobox to filter large host lists and select the host from the same control before assigning OS/BMC addresses.
+6) Add IPs from the **IP Assets** page. In IP create/edit forms, use the searchable Host combobox to filter large host lists and select the host from the same control before assigning OS/BMC addresses. The IP Assets Tags filter has three chip groups: **OR** matches one or more selected tags (`prod` or `edge`), **AND** requires every selected tag (`prod` and `edge`), and **NOT** hides IPs with selected tags such as `deprecated`. Clicking a tag chip in the table adds it to the active group; older URLs using repeated `tag=...` still behave as OR filters.
 7) When you paginate in **IP Assets**, edits from the drawer return you to the same filtered/paginated list state (current `page` and `per-page` are preserved).
 8) Open **Data Ops** from the sidebar to import or export data using one unified page with tabs. `hosts.csv` exports now include `project_name`, `os_ip`, and `bmc_ip` for round-trip compatibility with CSV import.
    `ip-assets.csv` exports are sorted by numeric IP order (for example `10.0.0.2` appears before `10.0.0.10`), including legacy rows where `ip_int` is null.

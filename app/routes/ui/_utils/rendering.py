@@ -76,6 +76,9 @@ def _render_fallback_template(
                 ),
             ]
         )
+    lines.append(
+        '<link rel="icon" type="image/png" sizes="32x32" href="/static/favicon.png" />'
+    )
     lines.append('<link rel="stylesheet" href="/static/app.css" />')
     if payload.get("use_local_assets", True):
         lines.append('<script src="/static/vendor/htmx.min.js" defer></script>')
