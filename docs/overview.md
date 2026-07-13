@@ -145,7 +145,8 @@ Vendors are managed in the shared Library page tabs and are selectable when crea
 - Vendors table now shows an **IPs** count column with how many active IP assets are currently linked through hosts for each vendor.
 
 - UI route handlers are organized under `app/routes/ui/` with domain packages for larger areas:
-  `app/routes/ui/ip_assets/`, `app/routes/ui/hosts/`, `app/routes/ui/ranges/`, `app/routes/ui/settings/`, plus focused modules such as `auth.py`, `account.py`, `dashboard.py`, `data_ops.py`, and `connectors.py`. `app/routes/ui/__init__.py` remains the single aggregated router entrypoint.
+  `app/routes/ui/ip_assets/`, `app/routes/ui/hosts/`, `app/routes/ui/ranges/`, `app/routes/ui/settings/`, plus focused modules such as `auth.py`, `account.py`, `dashboard.py`, and `data_ops.py`. `app/routes/ui/__init__.py` remains the single aggregated router entrypoint.
+- Connector UI routes are split under `app/routes/ui/connector_routes/`: each connector owns its validation, execution, background job wrapper, and POST route; shared form state, page rendering, job storage, and Prometheus preview formatting live in focused support modules. `app/routes/ui/connectors.py` is only the stable router-composition facade.
 - UI utility internals are split into `app/routes/ui/_utils/` modules (`session.py`, `rendering.py`, `parsing.py`, `assets.py`, `exporting.py`) and `app/routes/ui/utils.py` now acts as a compatibility facade so existing imports stay stable.
 - UI flash notifications are cookie-backed and now truncate each message to a safe length (`400` chars) before cookie encoding to avoid oversized cookie failures.
 - IP-assets helper logic lives in `app/routes/ui/ip_assets/helpers.py`, while routes are split by concern (`listing.py`, `forms.py`, `actions.py`) to keep assignment/listing and mutation flows separate without changing endpoint behavior.

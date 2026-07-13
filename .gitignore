@@ -121,4 +121,7 @@ temp/
 *.pyc
 *.pyo
 
+# Node.js dependencies
+node_modules/
+
 source_code.json

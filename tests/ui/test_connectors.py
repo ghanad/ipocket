@@ -13,13 +13,36 @@ from app.imports.models import ImportApplyResult, ImportEntitySummary, ImportSum
 from app.main import app
 from app.models import IPAssetType, User, UserRole
 from app.routes import ui
-from app.routes.ui import connectors as connectors_routes
+from app.routes.ui import connectors as connectors_facade
+from app.routes.ui.connector_routes import (
+    cassandra as cassandra_routes,
+    ceph as ceph_routes,
+    elasticsearch as elasticsearch_routes,
+    kubernetes as kubernetes_routes,
+    pages as pages_routes,
+    prometheus as prometheus_routes,
+    vcenter as vcenter_routes,
+)
 
 
 def _resolve_connector_response(client, response):
     if response.status_code != 303:
         return response
     return client.get(response.headers["location"])
+
+
+def test_connectors_facade_registers_each_focused_router_once() -> None:
+    paths = [route.path for route in connectors_facade.router.routes]
+
+    assert paths == [
+        "/ui/connectors",
+        "/ui/connectors/vcenter/run",
+        "/ui/connectors/prometheus/run",
+        "/ui/connectors/elasticsearch/run",
+        "/ui/connectors/cassandra/run",
+        "/ui/connectors/ceph/run",
+        "/ui/connectors/kubernetes/run",
+    ]
 
 
 def test_connectors_page_renders_sidebar_link_and_tabs(client) -> None:
@@ -123,7 +146,7 @@ def test_connectors_kubernetes_tab_renders_connector_form(client) -> None:
 def test_connectors_page_auto_polls_when_job_is_running(client, monkeypatch) -> None:
     job_id = "job-running"
     monkeypatch.setattr(
-        connectors_routes,
+        pages_routes,
         "_get_connector_job",
         lambda _job_id: (
             {
@@ -131,7 +154,7 @@ def test_connectors_page_auto_polls_when_job_is_running(client, monkeypatch) -> 
                 "status": "running",
                 "logs": [],
                 "toast_messages": [],
-                "form_state": connectors_routes._default_elasticsearch_form_state(),
+                "form_state": pages_routes._default_elasticsearch_form_state(),
             }
             if _job_id == job_id
             else None
@@ -150,7 +173,7 @@ def test_connectors_page_stops_polling_after_job_completion(
 ) -> None:
     job_id = "job-complete"
     monkeypatch.setattr(
-        connectors_routes,
+        pages_routes,
         "_get_connector_job",
         lambda _job_id: (
             {
@@ -158,7 +181,7 @@ def test_connectors_page_stops_polling_after_job_completion(
                 "status": "completed",
                 "logs": ["done"],
                 "toast_messages": [{"type": "success", "message": "done"}],
-                "form_state": connectors_routes._default_elasticsearch_form_state(),
+                "form_state": pages_routes._default_elasticsearch_form_state(),
             }
             if _job_id == job_id
             else None
@@ -200,7 +223,7 @@ def test_vcenter_connector_dry_run_allows_non_editor(client, monkeypatch) -> Non
         10, "viewer", "x", UserRole.VIEWER, True
     )
     monkeypatch.setattr(
-        connectors_routes,
+        vcenter_routes,
         "_run_vcenter_connector",
         lambda **_kwargs: (["Import mode: dry-run."], [], 0, 0),
     )
@@ -231,7 +254,7 @@ def test_vcenter_connector_ui_runs_dry_run_and_shows_logs(client, monkeypatch) -
         2, "editor", "x", UserRole.EDITOR, True
     )
     monkeypatch.setattr(
-        connectors_routes,
+        vcenter_routes,
         "fetch_vcenter_inventory",
         lambda **_kwargs: (
             [VCenterHostRecord(name="esxi-01.lab", ip_address="10.20.30.40")],
@@ -246,7 +269,7 @@ def test_vcenter_connector_ui_runs_dry_run_and_shows_logs(client, monkeypatch) -
         ),
     )
     monkeypatch.setattr(
-        connectors_routes,
+        vcenter_routes,
         "import_vcenter_bundle_via_pipeline",
         lambda *_args, **_kwargs: ImportApplyResult(
             summary=ImportSummary(
@@ -312,10 +335,10 @@ def test_vcenter_connector_failure_uses_toast_without_inline_error(
         2, "editor", "x", UserRole.EDITOR, True
     )
     monkeypatch.setattr(
-        connectors_routes,
+        vcenter_routes,
         "_run_vcenter_connector",
         lambda **_kwargs: (_ for _ in ()).throw(
-            connectors_routes.VCenterConnectorError("boom")
+            vcenter_routes.VCenterConnectorError("boom")
         ),
     )
     try:
@@ -367,7 +390,7 @@ def test_prometheus_connector_dry_run_allows_non_editor(client, monkeypatch) -> 
         10, "viewer", "x", UserRole.VIEWER, True
     )
     monkeypatch.setattr(
-        connectors_routes,
+        prometheus_routes,
         "_run_prometheus_connector",
         lambda **_kwargs: (["Import mode: dry-run."], [], 0, 0),
     )
@@ -399,7 +422,7 @@ def test_prometheus_connector_ui_runs_dry_run_and_shows_logs(
         2, "editor", "x", UserRole.EDITOR, True
     )
     monkeypatch.setattr(
-        connectors_routes,
+        prometheus_routes,
         "_run_prometheus_connector",
         lambda **_kwargs: (
             ["Collected 2 metric samples.", "Import mode: dry-run."],
@@ -436,7 +459,7 @@ def test_prometheus_connector_dry_run_logs_ip_preview_and_asset_summary(
     monkeypatch,
 ) -> None:
     monkeypatch.setattr(
-        connectors_routes,
+        prometheus_routes,
         "fetch_prometheus_query_result",
         lambda **_kwargs: [
             PrometheusMetricRecord(labels={"instance": "10.0.0.10:9100"}, value="1"),
@@ -444,7 +467,7 @@ def test_prometheus_connector_dry_run_logs_ip_preview_and_asset_summary(
         ],
     )
     monkeypatch.setattr(
-        connectors_routes,
+        prometheus_routes,
         "import_prometheus_bundle_via_pipeline",
         lambda *_args, **_kwargs: ImportApplyResult(
             summary=ImportSummary(
@@ -461,7 +484,7 @@ def test_prometheus_connector_dry_run_logs_ip_preview_and_asset_summary(
     )
 
     logs, warnings, _warning_count, _error_count = (
-        connectors_routes._run_prometheus_connector(
+        prometheus_routes._run_prometheus_connector(
             connection=None,
             user=None,
             prometheus_url="http://127.0.0.1:9090",
@@ -509,7 +532,7 @@ def test_prometheus_connector_dry_run_logs_per_ip_change_details(
         )
 
         monkeypatch.setattr(
-            connectors_routes,
+            prometheus_routes,
             "fetch_prometheus_query_result",
             lambda **_kwargs: [
                 PrometheusMetricRecord(
@@ -524,7 +547,7 @@ def test_prometheus_connector_dry_run_logs_per_ip_change_details(
             ],
         )
         monkeypatch.setattr(
-            connectors_routes,
+            prometheus_routes,
             "import_prometheus_bundle_via_pipeline",
             lambda *_args, **_kwargs: ImportApplyResult(
                 summary=ImportSummary(
@@ -541,7 +564,7 @@ def test_prometheus_connector_dry_run_logs_per_ip_change_details(
         )
 
         logs, warnings, _warning_count, _error_count = (
-            connectors_routes._run_prometheus_connector(
+            prometheus_routes._run_prometheus_connector(
                 connection=connection,
                 user=None,
                 prometheus_url="http://127.0.0.1:9090",
@@ -601,10 +624,10 @@ def test_prometheus_connector_failure_uses_toast_without_inline_error(
         2, "editor", "x", UserRole.EDITOR, True
     )
     monkeypatch.setattr(
-        connectors_routes,
+        prometheus_routes,
         "_run_prometheus_connector",
         lambda **_kwargs: (_ for _ in ()).throw(
-            connectors_routes.PrometheusConnectorError("boom")
+            prometheus_routes.PrometheusConnectorError("boom")
         ),
     )
     try:
@@ -654,7 +677,7 @@ def test_elasticsearch_connector_dry_run_allows_non_editor(client, monkeypatch) 
         10, "viewer", "x", UserRole.VIEWER, True
     )
     monkeypatch.setattr(
-        connectors_routes,
+        elasticsearch_routes,
         "_run_elasticsearch_connector",
         lambda **_kwargs: (["Import mode: dry-run."], [], 0, 0),
     )
@@ -692,7 +715,7 @@ def test_elasticsearch_connector_passes_cluster_name_tag_option(
         return (["Import mode: dry-run."], [], 0, 0)
 
     monkeypatch.setattr(
-        connectors_routes,
+        elasticsearch_routes,
         "_run_elasticsearch_connector",
         _fake_run_elasticsearch_connector,
     )
@@ -743,7 +766,7 @@ def test_elasticsearch_connector_ui_authentication_is_optional(
         2, "editor", "x", UserRole.EDITOR, True
     )
     monkeypatch.setattr(
-        connectors_routes,
+        elasticsearch_routes,
         "_run_elasticsearch_connector",
         lambda **_kwargs: (["Import mode: dry-run."], [], 0, 0),
     )
@@ -773,10 +796,10 @@ def test_elasticsearch_connector_failure_uses_toast_without_inline_error(
         2, "editor", "x", UserRole.EDITOR, True
     )
     monkeypatch.setattr(
-        connectors_routes,
+        elasticsearch_routes,
         "_run_elasticsearch_connector",
         lambda **_kwargs: (_ for _ in ()).throw(
-            connectors_routes.ElasticsearchConnectorError("boom")
+            elasticsearch_routes.ElasticsearchConnectorError("boom")
         ),
     )
     try:
@@ -824,7 +847,7 @@ def test_cassandra_connector_dry_run_allows_non_editor(client, monkeypatch) -> N
         10, "viewer", "x", UserRole.VIEWER, True
     )
     monkeypatch.setattr(
-        connectors_routes,
+        cassandra_routes,
         "_run_cassandra_connector",
         lambda **_kwargs: (["Import mode: dry-run."], [], 0, 0),
     )
@@ -861,7 +884,7 @@ def test_cassandra_connector_passes_cluster_name_tag_option(
         return (["Import mode: dry-run."], [], 0, 0)
 
     monkeypatch.setattr(
-        connectors_routes,
+        cassandra_routes,
         "_run_cassandra_connector",
         _fake_run_cassandra_connector,
     )
@@ -944,7 +967,7 @@ def test_cassandra_connector_ui_runs_dry_run_and_shows_logs(
         2, "editor", "x", UserRole.EDITOR, True
     )
     monkeypatch.setattr(
-        connectors_routes,
+        cassandra_routes,
         "fetch_cassandra_nodes",
         lambda **_kwargs: [
             CassandraNodeRecord(
@@ -955,7 +978,7 @@ def test_cassandra_connector_ui_runs_dry_run_and_shows_logs(
         ],
     )
     monkeypatch.setattr(
-        connectors_routes,
+        cassandra_routes,
         "import_cassandra_bundle_via_pipeline",
         lambda *_args, **_kwargs: ImportApplyResult(
             summary=ImportSummary(
@@ -1000,10 +1023,10 @@ def test_cassandra_connector_failure_uses_toast_without_inline_error(
         2, "editor", "x", UserRole.EDITOR, True
     )
     monkeypatch.setattr(
-        connectors_routes,
+        cassandra_routes,
         "_run_cassandra_connector",
         lambda **_kwargs: (_ for _ in ()).throw(
-            connectors_routes.CassandraConnectorError("boom")
+            cassandra_routes.CassandraConnectorError("boom")
         ),
     )
     try:
@@ -1052,7 +1075,7 @@ def test_ceph_connector_dry_run_allows_non_editor(client, monkeypatch) -> None:
         10, "viewer", "x", UserRole.VIEWER, True
     )
     monkeypatch.setattr(
-        connectors_routes,
+        ceph_routes,
         "_run_ceph_connector",
         lambda **_kwargs: (["Import mode: dry-run."], [], 0, 0),
     )
@@ -1088,9 +1111,7 @@ def test_ceph_connector_passes_tag_options(client, monkeypatch) -> None:
         captured.update(kwargs)
         return (["Import mode: dry-run."], [], 0, 0)
 
-    monkeypatch.setattr(
-        connectors_routes, "_run_ceph_connector", _fake_run_ceph_connector
-    )
+    monkeypatch.setattr(ceph_routes, "_run_ceph_connector", _fake_run_ceph_connector)
     try:
         response = client.post(
             "/ui/connectors/ceph/run",
@@ -1172,7 +1193,7 @@ def test_ceph_connector_ui_runs_dry_run_and_shows_logs(client, monkeypatch) -> N
         2, "editor", "x", UserRole.EDITOR, True
     )
     monkeypatch.setattr(
-        connectors_routes,
+        ceph_routes,
         "fetch_ceph_hosts",
         lambda **_kwargs: [
             CephHostRecord(
@@ -1184,7 +1205,7 @@ def test_ceph_connector_ui_runs_dry_run_and_shows_logs(client, monkeypatch) -> N
         ],
     )
     monkeypatch.setattr(
-        connectors_routes,
+        ceph_routes,
         "import_ceph_bundle_via_pipeline",
         lambda *_args, **_kwargs: ImportApplyResult(
             summary=ImportSummary(
@@ -1231,11 +1252,9 @@ def test_ceph_connector_failure_uses_toast_without_inline_error(
         2, "editor", "x", UserRole.EDITOR, True
     )
     monkeypatch.setattr(
-        connectors_routes,
+        ceph_routes,
         "_run_ceph_connector",
-        lambda **_kwargs: (_ for _ in ()).throw(
-            connectors_routes.CephConnectorError("boom")
-        ),
+        lambda **_kwargs: (_ for _ in ()).throw(ceph_routes.CephConnectorError("boom")),
     )
     try:
         response = client.post(
@@ -1276,7 +1295,7 @@ def test_vcenter_connector_apply_writes_import_run_audit_log(
 
     app.dependency_overrides[ui.get_current_ui_user] = lambda: actor
     monkeypatch.setattr(
-        connectors_routes,
+        vcenter_routes,
         "fetch_vcenter_inventory",
         lambda **_kwargs: (
             [VCenterHostRecord(name="esxi-02.lab", ip_address="10.40.1.10")],
@@ -1336,7 +1355,7 @@ def test_prometheus_connector_dry_run_does_not_write_import_run_audit_log(
 
     app.dependency_overrides[ui.get_current_ui_user] = lambda: actor
     monkeypatch.setattr(
-        connectors_routes,
+        prometheus_routes,
         "fetch_prometheus_query_result",
         lambda **_kwargs: [
             PrometheusMetricRecord(labels={"instance": "10.20.0.10:9100"}, value="1")
@@ -1387,7 +1406,7 @@ def test_elasticsearch_connector_apply_writes_import_run_audit_log(
 
     app.dependency_overrides[ui.get_current_ui_user] = lambda: actor
     monkeypatch.setattr(
-        connectors_routes,
+        elasticsearch_routes,
         "fetch_elasticsearch_nodes",
         lambda **_kwargs: [
             ElasticsearchNodeRecord(
@@ -1449,7 +1468,7 @@ def test_elasticsearch_connector_dry_run_does_not_write_import_run_audit_log(
 
     app.dependency_overrides[ui.get_current_ui_user] = lambda: actor
     monkeypatch.setattr(
-        connectors_routes,
+        elasticsearch_routes,
         "fetch_elasticsearch_nodes",
         lambda **_kwargs: [
             ElasticsearchNodeRecord(
@@ -1504,7 +1523,7 @@ def test_ceph_connector_apply_writes_import_run_audit_log(client, monkeypatch) -
 
     app.dependency_overrides[ui.get_current_ui_user] = lambda: actor
     monkeypatch.setattr(
-        connectors_routes,
+        ceph_routes,
         "fetch_ceph_hosts",
         lambda **_kwargs: [CephHostRecord(hostname="ceph-a", addr="10.60.0.10")],
     )
@@ -1558,7 +1577,7 @@ def test_ceph_connector_dry_run_does_not_write_import_run_audit_log(
 
     app.dependency_overrides[ui.get_current_ui_user] = lambda: actor
     monkeypatch.setattr(
-        connectors_routes,
+        ceph_routes,
         "fetch_ceph_hosts",
         lambda **_kwargs: [CephHostRecord(hostname="ceph-a", addr="10.60.0.11")],
     )
@@ -1636,7 +1655,7 @@ def test_kubernetes_connector_ui_runs_dry_run_and_redacts_token(
         2, "editor", "x", UserRole.EDITOR, True
     )
     monkeypatch.setattr(
-        connectors_routes,
+        kubernetes_routes,
         "_run_kubernetes_connector",
         lambda **_kwargs: (
             [
@@ -1684,7 +1703,7 @@ def test_kubernetes_connector_passes_label_and_cluster_tag_options(
         return (["Import mode: dry-run."], [], 0, 0)
 
     monkeypatch.setattr(
-        connectors_routes,
+        kubernetes_routes,
         "_run_kubernetes_connector",
         _fake_run_kubernetes_connector,
     )
@@ -1717,7 +1736,7 @@ def test_kubernetes_connector_dry_run_logs_ip_preview_and_summaries(
     monkeypatch,
 ) -> None:
     monkeypatch.setattr(
-        connectors_routes,
+        kubernetes_routes,
         "fetch_kubernetes_nodes",
         lambda **_kwargs: [
             KubernetesNodeRecord(name="worker-a", internal_ips=("10.70.0.10",)),
@@ -1725,7 +1744,7 @@ def test_kubernetes_connector_dry_run_logs_ip_preview_and_summaries(
         ],
     )
     monkeypatch.setattr(
-        connectors_routes,
+        kubernetes_routes,
         "import_kubernetes_bundle_via_pipeline",
         lambda *_args, **_kwargs: ImportApplyResult(
             summary=ImportSummary(
@@ -1742,7 +1761,7 @@ def test_kubernetes_connector_dry_run_logs_ip_preview_and_summaries(
     )
 
     logs, warnings, _warning_count, _error_count = (
-        connectors_routes._run_kubernetes_connector(
+        kubernetes_routes._run_kubernetes_connector(
             connection=None,
             user=None,
             api_url="https://k8s.example.local:6443",
