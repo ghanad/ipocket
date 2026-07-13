@@ -3,6 +3,25 @@ from pathlib import Path
 from app.environment import use_local_assets
 
 
+IP_ASSETS_JS_MODULES = (
+    "ip-assets.js",
+    "ip-assets/bulk-edit.js",
+    "ip-assets/drawer.js",
+    "ip-assets/filters.js",
+    "ip-assets/shared.js",
+    "ip-assets/table.js",
+    "ip-assets/tags-popover.js",
+)
+
+
+def _read_ip_assets_javascript(repo_root: Path) -> str:
+    static_js = repo_root / "app/static/js"
+    return "\n".join(
+        (static_js / relative_path).read_text(encoding="utf-8")
+        for relative_path in IP_ASSETS_JS_MODULES
+    )
+
+
 def test_ui_assets_are_local() -> None:
     repo_root = Path(__file__).resolve().parents[1]
     base_html = (repo_root / "app/templates/base.html").read_text(encoding="utf-8")
@@ -102,7 +121,7 @@ def test_refactored_templates_load_external_page_assets() -> None:
     assert "<style>" not in templates["hosts"].read_text(encoding="utf-8")
     assert "<script>" not in templates["hosts"].read_text(encoding="utf-8")
 
-    assert '<script src="/static/js/ip-assets.js" defer></script>' in templates[
+    assert '<script type="module" src="/static/js/ip-assets.js"></script>' in templates[
         "ip_assets"
     ].read_text(encoding="utf-8")
     assert "data-bulk-open disabled>Bulk update</button>" in templates[
@@ -164,9 +183,7 @@ def test_refactored_templates_load_external_page_assets() -> None:
     )
     assert "window.ipocketApplyTagContrast = applyTagContrast;" in tag_picker_js
     assert "applyTagContrast(root);" in tag_picker_js
-    ip_assets_js = (repo_root / "app/static/js/ip-assets.js").read_text(
-        encoding="utf-8"
-    )
+    ip_assets_js = _read_ip_assets_javascript(repo_root)
     assert "computeCommonBulkTags" in ip_assets_js
     assert "name = 'remove_tags'" in ip_assets_js
     assert "const getDeleteReturnUrl = (assetData) => {" in ip_assets_js
@@ -187,6 +204,26 @@ def test_refactored_templates_load_external_page_assets() -> None:
     assert 'select.addEventListener("change", submitHostFilters);' in hosts_js
     assert "data-tags-more-toggle" in hosts_js
     assert "dataset.hostPopoverTag" in hosts_js
+
+
+def test_ip_assets_javascript_is_split_into_focused_modules(client) -> None:
+    repo_root = Path(__file__).resolve().parents[1]
+    static_js = repo_root / "app/static/js"
+    entrypoint = (static_js / "ip-assets.js").read_text(encoding="utf-8")
+
+    assert len(entrypoint.splitlines()) < 150
+    for relative_path in IP_ASSETS_JS_MODULES[1:]:
+        module_path = static_js / relative_path
+        assert module_path.exists()
+        assert len(module_path.read_text(encoding="utf-8").splitlines()) < 450
+        response = client.get(f"/static/js/{relative_path}")
+        assert response.status_code == 200
+        assert response.headers["content-type"].startswith("text/javascript")
+
+    assert "from './ip-assets/drawer.js'" in entrypoint
+    assert "from './ip-assets/bulk-edit.js'" in entrypoint
+    assert "from './ip-assets/filters.js'" in entrypoint
+    assert "from './ip-assets/tags-popover.js'" in entrypoint
 
 
 def test_projects_templates_use_alpine_for_drawer_interactions() -> None:

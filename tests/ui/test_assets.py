@@ -9,6 +9,12 @@ from app.models import IPAsset, IPAssetType, User, UserRole
 from app.routes import ui
 
 
+def _read_ip_assets_javascript() -> str:
+    static_js = Path(__file__).resolve().parents[2] / "app/static/js"
+    module_paths = [static_js / "ip-assets.js", *(static_js / "ip-assets").glob("*.js")]
+    return "\n".join(path.read_text(encoding="utf-8") for path in sorted(module_paths))
+
+
 def test_ip_assets_drawer_auto_host_creates_and_assigns(client) -> None:
     import os
 
@@ -258,27 +264,26 @@ def test_ip_assets_list_uses_drawer_actions_for_edit_and_delete(client) -> None:
     assert "data-ip-add" in response.text
     assert "data-ip-drawer" in response.text
     assert "Save changes" in response.text
-    ip_assets_js = Path(__file__).resolve().parents[2] / "app/static/js/ip-assets.js"
-    js_source = ip_assets_js.read_text(encoding="utf-8")
+    js_source = _read_ip_assets_javascript()
     css_source = (Path(__file__).resolve().parents[2] / "app/static/app.css").read_text(
         encoding="utf-8"
     )
     assert "ipocket.ip-assets.scrollY" in js_source
     assert "drawer.dataset.ipDrawerMode = normalizedMode" in js_source
-    assert (
-        "const bulkDrawer = document.querySelector('[data-bulk-drawer]');" in js_source
-    )
+    assert "document.querySelector('[data-bulk-drawer]')" in js_source
     assert "const openButton = bulkForm.querySelector('[data-bulk-open]');" in js_source
     assert "computeCommonBulkTags" in js_source
     assert "data-bulk-remove-tag" in js_source
-    assert "const targetParam = activeTagFilterParam" in js_source
+    assert "const targetParam = activeParam" in js_source
     assert "addTagFilter(normalizedValue, targetParam)" in js_source
     assert ".tag-filter-group:not(:has(.tag-filter-entry))" in css_source
     assert "form.style.display = isDeleteMode ? 'none' : 'flex'" in js_source
     assert "deleteForm.style.display = isDeleteMode ? 'flex' : 'none'" in js_source
     assert "data-ip-drawer-title" in response.text
     assert "Save" in response.text
-    assert "/static/js/ip-assets.js" in response.text
+    assert (
+        '<script type="module" src="/static/js/ip-assets.js"></script>' in response.text
+    )
     assert "data-ip-host-field" in response.text
     assert "data-ip-host-search" in response.text
     assert "No matching hosts." in response.text
@@ -326,9 +331,7 @@ def test_ip_assets_list_renders_note_preview_with_hover_content(client) -> None:
 
 
 def test_ip_assets_js_rebinds_actions_after_htmx_pagination_swap() -> None:
-    js_source = (
-        Path(__file__).resolve().parents[2] / "app/static/js/ip-assets.js"
-    ).read_text(encoding="utf-8")
+    js_source = _read_ip_assets_javascript()
     table_template = (
         Path(__file__).resolve().parents[2]
         / "app/templates/partials/ip_assets_table.html"
@@ -337,7 +340,7 @@ def test_ip_assets_js_rebinds_actions_after_htmx_pagination_swap() -> None:
     assert "const getIpTableContainerFromEvent = (event) => {" in js_source
     assert "document.body.addEventListener('htmx:afterSwap'" in js_source
     assert "document.body.addEventListener('htmx:afterSettle'" in js_source
-    assert "bindTableInteractions(container);" in js_source
+    assert "table.bind(container);" in js_source
     assert "event.target && event.target.id === 'ip-table-container'" not in js_source
     assert "const bindPerPageControl = (root = document) => {" in js_source
     assert "event.target.closest('[data-per-page-control]')" in js_source
@@ -346,7 +349,7 @@ def test_ip_assets_js_rebinds_actions_after_htmx_pagination_swap() -> None:
         in js_source
     )
     assert "const syncEditReturnTo = () => {" in js_source
-    assert "form.querySelector('input[name=\"return_to\"]')" in js_source
+    assert "form?.querySelector('input[name=\"return_to\"]')" in js_source
     assert "form.action = `/ui/ip-assets/${assetData.id}/edit`;" in js_source
     assert "form.action = '/ui/ip-assets/new';" in js_source
     assert js_source.count("syncEditReturnTo();") >= 3
@@ -445,15 +448,14 @@ def test_ip_assets_list_collapses_tag_chips_and_renders_more_popover_trigger(
     assert 'aria-label="Tags for 10.30.0.21"' in response.text
     assert '<td class="ip-tags-cell">' in response.text
     assert response.text.count('<span class="muted">—</span>') >= 1
-    ip_assets_js = Path(__file__).resolve().parents[2] / "app/static/js/ip-assets.js"
-    js_source = ip_assets_js.read_text(encoding="utf-8")
+    js_source = _read_ip_assets_javascript()
     assert "data-tags-popover-search" in js_source
     assert "data-tags-more-toggle" in js_source
-    assert "scheduleOpenTagsPopover" in js_source
-    assert "bindTagsMoreTriggers" in js_source
+    assert "const scheduleOpen = (trigger, delay = 120) =>" in js_source
+    assert "root.querySelectorAll('[data-tags-more-toggle]')" in js_source
     assert "trigger.addEventListener('mouseenter'" in js_source
     assert "trigger.addEventListener('mouseleave'" in js_source
-    assert "closeTagsPopover" in js_source
+    assert "const close = () =>" in js_source
 
 
 def test_ip_assets_list_htmx_response_renders_table_partial(client) -> None:
