@@ -1,0 +1,247 @@
+.detail-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 16px;
+}
+
+.detail-item {
+  background: #f8fafc;
+  border-radius: var(--radius-sm);
+  padding: 16px;
+}
+
+.detail-item-wide {
+  grid-column: 1 / -1;
+}
+
+.detail-label {
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--color-muted-light);
+  margin-bottom: 6px;
+}
+
+.detail-value {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.action-card .action-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 12px;
+}
+
+.ip-detail-header {
+  align-items: flex-start;
+}
+
+.ip-detail-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.ip-detail-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.ip-audit-summary {
+  margin: 0;
+}
+
+.ip-audit-raw {
+  margin-top: 8px;
+}
+
+.ip-audit-raw summary {
+  cursor: pointer;
+  color: var(--color-primary);
+  font-size: 13px;
+}
+
+.ip-audit-raw pre {
+  margin: 8px 0 0;
+  padding: 8px;
+  background: #f8fafc;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  font-size: 12px;
+  white-space: pre-wrap;
+}
+
+.ip-detail-actions {
+  position: relative;
+}
+
+.ip-detail-actions-panel {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 6px);
+  min-width: 160px;
+  background: #fff;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  box-shadow: 0 12px 30px rgba(15, 23, 42, 0.18);
+  padding: 8px;
+  display: none;
+  z-index: 20;
+}
+
+.ip-detail-actions[open] .ip-detail-actions-panel {
+  display: grid;
+  gap: 4px;
+}
+
+
+.asset-actions-cell {
+  width: 92px;
+  text-align: center;
+}
+
+.row-actions-menu {
+  position: relative;
+  display: inline-block;
+}
+
+.row-actions-trigger {
+  list-style: none;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  border: 1px solid var(--color-border);
+  background: #fff;
+  color: var(--color-muted);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 18px;
+  line-height: 1;
+}
+
+.row-actions-trigger::-webkit-details-marker {
+  display: none;
+}
+
+.row-actions-trigger::marker {
+  content: "";
+}
+
+.row-actions-icon {
+  display: inline-block;
+  line-height: 1;
+}
+
+.row-actions-menu.is-open .row-actions-trigger,
+.row-actions-trigger:hover,
+.row-actions-trigger:focus-visible {
+  color: var(--color-primary);
+  border-color: #c7dcff;
+  background: #eef2ff;
+}
+
+.row-actions-panel {
+  position: fixed;
+  min-width: 180px;
+  background: #fff;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  box-shadow: 0 12px 30px rgba(15, 23, 42, 0.18);
+  padding: 8px;
+  gap: 4px;
+  z-index: 20;
+}
+
+.row-actions-panel:not([hidden]) {
+  display: grid;
+}
+
+.row-actions-panel[hidden] {
+  display: none;
+}
+
+.row-action-item {
+  width: 100%;
+  border: none;
+  background: transparent;
+  color: var(--color-text);
+  border-radius: 8px;
+  padding: 8px 10px;
+  font: inherit;
+  font-size: 13px;
+  text-align: left;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+}
+
+.row-action-item:hover,
+.row-action-item:focus-visible {
+  background: #f1f5f9;
+  color: var(--color-text);
+}
+
+.row-action-item-danger {
+  color: #b91c1c;
+}
+
+.row-action-item-danger:hover,
+.row-action-item-danger:focus-visible {
+  background: #fef2f2;
+  color: #991b1b;
+}
+
+.delete-confirm-dialog {
+  border: none;
+  padding: 0;
+  border-radius: var(--radius-md);
+  max-width: 440px;
+  width: calc(100% - 32px);
+}
+
+.delete-confirm-dialog::backdrop {
+  background: rgba(15, 23, 42, 0.45);
+}
+
+.delete-confirm-dialog-card {
+  padding: 20px;
+  display: grid;
+  gap: 12px;
+}
+
+.delete-confirm-dialog-card h2 {
+  margin: 0;
+  font-size: 18px;
+}
+
+.delete-confirm-dialog-card p {
+  color: var(--color-muted);
+  line-height: 1.45;
+}
+
+.delete-confirm-dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 6px;
+}
+
+.mono {
+  font-family: "JetBrains Mono", "SFMono-Regular", "Consolas", monospace;
+}
+
+.muted {
+  color: var(--color-muted);
+}
+
+.link {
+  font-weight: 600;
+}
+

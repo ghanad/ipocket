@@ -13,12 +13,34 @@ IP_ASSETS_JS_MODULES = (
     "ip-assets/tags-popover.js",
 )
 
+CSS_MODULES = (
+    "foundation.css",
+    "components.css",
+    "tables.css",
+    "workflows.css",
+    "forms.css",
+    "details-actions.css",
+    "utility-pages.css",
+    "hosts.css",
+    "ip-assets.css",
+    "range-addresses.css",
+    "audit-log.css",
+)
+
 
 def _read_ip_assets_javascript(repo_root: Path) -> str:
     static_js = repo_root / "app/static/js"
     return "\n".join(
         (static_js / relative_path).read_text(encoding="utf-8")
         for relative_path in IP_ASSETS_JS_MODULES
+    )
+
+
+def _read_application_css(repo_root: Path) -> str:
+    static_css = repo_root / "app/static/css"
+    return "\n".join(
+        (static_css / module_name).read_text(encoding="utf-8")
+        for module_name in CSS_MODULES
     )
 
 
@@ -41,7 +63,7 @@ def test_ui_assets_are_local() -> None:
     assert '<script src="/static/js/tag-picker.js" defer></script>' in base_html
     assert '<script src="/static/js/host-select-search.js" defer></script>' in base_html
 
-    css = (repo_root / "app/static/app.css").read_text(encoding="utf-8")
+    css = _read_application_css(repo_root)
     assert "fonts.googleapis.com" not in css
     assert 'font-family: "Inter"' in css
     assert "height: 100vh" in css
@@ -78,6 +100,21 @@ def test_ui_assets_are_local() -> None:
     assert ".bulk-drawer-selection {" in css
     assert ".bulk-common-tags {" in css
     assert ".bulk-common-tag-chip.is-marked {" in css
+
+
+def test_application_css_is_split_into_focused_modules(client) -> None:
+    repo_root = Path(__file__).resolve().parents[1]
+    entrypoint = (repo_root / "app/static/app.css").read_text(encoding="utf-8")
+
+    assert len(entrypoint.splitlines()) < 30
+    for module_name in CSS_MODULES:
+        assert f'@import url("./css/{module_name}");' in entrypoint
+        module_path = repo_root / "app/static/css" / module_name
+        assert module_path.exists()
+        assert len(module_path.read_text(encoding="utf-8").splitlines()) < 550
+
+        response = client.get(f"/static/css/{module_name}")
+        assert response.status_code == 200
 
 
 def test_favicon_asset_is_available() -> None:
@@ -308,7 +345,7 @@ def test_vendors_templates_use_alpine_for_drawer_interactions() -> None:
 
 def test_hosts_drawer_css_matches_ip_drawer_layout_baseline() -> None:
     repo_root = Path(__file__).resolve().parents[1]
-    css = (repo_root / "app/static/app.css").read_text(encoding="utf-8")
+    css = _read_application_css(repo_root)
 
     assert ".host-drawer {" in css
     assert "width: min(480px, 100%);" in css

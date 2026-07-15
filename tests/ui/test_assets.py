@@ -15,6 +15,14 @@ def _read_ip_assets_javascript() -> str:
     return "\n".join(path.read_text(encoding="utf-8") for path in sorted(module_paths))
 
 
+def _read_application_css() -> str:
+    static_css = Path(__file__).resolve().parents[2] / "app/static/css"
+    return "\n".join(
+        path.read_text(encoding="utf-8")
+        for path in sorted(static_css.glob("*.css"))
+    )
+
+
 def test_ip_assets_drawer_auto_host_creates_and_assigns(client) -> None:
     import os
 
@@ -265,9 +273,7 @@ def test_ip_assets_list_uses_drawer_actions_for_edit_and_delete(client) -> None:
     assert "data-ip-drawer" in response.text
     assert "Save changes" in response.text
     js_source = _read_ip_assets_javascript()
-    css_source = (Path(__file__).resolve().parents[2] / "app/static/app.css").read_text(
-        encoding="utf-8"
-    )
+    css_source = _read_application_css()
     assert "ipocket.ip-assets.scrollY" in js_source
     assert "drawer.dataset.ipDrawerMode = normalizedMode" in js_source
     assert "document.querySelector('[data-bulk-drawer]')" in js_source
@@ -288,8 +294,7 @@ def test_ip_assets_list_uses_drawer_actions_for_edit_and_delete(client) -> None:
     assert "data-ip-host-search" in response.text
     assert "No matching hosts." in response.text
     assert "data-tag-picker" in response.text
-    app_css = Path(__file__).resolve().parents[2] / "app/static/app.css"
-    css_source = app_css.read_text(encoding="utf-8")
+    css_source = _read_application_css()
     assert ".table.table-ip-assets th.col-ip-address" in css_source
     assert ".table.table-ip-assets th.col-project" in css_source
     assert ".table.table-ip-assets th.col-type" in css_source
@@ -318,9 +323,7 @@ def test_ip_assets_list_renders_note_preview_with_hover_content(client) -> None:
     assert 'class="ip-note-preview muted"' in response.text
     assert f'title="{note}"' in response.text
     assert f'data-full-note="{note}"' in response.text
-    css_source = (Path(__file__).resolve().parents[2] / "app/static/app.css").read_text(
-        encoding="utf-8"
-    )
+    css_source = _read_application_css()
     assert ".table.table-ip-assets {" in css_source
     assert "table-layout: fixed;" in css_source
     assert ".ip-asset-actions {" in css_source

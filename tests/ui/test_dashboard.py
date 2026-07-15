@@ -8,6 +8,14 @@ from app.models import IPAssetType, User, UserRole
 from app.routes import ui
 
 
+def _read_application_css() -> str:
+    static_css = Path("app/static/css")
+    return "\n".join(
+        path.read_text(encoding="utf-8")
+        for path in sorted(static_css.glob("*.css"))
+    )
+
+
 def test_needs_assignment_route_removed(client) -> None:
     app.dependency_overrides[ui.get_current_ui_user] = lambda: User(
         1, "viewer", "x", UserRole.VIEWER, True
@@ -191,6 +199,6 @@ def test_audit_log_page_pagination(client) -> None:
 
 
 def test_row_actions_panel_hidden_style_present() -> None:
-    css = Path("app/static/app.css").read_text(encoding="utf-8")
+    css = _read_application_css()
     assert ".row-actions-panel[hidden]" in css
     assert "display: none" in css
