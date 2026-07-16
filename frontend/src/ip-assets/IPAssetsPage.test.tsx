@@ -184,6 +184,39 @@ describe("IPAssetsPage", () => {
     await waitFor(() => expect(window.location.search).toContain("per-page=50"));
   });
 
+  it("adds a tag chip when a datalist suggestion is selected with the mouse", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(ok()));
+    render(<IPAssetsPage endpoint="/api/ui/ip-assets" />);
+    await screen.findByText("10.0.0.7");
+
+    fireEvent.change(screen.getByLabelText("Tag filter"), {
+      target: { value: "alpha" },
+    });
+
+    const chip = await screen.findByRole("button", { name: "alpha ×" });
+    expect(chip).toBeVisible();
+    expect(chip.closest(".tag-filter-entry")).not.toBeNull();
+    await waitFor(() =>
+      expect(window.location.search).toContain("tag_any=alpha"),
+    );
+    expect(screen.getByLabelText("Tag filter")).toHaveValue("");
+  });
+
+  it("renders tag chips restored from a direct tag_any URL", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(ok()));
+    render(
+      <IPAssetsPage
+        endpoint="/api/ui/ip-assets"
+        initialQuery="tag_any=alpha&tag_any=beta"
+      />,
+    );
+
+    const alpha = await screen.findByRole("button", { name: "alpha ×" });
+    const beta = screen.getByRole("button", { name: "beta ×" });
+    expect(alpha.closest(".tag-filter-entry")).not.toBeNull();
+    expect(beta.closest(".tag-filter-entry")).not.toBeNull();
+  });
+
   it("opens and searches the +N tag popover and applies its quick filter", async () => {
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue(ok()));
     render(<IPAssetsPage endpoint="/api/ui/ip-assets" />);

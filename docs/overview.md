@@ -13,6 +13,7 @@ ipocket is a lightweight IP inventory app to track addresses and their project a
 - IP assets search results are sorted by numeric IP value (so `192.168.1.2` appears before `192.168.1.11`) instead of plain text ordering.
 - IP assets list supports one-click filtering from table values: clicking a Project/Type chip applies that filter instantly, and Tag filtering uses an autocomplete builder with **OR**, **AND**, and **NOT** groups. Legacy `tag=...` URLs still map to **OR** matching.
 - Selected tags in the top Tags filter keep each tag's configured catalog color, including chips added live from the autocomplete input.
+- Selecting a Tags filter autocomplete suggestion with the mouse immediately adds its removable colored chip; Enter remains supported for keyboard selection. Selected chips are also restored visibly when loading or navigating back to a URL containing `tag_any`, `tag_all`, or `tag_not`.
 - IP assets list includes an archived-only filter for reviewing soft-deleted records when needed.
 - IP assets list includes pagination with a user-selectable page size (default 20) to keep large inventories manageable.
 - Rows-per-page selector in the IP assets table footer is isolated from global table click handlers, so its dropdown stays open reliably while choosing a page size.

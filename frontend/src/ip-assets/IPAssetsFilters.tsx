@@ -23,12 +23,16 @@ export function IPAssetsFilters({
   const [tagInput, setTagInput] = useState("");
   const catalog = new Map(tags.map((tag) => [tag.name, tag]));
 
-  function addTag(event: FormEvent) {
-    event.preventDefault();
-    const name = tagInput.trim().toLowerCase();
+  function addTagName(rawName: string) {
+    const name = rawName.trim().toLowerCase();
     if (!catalog.has(name) || filters[mode].includes(name)) return;
     onChange({ [mode]: [...filters[mode], name] });
     setTagInput("");
+  }
+
+  function addTag(event: FormEvent) {
+    event.preventDefault();
+    addTagName(tagInput);
   }
 
   return (
@@ -110,7 +114,13 @@ export function IPAssetsFilters({
               placeholder="Type tag and press Enter"
               list="ip-assets-tag-suggestions"
               value={tagInput}
-              onChange={(event) => setTagInput(event.target.value)}
+              onChange={(event) => {
+                const nextValue = event.target.value;
+                setTagInput(nextValue);
+                if (catalog.has(nextValue.trim().toLowerCase())) {
+                  addTagName(nextValue);
+                }
+              }}
             />
             <div className="tag-filter-mode-controls" role="group" aria-label="Tag filter mode">
               {(["tag_any", "tag_all", "tag_not"] as TagMode[]).map((item) => (
@@ -136,23 +146,27 @@ export function IPAssetsFilters({
                 </span>
                 <div className="tag-filter-selected">
                   {filters[item].map((name) => (
-                    <button
-                      key={name}
-                      className="tag tag-color tag-filter-chip"
-                      style={
-                        {
-                          "--tag-color": catalog.get(name)?.color ?? "#e2e8f0",
-                        } as React.CSSProperties
-                      }
-                      type="button"
-                      onClick={() =>
-                        onChange({
-                          [item]: filters[item].filter((tag) => tag !== name),
-                        })
-                      }
-                    >
-                      {name} ×
-                    </button>
+                    <span className="tag-filter-entry" key={name}>
+                      <button
+                        className="tag tag-color tag-filter-chip"
+                        style={
+                          {
+                            "--tag-color":
+                              catalog.get(name)?.color ?? "#e2e8f0",
+                          } as React.CSSProperties
+                        }
+                        type="button"
+                        onClick={() =>
+                          onChange({
+                            [item]: filters[item].filter(
+                              (tag) => tag !== name,
+                            ),
+                          })
+                        }
+                      >
+                        {name} ×
+                      </button>
+                    </span>
                   ))}
                 </div>
               </div>
