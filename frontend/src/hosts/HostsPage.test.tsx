@@ -4,6 +4,7 @@ import {
   render,
   screen,
   waitFor,
+  within,
 } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
@@ -82,6 +83,12 @@ describe("HostsPage", () => {
       "/ui/ip-assets/11",
     );
     expect(screen.getByRole("button", { name: "+1 more" })).toBeInTheDocument();
+    const tableCard = screen.getByRole("table").closest(".table-card");
+    expect(tableCard).toHaveTextContent("Showing 1–1 of 1");
+    expect(
+      screen.getByRole("navigation", { name: "Hosts pagination" }),
+    ).toHaveTextContent("1 / 1");
+    expect(screen.getByLabelText("Rows per page")).toHaveValue("20");
   });
 
   it("shows retryable errors and empty state", async () => {
@@ -137,7 +144,7 @@ describe("HostsPage", () => {
     expect(screen.queryByText("stale-host")).not.toBeInTheDocument();
   });
 
-  it("applies tag filters from chips and closes the popover with Escape", async () => {
+  it("anchors the tag popover to +more, opens on hover, filters, and closes with Escape", async () => {
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue(ok()));
     render(<HostsPage endpoint="/api/ui/hosts" />);
     await screen.findByText("edge-01");
@@ -145,8 +152,35 @@ describe("HostsPage", () => {
     fireEvent.click(screen.getByRole("button", { name: "alpha" }));
     await waitFor(() => expect(window.location.search).toContain("tag=alpha"));
 
-    fireEvent.click(screen.getByRole("button", { name: "+1 more" }));
-    expect(screen.getByRole("dialog", { name: /IP tags for edge-01/ })).toBeInTheDocument();
+    const moreButton = screen.getByRole("button", { name: "+1 more" });
+    moreButton.getBoundingClientRect = () =>
+      ({
+        top: 100,
+        bottom: 120,
+        left: 400,
+        right: 460,
+        width: 60,
+        height: 20,
+        x: 400,
+        y: 100,
+        toJSON: () => ({}),
+      }) as DOMRect;
+    fireEvent.mouseEnter(moreButton);
+    const popover = await screen.findByRole("dialog", {
+      name: /IP tags for edge-01/,
+    });
+    expect(popover).toHaveStyle({
+      position: "fixed",
+      top: "126px",
+      left: "400px",
+    });
+    fireEvent.change(screen.getByRole("searchbox", { name: "Filter tags" }), {
+      target: { value: "gamma" },
+    });
+    expect(within(popover).getByRole("button", { name: "gamma" })).toBeInTheDocument();
+    expect(
+      within(popover).queryByRole("button", { name: "beta" }),
+    ).not.toBeInTheDocument();
     fireEvent.keyDown(document, { key: "Escape" });
     expect(screen.queryByRole("dialog", { name: /IP tags/ })).not.toBeInTheDocument();
   });

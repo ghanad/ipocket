@@ -173,6 +173,15 @@ export function HostsPage({
   }, []);
 
   const dirty = JSON.stringify(values) !== JSON.stringify(initialValues);
+  const paginationStart = data?.pagination.total
+    ? (data.pagination.page - 1) * data.pagination.per_page + 1
+    : 0;
+  const paginationEnd = data?.pagination.total
+    ? Math.min(
+        data.pagination.page * data.pagination.per_page,
+        data.pagination.total,
+      )
+    : 0;
   const closeDrawer = useCallback(() => {
     if ((mode === "create" || mode === "edit") && dirty) {
       if (!window.confirm("Discard changes?")) return;
@@ -285,61 +294,72 @@ export function HostsPage({
                   : [...filters.tags, tag],
               })
             }
+            footer={
+              data && data.pagination.total > 0 ? (
+                <footer className="table-footer hosts-table-footer">
+                  <p className="table-meta hosts-table-summary">
+                    Showing <strong>{paginationStart}–{paginationEnd}</strong> of{" "}
+                    <strong>{data.pagination.total}</strong>
+                  </p>
+                  <div className="table-footer-controls hosts-pagination-controls">
+                    <label className="hosts-rows-control">
+                      <span>Rows per page</span>
+                      <select
+                        className="select select-minimal"
+                        aria-label="Rows per page"
+                        value={filters.per_page}
+                        onChange={(event) =>
+                          patchFilters({ per_page: Number(event.target.value) })
+                        }
+                      >
+                        {[10, 20, 50, 100].map((size) => (
+                          <option key={size} value={size}>
+                            {size}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                    <nav
+                      className="pagination hosts-pagination"
+                      aria-label="Hosts pagination"
+                    >
+                      <button
+                        className="btn btn-secondary btn-small"
+                        type="button"
+                        disabled={data.pagination.page <= 1}
+                        onClick={() =>
+                          setFilters((current) => ({
+                            ...current,
+                            page: current.page - 1,
+                          }))
+                        }
+                      >
+                        Previous
+                      </button>
+                      <span className="pagination-status">
+                        {data.pagination.page} / {data.pagination.total_pages}
+                      </span>
+                      <button
+                        className="btn btn-secondary btn-small"
+                        type="button"
+                        disabled={
+                          data.pagination.page >= data.pagination.total_pages
+                        }
+                        onClick={() =>
+                          setFilters((current) => ({
+                            ...current,
+                            page: current.page + 1,
+                          }))
+                        }
+                      >
+                        Next
+                      </button>
+                    </nav>
+                  </div>
+                </footer>
+              ) : undefined
+            }
           />
-          {data && data.pagination.total > 0 && (
-            <div className="table-footer">
-              <span>
-                Page {data.pagination.page} of {data.pagination.total_pages} ·{" "}
-                {data.pagination.total} hosts
-              </span>
-              <div className="table-footer-controls">
-                <label className="field field-inline">
-                  <span>Rows</span>
-                  <select
-                    className="select select-minimal"
-                    value={filters.per_page}
-                    onChange={(event) =>
-                      patchFilters({ per_page: Number(event.target.value) })
-                    }
-                  >
-                    {[10, 20, 50, 100].map((size) => (
-                      <option key={size} value={size}>
-                        {size}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-                <button
-                  className="btn btn-secondary btn-small"
-                  type="button"
-                  disabled={data.pagination.page <= 1}
-                  onClick={() =>
-                    setFilters((current) => ({
-                      ...current,
-                      page: current.page - 1,
-                    }))
-                  }
-                >
-                  Previous
-                </button>
-                <button
-                  className="btn btn-secondary btn-small"
-                  type="button"
-                  disabled={
-                    data.pagination.page >= data.pagination.total_pages
-                  }
-                  onClick={() =>
-                    setFilters((current) => ({
-                      ...current,
-                      page: current.page + 1,
-                    }))
-                  }
-                >
-                  Next
-                </button>
-              </div>
-            </div>
-          )}
         </>
       )}
       <HostDrawer

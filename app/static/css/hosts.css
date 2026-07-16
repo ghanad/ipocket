@@ -193,14 +193,6 @@
   background: transparent;
 }
 
-.hosts-tags-popover {
-  position: fixed;
-  z-index: 60;
-  right: 24px;
-  top: 120px;
-  width: min(340px, calc(100vw - 48px));
-}
-
 .host-drawer [data-host-mode-panel='delete'] .ip-drawer-section {
   border: none;
   border-radius: 0;
@@ -212,6 +204,52 @@
     display: flex;
     align-items: center;
     gap: 16px;
+  }
+  .hosts-table-footer {
+    flex-wrap: nowrap;
+    min-height: 64px;
+    border-top: 1px solid var(--color-border);
+    background: #f8fafc;
+    border-radius: 0 0 var(--radius-md) var(--radius-md);
+  }
+  .hosts-table-summary {
+    margin: 0;
+    white-space: nowrap;
+  }
+  .hosts-table-summary strong {
+    color: var(--color-text);
+    font-weight: 600;
+  }
+  .hosts-pagination-controls {
+    gap: 20px;
+  }
+  .hosts-rows-control {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--color-muted-light);
+    font-size: 12px;
+    white-space: nowrap;
+  }
+  .hosts-pagination {
+    gap: 10px;
+  }
+  .hosts-pagination .btn {
+    min-width: 76px;
+  }
+  .hosts-pagination .pagination-status {
+    min-width: 36px;
+    text-align: center;
+  }
+  @media (max-width: 720px) {
+    .hosts-table-footer {
+      align-items: flex-start;
+      flex-direction: column;
+    }
+    .hosts-pagination-controls {
+      width: 100%;
+      justify-content: space-between;
+    }
   }
   .table-per-page {
     display: flex;

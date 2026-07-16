@@ -1,4 +1,9 @@
-import { useState } from "react";
+import {
+  type ReactNode,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 
 import { TagPopover } from "./TagPopover";
 import type { HostRow } from "./types";
@@ -9,6 +14,7 @@ interface Props {
   onEdit: (host: HostRow) => void;
   onDelete: (host: HostRow) => void;
   onTag: (tag: string) => void;
+  footer?: ReactNode;
 }
 
 export function HostsTable({
@@ -17,8 +23,58 @@ export function HostsTable({
   onEdit,
   onDelete,
   onTag,
+  footer,
 }: Props) {
-  const [popoverHost, setPopoverHost] = useState<HostRow | null>(null);
+  const [popover, setPopover] = useState<{
+    host: HostRow;
+    anchor: HTMLElement;
+  } | null>(null);
+  const openTimer = useRef<number | null>(null);
+  const closeTimer = useRef<number | null>(null);
+
+  function clearOpenTimer() {
+    if (openTimer.current !== null) {
+      window.clearTimeout(openTimer.current);
+      openTimer.current = null;
+    }
+  }
+
+  function clearCloseTimer() {
+    if (closeTimer.current !== null) {
+      window.clearTimeout(closeTimer.current);
+      closeTimer.current = null;
+    }
+  }
+
+  function openPopover(host: HostRow, anchor: HTMLElement, delay = 0) {
+    clearOpenTimer();
+    clearCloseTimer();
+    if (delay === 0) {
+      setPopover({ host, anchor });
+      return;
+    }
+    openTimer.current = window.setTimeout(() => {
+      setPopover({ host, anchor });
+      openTimer.current = null;
+    }, delay);
+  }
+
+  function scheduleClose() {
+    clearOpenTimer();
+    clearCloseTimer();
+    closeTimer.current = window.setTimeout(() => {
+      setPopover(null);
+      closeTimer.current = null;
+    }, 180);
+  }
+
+  useEffect(
+    () => () => {
+      clearOpenTimer();
+      clearCloseTimer();
+    },
+    [],
+  );
 
   if (!hosts.length) {
     return (
@@ -110,10 +166,17 @@ export function HostsTable({
                         className="tag tag-muted ip-tags-more"
                         type="button"
                         aria-haspopup="dialog"
-                        aria-expanded={popoverHost?.id === host.id}
+                        aria-expanded={popover?.host.id === host.id}
+                        onMouseEnter={(event) =>
+                          openPopover(host, event.currentTarget, 120)
+                        }
+                        onMouseLeave={scheduleClose}
+                        onFocus={(event) =>
+                          openPopover(host, event.currentTarget)
+                        }
                         onClick={(event) => {
                           event.stopPropagation();
-                          setPopoverHost(host);
+                          openPopover(host, event.currentTarget);
                         }}
                       >
                         +{host.ip_tags.length - 2} more
@@ -147,14 +210,18 @@ export function HostsTable({
           </tbody>
         </table>
       </div>
-      {popoverHost && (
+      {footer}
+      {popover && (
         <TagPopover
-          hostName={popoverHost.name}
-          tags={popoverHost.ip_tags}
-          onClose={() => setPopoverHost(null)}
+          hostName={popover.host.name}
+          tags={popover.host.ip_tags}
+          anchor={popover.anchor}
+          onClose={() => setPopover(null)}
+          onMouseEnter={clearCloseTimer}
+          onMouseLeave={scheduleClose}
           onSelect={(tag) => {
             onTag(tag);
-            setPopoverHost(null);
+            setPopover(null);
           }}
         />
       )}
