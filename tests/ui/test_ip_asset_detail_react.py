@@ -35,6 +35,7 @@ def test_detail_shell_mount_entry_active_nav_and_legacy_routes(
 
     assert detail.status_code == 200
     assert 'id="ip-asset-detail-root"' in detail.text
+    assert 'class="ip-asset-detail-root"' in detail.text
     assert f'data-endpoint="/api/ui/ip-assets/{asset.id}"' in detail.text
     assert "/static/react/ip-asset-detail/ip-asset-detail.js" in detail.text
     assert 'class="nav-link nav-link-active" href="/ui/ip-assets"' in detail.text

@@ -22,7 +22,8 @@
   gap: 24px;
 }
 
-.host-detail-root {
+.host-detail-root,
+.ip-asset-detail-root {
   display: flex;
   flex-direction: column;
   gap: 24px;
