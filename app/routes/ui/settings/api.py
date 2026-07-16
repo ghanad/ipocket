@@ -8,7 +8,7 @@ from sqlalchemy.exc import IntegrityError
 
 from app.dependencies import get_session
 from app.models import UserRole
-from app.routes.ui.utils import get_current_ui_user, require_ui_editor
+from app.routes.ui.utils import get_current_ui_user
 from app.utils import (
     DEFAULT_PROJECT_COLOR,
     DEFAULT_TAG_COLOR,
@@ -94,7 +94,13 @@ class DeleteInput(BaseModel):
 
 
 def _can_edit(user) -> bool:
-    return user.role == UserRole.EDITOR
+    return user.role in {UserRole.EDITOR, UserRole.SUPERUSER}
+
+
+def require_library_editor(user=Depends(get_current_ui_user)):
+    if not _can_edit(user):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN)
+    return user
 
 
 def _project_payload(project, usage_count: int = 0) -> dict[str, object]:
@@ -140,7 +146,7 @@ def list_projects_for_ui(
 def create_project_for_ui(
     payload: ProjectInput,
     session=Depends(get_session),
-    _user=Depends(require_ui_editor),
+    _user=Depends(require_library_editor),
 ):
     try:
         project = repository.create_project(
@@ -162,7 +168,7 @@ def update_project_for_ui(
     project_id: int,
     payload: ProjectInput,
     session=Depends(get_session),
-    _user=Depends(require_ui_editor),
+    _user=Depends(require_library_editor),
 ):
     if repository.get_project_by_id(session, project_id) is None:
         raise HTTPException(status_code=404, detail="Project not found.")
@@ -192,7 +198,7 @@ def delete_project_for_ui(
     project_id: int,
     payload: DeleteInput,
     session=Depends(get_session),
-    _user=Depends(require_ui_editor),
+    _user=Depends(require_library_editor),
 ) -> Response:
     project = repository.get_project_by_id(session, project_id)
     if project is None:
@@ -226,7 +232,7 @@ def list_vendors_for_ui(
 def create_vendor_for_ui(
     payload: VendorInput,
     session=Depends(get_session),
-    _user=Depends(require_ui_editor),
+    _user=Depends(require_library_editor),
 ):
     try:
         vendor = repository.create_vendor(session, name=payload.name)
@@ -243,7 +249,7 @@ def update_vendor_for_ui(
     vendor_id: int,
     payload: VendorInput,
     session=Depends(get_session),
-    _user=Depends(require_ui_editor),
+    _user=Depends(require_library_editor),
 ):
     if repository.get_vendor_by_id(session, vendor_id) is None:
         raise HTTPException(status_code=404, detail="Vendor not found.")
@@ -267,7 +273,7 @@ def delete_vendor_for_ui(
     vendor_id: int,
     payload: DeleteInput,
     session=Depends(get_session),
-    _user=Depends(require_ui_editor),
+    _user=Depends(require_library_editor),
 ) -> Response:
     vendor = repository.get_vendor_by_id(session, vendor_id)
     if vendor is None:
@@ -303,7 +309,7 @@ def list_tags_for_ui(
 def create_tag_for_ui(
     payload: TagInput,
     session=Depends(get_session),
-    _user=Depends(require_ui_editor),
+    _user=Depends(require_library_editor),
 ):
     try:
         tag = repository.create_tag(
@@ -324,7 +330,7 @@ def update_tag_for_ui(
     tag_id: int,
     payload: TagInput,
     session=Depends(get_session),
-    _user=Depends(require_ui_editor),
+    _user=Depends(require_library_editor),
 ):
     if repository.get_tag_by_id(session, tag_id) is None:
         raise HTTPException(status_code=404, detail="Tag not found.")
@@ -353,7 +359,7 @@ def delete_tag_for_ui(
     tag_id: int,
     payload: DeleteInput,
     session=Depends(get_session),
-    _user=Depends(require_ui_editor),
+    _user=Depends(require_library_editor),
 ) -> Response:
     tag = repository.get_tag_by_id(session, tag_id)
     if tag is None:

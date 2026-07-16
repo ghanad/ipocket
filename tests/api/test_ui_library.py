@@ -82,7 +82,7 @@ def test_ui_library_api_crud_validation_and_exact_delete_confirmation(
 ) -> None:
     monkeypatch.setattr(library_api, "suggest_random_tag_color", lambda: "#123abc")
     app.dependency_overrides[ui.get_current_ui_user] = _editor
-    app.dependency_overrides[ui.require_ui_editor] = _editor
+    app.dependency_overrides[library_api.require_library_editor] = _editor
     try:
         project = client.post(
             "/api/ui/library/projects",
@@ -172,7 +172,7 @@ def test_ui_library_api_crud_validation_and_exact_delete_confirmation(
             assert deleted.status_code == 204
     finally:
         app.dependency_overrides.pop(ui.get_current_ui_user, None)
-        app.dependency_overrides.pop(ui.require_ui_editor, None)
+        app.dependency_overrides.pop(library_api.require_library_editor, None)
 
 
 def test_ui_library_api_preserves_session_auth_and_role_rules(
@@ -219,11 +219,12 @@ def test_ui_library_api_preserves_session_auth_and_role_rules(
         follow_redirects=False,
     )
     assert admin_login.status_code == 303
-    assert client.get("/api/ui/library/vendors").json()["can_edit"] is False
-    assert (
-        client.post("/api/ui/library/vendors", json={"name": "Forbidden"}).status_code
-        == 403
+    assert client.get("/api/ui/library/vendors").json()["can_edit"] is True
+    admin_created = client.post(
+        "/api/ui/library/vendors",
+        json={"name": "Admin Vendor"},
     )
+    assert admin_created.status_code == 201
 
     _create_user("editor", "editor-pass", UserRole.EDITOR)
     editor_login = client.post(

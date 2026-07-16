@@ -250,6 +250,7 @@ Start the app and sign in:
 - Passwords are stored as bcrypt hashes (`passlib`); successful login also upgrades any legacy SHA-256 password hashes.
 - API/UI login sessions are stored in the SQLite `sessions` table, so tokens remain valid across app restarts until logout or token revocation.
 - Editors can add or edit IPs from the UI.
+- Editors and Superusers can maintain Projects, Vendors, and Tags from the Library page; Viewers see the catalog without mutation controls.
 - Any authenticated user (Viewer/Editor/Superuser) can change their own password at `http://127.0.0.1:8000/ui/account/password` by entering current password + new password (with confirmation).
 
 ## User management

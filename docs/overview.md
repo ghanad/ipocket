@@ -58,7 +58,7 @@ ipocket is a lightweight IP inventory app to track addresses and their project a
 - UI session signing now requires `SESSION_SECRET` to be configured in non-testing environments; startup fails fast if it is missing or blank.
 - Authenticated users can open **Change Password** from the sidebar account section (`/ui/account/password`) to rotate their own password by providing current password + new password confirmation.
 - In the sidebar account section, authenticated actions are grouped as a compact stack (`Change Password` + `Logout`) so account actions stay visually connected.
-- User access model now distinguishes `Editor` (data write) from `Superuser` (user management only); read routes stay public except audit log, which still requires authentication.
+- User access model distinguishes `Editor` (data write) from `Superuser` (user management, plus Library catalog maintenance); read routes stay public except audit log, which still requires authentication.
 - User management is available on `/ui/users` (superuser-only) and writes user-management actions to audit logs with target type `USER`.
 - The `/ui/users` page is visible and accessible only to authenticated superusers.
 - User create/edit/delete on `/ui/users` uses the same right-side drawer pattern as other management pages.
@@ -79,7 +79,7 @@ ipocket is a lightweight IP inventory app to track addresses and their project a
 - Reusable drawer shell markup is centralized in `app/templates/macros/drawer.html` for Jinja-driven drawer pages, while the React Ranges implementation keeps an equivalent `RangeDrawer` component.
 - `/ui/projects` is React/Vite/TypeScript-powered while the Jinja application shell, sidebar, session cookie, and role rules remain unchanged. The page uses focused `/api/ui/library/projects`, `/api/ui/library/vendors`, and `/api/ui/library/tags` endpoints; legacy HTML form and redirect routes remain available for compatibility.
 - Projects, Vendors, and Tags keep the existing right-side drawer UX for create/edit/delete, dirty-close confirmation, Escape/overlay close, exact-name destructive confirmation, validation messages, usage counts, and tab/query links. Successful mutations refresh only the active table rather than reloading the full page.
-- Library API validation preserves project/tag color normalization, tag-name normalization, random Tag create colors, and the existing Viewer/Editor/Superuser authorization behavior. Authentication redirects detected by React return the browser to the login flow.
+- Library API validation preserves project/tag color normalization, tag-name normalization, and random Tag create colors. Viewer remains read-only, while Editor and Superuser can create, edit, and delete Library catalog entries. Authentication redirects detected by React return the browser to the login flow.
 - The Library page uses one shared "Catalog Settings" header with compact segmented tabs (Projects/Tags/Vendors) and a tab-aware primary action button (New Project/Tag/Vendor) to keep controls in one place.
 - The Library header primary action button now reliably opens the matching create drawer on all tabs (Projects/Tags/Vendors).
 - The Projects and Tags tab tables now use compact row spacing so catalog rows stay denser and easier to scan.
