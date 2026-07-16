@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from fastapi import APIRouter
 
-from . import assets, auth, hosts, imports, metadata, system
+from . import assets, auth, hosts, imports, management, metadata, system
 from .dependencies import get_current_user, require_editor
 from .utils import (
     asset_payload,
@@ -21,6 +21,7 @@ router.include_router(assets.router)
 router.include_router(hosts.router)
 router.include_router(metadata.router)
 router.include_router(imports.router)
+router.include_router(management.router)
 
 __all__ = [
     "router",

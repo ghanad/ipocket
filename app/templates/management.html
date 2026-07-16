@@ -1,76 +1,16 @@
 {% extends "base.html" %}
 {% block content %}
-<section class="page-header">
-  <div>
-    <h1>Management Overview</h1>
-    <p class="subtitle">Quick snapshot of inventory health and coverage.</p>
-  </div>
-</section>
-
-<section class="stats-grid">
-  <a class="card stat-card stat-card-link" href="/ui/ip-assets" aria-label="View active IP assets">
-    <p class="stat-label">Active IPs</p>
-    <p class="stat-value" data-testid="stat-active-ips">{{ summary.active_ip_total }}</p>
-    <p class="stat-helper">IPs currently in service</p>
-  </a>
-  <a class="card stat-card stat-card-link" href="/ui/ip-assets?archived-only=true" aria-label="View archived IP assets">
-    <p class="stat-label">Archived IPs</p>
-    <p class="stat-value" data-testid="stat-archived-ips">{{ summary.archived_ip_total }}</p>
-    <p class="stat-helper">Soft-deleted records</p>
-  </a>
-  <a class="card stat-card stat-card-link" href="/ui/hosts" aria-label="View hosts">
-    <p class="stat-label">Hosts</p>
-    <p class="stat-value" data-testid="stat-hosts">{{ summary.host_total }}</p>
-    <p class="stat-helper">Distinct hardware or VM entries</p>
-  </a>
-  <a class="card stat-card stat-card-link" href="/ui/vendors" aria-label="View vendors">
-    <p class="stat-label">Vendors</p>
-    <p class="stat-value" data-testid="stat-vendors">{{ summary.vendor_total }}</p>
-    <p class="stat-helper">Partner or manufacturer list</p>
-  </a>
-  <a class="card stat-card stat-card-link" href="/ui/projects" aria-label="View projects">
-    <p class="stat-label">Projects</p>
-    <p class="stat-value" data-testid="stat-projects">{{ summary.project_total }}</p>
-    <p class="stat-helper">Active assignments</p>
-  </a>
-</section>
-
-<section class="card table-card">
-  <div class="card-header card-header-padded">
+<div
+  id="management-root"
+  data-endpoint="/api/management/overview"
+  aria-live="polite"
+>
+  <section class="page-header">
     <div>
-      <h2>Subnet Utilization</h2>
-      <p class="subtitle">Track used vs. free IPs in each defined range.</p>
+      <h1>Management Overview</h1>
+      <p class="subtitle">Loading inventory health and coverage…</p>
     </div>
-  </div>
-  <div class="table-wrapper">
-    <table class="table">
-      <thead>
-        <tr>
-          <th>Name</th>
-          <th>CIDR</th>
-          <th>Total usable</th>
-          <th>Used</th>
-          <th>Free</th>
-          <th>Utilization</th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for row in utilization %}
-        <tr>
-          <td>{{ row.name }}</td>
-          <td>{{ row.cidr }}</td>
-          <td>{{ row.total_usable }}</td>
-          <td><a class="link" href="/ui/ranges/{{ row.id }}/addresses#used">{{ row.used }}</a></td>
-          <td><a class="link" href="/ui/ranges/{{ row.id }}/addresses#free">{{ row.free }}</a></td>
-          <td>{{ "%.1f"|format(row.utilization_percent) }}%</td>
-        </tr>
-        {% else %}
-        <tr>
-          <td colspan="6" class="empty-state">No ranges yet. Add ranges to see utilization.</td>
-        </tr>
-        {% endfor %}
-      </tbody>
-    </table>
-  </div>
-</section>
+  </section>
+</div>
+<script type="module" src="/static/react/management/management.js"></script>
 {% endblock %}

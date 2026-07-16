@@ -10,6 +10,22 @@ def test_dockerfile_exists_and_runs_app():
     assert "requirements.txt" in content
     assert "ARG IPOCKET_VERSION=dev" in content
     assert "ENV IPOCKET_VERSION=${IPOCKET_VERSION}" in content
+    assert "FROM node:22-slim AS frontend" in content
+    assert "RUN npm ci" in content
+    assert "RUN npm run build" in content
+    assert (
+        "COPY --from=frontend /app/static/react/management "
+        "./app/static/react/management"
+    ) in content
+
+
+def test_docker_build_context_excludes_local_frontend_artifacts():
+    dockerignore_path = Path(__file__).resolve().parents[1] / ".dockerignore"
+    content = dockerignore_path.read_text(encoding="utf-8")
+
+    assert "frontend/node_modules" in content
+    assert "app/static/react" in content
+    assert ".venv" in content
 
 
 def test_docker_compose_configures_database_and_admin():

@@ -2,6 +2,7 @@
 
 ## Requirements
 - Python 3.11+
+- Node.js 22+ and npm (only for building/testing React UI assets locally)
 - SQLite (built-in)
 - HTTP client support comes from the pip-installed `httpx` package in `requirements.txt`; ipocket does not ship a local `httpx/` package in the repo to avoid import shadowing.
 - Cassandra connector support comes from the pip-installed `cassandra-driver` package in `requirements.txt`.
@@ -14,6 +15,20 @@ python -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
 ```
+
+Install and build the React UI:
+
+```bash
+cd frontend
+npm ci
+npm run build
+cd ..
+```
+
+The build writes the Management page bundle to
+`app/static/react/management/management.js`. Re-run `npm run build` after
+changing React sources. The Docker image builds this bundle automatically in a
+separate Node stage; Node.js is not included in the final runtime image.
 
 Initialize the database (runs migrations):
 
@@ -130,6 +145,11 @@ ordered, focused modules under `/static/css/`. When adding styles, place shared
 rules in the matching module and page-only rules in that page's module, while
 keeping the import order in `app.css` unchanged unless the cascade is intentionally
 being updated.
+The Management Overview page is the first incrementally migrated React page.
+FastAPI/Jinja still renders the application shell and sidebar, while React loads
+dashboard data from `GET /api/management/overview` and renders loading, error,
+empty, summary-card, and subnet-utilization states. Its production bundle is
+served locally from `/static/react/management/management.js`.
 The IP Assets page also stays fully local: `/static/js/ip-assets.js` is a native
 ES-module entrypoint whose focused dependencies are served from
 `/static/js/ip-assets/`. No bundler, package install, or external JavaScript host

@@ -67,22 +67,12 @@ def test_management_page_shows_summary_counts(client) -> None:
 
     assert response.status_code == 200
     assert "Management Overview" in response.text
-    assert 'data-testid="stat-active-ips">3<' in response.text
-    assert 'data-testid="stat-archived-ips">1<' in response.text
-    assert 'data-testid="stat-hosts">1<' in response.text
-    assert 'data-testid="stat-vendors">1<' in response.text
-    assert 'data-testid="stat-projects">1<' in response.text
-    assert 'href="/ui/ip-assets"' in response.text
-    assert 'href="/ui/ip-assets?archived-only=true"' in response.text
-    assert 'href="/ui/hosts"' in response.text
-    assert 'href="/ui/vendors"' in response.text
-    assert 'href="/ui/projects"' in response.text
-    assert 'class="card-header card-header-padded"' in response.text
-    assert "Subnet Utilization" in response.text
-    assert "192.168.10.0/24" in response.text
-    assert "254</td>" in response.text
-    assert 'addresses#used">2</a>' in response.text
-    assert 'addresses#free">252</a>' in response.text
+    assert 'id="management-root"' in response.text
+    assert 'data-endpoint="/api/management/overview"' in response.text
+    assert (
+        '<script type="module" src="/static/react/management/management.js"></script>'
+        in response.text
+    )
 
 
 def test_flash_messages_render_once(client) -> None:

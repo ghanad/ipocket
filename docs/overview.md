@@ -46,8 +46,8 @@ ipocket is a lightweight IP inventory app to track addresses and their project a
 - Tag chips now auto-pick a high-contrast text color (dark/light) based on each tag background color across the IP edit/add drawers, IP assets table tags, and tag popovers.
 - Tags page now uses the same right-side drawer pattern as Projects/Vendors for create/edit/delete, including destructive confirmation by typing the exact tag name. The tags table also shows an **IPs** count column with how many active IP assets currently use each tag.
 - Tag create drawer suggests a random tag color by default (instead of one fixed color), and users can override it before saving.
-- Management overview dashboard with quick totals for IPs, hosts, vendors, and projects, with cards linking to the relevant detail lists.
-- CIDR-based subnet utilization report on the Management overview page that shows used vs. free IPs per range.
+- Management overview dashboard with quick totals for IPs, hosts, vendors, and projects, with cards linking to the relevant detail lists. This is the first React/TypeScript page in the incremental UI migration; the existing Jinja application shell and sidebar remain in place.
+- CIDR-based subnet utilization report on the React-powered Management overview page that loads through `GET /api/management/overview` and shows loading, retryable error, empty, and populated states.
 - Sidebar remains fixed-height with its own scroll to keep navigation and account actions accessible on long pages.
 - UI pages advertise a local `/static/favicon.png` icon so browser tabs/bookmarks show the ipocket brand without external asset loading.
 - The old fixed top header has been removed from the main layout to give pages more vertical space; branding remains in the left sidebar.

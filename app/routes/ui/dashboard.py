@@ -3,8 +3,6 @@ from __future__ import annotations
 from fastapi import APIRouter, Depends, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 
-from app.dependencies import get_connection
-from app import repository
 from .utils import _render_template, get_current_ui_user
 
 router = APIRouter()
@@ -31,17 +29,10 @@ def ui_about(
 @router.get("/ui/management", response_class=HTMLResponse)
 def ui_management(
     request: Request,
-    connection=Depends(get_connection),
 ) -> HTMLResponse:
-    summary = repository.get_management_summary(connection)
-    utilization = repository.get_ip_range_utilization(connection)
     return _render_template(
         request,
         "management.html",
-        {
-            "title": "ipocket - Management Overview",
-            "summary": summary,
-            "utilization": utilization,
-        },
+        {"title": "ipocket - Management Overview"},
         active_nav="management",
     )
