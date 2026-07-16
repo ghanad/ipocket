@@ -10,6 +10,7 @@ export default defineConfig(({ mode }) => ({
     minify: "esbuild",
     rollupOptions: {
       input: {
+        login: resolve(__dirname, "src/login/main.tsx"),
         management: resolve(__dirname, "src/management/main.tsx"),
         ranges: resolve(__dirname, "src/ranges/main.tsx"),
         library: resolve(__dirname, "src/library/main.tsx"),

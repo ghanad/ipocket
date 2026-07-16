@@ -104,7 +104,7 @@ those Hosts.
 - `user_id` (INTEGER, FK to `users.id`, cascade delete)
 - `created_at` (TEXT timestamp)
 
-API bearer tokens and UI login cookies both map to this table for session validation and revocation.
+API bearer tokens and UI login cookies both map to this table for session validation and revocation. The React login transport (`POST /api/ui/login`) and retained legacy form transport (`POST /ui/login`) share the same server-side authentication and session-creation path, so the migration adds no session fields or alternate token storage.
 
 
 ## AuditLog

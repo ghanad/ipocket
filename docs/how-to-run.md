@@ -285,6 +285,9 @@ export ADMIN_BOOTSTRAP_PASSWORD=admin-pass
 Start the app and sign in:
 - Visit http://127.0.0.1:8000/ui/login
 - Login with the bootstrap credentials.
+- The login page is React-powered and uses `POST /api/ui/login`; its Jinja shell intentionally omits the application sidebar/navigation.
+- Authentication policy remains server-side: username normalization, password verification, inactive-user rejection, generic failure messages, approved return URLs, session creation, and signed `ipocket_session` cookie handling are not implemented in the browser.
+- The legacy form-compatible `POST /ui/login` endpoint remains available and uses the same server-side authentication/session helper as the JSON endpoint.
 - Passwords are stored as bcrypt hashes (`passlib`); successful login also upgrades any legacy SHA-256 password hashes.
 - API/UI login sessions are stored in the SQLite `sessions` table, so tokens remain valid across app restarts until logout or token revocation.
 - Editors can add or edit IPs from the UI.
