@@ -1,14 +1,14 @@
 from __future__ import annotations
 
 import sqlite3
-from typing import Optional
-from urllib.parse import urlencode
+from typing import Any, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 
 from app.dependencies import get_connection
-from app.models import IPAssetType
+from app.models import IPAssetType, UserRole
+from app.routes.api.schemas import UIRangeAddressCreate, UIRangeAddressWrite
 from app.routes.ui.utils import (
     _is_auto_host_for_bmc_enabled,
     _normalize_asset_type,
@@ -17,6 +17,7 @@ from app.routes.ui.utils import (
     _parse_optional_str,
     _parse_positive_int_query,
     _render_template,
+    get_optional_current_ui_user,
     require_ui_editor,
 )
 from app.utils import normalize_tag_names, validate_ip_address
@@ -38,6 +39,221 @@ def _normalize_status_filter(value: Optional[str]) -> str:
     return normalized
 
 
+def _can_write(user) -> bool:
+    return bool(user and user.role == UserRole.EDITOR)
+
+
+def _normalized_range_query(request: Request, connection) -> dict[str, Any]:
+    projects = list(repository.list_projects(connection))
+    tags = list(repository.list_tags(connection))
+    project_ids = {project.id for project in projects}
+    tag_names = {tag.name for tag in tags}
+
+    per_page = _parse_positive_int_query(
+        request.query_params.get("per-page"), _DEFAULT_PAGE_SIZE
+    )
+    if per_page not in _ALLOWED_PAGE_SIZES:
+        per_page = _DEFAULT_PAGE_SIZE
+    page = _parse_positive_int_query(request.query_params.get("page"), 1)
+    status_filter = _normalize_status_filter(request.query_params.get("status"))
+    ip_query = (request.query_params.get("q") or "").strip()
+    project_value = (request.query_params.get("project_id") or "").strip()
+    project_unassigned = project_value == "unassigned"
+    project_id = (
+        None if project_unassigned else _parse_optional_int_query(project_value)
+    )
+    if project_id not in project_ids:
+        project_id = None
+        if not project_unassigned:
+            project_value = ""
+    raw_tags = request.query_params.getlist("tag")
+    try:
+        selected_tags = normalize_tag_names(raw_tags) if raw_tags else []
+    except ValueError:
+        selected_tags = []
+    selected_tags = [tag for tag in selected_tags if tag in tag_names]
+    try:
+        asset_type = _normalize_asset_type(request.query_params.get("type"))
+    except ValueError:
+        asset_type = None
+
+    return {
+        "q": ip_query,
+        "project_id": "unassigned"
+        if project_unassigned
+        else str(project_id or ""),
+        "parsed_project_id": project_id,
+        "project_unassigned": project_unassigned,
+        "type": asset_type.value if asset_type else "",
+        "asset_type": asset_type,
+        "tags": selected_tags,
+        "status": status_filter,
+        "page": page,
+        "per_page": per_page,
+        "projects": projects,
+        "tag_catalog": tags,
+    }
+
+
+def _range_addresses_payload(
+    request: Request,
+    range_id: int,
+    connection,
+    user,
+) -> dict[str, Any]:
+    breakdown = repository.get_ip_range_address_breakdown(connection, range_id)
+    if breakdown is None:
+        raise HTTPException(status_code=404, detail="IP range not found.")
+    query = _normalized_range_query(request, connection)
+    addresses = list(breakdown["addresses"])
+    if query["status"] != "all":
+        addresses = [
+            row for row in addresses if row.get("status") == query["status"]
+        ]
+    if query["q"]:
+        needle = query["q"].lower()
+        addresses = [
+            row
+            for row in addresses
+            if needle in str(row.get("ip_address") or "").lower()
+        ]
+    if query["project_unassigned"]:
+        addresses = [
+            row
+            for row in addresses
+            if row.get("status") == "used" and row.get("project_unassigned")
+        ]
+    elif query["parsed_project_id"] is not None:
+        addresses = [
+            row
+            for row in addresses
+            if row.get("status") == "used"
+            and row.get("project_id") == query["parsed_project_id"]
+        ]
+    if query["asset_type"] is not None:
+        addresses = [
+            row
+            for row in addresses
+            if row.get("status") == "used"
+            and row.get("asset_type") == query["asset_type"].value
+        ]
+    if query["tags"]:
+        selected = set(query["tags"])
+        addresses = [
+            row
+            for row in addresses
+            if row.get("status") == "used"
+            and any(tag.get("name") in selected for tag in row.get("tags") or [])
+        ]
+
+    total = len(addresses)
+    total_pages = max(1, (total + query["per_page"] - 1) // query["per_page"])
+    page = min(query["page"], total_pages)
+    start = (page - 1) * query["per_page"]
+    can_write = _can_write(user)
+    rows = []
+    for row in addresses[start : start + query["per_page"]]:
+        row_payload = dict(row)
+        row_payload["policy"] = {
+            "can_add": can_write and row.get("status") == "free",
+            "can_edit": can_write
+            and row.get("status") == "used"
+            and row.get("asset_id") is not None,
+        }
+        rows.append(row_payload)
+
+    ip_range = breakdown["ip_range"]
+    return {
+        "range": {
+            "id": ip_range.id,
+            "name": ip_range.name,
+            "cidr": ip_range.cidr,
+            "total_usable": breakdown["total_usable"],
+            "used": breakdown["used"],
+            "free": breakdown["free"],
+        },
+        "filters": {
+            "projects": [
+                {"id": project.id, "name": project.name, "color": project.color}
+                for project in query["projects"]
+            ],
+            "tags": [
+                {"id": tag.id, "name": tag.name, "color": tag.color}
+                for tag in query["tag_catalog"]
+            ],
+            "types": [asset_type.value for asset_type in IPAssetType],
+            "policy": {"can_write": can_write},
+        },
+        "addresses": rows,
+        "query": {
+            "q": query["q"],
+            "project_id": query["project_id"],
+            "type": query["type"],
+            "tags": query["tags"],
+            "status": query["status"],
+            "page": page,
+            "per_page": query["per_page"],
+        },
+        "pagination": {
+            "page": page,
+            "per_page": query["per_page"],
+            "total": total,
+            "total_pages": total_pages,
+            "has_prev": page > 1,
+            "has_next": page < total_pages,
+            "start_index": start + 1 if total else 0,
+            "end_index": min(start + query["per_page"], total) if total else 0,
+        },
+    }
+
+
+def _validate_range_address_write(
+    connection,
+    range_id: int,
+    *,
+    ip_address: Optional[str],
+    asset_type: Optional[str],
+    project_id: Optional[int],
+    tags_raw: list[str],
+    require_free: bool,
+) -> tuple[dict[str, Any], list[str]]:
+    errors: list[str] = []
+    if not ip_address:
+        errors.append("IP address is required.")
+    else:
+        try:
+            validate_ip_address(ip_address)
+        except HTTPException as exc:
+            errors.append(str(exc.detail))
+    normalized_type = None
+    try:
+        normalized_type = _normalize_asset_type(asset_type)
+    except ValueError:
+        errors.append("Asset type is required.")
+    if normalized_type is None and "Asset type is required." not in errors:
+        errors.append("Asset type is required.")
+    projects = list(repository.list_projects(connection))
+    if project_id is not None and not any(
+        project.id == project_id for project in projects
+    ):
+        errors.append("Selected project does not exist.")
+    tags, tag_errors = _parse_selected_tags(connection, tags_raw)
+    errors.extend(tag_errors)
+    breakdown = repository.get_ip_range_address_breakdown(connection, range_id)
+    if breakdown is None:
+        raise HTTPException(status_code=404, detail="IP range not found.")
+    address_lookup = {row["ip_address"]: row for row in breakdown["addresses"]}
+    if ip_address and ip_address not in address_lookup:
+        errors.append("IP address is not part of this range.")
+    elif (
+        require_free
+        and ip_address
+        and address_lookup[ip_address]["status"] != "free"
+    ):
+        errors.append("IP address is already assigned.")
+    return {"asset_type": normalized_type, "tags": tags}, errors
+
+
 def _render_range_addresses(
     request: Request,
     range_id: int,
@@ -45,166 +261,18 @@ def _render_range_addresses(
     errors: Optional[list[str]] = None,
     status_code: int = 200,
 ) -> HTMLResponse:
-    breakdown = repository.get_ip_range_address_breakdown(connection, range_id)
-    if breakdown is None:
+    ip_range = repository.get_ip_range_by_id(connection, range_id)
+    if ip_range is None:
         raise HTTPException(status_code=404, detail="IP range not found.")
-
-    per_page_value = _parse_positive_int_query(
-        request.query_params.get("per-page"), _DEFAULT_PAGE_SIZE
-    )
-    if per_page_value not in _ALLOWED_PAGE_SIZES:
-        per_page_value = _DEFAULT_PAGE_SIZE
-    page_value = _parse_positive_int_query(request.query_params.get("page"), 1)
-    status_filter = _normalize_status_filter(request.query_params.get("status"))
-    ip_query_value = (request.query_params.get("q") or "").strip()
-    ip_query = ip_query_value.lower()
-    project_filter_value = (request.query_params.get("project_id") or "").strip()
-    project_unassigned_only = project_filter_value == "unassigned"
-    parsed_project_id = (
-        None
-        if project_unassigned_only
-        else _parse_optional_int_query(project_filter_value)
-    )
-    if (
-        project_filter_value
-        and not project_unassigned_only
-        and parsed_project_id is None
-    ):
-        project_filter_value = ""
-    raw_tag_values = request.query_params.getlist("tag")
-    try:
-        tag_values = normalize_tag_names(raw_tag_values) if raw_tag_values else []
-    except ValueError:
-        tag_values = []
-    asset_type_filter = None
-    try:
-        asset_type_filter = _normalize_asset_type(request.query_params.get("type"))
-    except ValueError:
-        asset_type_filter = None
-
-    addresses = list(breakdown["addresses"])
-    if status_filter != "all":
-        addresses = [
-            entry
-            for entry in addresses
-            if str(entry.get("status") or "") == status_filter
-        ]
-    if ip_query:
-        addresses = [
-            entry
-            for entry in addresses
-            if ip_query in str(entry.get("ip_address") or "").lower()
-        ]
-    if project_unassigned_only:
-        addresses = [
-            entry
-            for entry in addresses
-            if entry.get("status") == "used" and bool(entry.get("project_unassigned"))
-        ]
-    elif parsed_project_id is not None:
-        addresses = [
-            entry
-            for entry in addresses
-            if entry.get("status") == "used"
-            and entry.get("project_id") == parsed_project_id
-        ]
-    if asset_type_filter is not None:
-        addresses = [
-            entry
-            for entry in addresses
-            if entry.get("status") == "used"
-            and str(entry.get("asset_type") or "") == asset_type_filter.value
-        ]
-    if tag_values:
-        tag_filter_set = set(tag_values)
-        addresses = [
-            entry
-            for entry in addresses
-            if entry.get("status") == "used"
-            and any(
-                str(tag.get("name", "")).strip().lower() in tag_filter_set
-                for tag in (entry.get("tags") or [])
-                if isinstance(tag, dict)
-            )
-        ]
-
-    total_count = len(addresses)
-    total_pages = max(1, (total_count + per_page_value - 1) // per_page_value)
-    page_value = max(1, min(page_value, total_pages))
-    start = (page_value - 1) * per_page_value
-    end = start + per_page_value
-    paged_addresses = addresses[start:end]
-
-    pagination_params: dict[str, object] = {"per-page": per_page_value}
-    if ip_query_value:
-        pagination_params["q"] = ip_query_value
-    if project_unassigned_only:
-        pagination_params["project_id"] = "unassigned"
-    elif parsed_project_id is not None:
-        pagination_params["project_id"] = parsed_project_id
-    if asset_type_filter is not None:
-        pagination_params["type"] = asset_type_filter.value
-    if tag_values:
-        pagination_params["tag"] = tag_values
-    if status_filter != "all":
-        pagination_params["status"] = status_filter
-
-    base_query = urlencode(pagination_params, doseq=True)
-    preserved_query_items: list[tuple[str, str]] = []
-    for key, value in pagination_params.items():
-        if key == "per-page":
-            continue
-        if isinstance(value, list):
-            preserved_query_items.extend((key, str(item)) for item in value)
-            continue
-        preserved_query_items.append((key, str(value)))
-
-    is_htmx = request.headers.get("HX-Request") is not None
-    template_name = (
-        "partials/range_addresses_table.html" if is_htmx else "range_addresses.html"
-    )
-
     context = {
         "title": "ipocket - Range Addresses",
-        "ip_range": breakdown["ip_range"],
-        "used_total": breakdown["used"],
-        "free_total": breakdown["free"],
-        "total_usable": breakdown["total_usable"],
-        "projects": list(repository.list_projects(connection)),
-        "tags": list(repository.list_tags(connection)),
-        "types": [asset.value for asset in IPAssetType],
+        "ip_range": ip_range,
+        "initial_query": request.url.query,
         "errors": errors or [],
-        "address_display": paged_addresses,
-        "filters": {
-            "q": ip_query_value,
-            "project_filter": (
-                "unassigned"
-                if project_unassigned_only
-                else str(parsed_project_id or "")
-            ),
-            "type": asset_type_filter.value if asset_type_filter else "",
-            "tag": tag_values,
-            "status": status_filter,
-        },
-        "pagination": {
-            "page": page_value,
-            "per_page": per_page_value,
-            "total": total_count,
-            "total_pages": total_pages,
-            "has_prev": page_value > 1,
-            "has_next": page_value < total_pages,
-            "start_index": start + 1 if total_count else 0,
-            "end_index": min(page_value * per_page_value, total_count)
-            if total_count
-            else 0,
-            "base_query": base_query,
-            "preserved_query_items": preserved_query_items,
-        },
     }
-
     return _render_template(
         request,
-        template_name,
+        "range_addresses.html",
         context,
         status_code=status_code,
         active_nav="ranges",
@@ -241,41 +309,15 @@ async def ui_range_quick_add_address(
     project_id = _parse_optional_int(form_data.get("project_id"))
     notes = _parse_optional_str(form_data.get("notes"))
     tags_raw = [str(tag) for tag in form_data.getlist("tags")]
-    projects = list(repository.list_projects(connection))
-
-    errors: list[str] = []
-    if not ip_address:
-        errors.append("IP address is required.")
-    else:
-        try:
-            validate_ip_address(ip_address)
-        except HTTPException as exc:
-            errors.append(exc.detail)
-
-    normalized_asset_type = None
-    try:
-        normalized_asset_type = _normalize_asset_type(asset_type)
-    except ValueError:
-        errors.append("Asset type is required.")
-    if normalized_asset_type is None and not errors:
-        errors.append("Asset type is required.")
-
-    if project_id is not None and not any(
-        project.id == project_id for project in projects
-    ):
-        errors.append("Selected project does not exist.")
-    tags, tag_errors = _parse_selected_tags(connection, tags_raw)
-    errors.extend(tag_errors)
-
-    breakdown = repository.get_ip_range_address_breakdown(connection, range_id)
-    if breakdown is None:
-        raise HTTPException(status_code=404, detail="IP range not found.")
-
-    address_lookup = {entry["ip_address"]: entry for entry in breakdown["addresses"]}
-    if ip_address and ip_address not in address_lookup:
-        errors.append("IP address is not part of this range.")
-    elif ip_address and address_lookup[ip_address]["status"] != "free":
-        errors.append("IP address is already assigned.")
+    validated, errors = _validate_range_address_write(
+        connection,
+        range_id,
+        ip_address=str(ip_address) if ip_address else None,
+        asset_type=str(asset_type) if asset_type else None,
+        project_id=project_id,
+        tags_raw=tags_raw,
+        require_free=True,
+    )
 
     if errors:
         return _render_range_addresses(
@@ -290,10 +332,10 @@ async def ui_range_quick_add_address(
         repository.create_ip_asset(
             connection,
             ip_address=ip_address,
-            asset_type=normalized_asset_type,
+            asset_type=validated["asset_type"],
             project_id=project_id,
             notes=notes,
-            tags=tags,
+            tags=validated["tags"],
             auto_host_for_bmc=_is_auto_host_for_bmc_enabled(),
             current_user=user,
         )
@@ -346,22 +388,15 @@ async def ui_range_quick_edit_address(
     project_id = _parse_optional_int(form_data.get("project_id"))
     notes = _parse_optional_str(form_data.get("notes"))
     tags_raw = [str(tag) for tag in form_data.getlist("tags")]
-    projects = list(repository.list_projects(connection))
-
-    errors: list[str] = []
-    normalized_asset_type = None
-    try:
-        normalized_asset_type = _normalize_asset_type(asset_type)
-    except ValueError:
-        errors.append("Asset type is required.")
-    if normalized_asset_type is None and not errors:
-        errors.append("Asset type is required.")
-    if project_id is not None and not any(
-        project.id == project_id for project in projects
-    ):
-        errors.append("Selected project does not exist.")
-    tags, tag_errors = _parse_selected_tags(connection, tags_raw)
-    errors.extend(tag_errors)
+    validated, errors = _validate_range_address_write(
+        connection,
+        range_id,
+        ip_address=asset.ip_address,
+        asset_type=str(asset_type) if asset_type else None,
+        project_id=project_id,
+        tags_raw=tags_raw,
+        require_free=False,
+    )
 
     if errors:
         return _render_range_addresses(
@@ -375,11 +410,11 @@ async def ui_range_quick_edit_address(
     repository.update_ip_asset(
         connection,
         ip_address=asset.ip_address,
-        asset_type=normalized_asset_type,
+        asset_type=validated["asset_type"],
         project_id=project_id,
         project_id_provided=True,
         notes=notes,
-        tags=tags,
+        tags=validated["tags"],
         current_user=user,
         notes_provided=True,
     )
@@ -389,3 +424,90 @@ async def ui_range_quick_edit_address(
         url=f"/ui/ranges/{range_id}/addresses#ip-{ip_anchor}",
         status_code=303,
     )
+
+
+@router.get("/api/ui/ranges/{range_id}/addresses")
+def list_range_addresses_for_ui(
+    request: Request,
+    range_id: int,
+    connection=Depends(get_connection),
+    user=Depends(get_optional_current_ui_user),
+):
+    return _range_addresses_payload(request, range_id, connection, user)
+
+
+@router.post("/api/ui/ranges/{range_id}/addresses", status_code=201)
+def create_range_address_for_ui(
+    range_id: int,
+    payload: UIRangeAddressCreate,
+    connection=Depends(get_connection),
+    user=Depends(require_ui_editor),
+):
+    validated, errors = _validate_range_address_write(
+        connection,
+        range_id,
+        ip_address=payload.ip_address,
+        asset_type=payload.type,
+        project_id=payload.project_id,
+        tags_raw=payload.tags,
+        require_free=True,
+    )
+    if errors:
+        raise HTTPException(status_code=400, detail=errors)
+    try:
+        asset = repository.create_ip_asset(
+            connection,
+            ip_address=payload.ip_address,
+            asset_type=validated["asset_type"],
+            project_id=payload.project_id,
+            notes=_parse_optional_str(payload.notes),
+            tags=validated["tags"],
+            auto_host_for_bmc=_is_auto_host_for_bmc_enabled(),
+            current_user=user,
+        )
+    except sqlite3.IntegrityError as exc:
+        raise HTTPException(
+            status_code=409, detail=["IP address already exists."]
+        ) from exc
+    return {"asset_id": asset.id, "ip_address": asset.ip_address}
+
+
+@router.patch("/api/ui/ranges/{range_id}/addresses/{asset_id}")
+def update_range_address_for_ui(
+    range_id: int,
+    asset_id: int,
+    payload: UIRangeAddressWrite,
+    connection=Depends(get_connection),
+    user=Depends(require_ui_editor),
+):
+    breakdown = repository.get_ip_range_address_breakdown(connection, range_id)
+    if breakdown is None:
+        raise HTTPException(status_code=404, detail="IP range not found.")
+    asset = repository.get_ip_asset_by_id(connection, asset_id)
+    if asset is None or asset.archived:
+        raise HTTPException(status_code=404, detail="IP asset not found.")
+    if not any(row.get("asset_id") == asset.id for row in breakdown["addresses"]):
+        raise HTTPException(status_code=404, detail="IP asset not found in this range.")
+    validated, errors = _validate_range_address_write(
+        connection,
+        range_id,
+        ip_address=asset.ip_address,
+        asset_type=payload.type,
+        project_id=payload.project_id,
+        tags_raw=payload.tags,
+        require_free=False,
+    )
+    if errors:
+        raise HTTPException(status_code=400, detail=errors)
+    updated = repository.update_ip_asset(
+        connection,
+        ip_address=asset.ip_address,
+        asset_type=validated["asset_type"],
+        project_id=payload.project_id,
+        project_id_provided=True,
+        notes=_parse_optional_str(payload.notes),
+        tags=validated["tags"],
+        current_user=user,
+        notes_provided=True,
+    )
+    return {"asset_id": updated.id, "ip_address": updated.ip_address}

@@ -181,6 +181,17 @@ class UIIPAssetCreate(UIIPAssetWrite):
     ip_address: str
 
 
+class UIRangeAddressWrite(BaseModel):
+    type: str
+    project_id: Optional[int] = None
+    tags: list[str] = Field(default_factory=list)
+    notes: Optional[str] = None
+
+
+class UIRangeAddressCreate(UIRangeAddressWrite):
+    ip_address: str
+
+
 class UIIPAssetDelete(BaseModel):
     acknowledged: bool = False
     confirm_ip: str = ""

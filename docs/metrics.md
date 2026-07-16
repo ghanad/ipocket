@@ -22,6 +22,7 @@ Note: Vendor catalog/host vendor selection does not introduce new Prometheus met
 
 UI note: unassigned-related metrics are still available even though the dedicated **Needs Assignment** page was removed; use the IP Assets list filters for assignment workflows.
 UI note: range-address search/status/pagination changes are presentation-only and do not affect `/metrics` payloads.
+UI note: the React Range Addresses shell and its JSON list/add/edit endpoints reuse existing IP asset repository mutations and do not add or alter metric names or calculations.
 UI note: Hosts list search/filter changes are presentation-only and do not affect `/metrics` payloads.
 UI note: Hosts text/select filters applying immediately with HTMX table updates is a UI behavior change only and does not affect `/metrics` payloads.
 UI note: Hosts list OS/BMC address links are navigation-only and do not affect `/metrics` payloads.

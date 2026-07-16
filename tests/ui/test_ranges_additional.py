@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import sqlite3
+from pathlib import Path
 
 from app import repository
 from app.main import app
@@ -318,19 +319,89 @@ def test_range_quick_edit_not_found_and_validation_branches(
     assert "Selected project does not exist." in invalid_project.text
 
 
-def test_range_addresses_js_maps_hash_to_status_query(client) -> None:
-    response = client.get("/static/js/range-addresses.js")
+def test_range_addresses_react_source_maps_hash_and_supports_tag_filters() -> None:
+    source = (
+        Path(__file__).resolve().parents[2]
+        / "frontend/src/range-addresses/RangeAddressesPage.tsx"
+    ).read_text(encoding="utf-8")
 
-    assert response.status_code == 200
-    assert '"#used": "used"' in response.text
-    assert '"#free": "free"' in response.text
-    assert "window.location.replace" in response.text
+    assert 'hash === "#used"' in source
+    assert 'hash === "#free"' in source
+    assert 'params.append("tag", tag)' in source
+    assert "RangeTagOverflowPopover" in source
 
 
-def test_range_addresses_js_includes_chip_tag_filter_hooks(client) -> None:
-    response = client.get("/static/js/range-addresses.js")
+def test_range_addresses_api_missing_range_and_write_flow(
+    client, _setup_connection
+) -> None:
+    connection = _setup_connection()
+    try:
+        ip_range = repository.create_ip_range(
+            connection, name="API Range", cidr="10.90.0.0/29"
+        )
+        project = repository.create_project(connection, name="API Project")
+        repository.create_tag(connection, name="api")
+        editor = repository.create_user(
+            connection,
+            username="range-api-editor",
+            hashed_password="x",
+            role=UserRole.EDITOR,
+        )
+    finally:
+        connection.close()
 
-    assert response.status_code == 200
-    assert "data-range-tag-filter-input" in response.text
-    assert "data-range-tag-filter-selected" in response.text
-    assert "data-range-remove-tag-filter" in response.text
+    assert client.get("/api/ui/ranges/999/addresses").status_code == 404
+
+    app.dependency_overrides[ui.require_ui_editor] = lambda: editor
+    try:
+        created = client.post(
+            f"/api/ui/ranges/{ip_range.id}/addresses",
+            json={
+                "ip_address": "10.90.0.2",
+                "type": "VM",
+                "project_id": project.id,
+                "tags": ["api"],
+                "notes": "created through React",
+            },
+        )
+        assert created.status_code == 201
+        asset_id = created.json()["asset_id"]
+        invalid = client.patch(
+            f"/api/ui/ranges/{ip_range.id}/addresses/{asset_id}",
+            json={
+                "type": "VM",
+                "project_id": 999,
+                "tags": ["api"],
+                "notes": "",
+            },
+        )
+        updated = client.patch(
+            f"/api/ui/ranges/{ip_range.id}/addresses/{asset_id}",
+            json={
+                "type": "BMC",
+                "project_id": None,
+                "tags": ["api"],
+                "notes": "updated through React",
+            },
+        )
+    finally:
+        app.dependency_overrides.pop(ui.require_ui_editor, None)
+
+    assert invalid.status_code == 400
+    assert invalid.json()["detail"] == ["Selected project does not exist."]
+    assert updated.status_code == 200
+
+    payload = client.get(
+        f"/api/ui/ranges/{ip_range.id}/addresses",
+        params={"project_id": "unassigned", "status": "used"},
+    ).json()
+    assert payload["range"] == {
+        "id": ip_range.id,
+        "name": "API Range",
+        "cidr": "10.90.0.0/29",
+        "total_usable": 6,
+        "used": 1,
+        "free": 5,
+    }
+    assert payload["addresses"][0]["asset_type"] == "BMC"
+    assert payload["addresses"][0]["notes"] == "updated through React"

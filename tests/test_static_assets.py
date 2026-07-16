@@ -39,7 +39,7 @@ def test_ui_assets_are_local() -> None:
         in base_html
     )
     assert (
-        '<link rel="stylesheet" href="/static/app.css?v=react-account-password" />'
+        '<link rel="stylesheet" href="/static/app.css?v=react-range-addresses" />'
         in base_html
     )
     assert '<script src="/static/js/tag-picker.js" defer></script>' in base_html
@@ -158,13 +158,12 @@ def test_refactored_templates_load_external_page_assets() -> None:
     assert "<style>" not in ip_assets_template
     assert "<script>" not in ip_assets_template
 
-    assert '<script src="/static/js/range-addresses.js" defer></script>' in templates[
-        "range_addresses"
-    ].read_text(encoding="utf-8")
-    assert 'class="table table-range-addresses"' in (
-        repo_root / "app/templates/partials/range_addresses_table.html"
-    ).read_text(encoding="utf-8")
-    assert "<style>" not in templates["range_addresses"].read_text(encoding="utf-8")
+    range_addresses_template = templates["range_addresses"].read_text(encoding="utf-8")
+    assert 'id="range-addresses-root"' in range_addresses_template
+    assert 'data-endpoint="/api/ui/ranges/{{ ip_range.id }}/addresses"' in range_addresses_template
+    assert '<script type="module" src="/static/react/range-addresses/range-addresses.js"></script>' in range_addresses_template
+    assert "hx-get=" not in range_addresses_template
+    assert "<style>" not in range_addresses_template
 
     assert '{% include "partials/tags_tab_content.html" %}' in templates[
         "tags"
@@ -189,7 +188,8 @@ def test_refactored_templates_load_external_page_assets() -> None:
     assert not (repo_root / "app/static/js/ip-assets.js").exists()
     assert (repo_root / "app/static/react/ip-assets/ip-assets.js").exists()
     assert (repo_root / "app/static/react/audit-log/audit-log.js").exists()
-    assert (repo_root / "app/static/js/range-addresses.js").exists()
+    assert not (repo_root / "app/static/js/range-addresses.js").exists()
+    assert (repo_root / "app/static/react/range-addresses/range-addresses.js").exists()
     assert (repo_root / "app/static/js/tag-picker.js").exists()
     assert (repo_root / "app/static/js/host-select-search.js").exists()
     host_select_search_js = (

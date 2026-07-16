@@ -13,6 +13,10 @@ export default defineConfig(({ mode }) => ({
         login: resolve(__dirname, "src/login/main.tsx"),
         management: resolve(__dirname, "src/management/main.tsx"),
         ranges: resolve(__dirname, "src/ranges/main.tsx"),
+        "range-addresses": resolve(
+          __dirname,
+          "src/range-addresses/main.tsx",
+        ),
         library: resolve(__dirname, "src/library/main.tsx"),
         hosts: resolve(__dirname, "src/hosts/main.tsx"),
         "host-detail": resolve(__dirname, "src/host-detail/main.tsx"),

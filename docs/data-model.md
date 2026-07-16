@@ -135,7 +135,7 @@ Self-service password changes (`/ui/account/password`) do not add fields/tables;
 ## Assignment workflow
 - Project assignment is managed from the main **IP Assets** list using filters and edit actions.
 - There is no separate "Needs Assignment" page in the current UI.
-- Range address drill-down (`/ui/ranges/{id}/addresses`) now adds UI-only search/status/pagination controls; this does not change persisted schema or entity fields.
+- Range address drill-down (`/ui/ranges/{id}/addresses`) is a React presentation/transport migration only. `GET/POST/PATCH /api/ui/ranges/{id}/addresses...` reuse existing `IPRange`, `IPAsset`, `Project`, `Tag`, host-pair, and audit data; no schema, relationship, or range-semantics changes were introduced.
 - Migrating the `/ui/ranges` list to React changes only presentation and transport. The React page uses `/api/ui/ranges` for list/create/update/delete operations against the existing `IPRange` repository model; no columns, relationships, migrations, or utilization calculations were added.
 - Migrating `/ui/projects` (Projects/Vendors/Tags) to React changes only presentation and transport. The focused `/api/ui/library/*` endpoints use the existing repository models and deletion rules; no tables, columns, relationships, or migrations were added.
 - Migrating the `/ui/hosts` list and `/ui/hosts/{id}` detail page to React changes only presentation and transport. The focused `/api/ui/hosts` endpoints reuse existing Host/IPAsset repository semantics; public GET access, role-gated mutations, server-resolved legacy Drawer bootstrap, and the display-ready `/api/ui/hosts/{id}/detail` grouping payload do not add tables, columns, or relationships.
