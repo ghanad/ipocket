@@ -9,6 +9,7 @@ import type {
 
 export function BulkUpdateDrawer({
   open,
+  initialFocus,
   selectedCount,
   commonTags,
   values,
@@ -22,6 +23,7 @@ export function BulkUpdateDrawer({
   onSubmit,
 }: {
   open: boolean;
+  initialFocus: "edit" | "project" | "tags";
   selectedCount: number;
   commonTags: string[];
   values: BulkValues;
@@ -37,13 +39,18 @@ export function BulkUpdateDrawer({
   const ref = useRef<HTMLElement>(null);
   useEffect(() => {
     if (!open) return;
-    ref.current?.querySelector<HTMLElement>("select, input, textarea")?.focus();
+    const focusSelector = {
+      edit: "select, input, textarea",
+      project: '[aria-label="Bulk project action"]',
+      tags: '[placeholder="Add tags..."]',
+    }[initialFocus];
+    ref.current?.querySelector<HTMLElement>(focusSelector)?.focus();
     const close = (event: KeyboardEvent) => {
       if (event.key === "Escape") onClose();
     };
     document.addEventListener("keydown", close);
     return () => document.removeEventListener("keydown", close);
-  }, [open, onClose]);
+  }, [initialFocus, open, onClose]);
   const hasChange = Boolean(
     values.type ||
       values.projectMode ||

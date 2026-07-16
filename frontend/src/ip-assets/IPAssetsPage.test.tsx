@@ -367,9 +367,20 @@ describe("IPAssetsPage", () => {
     );
     render(<IPAssetsPage endpoint="/api/ui/ip-assets" />);
     await screen.findByText("10.0.0.7");
-    fireEvent.click(screen.getByLabelText("Select all IP assets"));
+    fireEvent.click(screen.getByLabelText("Select all IP assets on this page"));
     expect(screen.getAllByText("1 selected").length).toBeGreaterThan(0);
-    fireEvent.click(screen.getByRole("button", { name: "Bulk update" }));
+    expect(screen.getByText("1 of 1 selected on this page")).toBeVisible();
+    const toolbar = screen.getByRole("toolbar", { name: "Bulk actions" });
+    expect(within(toolbar).getByRole("button", { name: "Assign Project" })).toBeVisible();
+    expect(within(toolbar).getByRole("button", { name: "Manage Tags" })).toBeVisible();
+    fireEvent.click(within(toolbar).getByRole("button", { name: "Assign Project" }));
+    expect(screen.getByLabelText("Bulk project action")).toHaveFocus();
+    fireEvent.click(screen.getByRole("button", { name: "Close drawer" }));
+    fireEvent.click(within(toolbar).getByRole("button", { name: "Manage Tags" }));
+    const tagDrawer = screen.getByRole("dialog", { name: "Bulk update IP assets" });
+    expect(within(tagDrawer).getByPlaceholderText("Add tags...")).toHaveFocus();
+    fireEvent.click(screen.getByRole("button", { name: "Close drawer" }));
+    fireEvent.click(within(toolbar).getByRole("button", { name: "Bulk Edit" }));
     const drawer = screen.getByRole("dialog", {
       name: "Bulk update IP assets",
     });
@@ -383,6 +394,33 @@ describe("IPAssetsPage", () => {
     });
     fireEvent.click(submit);
     expect(await screen.findByText("Updated 1 IP assets.")).toBeVisible();
+  });
+
+  it("keeps a cumulative count while selecting rows across pages", async () => {
+    const nextPage = {
+      ...response,
+      assets: [{ ...response.assets[0], id: 8, ip_address: "10.0.0.8" }],
+      pagination: { page: 2, per_page: 1, total: 2, total_pages: 2 },
+    };
+    vi.stubGlobal(
+      "fetch",
+      vi.fn()
+        .mockResolvedValueOnce(ok({
+          ...response,
+          pagination: { page: 1, per_page: 1, total: 2, total_pages: 2 },
+        }))
+        .mockResolvedValueOnce(ok(nextPage)),
+    );
+    render(<IPAssetsPage endpoint="/api/ui/ip-assets" />);
+    await screen.findByText("10.0.0.7");
+    fireEvent.click(screen.getByLabelText("Select 10.0.0.7"));
+    fireEvent.click(screen.getByRole("button", { name: "Next" }));
+    await screen.findByText("10.0.0.8");
+    fireEvent.click(screen.getByLabelText("Select 10.0.0.8"));
+
+    const actionBar = screen.getByRole("region", { name: "Selected IP asset actions" });
+    expect(within(actionBar).getByText("2 selected")).toBeVisible();
+    expect(screen.getByText("1 of 1 selected on this page · 2 total selected")).toBeVisible();
   });
 
   it("shows retryable API errors and the empty state", async () => {

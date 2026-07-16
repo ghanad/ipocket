@@ -32,6 +32,7 @@
 .table.table-ip-assets {
   font-size: 13px;
   table-layout: fixed;
+  min-width: 760px;
 }
 
 .table.table-ip-assets th,
@@ -87,6 +88,11 @@
   padding: 3px 9px;
   border-radius: 7px;
   font-size: 12px;
+}
+
+.table.table-ip-assets thead th {
+  color: #475569;
+  font-weight: 500;
 }
 
 .table.table-range-addresses .tag {

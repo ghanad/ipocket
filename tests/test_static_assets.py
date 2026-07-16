@@ -12,6 +12,7 @@ CSS_MODULES = (
     "details-actions.css",
     "utility-pages.css",
     "hosts.css",
+    "ip-assets-bulk.css",
     "ip-assets.css",
     "range-addresses.css",
     "audit-log.css",

@@ -16,6 +16,7 @@ import {
   IPAssetsApiError,
   updateAsset,
 } from "./api";
+import { BulkActionToolbar } from "./BulkActionToolbar";
 import { BulkUpdateDrawer } from "./BulkUpdateDrawer";
 import { IPAssetListDrawer } from "./IPAssetListDrawer";
 import { IPAssetsFilters } from "./IPAssetsFilters";
@@ -118,6 +119,7 @@ export function IPAssetsPage({
   const [values, setValues] = useState(emptyAsset);
   const [initialValues, setInitialValues] = useState(emptyAsset);
   const [bulkOpen, setBulkOpen] = useState(false);
+  const [bulkFocus, setBulkFocus] = useState<"edit" | "project" | "tags">("edit");
   const [bulkValues, setBulkValues] = useState(emptyBulk);
   const [errors, setErrors] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
@@ -203,6 +205,14 @@ export function IPAssetsPage({
         data.pagination.total,
       )
     : 0;
+  const selectedOnPage =
+    data?.assets.filter((row) => selected.has(row.id)).length ?? 0;
+
+  function openBulk(focus: "edit" | "project" | "tags") {
+    setErrors([]);
+    setBulkFocus(focus);
+    setBulkOpen(true);
+  }
 
   function patchFilters(patch: Partial<AssetFilters>) {
     setFilters((current) => ({ ...current, ...patch, page: 1 }));
@@ -354,10 +364,13 @@ export function IPAssetsPage({
         onChange={patchFilters}
       />
       {data?.can_edit && selected.size > 0 && (
-        <div className="bulk-action-bar">
-          <span>{selected.size} selected</span>
-          <button className="btn btn-primary btn-small" type="button" onClick={() => { setErrors([]); setBulkOpen(true); }}>Bulk update</button>
-        </div>
+        <BulkActionToolbar
+          selectedCount={selected.size}
+          selectedOnPage={selectedOnPage}
+          onBulkEdit={() => openBulk("edit")}
+          onAssignProject={() => openBulk("project")}
+          onManageTags={() => openBulk("tags")}
+        />
       )}
       {loading ? (
         <section className="card empty-state" role="status">Loading IP assets…</section>
@@ -424,6 +437,7 @@ export function IPAssetsPage({
       />
       <BulkUpdateDrawer
         open={bulkOpen}
+        initialFocus={bulkFocus}
         selectedCount={selected.size}
         commonTags={commonTags}
         values={bulkValues}

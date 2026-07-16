@@ -29,9 +29,18 @@ export function IPAssetsTable({
   } | null>(null);
   const openTimer = useRef<number | null>(null);
   const closeTimer = useRef<number | null>(null);
+  const selectPageRef = useRef<HTMLInputElement>(null);
   const pageIds = assets.map((asset) => asset.id);
+  const selectedOnPage = pageIds.filter((assetId) => selected.has(assetId)).length;
   const allSelected =
     pageIds.length > 0 && pageIds.every((assetId) => selected.has(assetId));
+
+  useEffect(() => {
+    if (selectPageRef.current) {
+      selectPageRef.current.indeterminate =
+        selectedOnPage > 0 && selectedOnPage < pageIds.length;
+    }
+  }, [pageIds.length, selectedOnPage]);
 
   function clearOpenTimer() {
     if (openTimer.current !== null) {
@@ -93,11 +102,12 @@ export function IPAssetsTable({
     <section className="card table-card">
       {canEdit && (
         <div className="bulk-edit-controls">
-          <label className="field field-inline">
+          <label className="field field-inline bulk-select-page">
             <input
+              ref={selectPageRef}
               className="checkbox"
               type="checkbox"
-              aria-label="Select all IP assets"
+              aria-label="Select all IP assets on this page"
               checked={allSelected}
               onChange={(event) => {
                 const next = new Set(selected);
@@ -107,9 +117,12 @@ export function IPAssetsTable({
                 onSelected(next);
               }}
             />
-            <span>Select all</span>
+            <span>Select this page</span>
           </label>
-          <span className="muted">{selected.size} selected</span>
+          <span className="bulk-selection-scope muted">
+            {selectedOnPage} of {pageIds.length} selected on this page
+            {selected.size > selectedOnPage && ` · ${selected.size} total selected`}
+          </span>
         </div>
       )}
       <div className="table-wrapper">
