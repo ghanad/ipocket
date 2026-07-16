@@ -369,10 +369,15 @@ describe("IPAssetsPage", () => {
     await screen.findByText("10.0.0.7");
     fireEvent.click(screen.getByLabelText("Select all IP assets on this page"));
     expect(screen.getAllByText("1 selected").length).toBeGreaterThan(0);
-    expect(screen.getByText("1 of 1 selected on this page")).toBeVisible();
+    expect(screen.getByText("Select all on this page")).toBeVisible();
+    expect(screen.queryByText("1 of 1 selected on this page")).not.toBeInTheDocument();
     const toolbar = screen.getByRole("toolbar", { name: "Bulk actions" });
     expect(within(toolbar).getByRole("button", { name: "Assign Project" })).toBeVisible();
     expect(within(toolbar).getByRole("button", { name: "Manage Tags" })).toBeVisible();
+    expect(within(toolbar).getByLabelText("More bulk actions")).toHaveClass(
+      "row-actions-trigger",
+    );
+    expect(within(toolbar).getByLabelText("More bulk actions")).toHaveTextContent("⋯");
     fireEvent.click(within(toolbar).getByRole("button", { name: "Assign Project" }));
     expect(screen.getByLabelText("Bulk project action")).toHaveFocus();
     fireEvent.click(screen.getByRole("button", { name: "Close drawer" }));
@@ -394,6 +399,37 @@ describe("IPAssetsPage", () => {
     });
     fireEvent.click(submit);
     expect(await screen.findByText("Updated 1 IP assets.")).toBeVisible();
+  });
+
+  it("keeps the page checkbox unchecked, indeterminate, and checked in sync", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(ok({
+        ...response,
+        assets: [
+          response.assets[0],
+          { ...response.assets[0], id: 8, ip_address: "10.0.0.8" },
+        ],
+        pagination: { page: 1, per_page: 20, total: 2, total_pages: 1 },
+      })),
+    );
+    render(<IPAssetsPage endpoint="/api/ui/ip-assets" />);
+    await screen.findByText("10.0.0.7");
+    const selectPage = screen.getByLabelText(
+      "Select all IP assets on this page",
+    ) as HTMLInputElement;
+
+    expect(selectPage).not.toBeChecked();
+    expect(selectPage.indeterminate).toBe(false);
+    fireEvent.click(screen.getByLabelText("Select 10.0.0.7"));
+    expect(selectPage).not.toBeChecked();
+    expect(selectPage.indeterminate).toBe(true);
+    fireEvent.click(screen.getByLabelText("Select 10.0.0.8"));
+    expect(selectPage).toBeChecked();
+    expect(selectPage.indeterminate).toBe(false);
+    fireEvent.click(selectPage);
+    expect(selectPage).not.toBeChecked();
+    expect(selectPage.indeterminate).toBe(false);
   });
 
   it("keeps a cumulative count while selecting rows across pages", async () => {
@@ -420,7 +456,8 @@ describe("IPAssetsPage", () => {
 
     const actionBar = screen.getByRole("region", { name: "Selected IP asset actions" });
     expect(within(actionBar).getByText("2 selected")).toBeVisible();
-    expect(screen.getByText("1 of 1 selected on this page · 2 total selected")).toBeVisible();
+    expect(within(actionBar).getByText("1 on this page")).toBeVisible();
+    expect(screen.queryByText(/selected on this page/)).not.toBeInTheDocument();
   });
 
   it("shows retryable API errors and the empty state", async () => {

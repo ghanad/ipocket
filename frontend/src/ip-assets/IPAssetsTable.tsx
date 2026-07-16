@@ -117,12 +117,8 @@ export function IPAssetsTable({
                 onSelected(next);
               }}
             />
-            <span>Select this page</span>
+            <span>Select all on this page</span>
           </label>
-          <span className="bulk-selection-scope muted">
-            {selectedOnPage} of {pageIds.length} selected on this page
-            {selected.size > selectedOnPage && ` · ${selected.size} total selected`}
-          </span>
         </div>
       )}
       <div className="table-wrapper">

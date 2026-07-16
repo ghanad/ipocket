@@ -33,9 +33,15 @@ export function BulkActionToolbar({
           Manage Tags
         </button>
         <details className="bulk-action-more">
-          <summary className="btn btn-outline btn-small" aria-label="More bulk actions">More</summary>
-          <div className="bulk-action-menu" role="menu">
-            <button type="button" role="menuitem" disabled>
+          <summary
+            className="row-action-control row-actions-trigger bulk-actions-trigger"
+            aria-label="More bulk actions"
+            title="More bulk actions"
+          >
+            <span className="row-actions-icon" aria-hidden="true">⋯</span>
+          </summary>
+          <div className="row-actions-panel bulk-action-menu" role="menu">
+            <button className="row-action-item" type="button" role="menuitem" disabled>
               <span>Delete</span>
               <small>Coming soon</small>
             </button>
