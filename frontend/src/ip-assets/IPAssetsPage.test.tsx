@@ -43,6 +43,8 @@ const response: AssetsResponse = {
       { id: 2, name: "beta", color: "#f59e0b" },
       { id: 3, name: "gamma", color: "#22c55e" },
       { id: 4, name: "delta", color: "#0ea5e9" },
+      { id: 5, name: "epsilon", color: "#a855f7" },
+      { id: 6, name: "zeta", color: "#14b8a6" },
     ],
     types: ["OS", "BMC", "VM", "VIP", "OTHER"],
     normalized: {
@@ -217,13 +219,23 @@ describe("IPAssetsPage", () => {
     expect(beta.closest(".tag-filter-entry")).not.toBeNull();
   });
 
-  it("opens and searches the +N tag popover and applies its quick filter", async () => {
+  it("opens +N tag popover after a short hover delay, keeps it open over the popup, and filters", async () => {
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue(ok()));
     render(<IPAssetsPage endpoint="/api/ui/ip-assets" />);
     await screen.findByText("10.0.0.7");
 
-    fireEvent.click(screen.getByRole("button", { name: "+2 more" }));
-    const popover = screen.getByRole("dialog", { name: "Tags for 10.0.0.7" });
+    const moreButton = screen.getByRole("button", { name: "+2 more" });
+    fireEvent.mouseEnter(moreButton);
+    expect(
+      screen.queryByRole("dialog", { name: "Tags for 10.0.0.7" }),
+    ).not.toBeInTheDocument();
+    const popover = await screen.findByRole("dialog", {
+      name: "Tags for 10.0.0.7",
+    });
+    fireEvent.mouseLeave(moreButton);
+    fireEvent.mouseEnter(popover);
+    await new Promise((resolve) => window.setTimeout(resolve, 220));
+    expect(popover).toBeVisible();
     fireEvent.change(within(popover).getByLabelText("Filter tags"), {
       target: { value: "delta" },
     });
@@ -269,6 +281,31 @@ describe("IPAssetsPage", () => {
     fireEvent.click(screen.getByRole("button", { name: "Edit" }));
     fireEvent.click(screen.getByRole("button", { name: "Create host" }));
     expect(await screen.findByText(/Created and assigned node-01/)).toBeVisible();
+  });
+
+  it("shows every available tag when the edit drawer tag input is focused", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(ok()));
+    render(<IPAssetsPage endpoint="/api/ui/ip-assets" />);
+    await screen.findByText("10.0.0.7");
+
+    fireEvent.click(screen.getByRole("button", { name: "Edit" }));
+    const drawer = screen.getByRole("dialog", { name: "Edit IP asset" });
+    const tagInput = within(drawer).getByRole("textbox", {
+      name: "Search tags",
+    });
+    fireEvent.focus(tagInput);
+
+    expect(within(drawer).getByRole("button", { name: "epsilon" })).toBeVisible();
+    expect(within(drawer).getByRole("button", { name: "zeta" })).toBeVisible();
+    expect(
+      within(drawer).queryByRole("button", { name: "alpha" }),
+    ).not.toBeInTheDocument();
+
+    fireEvent.change(tagInput, { target: { value: "zet" } });
+    expect(within(drawer).getByRole("button", { name: "zeta" })).toBeVisible();
+    expect(
+      within(drawer).queryByRole("button", { name: "epsilon" }),
+    ).not.toBeInTheDocument();
   });
 
   it("enforces high-risk delete confirmation and performs deletion", async () => {

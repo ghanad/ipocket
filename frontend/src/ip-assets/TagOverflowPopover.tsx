@@ -7,11 +7,15 @@ export function TagOverflowPopover({
   anchor,
   onClose,
   onSelect,
+  onMouseEnter,
+  onMouseLeave,
 }: {
   asset: AssetRow;
   anchor: HTMLElement;
   onClose: () => void;
   onSelect: (tag: string) => void;
+  onMouseEnter: () => void;
+  onMouseLeave: () => void;
 }) {
   const [query, setQuery] = useState("");
   const rect = anchor.getBoundingClientRect();
@@ -31,6 +35,8 @@ export function TagOverflowPopover({
       role="dialog"
       aria-label={`Tags for ${asset.ip_address}`}
       style={{ position: "fixed", top: rect.bottom + 6, left: rect.left }}
+      onMouseEnter={onMouseEnter}
+      onMouseLeave={onMouseLeave}
     >
       <div className="ip-tags-popover-header">
         <h3 className="ip-tags-popover-title">Tags</h3>

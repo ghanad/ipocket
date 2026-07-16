@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { TagOverflowPopover } from "./TagOverflowPopover";
 import type { AssetRow } from "./types";
@@ -26,9 +26,59 @@ export function IPAssetsTable({
     asset: AssetRow;
     anchor: HTMLElement;
   } | null>(null);
+  const openTimer = useRef<number | null>(null);
+  const closeTimer = useRef<number | null>(null);
   const pageIds = assets.map((asset) => asset.id);
   const allSelected =
     pageIds.length > 0 && pageIds.every((assetId) => selected.has(assetId));
+
+  function clearOpenTimer() {
+    if (openTimer.current !== null) {
+      window.clearTimeout(openTimer.current);
+      openTimer.current = null;
+    }
+  }
+
+  function clearCloseTimer() {
+    if (closeTimer.current !== null) {
+      window.clearTimeout(closeTimer.current);
+      closeTimer.current = null;
+    }
+  }
+
+  function openPopover(
+    asset: AssetRow,
+    anchor: HTMLElement,
+    delay = 0,
+  ) {
+    clearOpenTimer();
+    clearCloseTimer();
+    if (delay === 0) {
+      setPopover({ asset, anchor });
+      return;
+    }
+    openTimer.current = window.setTimeout(() => {
+      setPopover({ asset, anchor });
+      openTimer.current = null;
+    }, delay);
+  }
+
+  function scheduleClose() {
+    clearOpenTimer();
+    clearCloseTimer();
+    closeTimer.current = window.setTimeout(() => {
+      setPopover(null);
+      closeTimer.current = null;
+    }, 180);
+  }
+
+  useEffect(
+    () => () => {
+      clearOpenTimer();
+      clearCloseTimer();
+    },
+    [],
+  );
 
   if (!assets.length) {
     return (
@@ -158,11 +208,15 @@ export function IPAssetsTable({
                             type="button"
                             aria-haspopup="dialog"
                             aria-expanded={popover?.asset.id === asset.id}
+                            onMouseEnter={(event) =>
+                              openPopover(asset, event.currentTarget, 120)
+                            }
+                            onMouseLeave={scheduleClose}
+                            onFocus={(event) =>
+                              openPopover(asset, event.currentTarget)
+                            }
                             onClick={(event) =>
-                              setPopover({
-                                asset,
-                                anchor: event.currentTarget,
-                              })
+                              openPopover(asset, event.currentTarget)
                             }
                           >
                             +{asset.tags.length - 2} more
@@ -207,6 +261,8 @@ export function IPAssetsTable({
           asset={popover.asset}
           anchor={popover.anchor}
           onClose={() => setPopover(null)}
+          onMouseEnter={clearCloseTimer}
+          onMouseLeave={scheduleClose}
           onSelect={(tag) => {
             onQuickFilter("tag_any", tag);
             setPopover(null);

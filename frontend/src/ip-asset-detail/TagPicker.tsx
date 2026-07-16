@@ -1,4 +1,10 @@
-import { type KeyboardEvent, useMemo, useState } from "react";
+import {
+  type FocusEvent,
+  type KeyboardEvent,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 
 import { tagColorStyle } from "../shared/tagColor";
 import type { ColorOption } from "./types";
@@ -13,6 +19,8 @@ export function TagPicker({
   onChange: (tags: string[]) => void;
 }) {
   const [query, setQuery] = useState("");
+  const [open, setOpen] = useState(false);
+  const pickerRef = useRef<HTMLDivElement>(null);
   const available = useMemo(
     () =>
       catalog.filter(
@@ -25,6 +33,7 @@ export function TagPicker({
   const add = (name: string) => {
     onChange([...selected, name]);
     setQuery("");
+    setOpen(true);
   };
   const keyDown = (event: KeyboardEvent<HTMLInputElement>) => {
     if (event.key === "Enter" && available[0]) {
@@ -34,10 +43,23 @@ export function TagPicker({
       onChange(selected.slice(0, -1));
     }
   };
+  const blur = (event: FocusEvent<HTMLDivElement>) => {
+    if (
+      event.relatedTarget instanceof Node &&
+      pickerRef.current?.contains(event.relatedTarget)
+    ) {
+      return;
+    }
+    setOpen(false);
+  };
   return (
     <div className="field">
       <span>Tags</span>
-      <div className="tag-picker">
+      <div
+        className="tag-picker"
+        ref={pickerRef}
+        onBlur={blur}
+      >
         <div className="tag-picker-selected">
           {selected.map((name) => {
             const tag = catalog.find((item) => item.name === name);
@@ -62,9 +84,10 @@ export function TagPicker({
             placeholder="Add tags..."
             value={query}
             onChange={(event) => setQuery(event.target.value)}
+            onFocus={() => setOpen(true)}
             onKeyDown={keyDown}
           />
-          {query && (
+          {open && (
             <ul className="tag-picker-dropdown">
               {available.length ? (
                 available.map((tag) => (
@@ -73,6 +96,7 @@ export function TagPicker({
                       className="tag tag-color"
                       style={tagColorStyle(tag.color ?? "#e2e8f0")}
                       type="button"
+                      onMouseDown={(event) => event.preventDefault()}
                       onClick={() => add(tag.name)}
                     >
                       {tag.name}
