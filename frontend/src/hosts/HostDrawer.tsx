@@ -32,19 +32,21 @@ function Section({ children }: { children: ReactNode }) {
 export function HostDrawer(props: Props) {
   const ref = useRef<HTMLElement>(null);
   const open = props.mode !== null;
+
   useEffect(() => {
     if (!open) return;
-    const timeout = window.setTimeout(() => {
-      ref.current
-        ?.querySelector<HTMLElement>("input:not([type='checkbox']), textarea")
-        ?.focus();
-    }, 50);
+    ref.current
+      ?.querySelector<HTMLElement>("input:not([type='checkbox']), textarea")
+      ?.focus();
+  }, [open, props.mode]);
+
+  useEffect(() => {
+    if (!open) return;
     const escape = (event: KeyboardEvent) => {
       if (event.key === "Escape") props.onClose();
     };
     document.addEventListener("keydown", escape);
     return () => {
-      window.clearTimeout(timeout);
       document.removeEventListener("keydown", escape);
     };
   }, [open, props.onClose]);
@@ -181,9 +183,6 @@ export function HostDrawer(props: Props) {
                           props.onValue("vendor_id", event.target.value)
                         }
                       >
-                        {props.values.project_id === "mixed" && (
-                          <option value="mixed">Multiple (keep current)</option>
-                        )}
                         <option value="">Unassigned</option>
                         {props.vendors.map((vendor) => (
                           <option key={vendor.id} value={vendor.id}>
@@ -201,6 +200,9 @@ export function HostDrawer(props: Props) {
                           props.onValue("project_id", event.target.value)
                         }
                       >
+                        {props.values.project_id === "mixed" && (
+                          <option value="mixed">Multiple (keep current)</option>
+                        )}
                         <option value="">Unassigned</option>
                         {props.projects.map((project) => (
                           <option key={project.id} value={project.id}>

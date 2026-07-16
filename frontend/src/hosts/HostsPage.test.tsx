@@ -253,4 +253,21 @@ describe("HostsPage", () => {
     });
     expect(deleteButton).toBeEnabled();
   });
+
+  it("keeps focus in Notes while the controlled edit form updates", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(ok()));
+    render(<HostsPage endpoint="/api/ui/hosts" />);
+    await screen.findByText("edge-01");
+
+    fireEvent.click(screen.getByRole("button", { name: "Edit" }));
+    const notes = screen.getByRole("textbox", { name: "Notes" });
+    notes.focus();
+    fireEvent.change(notes, { target: { value: "f" } });
+
+    expect(notes).toHaveFocus();
+    fireEvent.change(notes, { target: { value: "first note" } });
+    expect(notes).toHaveFocus();
+    expect(notes).toHaveValue("first note");
+    expect(screen.getByRole("textbox", { name: "Name" })).not.toHaveFocus();
+  });
 });
