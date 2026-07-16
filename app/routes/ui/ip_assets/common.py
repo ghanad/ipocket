@@ -1,9 +1,12 @@
 from __future__ import annotations
 
+import sqlite3
+
 from fastapi import HTTPException, status
 
 from app import repository
 from app.models import IPAssetType, User, UserRole
+from app.utils import validate_ip_address
 from app.routes.ui.utils import (
     _build_asset_view_models,
     _is_auto_host_for_bmc_enabled,
@@ -151,6 +154,140 @@ def update_ip_asset_from_ui(
         notes=_parse_optional_str(notes),
         notes_provided=True,
         tags=tags,
+        current_user=user,
+    )
+
+
+def create_ip_asset_from_ui(
+    connection,
+    *,
+    ip_address: str,
+    asset_type: str,
+    project_id: int | None,
+    host_id: int | None,
+    notes: str | None,
+    raw_tags: list[str],
+    user: User,
+):
+    errors: list[str] = []
+    normalized_ip = ip_address.strip()
+    if not normalized_ip:
+        errors.append("IP address is required.")
+    else:
+        try:
+            validate_ip_address(normalized_ip)
+        except HTTPException as exc:
+            errors.append(str(exc.detail))
+    try:
+        normalized_type = _normalize_asset_type(asset_type)
+    except ValueError:
+        normalized_type = None
+        errors.append("Asset type is required.")
+    if normalized_type is None and not errors:
+        errors.append("Asset type is required.")
+    if (
+        project_id is not None
+        and repository.get_project_by_id(connection, project_id) is None
+    ):
+        errors.append("Selected project does not exist.")
+    if host_id is not None and repository.get_host_by_id(connection, host_id) is None:
+        errors.append("Selected host does not exist.")
+    if normalized_type not in (IPAssetType.OS, IPAssetType.BMC) and host_id is not None:
+        errors.append("Host can only be assigned to OS or BMC assets.")
+    tags, tag_errors = _parse_selected_tags(connection, raw_tags)
+    errors.extend(tag_errors)
+    if errors or normalized_type is None:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=errors,
+        )
+    try:
+        return repository.create_ip_asset(
+            connection,
+            ip_address=normalized_ip,
+            asset_type=normalized_type,
+            project_id=project_id,
+            host_id=host_id,
+            notes=_parse_optional_str(notes),
+            tags=tags,
+            auto_host_for_bmc=_is_auto_host_for_bmc_enabled(),
+            current_user=user,
+        )
+    except sqlite3.IntegrityError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=["IP address already exists."],
+        ) from exc
+
+
+def bulk_update_ip_assets_from_ui(
+    connection,
+    *,
+    asset_ids: list[int],
+    asset_type: str | None,
+    project_id: int | None,
+    set_project: bool,
+    tags_to_add_raw: list[str],
+    tags_to_remove_raw: list[str],
+    notes: str | None,
+    notes_mode: str | None,
+    user: User,
+):
+    errors: list[str] = []
+    normalized_ids = list(dict.fromkeys(asset_ids))
+    if not normalized_ids:
+        errors.append("Select at least one IP asset.")
+    normalized_type = None
+    if asset_type:
+        try:
+            normalized_type = _normalize_asset_type(asset_type)
+        except ValueError:
+            errors.append("Select a valid type.")
+    if set_project and project_id is not None:
+        if repository.get_project_by_id(connection, project_id) is None:
+            errors.append("Selected project does not exist.")
+    tags_to_add, tag_errors = _parse_selected_tags(connection, tags_to_add_raw)
+    errors.extend(tag_errors)
+    tags_to_remove, remove_errors = _parse_selected_tags(
+        connection, tags_to_remove_raw
+    )
+    errors.extend(remove_errors)
+    normalized_notes_mode = (notes_mode or "").strip().lower()
+    set_notes = False
+    notes_value = None
+    if normalized_notes_mode:
+        if normalized_notes_mode == "set":
+            set_notes = True
+            notes_value = _parse_optional_str(notes)
+            if notes_value is None:
+                errors.append("Enter notes to overwrite, or choose clear notes.")
+        elif normalized_notes_mode == "clear":
+            set_notes = True
+        else:
+            errors.append("Select a valid notes action.")
+    if (
+        normalized_type is None
+        and not set_project
+        and not set_notes
+        and not tags_to_add
+        and not tags_to_remove
+    ):
+        errors.append("Choose at least one bulk update action.")
+    if errors:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=errors,
+        )
+    return repository.bulk_update_ip_assets(
+        connection,
+        normalized_ids,
+        asset_type=normalized_type,
+        project_id=project_id,
+        set_project_id=set_project,
+        notes=notes_value,
+        set_notes=set_notes,
+        tags_to_add=tags_to_add,
+        tags_to_remove=tags_to_remove,
         current_user=user,
     )
 

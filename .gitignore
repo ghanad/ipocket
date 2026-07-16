@@ -123,6 +123,9 @@ temp/
 
 # Node.js dependencies
 node_modules/
-app/static/react/
+app/static/react/*
+!app/static/react/ip-assets/
+app/static/react/ip-assets/*
+!app/static/react/ip-assets/ip-assets.js
 
 source_code.json

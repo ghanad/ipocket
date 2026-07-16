@@ -6,7 +6,8 @@ ipocket is a lightweight IP inventory app to track addresses and their project a
 - CRUD API for IP records (including permanent delete endpoint for editors only)
 - Project management
 - Project colors to quickly scan ownership in the IP assets list
-- IP assets list supports HTMX-powered live search and filtering (including an assignment dropdown) without full page reloads.
+- The IP Assets list at `/ui/ip-assets` is React/Vite/TypeScript-powered inside the existing Jinja application shell. It remains the primary inventory and project-assignment workflow and loads list rows, filter metadata, action policy, and pagination from `GET /api/ui/ip-assets`.
+- IP assets list supports debounced live search and filtering (including an assignment dropdown) without full page reloads. Filter and pagination state stays synchronized with the browser URL, including Back/Forward navigation, and stale list responses are ignored.
 - Project filter on IP assets now includes an `Unassigned` option to show only IPs without a project directly from the Project dropdown.
 - Project assignment review is handled directly in the IP Assets list via the **Assignment** filter (`Unassigned only`); the dedicated Needs Assignment page has been removed.
 - IP assets search results are sorted by numeric IP value (so `192.168.1.2` appears before `192.168.1.11`) instead of plain text ordering.
@@ -16,7 +17,7 @@ ipocket is a lightweight IP inventory app to track addresses and their project a
 - IP assets list includes pagination with a user-selectable page size (default 20) to keep large inventories manageable.
 - Rows-per-page selector in the IP assets table footer is isolated from global table click handlers, so its dropdown stays open reliably while choosing a page size.
 - Changing rows-per-page now preserves active IP assets filters (search text, project/type, assignment, archived state, and OR/AND/NOT tag filters) instead of resetting the list query.
-- IP assets list keeps row actions (Edit/Delete) and bulk-selection controls active after HTMX pagination/filter updates (no manual page refresh needed).
+- IP assets list keeps row actions (Edit/Delete) and bulk-selection controls active after React pagination/filter updates (no manual page refresh needed).
 - IP assets pagination/filtering/sorting now execute directly in SQL (including `LIMIT/OFFSET`) using persisted IPv4 integer values (`ip_int`) for fast numeric ordering, with text fallback ordering for non-IPv4 values.
 - IP assets list rows use compact spacing for IP text and Project/Type chips to keep more records visible per page.
 - IP assets table keeps `IP address`, `Project`, and `Type` columns narrow because their values are bounded, leaving more horizontal space for Tags and Notes.
@@ -53,7 +54,7 @@ ipocket is a lightweight IP inventory app to track addresses and their project a
 - Sidebar remains fixed-height with its own scroll to keep navigation and account actions accessible on long pages.
 - UI pages advertise a local `/static/favicon.png` icon so browser tabs/bookmarks show the ipocket brand without external asset loading.
 - The old fixed top header has been removed from the main layout to give pages more vertical space; branding remains in the left sidebar.
-- UI templates keep behavior and styling in static assets. `app/static/app.css` is a small, ordered entrypoint that imports focused stylesheets from `app/static/css/` for foundations, shared components, forms, tables, workflows, and page-specific UI. Library and IP Asset Detail are React/Vite/TypeScript entries mounted inside the existing Jinja shell. The IP Assets list remains on focused native ES modules under `app/static/js/ip-assets/` (drawer, bulk edit, filters, table bindings, and tag popover), loaded through the small `app/static/js/ip-assets.js` entrypoint.
+- UI templates keep behavior and styling in static assets. `app/static/app.css` is a small, ordered entrypoint that imports focused stylesheets from `app/static/css/` for foundations, shared components, forms, tables, workflows, and page-specific UI. Library, IP Assets List, and IP Asset Detail are React/Vite/TypeScript entries mounted inside the existing Jinja shell. The former IP Assets-specific HTMX/native-JavaScript entry has been removed; legacy direct create/edit/delete/bulk form routes remain available for compatibility.
 - The sidebar account section shows Login when signed out and Logout when signed in.
 - Password hashing now uses `passlib` with `bcrypt` (legacy SHA-256 hashes are upgraded to bcrypt after successful login).
 - API bearer tokens and UI session cookies now resolve to persistent records in the SQLite `sessions` table, so authenticated sessions survive server restarts and multi-process scaling.

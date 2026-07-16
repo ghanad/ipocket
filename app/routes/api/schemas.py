@@ -177,9 +177,24 @@ class UIIPAssetWrite(BaseModel):
     notes: Optional[str] = None
 
 
+class UIIPAssetCreate(UIIPAssetWrite):
+    ip_address: str
+
+
 class UIIPAssetDelete(BaseModel):
     acknowledged: bool = False
     confirm_ip: str = ""
+
+
+class UIIPAssetBulkWrite(BaseModel):
+    asset_ids: list[int] = Field(default_factory=list)
+    type: Optional[str] = None
+    project_id: Optional[int] = None
+    set_project: bool = False
+    tags_to_add: list[str] = Field(default_factory=list)
+    tags_to_remove: list[str] = Field(default_factory=list)
+    notes: Optional[str] = None
+    notes_mode: Optional[str] = None
 
 
 class VendorCreate(BaseModel):

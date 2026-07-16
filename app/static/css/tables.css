@@ -51,6 +51,19 @@
   padding-left: 8px;
 }
 
+.table.table-ip-assets-readonly th:first-child,
+.table.table-ip-assets-readonly td:first-child {
+  width: 136px;
+  padding-left: 18px;
+  padding-right: 18px;
+}
+
+.table.table-ip-assets-readonly th:nth-child(2),
+.table.table-ip-assets-readonly td:nth-child(2) {
+  width: 150px;
+  padding-left: 18px;
+}
+
 .table.table-ip-assets th.col-ip-address,
 .table.table-ip-assets td.col-ip-address {
   width: 136px;
@@ -207,6 +220,48 @@
   padding: 16px 20px;
 }
 
+.table-footer-controls {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.table-per-page {
+  margin: 0;
+  flex-direction: row;
+  align-items: center;
+  gap: 6px;
+}
+
+.table-per-page > span {
+  color: var(--color-muted-light);
+  font-size: 12px;
+  font-weight: 400;
+}
+
+.select-minimal {
+  appearance: none;
+  border: 1px solid #e2e8f0;
+  border-radius: 4px;
+  padding: 2px 20px 2px 6px;
+  color: #64748b;
+  background-color: transparent;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 4px center;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.select-minimal:hover {
+  border-color: #cbd5e1;
+}
+
+.select-minimal:focus {
+  border-color: #94a3b8;
+  outline: none;
+}
+
 .table-meta {
   color: var(--color-muted-light);
   font-size: 13px;
@@ -297,4 +352,3 @@
   color: #b91c1c;
   font-weight: 600;
 }
-

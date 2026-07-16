@@ -1,4 +1,30 @@
 /* --- IP assets list styles --- */
+  .ip-assets-root {
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+  }
+
+  .bulk-action-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 10px 16px;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    background: #f8fafc;
+    font-size: 13px;
+  }
+
+  .bulk-edit-controls {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--color-border);
+  }
+
   .ip-asset-actions {
     display: inline-flex;
     gap: 6px;
@@ -515,4 +541,3 @@
       align-items: flex-end;
     }
   }
-

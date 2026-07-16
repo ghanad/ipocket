@@ -3,16 +3,6 @@ from pathlib import Path
 from app.environment import use_local_assets
 
 
-IP_ASSETS_JS_MODULES = (
-    "ip-assets.js",
-    "ip-assets/bulk-edit.js",
-    "ip-assets/drawer.js",
-    "ip-assets/filters.js",
-    "ip-assets/shared.js",
-    "ip-assets/table.js",
-    "ip-assets/tags-popover.js",
-)
-
 CSS_MODULES = (
     "foundation.css",
     "components.css",
@@ -26,14 +16,6 @@ CSS_MODULES = (
     "range-addresses.css",
     "audit-log.css",
 )
-
-
-def _read_ip_assets_javascript(repo_root: Path) -> str:
-    static_js = repo_root / "app/static/js"
-    return "\n".join(
-        (static_js / relative_path).read_text(encoding="utf-8")
-        for relative_path in IP_ASSETS_JS_MODULES
-    )
 
 
 def _read_application_css(repo_root: Path) -> str:
@@ -57,7 +39,7 @@ def test_ui_assets_are_local() -> None:
         in base_html
     )
     assert (
-        '<link rel="stylesheet" href="/static/app.css?v=react-ip-asset-detail" />'
+        '<link rel="stylesheet" href="/static/app.css?v=react-ip-assets-list" />'
         in base_html
     )
     assert '<script src="/static/js/tag-picker.js" defer></script>' in base_html
@@ -165,23 +147,16 @@ def test_refactored_templates_load_external_page_assets() -> None:
     assert "<style>" not in templates["hosts"].read_text(encoding="utf-8")
     assert "<script>" not in templates["hosts"].read_text(encoding="utf-8")
 
-    assert '<script type="module" src="/static/js/ip-assets.js"></script>' in templates[
-        "ip_assets"
-    ].read_text(encoding="utf-8")
-    assert "data-bulk-open disabled>Bulk update</button>" in templates[
-        "ip_assets_table"
-    ].read_text(encoding="utf-8")
-    assert "data-bulk-remove-hidden" in templates["ip_assets_table"].read_text(
-        encoding="utf-8"
+    ip_assets_template = templates["ip_assets"].read_text(encoding="utf-8")
+    assert (
+        '<script type="module" src="/static/react/ip-assets/ip-assets.js"></script>'
+        in ip_assets_template
     )
-    assert "data-bulk-drawer" in templates["ip_assets"].read_text(encoding="utf-8")
-    assert "data-bulk-common-tags-list" in templates["ip_assets"].read_text(
-        encoding="utf-8"
-    )
-    assert 'name="notes_mode"' in templates["ip_assets"].read_text(encoding="utf-8")
-    assert "data-bulk-tags=" in templates["ip_assets_rows"].read_text(encoding="utf-8")
-    assert "<style>" not in templates["ip_assets"].read_text(encoding="utf-8")
-    assert "<script>" not in templates["ip_assets"].read_text(encoding="utf-8")
+    assert 'id="ip-assets-root"' in ip_assets_template
+    assert 'data-endpoint="/api/ui/ip-assets"' in ip_assets_template
+    assert "hx-get=" not in ip_assets_template
+    assert "<style>" not in ip_assets_template
+    assert "<script>" not in ip_assets_template
 
     assert '<script src="/static/js/range-addresses.js" defer></script>' in templates[
         "range_addresses"
@@ -203,7 +178,8 @@ def test_refactored_templates_load_external_page_assets() -> None:
 
     assert (repo_root / "app/static/js/drawer.js").exists()
     assert (repo_root / "app/static/js/hosts.js").exists()
-    assert (repo_root / "app/static/js/ip-assets.js").exists()
+    assert not (repo_root / "app/static/js/ip-assets.js").exists()
+    assert (repo_root / "app/static/react/ip-assets/ip-assets.js").exists()
     assert (repo_root / "app/static/js/range-addresses.js").exists()
     assert (repo_root / "app/static/js/tag-picker.js").exists()
     assert (repo_root / "app/static/js/host-select-search.js").exists()
@@ -226,14 +202,15 @@ def test_refactored_templates_load_external_page_assets() -> None:
     )
     assert "window.ipocketApplyTagContrast = applyTagContrast;" in tag_picker_js
     assert "applyTagContrast(root);" in tag_picker_js
-    ip_assets_js = _read_ip_assets_javascript(repo_root)
-    assert "computeCommonBulkTags" in ip_assets_js
-    assert "name = 'remove_tags'" in ip_assets_js
-    assert "const getDeleteReturnUrl = (assetData) => {" in ip_assets_js
-    assert (
-        "window.location.pathname === `/ui/ip-assets/${payload.asset_id}`"
-        in ip_assets_js
-    )
+    ip_assets_page = (
+        repo_root / "frontend/src/ip-assets/IPAssetsPage.tsx"
+    ).read_text(encoding="utf-8")
+    bulk_drawer = (
+        repo_root / "frontend/src/ip-assets/BulkUpdateDrawer.tsx"
+    ).read_text(encoding="utf-8")
+    assert "const commonTags = useMemo" in ip_assets_page
+    assert "tags_to_remove" in bulk_drawer
+    assert "deleteAsset(endpoint, asset.id" in ip_assets_page
     hosts_js = (repo_root / "app/static/js/hosts.js").read_text(encoding="utf-8")
     hosts_table = (repo_root / "app/templates/partials/hosts_table.html").read_text(
         encoding="utf-8"
@@ -249,24 +226,25 @@ def test_refactored_templates_load_external_page_assets() -> None:
     assert "dataset.hostPopoverTag" in hosts_js
 
 
-def test_ip_assets_javascript_is_split_into_focused_modules(client) -> None:
+def test_ip_assets_react_source_is_split_into_focused_modules() -> None:
     repo_root = Path(__file__).resolve().parents[1]
-    static_js = repo_root / "app/static/js"
-    entrypoint = (static_js / "ip-assets.js").read_text(encoding="utf-8")
-
-    assert len(entrypoint.splitlines()) < 150
-    for relative_path in IP_ASSETS_JS_MODULES[1:]:
-        module_path = static_js / relative_path
+    source_root = repo_root / "frontend/src/ip-assets"
+    modules = (
+        "main.tsx",
+        "IPAssetsPage.tsx",
+        "IPAssetsFilters.tsx",
+        "IPAssetsTable.tsx",
+        "IPAssetListDrawer.tsx",
+        "BulkUpdateDrawer.tsx",
+        "TagOverflowPopover.tsx",
+        "api.ts",
+        "types.ts",
+    )
+    for relative_path in modules:
+        module_path = source_root / relative_path
         assert module_path.exists()
-        assert len(module_path.read_text(encoding="utf-8").splitlines()) < 450
-        response = client.get(f"/static/js/{relative_path}")
-        assert response.status_code == 200
-        assert response.headers["content-type"].startswith("text/javascript")
-
-    assert "from './ip-assets/drawer.js'" in entrypoint
-    assert "from './ip-assets/bulk-edit.js'" in entrypoint
-    assert "from './ip-assets/filters.js'" in entrypoint
-    assert "from './ip-assets/tags-popover.js'" in entrypoint
+        assert len(module_path.read_text(encoding="utf-8").splitlines()) < 600
+    assert not (repo_root / "app/static/js/ip-assets.js").exists()
 
 
 def test_projects_templates_use_alpine_for_drawer_interactions() -> None:

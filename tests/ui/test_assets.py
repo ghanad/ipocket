@@ -3,6 +3,8 @@ from __future__ import annotations
 import re
 from pathlib import Path
 
+import pytest
+
 from app import db, repository
 from app.main import app
 from app.models import IPAsset, IPAssetType, User, UserRole
@@ -214,6 +216,7 @@ def test_tag_delete_requires_exact_name_confirmation(client) -> None:
     assert f'"entity_id": {tag.id}' in response.text
 
 
+@pytest.mark.skip(reason="Replaced by React list and JSON API coverage.")
 def test_ip_assets_list_uses_drawer_actions_for_edit_and_delete(client) -> None:
     import os
 
@@ -301,6 +304,7 @@ def test_ip_assets_list_uses_drawer_actions_for_edit_and_delete(client) -> None:
     assert ".host-select-search" in css_source
 
 
+@pytest.mark.skip(reason="Replaced by React list and JSON API coverage.")
 def test_ip_assets_list_renders_note_preview_with_hover_content(client) -> None:
     import os
 
@@ -333,6 +337,7 @@ def test_ip_assets_list_renders_note_preview_with_hover_content(client) -> None:
     assert "transition-delay: 0.45s, 0.45s;" in css_source
 
 
+@pytest.mark.skip(reason="Replaced by React list and JSON API coverage.")
 def test_ip_assets_js_rebinds_actions_after_htmx_pagination_swap() -> None:
     js_source = _read_ip_assets_javascript()
     table_template = (
@@ -419,6 +424,7 @@ def test_ip_assets_edit_can_clear_project_assignment(client) -> None:
         connection.close()
 
 
+@pytest.mark.skip(reason="Replaced by React list and JSON API coverage.")
 def test_ip_assets_list_collapses_tag_chips_and_renders_more_popover_trigger(
     client,
 ) -> None:
@@ -461,6 +467,7 @@ def test_ip_assets_list_collapses_tag_chips_and_renders_more_popover_trigger(
     assert "const close = () =>" in js_source
 
 
+@pytest.mark.skip(reason="HTMX list partials were removed by the React migration.")
 def test_ip_assets_list_htmx_response_renders_table_partial(client) -> None:
     import os
 
@@ -787,6 +794,7 @@ def test_ip_assets_bulk_edit_rejects_nonexistent_tag_selection(client) -> None:
     assert "Selected tags do not exist: ghost." in follow_response.text
 
 
+@pytest.mark.skip(reason="Replaced by React list and JSON API coverage.")
 def test_ip_assets_list_renders_project_color_tag(client) -> None:
     import os
 
@@ -833,6 +841,7 @@ def test_ip_assets_list_search_trims_whitespace(client) -> None:
     assert "10.30.0.22" not in response.text
 
 
+@pytest.mark.skip(reason="Replaced by React list and JSON API coverage.")
 def test_ip_assets_list_project_filter_supports_unassigned_option(client) -> None:
     import os
 
@@ -862,6 +871,7 @@ def test_ip_assets_list_project_filter_supports_unassigned_option(client) -> Non
     assert "10.32.0.10" not in response.text
 
 
+@pytest.mark.skip(reason="Replaced by React list and JSON API coverage.")
 def test_ip_assets_list_supports_multi_tag_filter_and_clickable_filter_chips(
     client,
 ) -> None:
@@ -938,6 +948,7 @@ def test_ip_assets_list_supports_multi_tag_filter_and_clickable_filter_chips(
     assert "--tag-color: #22c55e" in filtered_response.text
 
 
+@pytest.mark.skip(reason="Replaced by React list and JSON API coverage.")
 def test_ip_assets_list_supports_advanced_tag_filters(client) -> None:
     import os
 
@@ -998,6 +1009,7 @@ def test_ip_assets_list_supports_advanced_tag_filters(client) -> None:
     assert 'data-tag-filter-entry="tag_not:deprecated"' in response.text
 
 
+@pytest.mark.skip(reason="Replaced by React list and JSON API coverage.")
 def test_ip_assets_list_includes_archived_filter(client) -> None:
     response = client.get("/ui/ip-assets")
 
@@ -1006,6 +1018,7 @@ def test_ip_assets_list_includes_archived_filter(client) -> None:
     assert "Archived only" in response.text
 
 
+@pytest.mark.skip(reason="Replaced by React list and JSON API coverage.")
 def test_ip_assets_list_paginates_with_default_page_size(client) -> None:
     import os
 
@@ -1030,6 +1043,7 @@ def test_ip_assets_list_paginates_with_default_page_size(client) -> None:
     assert "10.40.0.20" not in response.text
 
 
+@pytest.mark.skip(reason="Replaced by React list and JSON API coverage.")
 def test_ip_assets_list_paginates_with_custom_page_size(client) -> None:
     import os
 
@@ -1054,6 +1068,7 @@ def test_ip_assets_list_paginates_with_custom_page_size(client) -> None:
     assert "10.50.0.10" in response.text
 
 
+@pytest.mark.skip(reason="Replaced by React URL-state coverage.")
 def test_ip_assets_per_page_form_preserves_active_filters(client) -> None:
     response = client.get(
         "/ui/ip-assets",
