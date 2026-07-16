@@ -6,6 +6,7 @@ import {
   useState,
 } from "react";
 
+import { RowActions } from "../shared/RowActions";
 import {
   ApiError,
   createUser,
@@ -333,7 +334,7 @@ export function UsersPage({ endpoint, bootstrap }: UsersPageProps) {
                 </tr>
               ) : (
                 users.map((user) => (
-                  <tr key={user.id}>
+                  <tr key={user.id} className="row-with-actions" tabIndex={0}>
                     <td>{user.username}</td>
                     <td>
                       <span
@@ -360,29 +361,19 @@ export function UsersPage({ endpoint, bootstrap }: UsersPageProps) {
                       </span>
                     </td>
                     <td className="asset-actions-cell">
-                      <div className="table-actions">
-                        <button
-                          className="btn btn-secondary btn-small"
-                          type="button"
-                          onClick={() => openEdit(user)}
-                        >
-                          Edit
-                        </button>
-                        <button
-                          className="btn btn-danger btn-small"
-                          type="button"
-                          disabled={!user.policy.can_delete}
-                          title={user.policy.delete_disabled_reason ?? undefined}
-                          aria-label={
-                            user.id === actor?.id
-                              ? `Delete ${user.username} (current user protected)`
-                              : `Delete ${user.username}`
-                          }
-                          onClick={() => openDelete(user)}
-                        >
-                          Delete
-                        </button>
-                      </div>
+                      <RowActions
+                        itemLabel={user.username}
+                        onEdit={() => openEdit(user)}
+                        actions={[
+                          {
+                            label: "Delete",
+                            destructive: true,
+                            disabled: !user.policy.can_delete,
+                            disabledReason: user.policy.delete_disabled_reason,
+                            onSelect: () => openDelete(user),
+                          },
+                        ]}
+                      />
                     </td>
                   </tr>
                 ))

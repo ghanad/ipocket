@@ -8,6 +8,7 @@ import {
   useState,
 } from "react";
 
+import { RowActions } from "../shared/RowActions";
 import {
   ApiError,
   createLibraryItem,
@@ -293,7 +294,13 @@ export function TagsTab({
                 </tr>
               ) : (
                 items.map((tag) => (
-                  <tr key={tag.id}>
+                  <tr
+                    key={tag.id}
+                    className={
+                      metadata?.can_edit ? "row-with-actions" : undefined
+                    }
+                    tabIndex={metadata?.can_edit ? 0 : undefined}
+                  >
                     <td>{tag.name}</td>
                     <td>
                       <input
@@ -315,22 +322,17 @@ export function TagsTab({
                     <td>{tag.usage_count}</td>
                     <td className="asset-actions-cell">
                       {metadata?.can_edit ? (
-                        <div className="table-actions">
-                          <button
-                            className="btn btn-secondary btn-small"
-                            type="button"
-                            onClick={() => openEdit(tag)}
-                          >
-                            Edit
-                          </button>
-                          <button
-                            className="btn btn-danger btn-small"
-                            type="button"
-                            onClick={() => openDelete(tag)}
-                          >
-                            Delete
-                          </button>
-                        </div>
+                        <RowActions
+                          itemLabel={tag.name}
+                          onEdit={() => openEdit(tag)}
+                          actions={[
+                            {
+                              label: "Delete",
+                              destructive: true,
+                              onSelect: () => openDelete(tag),
+                            },
+                          ]}
+                        />
                       ) : (
                         "—"
                       )}

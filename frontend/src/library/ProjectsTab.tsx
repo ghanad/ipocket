@@ -7,6 +7,7 @@ import {
   useState,
 } from "react";
 
+import { RowActions } from "../shared/RowActions";
 import {
   ApiError,
   createLibraryItem,
@@ -305,7 +306,13 @@ export function ProjectsTab({
                 </tr>
               ) : (
                 items.map((project) => (
-                  <tr key={project.id}>
+                  <tr
+                    key={project.id}
+                    className={
+                      metadata?.can_edit ? "row-with-actions" : undefined
+                    }
+                    tabIndex={metadata?.can_edit ? 0 : undefined}
+                  >
                     <td>{project.name}</td>
                     <td>{project.description || "—"}</td>
                     <td>
@@ -320,22 +327,17 @@ export function ProjectsTab({
                     <td>{project.usage_count}</td>
                     <td className="asset-actions-cell">
                       {metadata?.can_edit ? (
-                        <div className="table-actions">
-                          <button
-                            className="btn btn-secondary btn-small"
-                            type="button"
-                            onClick={() => openEdit(project)}
-                          >
-                            Edit
-                          </button>
-                          <button
-                            className="btn btn-danger btn-small"
-                            type="button"
-                            onClick={() => openDelete(project)}
-                          >
-                            Delete
-                          </button>
-                        </div>
+                        <RowActions
+                          itemLabel={project.name}
+                          onEdit={() => openEdit(project)}
+                          actions={[
+                            {
+                              label: "Delete",
+                              destructive: true,
+                              onSelect: () => openDelete(project),
+                            },
+                          ]}
+                        />
                       ) : (
                         "—"
                       )}

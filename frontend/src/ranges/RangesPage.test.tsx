@@ -46,6 +46,9 @@ describe("RangesPage", () => {
 
     expect(screen.getByRole("status")).toHaveTextContent("Loading IP ranges");
     expect(await screen.findByText("192.168.10.0/24")).toBeInTheDocument();
+    const rangeRow = screen.getByText("192.168.10.0/24").closest("tr");
+    expect(rangeRow).toHaveClass("row-with-actions");
+    expect(rangeRow).toHaveAttribute("tabindex", "0");
     expect(screen.getByText("0.8%")).toBeInTheDocument();
     expect(screen.getAllByRole("columnheader")).toHaveLength(7);
     expect(screen.getByRole("columnheader", { name: "Used" })).toBeInTheDocument();
@@ -170,7 +173,12 @@ describe("RangesPage", () => {
     render(<RangesPage endpoint="/api/ui/ranges" />);
 
     await screen.findByText("192.168.10.0/24");
-    fireEvent.click(screen.getByRole("button", { name: "Delete" }));
+    fireEvent.click(
+      screen.getByRole("button", { name: "More actions for Corp LAN" }),
+    );
+    fireEvent.click(
+      screen.getByRole("menuitem", { name: "Delete Corp LAN" }),
+    );
     const deleteButton = screen.getByRole("button", {
       name: "Delete permanently",
     });

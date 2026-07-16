@@ -18,7 +18,7 @@ ipocket is a lightweight IP inventory app to track addresses and their project a
 - IP assets list includes pagination with a user-selectable page size (default 20) to keep large inventories manageable.
 - Rows-per-page selector in the IP assets table footer is isolated from global table click handlers, so its dropdown stays open reliably while choosing a page size.
 - Changing rows-per-page now preserves active IP assets filters (search text, project/type, assignment, archived state, and OR/AND/NOT tag filters) instead of resetting the list query.
-- IP assets list keeps row actions (Edit/Delete) and bulk-selection controls active after React pagination/filter updates (no manual page refresh needed).
+- IP assets list keeps row actions and bulk-selection controls active after React pagination/filter updates (no manual page refresh needed).
 - IP assets pagination/filtering/sorting now execute directly in SQL (including `LIMIT/OFFSET`) using persisted IPv4 integer values (`ip_int`) for fast numeric ordering, with text fallback ordering for non-IPv4 values.
 - IP assets list rows use compact spacing for IP text and Project/Type chips to keep more records visible per page.
 - IP assets table keeps `IP address`, `Project`, and `Type` columns narrow because their values are bounded, leaving more horizontal space for Tags and Notes.
@@ -32,7 +32,8 @@ ipocket is a lightweight IP inventory app to track addresses and their project a
 - Host assignment controls in IP Asset edit/create flows include a local host search box so large host inventories can be filtered before selecting a host.
 - BMC IPs without a host assignment show a drawer action to create and assign a host named `server_<ip>`.
 - IP assets list hides Host Pair to keep the table focused on assignment and editing fields.
-- IP assets list shows inline Edit/Delete actions side-by-side in the Actions column.
+- Data-table rows use one shared compact action pattern across IP Assets, Hosts, Ranges, Library catalogs, and User Management. The Actions column keeps a fixed reserved width but is visually empty until the row is hovered or receives keyboard focus; **Edit** and the `⋯` trigger then appear as matching lightweight ghost controls with a subtle 170 ms fade/slide transition. Individual controls receive a stronger background only on hover/focus. Touch/coarse-pointer and small-screen layouts keep the controls visible because hover is unavailable. **Delete** remains the final destructive item in the overflow menu. The menu is portal-positioned to avoid table clipping, follows RTL/LTR direction, supports keyboard navigation and Escape/outside-click close, and leaves room for future non-destructive actions.
+- Delete is never exposed as a primary table-row button. Selecting it from the overflow menu still opens the existing confirmation drawer with the same acknowledgement and exact-value safeguards.
 - Deleting an IP from the list now uses the same right-side drawer shell as Add/Edit but with strict modes: delete mode hides all edit inputs, shows a compact destructive confirmation summary (IP/Project/Type/Host), keeps the acknowledgement checkbox inline with its label, and for high-risk assets requires typing the exact IP before “Delete permanently” is enabled.
 - The `/ui/ip-assets/{id}` React IP Asset Detail migration is complete. The page runs inside the existing authenticated Jinja shell and loads display data, OS/BMC host pairs, audit history, editor metadata, and action policy from `GET /api/ui/ip-assets/{id}/detail`; Viewer remains read-only, while the existing IP Asset `Editor` dependency gates edit, delete, and auto-host mutations.
 - IP asset detail uses the shared card/chip visual language, including high-contrast project/tag colors, direct links for IP address, Host, and paired OS/BMC addresses, badge-styled audit actions with optional raw detail expansion, and accessible Edit/Delete drawers. Successful edits and auto-host actions refresh Detail and Audit Log without a full-page reload; permanent delete returns to `/ui/ip-assets`.
@@ -73,7 +74,7 @@ ipocket is a lightweight IP inventory app to track addresses and their project a
 - Legacy `/ui/users` HTML form mutation routes remain compatible and share validation, mutation, and audit helpers with the JSON API.
 - The sidebar footer shows build metadata (`version/commit/build time`) whenever the sidebar is visible, including signed-out views.
 - IP ranges page supports editing and deleting saved CIDR ranges for cleanup, with a confirmation step that requires typing the exact range name.
-- Saved ranges now use the same inline Edit/Delete button style as Hosts so table actions stay visually consistent across pages.
+- Saved ranges use the shared hover/focus-revealed Edit + overflow-menu row action pattern so table actions stay visually consistent across pages.
 - Range addresses view includes Status, Host Pair, and Notes for used IPs in subnet drill-downs.
 - Range addresses view is React/Vite/TypeScript-powered inside the standard Jinja shell. It loads range metadata, filter catalogs, action policy, rows, normalized query state, and pagination from `GET /api/ui/ranges/{range_id}/addresses`.
 - Range addresses view supports debounced IP search plus separate `Project`/`Type` dropdown filters, chip-based tag filtering, status filtering (`all/used/free`), and pagination (`per-page` + previous/next). State stays in the browser URL, Back/Forward restores it, stale requests are ignored, and legacy `#used`/`#free` links map to status filters.
@@ -84,7 +85,7 @@ ipocket is a lightweight IP inventory app to track addresses and their project a
 - IP ranges page now opens range editing in a right-side drawer too, so Edit keeps users on `/ui/ranges` like Hosts and IP assets.
 - IP ranges page now performs delete confirmation inside a matching right-side drawer (with explicit acknowledgement + exact-name typing) so destructive actions follow the same interaction pattern as IP asset delete.
 - Range delete drawer now reliably displays CIDR/usage context from the selected row (including when opened inline), reducing confirmation mistakes.
-- IP ranges now render in a single unified table card (name/CIDR/usable/used/free/utilization/actions), with Used/Free counts staying clickable for address drill-down and row-level Edit/Delete actions kept compact.
+- IP ranges render in a single unified table card (name/CIDR/usable/used/free/utilization/actions), with Used/Free counts staying clickable for address drill-down and row-level actions kept compact.
 - The `/ui/ranges` list is React/Vite/TypeScript-powered while retaining the existing Jinja shell/sidebar, table styling, drawer interactions, validation messages, query-based edit/delete links, and address drill-down URLs. It reads and mutates range data through `/api/ui/ranges`; legacy HTML form routes remain available for compatibility.
 - Jinja-driven pages continue to share drawer open/close behavior through `app/static/js/drawer.js`; the React Ranges page mirrors the same classes, spacing, close confirmation, and footer states in a typed component.
 - Reusable drawer shell markup is centralized in `app/templates/macros/drawer.html` for Jinja-driven drawer pages, while the React Ranges implementation keeps an equivalent `RangeDrawer` component.
@@ -136,10 +137,10 @@ Hosts can be linked to a vendor from the shared **Vendors** catalog.
 
 - Hosts list uses a right-side edit drawer for name, vendor, notes, single-value OS/BMC IP updates, and project/status context (with inline IPv4 validation); changing project updates linked IP assignments.
 - Host add form supports selecting a project plus inline OS/BMC IP inputs; when a project is selected, newly linked IP assets inherit that project during host creation.
-- Hosts list shows side-by-side Edit/Delete actions in the Actions column for quick access.
+- Hosts list reveals Edit and the overflow trigger only when a row is hovered or focused, and places Delete in the overflow menu.
 - Hosts list shows linked OS and BMC IP addresses alongside the total linked IP count; OS/BMC addresses link directly to their IP asset detail pages.
 - Hosts list uses a compact fixed-layout table sized to the page width so normal desktop views do not need horizontal scrolling.
-- Hosts list action buttons are stacked in a narrow, equal-width control group to keep row actions readable inside the compact table.
+- Hosts list reserves the same narrow action width as other data tables, preventing layout shifts when controls appear.
 - Hosts list shows an **IP tags** column with deduplicated tags from linked active IP assets; these are IPAsset tags and do not create host-level tag storage. To keep the table compact and aligned with IP Assets, host tag chips use the same compact sizing, rows show up to 2 tag chips, and additional tags collapse behind a searchable `+N more` popover anchored beside the triggering row. The popover opens on hover, focus, or click and closes with Escape or outside click. Clicking any inline or popover tag immediately applies that tag to the Hosts filter.
 - IP Asset detail pages show the paired host address only for OS/BMC assets: OS records show linked BMC addresses, and BMC records show linked OS addresses. Detail values for the IP address, Host, and paired OS/BMC addresses link directly to their detail pages.
 - In Host edit, clearing an OS/BMC IP from the drawer and saving now unlinks that IP from the host (the IP asset is kept, only `host_id` is cleared).

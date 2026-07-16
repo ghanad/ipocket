@@ -59,10 +59,20 @@ def test_ui_assets_are_local() -> None:
     assert "overflow-x: hidden;" in css
     assert ".table.table-hosts .host-col-tags {" in css
     assert ".table.table-hosts .host-col-actions {" in css
-    assert "width: 12%;" in css
-    assert "flex-direction: column;" in css
-    assert "width: 54px;" in css
-    assert ".table.table-hosts .btn-danger.btn-small {" in css
+    assert "width: 9%;" in css
+    assert ".row-actions {" in css
+    assert ".row-with-actions:hover .row-actions" in css
+    assert ".row-with-actions:focus-within .row-actions" in css
+    assert "opacity: 0;" in css
+    assert "transform: translateY(3px);" in css
+    assert "opacity 170ms ease" in css
+    assert ".row-action-control {" in css
+    assert "border: 1px solid transparent;" in css
+    assert ".row-action-control:hover" in css
+    assert "@media (hover: none), (pointer: coarse), (max-width: 700px)" in css
+    assert ".row-actions-trigger {" in css
+    assert "width: 32px;" in css
+    assert ".row-action-item-danger {" in css
     assert ".ip-tags-popover {" in css
     assert "z-index: 120;" in css
     assert ".ip-tags-popover .tag {" in css

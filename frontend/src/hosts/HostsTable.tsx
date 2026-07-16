@@ -5,6 +5,7 @@ import {
   useState,
 } from "react";
 
+import { RowActions } from "../shared/RowActions";
 import { TagPopover } from "./TagPopover";
 import type { HostRow } from "./types";
 
@@ -102,7 +103,11 @@ export function HostsTable({
           </thead>
           <tbody>
             {hosts.map((host) => (
-              <tr key={host.id}>
+              <tr
+                key={host.id}
+                className={canEdit ? "row-with-actions" : undefined}
+                tabIndex={canEdit ? 0 : undefined}
+              >
                 <td>
                   <a href={`/ui/hosts/${host.id}`}>{host.name}</a>
                 </td>
@@ -186,23 +191,18 @@ export function HostsTable({
                 </td>
                 <td>{host.ip_count}</td>
                 {canEdit && (
-                  <td>
-                    <div className="table-actions">
-                      <button
-                        className="btn btn-secondary btn-small"
-                        type="button"
-                        onClick={() => onEdit(host)}
-                      >
-                        Edit
-                      </button>
-                      <button
-                        className="btn btn-danger btn-small"
-                        type="button"
-                        onClick={() => onDelete(host)}
-                      >
-                        Delete
-                      </button>
-                    </div>
+                  <td className="asset-actions-cell">
+                    <RowActions
+                      itemLabel={host.name}
+                      onEdit={() => onEdit(host)}
+                      actions={[
+                        {
+                          label: "Delete",
+                          destructive: true,
+                          onSelect: () => onDelete(host),
+                        },
+                      ]}
+                    />
                   </td>
                 )}
               </tr>

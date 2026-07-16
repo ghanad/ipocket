@@ -133,7 +133,7 @@
 }
 
 .table.table-hosts .host-col-actions {
-  width: 12%;
+  width: 9%;
 }
 
 .table.table-hosts th:nth-child(1),
@@ -179,24 +179,8 @@
   text-align: center;
 }
 
-.table.table-hosts .table-actions {
-  display: inline-flex;
-  flex-direction: column;
-  align-items: stretch;
-  gap: 5px;
-  justify-content: center;
-}
-
-.table.table-hosts .btn-small {
-  width: 54px;
-  min-height: 24px;
-  padding: 4px 0;
-  border-radius: 8px;
-  text-align: center;
-}
-
-.table.table-hosts .btn-danger.btn-small {
-  background: #fff1f2;
+.table.table-hosts .asset-actions-cell {
+  width: 104px;
 }
 
 .table th {
@@ -208,7 +192,7 @@
 }
 
 .table tbody tr:hover {
-  background: #f1f5f9;
+  background: #f8fafc;
 }
 
 .table-footer {

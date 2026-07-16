@@ -328,7 +328,12 @@ describe("HostsPage", () => {
     expect(screen.getByRole("dialog", { name: "Edit Host" })).toHaveClass("is-open");
     fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
 
-    fireEvent.click(screen.getByRole("button", { name: "Delete" }));
+    fireEvent.click(
+      screen.getByRole("button", { name: "More actions for edge-01" }),
+    );
+    fireEvent.click(
+      screen.getByRole("menuitem", { name: "Delete edge-01" }),
+    );
     const deleteButton = screen.getByRole("button", { name: "Delete permanently" });
     expect(deleteButton).toBeDisabled();
     fireEvent.click(screen.getByRole("checkbox"));

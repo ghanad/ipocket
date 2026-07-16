@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 
+import { RowActions } from "../shared/RowActions";
 import { TagOverflowPopover } from "./TagOverflowPopover";
 import type { AssetRow } from "./types";
 
@@ -129,7 +130,11 @@ export function IPAssetsTable({
               const visibleTags =
                 asset.tags.length > 3 ? asset.tags.slice(0, 2) : asset.tags;
               return (
-                <tr key={asset.id}>
+                <tr
+                  key={asset.id}
+                  className={canEdit ? "row-with-actions" : undefined}
+                  tabIndex={canEdit ? 0 : undefined}
+                >
                   {canEdit && (
                     <td>
                       <input
@@ -243,10 +248,17 @@ export function IPAssetsTable({
                   </td>
                   {canEdit && (
                     <td className="asset-actions-cell">
-                      <div className="ip-asset-actions">
-                        <button className="btn btn-secondary btn-small" type="button" onClick={() => onEdit(asset)}>Edit</button>
-                        <button className="btn btn-danger btn-small" type="button" onClick={() => onDelete(asset)}>Delete</button>
-                      </div>
+                      <RowActions
+                        itemLabel={asset.ip_address}
+                        onEdit={() => onEdit(asset)}
+                        actions={[
+                          {
+                            label: "Delete",
+                            destructive: true,
+                            onSelect: () => onDelete(asset),
+                          },
+                        ]}
+                      />
                     </td>
                   )}
                 </tr>

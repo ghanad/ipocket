@@ -96,7 +96,8 @@
   }
 
   .asset-actions-cell {
-    width: 180px;
+    width: 104px;
+    min-width: 104px;
     white-space: nowrap;
   }
 

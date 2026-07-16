@@ -6,6 +6,7 @@ import {
   useState,
 } from "react";
 
+import { RowActions } from "../shared/RowActions";
 import {
   ApiError,
   createRange,
@@ -344,7 +345,7 @@ export function RangesPage({
                 </tr>
               ) : (
                 ranges.map((range) => (
-                  <tr key={range.id}>
+                  <tr key={range.id} className="row-with-actions" tabIndex={0}>
                     <td>{range.name}</td>
                     <td>{range.cidr}</td>
                     <td>{range.total_usable ?? "—"}</td>
@@ -378,22 +379,17 @@ export function RangesPage({
                         : `${range.utilization_percent.toFixed(1)}%`}
                     </td>
                     <td className="asset-actions-cell">
-                      <div className="table-actions">
-                        <button
-                          className="btn btn-secondary btn-small"
-                          type="button"
-                          onClick={() => openEdit(range)}
-                        >
-                          Edit
-                        </button>
-                        <button
-                          className="btn btn-danger btn-small"
-                          type="button"
-                          onClick={() => openDelete(range)}
-                        >
-                          Delete
-                        </button>
-                      </div>
+                      <RowActions
+                        itemLabel={range.name}
+                        onEdit={() => openEdit(range)}
+                        actions={[
+                          {
+                            label: "Delete",
+                            destructive: true,
+                            onSelect: () => openDelete(range),
+                          },
+                        ]}
+                      />
                     </td>
                   </tr>
                 ))

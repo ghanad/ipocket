@@ -102,7 +102,15 @@ def test_flash_messages_render_once(client) -> None:
     assert "Saved successfully." not in followup.text
 
 
-def test_row_actions_panel_hidden_style_present() -> None:
+def test_row_actions_overflow_menu_styles_present() -> None:
     css = _read_application_css()
-    assert ".row-actions-panel[hidden]" in css
-    assert "display: none" in css
+    assert ".row-with-actions:hover .row-actions" in css
+    assert ".row-with-actions:focus-within .row-actions" in css
+    assert "opacity: 0" in css
+    assert "transition:" in css
+    assert ".row-action-control {" in css
+    assert ".row-action-control:focus-visible" in css
+    assert "@media (hover: none), (pointer: coarse), (max-width: 700px)" in css
+    assert ".row-actions-trigger[aria-expanded=\"true\"]" in css
+    assert ".row-action-item-danger" in css
+    assert ".row-action-item[aria-disabled=\"true\"]" in css

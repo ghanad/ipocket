@@ -7,6 +7,7 @@ import {
   useState,
 } from "react";
 
+import { RowActions } from "../shared/RowActions";
 import {
   ApiError,
   createLibraryItem,
@@ -257,27 +258,28 @@ export function VendorsTab({
                 </tr>
               ) : (
                 items.map((vendor) => (
-                  <tr key={vendor.id}>
+                  <tr
+                    key={vendor.id}
+                    className={
+                      metadata?.can_edit ? "row-with-actions" : undefined
+                    }
+                    tabIndex={metadata?.can_edit ? 0 : undefined}
+                  >
                     <td>{vendor.name}</td>
                     <td>{vendor.usage_count}</td>
                     <td className="asset-actions-cell">
                       {metadata?.can_edit ? (
-                        <div className="table-actions">
-                          <button
-                            className="btn btn-secondary btn-small"
-                            type="button"
-                            onClick={() => openEdit(vendor)}
-                          >
-                            Edit
-                          </button>
-                          <button
-                            className="btn btn-danger btn-small"
-                            type="button"
-                            onClick={() => openDelete(vendor)}
-                          >
-                            Delete
-                          </button>
-                        </div>
+                        <RowActions
+                          itemLabel={vendor.name}
+                          onEdit={() => openEdit(vendor)}
+                          actions={[
+                            {
+                              label: "Delete",
+                              destructive: true,
+                              onSelect: () => openDelete(vendor),
+                            },
+                          ]}
+                        />
                       ) : (
                         "—"
                       )}

@@ -288,11 +288,18 @@ describe("UsersPage", () => {
     render(<UsersPage endpoint="/api/ui/users" />);
     await screen.findByText("admin");
 
-    const deleteButton = screen.getByRole("button", {
-      name: "Delete admin (current user protected)",
+    fireEvent.click(
+      screen.getByRole("button", { name: "More actions for admin" }),
+    );
+    const deleteItem = screen.getByRole("menuitem", {
+      name: /Delete admin/,
     });
-    expect(deleteButton).toBeDisabled();
-    fireEvent.click(deleteButton);
+    expect(deleteItem).toHaveAttribute("aria-disabled", "true");
+    expect(deleteItem).toHaveAttribute(
+      "title",
+      "You cannot delete your own account.",
+    );
+    fireEvent.click(deleteItem);
     expect(screen.queryByRole("dialog", { name: "Delete user" })).not.toBeInTheDocument();
   });
 
@@ -308,7 +315,12 @@ describe("UsersPage", () => {
     render(<UsersPage endpoint="/api/ui/users" />);
     await screen.findByText("readonly");
 
-    fireEvent.click(screen.getByRole("button", { name: "Delete readonly" }));
+    fireEvent.click(
+      screen.getByRole("button", { name: "More actions for readonly" }),
+    );
+    fireEvent.click(
+      screen.getByRole("menuitem", { name: "Delete readonly" }),
+    );
     const dialog = screen.getByRole("dialog", { name: "Delete user" });
     const submit = within(dialog).getByRole("button", {
       name: "Delete permanently",
@@ -363,7 +375,14 @@ describe("UsersPage", () => {
     render(<UsersPage endpoint="/api/ui/users" />);
     await screen.findByText("other-admin");
 
-    fireEvent.click(screen.getByRole("button", { name: "Delete other-admin" }));
+    fireEvent.click(
+      screen.getByRole("button", {
+        name: "More actions for other-admin",
+      }),
+    );
+    fireEvent.click(
+      screen.getByRole("menuitem", { name: "Delete other-admin" }),
+    );
     const dialog = screen.getByRole("dialog", { name: "Delete user" });
     fireEvent.click(
       within(dialog).getByLabelText("I understand this cannot be undone"),

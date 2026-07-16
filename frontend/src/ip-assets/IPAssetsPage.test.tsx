@@ -318,7 +318,14 @@ describe("IPAssetsPage", () => {
     );
     render(<IPAssetsPage endpoint="/api/ui/ip-assets" />);
     await screen.findByText("10.0.0.7");
-    fireEvent.click(screen.getByRole("button", { name: "Delete" }));
+    fireEvent.click(
+      screen.getByRole("button", {
+        name: "More actions for 10.0.0.7",
+      }),
+    );
+    fireEvent.click(
+      screen.getByRole("menuitem", { name: "Delete 10.0.0.7" }),
+    );
     const drawer = screen.getByRole("dialog", { name: "Delete IP asset" });
     const deleteButton = within(drawer).getByRole("button", {
       name: "Delete permanently",

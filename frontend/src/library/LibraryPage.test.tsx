@@ -206,7 +206,12 @@ describe("LibraryPage", () => {
     fireEvent.click(within(dialog).getByRole("button", { name: "Save changes" }));
     expect(await screen.findByText("Platform")).toBeInTheDocument();
 
-    fireEvent.click(within(rowFor("Edge")).getByRole("button", { name: "Delete" }));
+    fireEvent.click(
+      within(rowFor("Edge")).getByRole("button", {
+        name: "More actions for Edge",
+      }),
+    );
+    fireEvent.click(screen.getByRole("menuitem", { name: "Delete Edge" }));
     dialog = screen.getByRole("dialog", { name: "Delete Project" });
     fireEvent.click(
       within(dialog).getByRole("checkbox", {
@@ -267,8 +272,11 @@ describe("LibraryPage", () => {
     await screen.findByText("Cisco Systems");
 
     fireEvent.click(
-      within(rowFor("Juniper")).getByRole("button", { name: "Delete" }),
+      within(rowFor("Juniper")).getByRole("button", {
+        name: "More actions for Juniper",
+      }),
     );
+    fireEvent.click(screen.getByRole("menuitem", { name: "Delete Juniper" }));
     dialog = screen.getByRole("dialog", { name: "Delete Vendor" });
     fireEvent.click(within(dialog).getByRole("checkbox"));
     fireEvent.change(within(dialog).getByRole("textbox"), {
@@ -369,7 +377,12 @@ describe("LibraryPage", () => {
     fireEvent.click(within(dialog).getByRole("button", { name: "Save changes" }));
     await screen.findAllByText("production");
 
-    fireEvent.click(within(rowFor("edge")).getByRole("button", { name: "Delete" }));
+    fireEvent.click(
+      within(rowFor("edge")).getByRole("button", {
+        name: "More actions for edge",
+      }),
+    );
+    fireEvent.click(screen.getByRole("menuitem", { name: "Delete edge" }));
     dialog = screen.getByRole("dialog", { name: "Delete Tag" });
     fireEvent.click(within(dialog).getByRole("checkbox"));
     fireEvent.change(within(dialog).getByRole("textbox"), {
