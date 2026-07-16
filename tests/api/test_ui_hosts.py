@@ -8,7 +8,10 @@ from app import db, repository
 from app.main import app
 from app.models import IPAssetType, User, UserRole
 from app.routes.ui.hosts.common import require_ui_host_writer
-from app.routes.ui.utils import get_current_ui_user
+from app.routes.ui.utils import (
+    get_current_ui_user,
+    get_optional_current_ui_user,
+)
 
 
 def _user(role: UserRole) -> User:
@@ -18,13 +21,15 @@ def _user(role: UserRole) -> User:
 @pytest.fixture
 def editor_override():
     app.dependency_overrides[get_current_ui_user] = lambda: _user(UserRole.EDITOR)
-    app.dependency_overrides[require_ui_host_writer] = lambda: _user(
+    app.dependency_overrides[get_optional_current_ui_user] = lambda: _user(
         UserRole.EDITOR
     )
+    app.dependency_overrides[require_ui_host_writer] = lambda: _user(UserRole.EDITOR)
     try:
         yield
     finally:
         app.dependency_overrides.pop(get_current_ui_user, None)
+        app.dependency_overrides.pop(get_optional_current_ui_user, None)
         app.dependency_overrides.pop(require_ui_host_writer, None)
 
 
@@ -33,9 +38,7 @@ def test_ui_hosts_api_lists_filters_links_tags_and_pagination(
 ) -> None:
     connection = db.connect(os.environ["IPAM_DB_PATH"])
     try:
-        project = repository.create_project(
-            connection, name="Core", color="#2563eb"
-        )
+        project = repository.create_project(connection, name="Core", color="#2563eb")
         vendor = repository.create_vendor(connection, name="Dell")
         repository.create_tag(connection, name="prod", color="#22c55e")
         host = repository.create_host(connection, name="edge-01", vendor=vendor.name)
@@ -65,9 +68,7 @@ def test_ui_hosts_api_lists_filters_links_tags_and_pagination(
     assert payload["hosts"][0]["os_ip_links"] == [
         {"id": os_asset.id, "ip_address": "10.40.0.10"}
     ]
-    assert payload["hosts"][0]["ip_tags"] == [
-        {"name": "prod", "color": "#22c55e"}
-    ]
+    assert payload["hosts"][0]["ip_tags"] == [{"name": "prod", "color": "#22c55e"}]
     assert payload["filters"]["projects"][0]["name"] == "Core"
     assert payload["filters"]["vendors"][0]["name"] == "Dell"
 
@@ -95,9 +96,7 @@ def test_ui_hosts_api_filters_search_assignment_vendor_and_free(
         "/api/ui/hosts",
         params={"q": "free", "vendor_id": vendor.id, "status": "free"},
     )
-    unassigned = client.get(
-        "/api/ui/hosts", params={"unassigned-only": "true"}
-    )
+    unassigned = client.get("/api/ui/hosts", params={"unassigned-only": "true"})
 
     assert [item["name"] for item in free.json()["hosts"]] == ["free-node"]
     assert {item["name"] for item in unassigned.json()["hosts"]} == {
@@ -106,9 +105,7 @@ def test_ui_hosts_api_filters_search_assignment_vendor_and_free(
     }
 
 
-def test_ui_hosts_api_create_update_delete_unlinks_ips(
-    client, editor_override
-) -> None:
+def test_ui_hosts_api_create_update_delete_unlinks_ips(client, editor_override) -> None:
     connection = db.connect(os.environ["IPAM_DB_PATH"])
     try:
         project = repository.create_project(connection, name="Platform")
@@ -212,12 +209,14 @@ def test_ui_hosts_api_update_can_preserve_multiple_projects(
 
     connection = db.connect(os.environ["IPAM_DB_PATH"])
     try:
-        assert repository.get_ip_asset_by_ip(
-            connection, "10.61.0.10"
-        ).project_id == first.id
-        assert repository.get_ip_asset_by_ip(
-            connection, "10.61.0.11"
-        ).project_id == second.id
+        assert (
+            repository.get_ip_asset_by_ip(connection, "10.61.0.10").project_id
+            == first.id
+        )
+        assert (
+            repository.get_ip_asset_by_ip(connection, "10.61.0.11").project_id
+            == second.id
+        )
     finally:
         connection.close()
 
@@ -237,10 +236,35 @@ def test_ui_hosts_api_validation(client, editor_override, payload, message) -> N
     assert message in response.text
 
 
-def test_ui_hosts_api_authentication_and_roles(client, _create_user) -> None:
+def test_ui_hosts_api_public_read_and_write_roles(client, _create_user) -> None:
     unauthenticated = client.get("/api/ui/hosts", follow_redirects=False)
-    assert unauthenticated.status_code == 303
-    assert "/ui/login?return_to=/api/ui/hosts" in unauthenticated.headers["location"]
+    assert unauthenticated.status_code == 200
+    assert unauthenticated.json()["can_edit"] is False
+    assert (
+        client.post(
+            "/api/ui/hosts",
+            json={"name": "anonymous-denied"},
+            follow_redirects=False,
+        ).status_code
+        == 303
+    )
+    assert (
+        client.patch(
+            "/api/ui/hosts/999",
+            json={"name": "anonymous-denied"},
+            follow_redirects=False,
+        ).status_code
+        == 303
+    )
+    assert (
+        client.request(
+            "DELETE",
+            "/api/ui/hosts/999",
+            json={"confirm_name": "anonymous-denied"},
+            follow_redirects=False,
+        ).status_code
+        == 303
+    )
 
     _create_user("viewer", "viewer-pass", UserRole.VIEWER)
     login = client.post(
@@ -251,6 +275,70 @@ def test_ui_hosts_api_authentication_and_roles(client, _create_user) -> None:
     assert login.status_code == 303
     assert client.get("/api/ui/hosts").json()["can_edit"] is False
     assert client.post("/api/ui/hosts", json={"name": "denied"}).status_code == 403
+    assert client.patch("/api/ui/hosts/999", json={"name": "denied"}).status_code == 403
+    assert (
+        client.request(
+            "DELETE",
+            "/api/ui/hosts/999",
+            json={"confirm_name": "denied"},
+        ).status_code
+        == 403
+    )
+
+
+def test_ui_hosts_legacy_drawer_bootstrap_ignores_filters_and_returns_404(
+    client,
+) -> None:
+    connection = db.connect(os.environ["IPAM_DB_PATH"])
+    try:
+        target = repository.create_host(connection, name="legacy-target")
+        repository.create_host(connection, name="visible-host")
+    finally:
+        connection.close()
+
+    for mode in ("edit", "delete"):
+        response = client.get(
+            "/ui/hosts",
+            params={
+                mode: target.id,
+                "q": "does-not-match-target",
+                "page": 99,
+                "per-page": 10,
+            },
+        )
+        assert response.status_code == 200
+        assert 'id="hosts-bootstrap"' in response.text
+        assert f'"mode": "{mode}"' in response.text
+        assert f'"id": {target.id}' in response.text
+        assert '"name": "legacy-target"' in response.text
+
+    assert client.get("/ui/hosts", params={"edit": 999999}).status_code == 404
+    assert client.get("/ui/hosts", params={"delete": 999999}).status_code == 404
+
+
+def test_ui_hosts_api_preserves_catalog_tag_color_for_filtered_hosts(
+    client, editor_override
+) -> None:
+    connection = db.connect(os.environ["IPAM_DB_PATH"])
+    try:
+        tag = repository.create_tag(connection, name="critical", color="#111827")
+        host = repository.create_host(connection, name="tagged-host")
+        repository.create_ip_asset(
+            connection,
+            ip_address="10.62.0.10",
+            asset_type=IPAssetType.OS,
+            host_id=host.id,
+            tags=[tag.name],
+        )
+    finally:
+        connection.close()
+
+    payload = client.get("/api/ui/hosts", params={"tag": tag.name}).json()
+
+    assert payload["filters"]["tags"] == [
+        {"id": tag.id, "name": "critical", "color": "#111827"}
+    ]
+    assert payload["hosts"][0]["ip_tags"] == [{"name": "critical", "color": "#111827"}]
 
 
 @pytest.mark.parametrize("role", [UserRole.EDITOR, UserRole.SUPERUSER])

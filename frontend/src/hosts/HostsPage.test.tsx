@@ -9,7 +9,7 @@ import {
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { HostsPage } from "./HostsPage";
-import type { HostsResponse } from "./types";
+import type { HostsBootstrap, HostsResponse } from "./types";
 
 const response: HostsResponse = {
   hosts: [
@@ -89,6 +89,26 @@ describe("HostsPage", () => {
       screen.getByRole("navigation", { name: "Hosts pagination" }),
     ).toHaveTextContent("1 / 1");
     expect(screen.getByLabelText("Rows per page")).toHaveValue("20");
+  });
+
+  it("keeps the public hosts list read-only when can_edit is false", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(ok({ ...response, can_edit: false })),
+    );
+
+    render(<HostsPage endpoint="/api/ui/hosts" />);
+
+    expect(await screen.findByRole("link", { name: "edge-01" })).toBeVisible();
+    expect(
+      screen.queryByRole("button", { name: "New Host" }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Edit" }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Delete" }),
+    ).not.toBeInTheDocument();
   });
 
   it("shows retryable errors and empty state", async () => {
@@ -184,6 +204,70 @@ describe("HostsPage", () => {
     fireEvent.keyDown(document, { key: "Escape" });
     expect(screen.queryByRole("dialog", { name: /IP tags/ })).not.toBeInTheDocument();
   });
+
+  it("uses the catalog color and current contrast for selected tag filters", async () => {
+    const darkTagResponse: HostsResponse = {
+      ...response,
+      filters: {
+        ...response.filters,
+        tags: [
+          ...response.filters.tags,
+          { id: 4, name: "dark", color: "#111827" },
+        ],
+      },
+    };
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(ok(darkTagResponse)));
+
+    render(
+      <HostsPage endpoint="/api/ui/hosts" initialQuery="tag=dark" />,
+    );
+
+    const chip = await screen.findByRole("button", { name: "dark ×" });
+    expect(chip.style.getPropertyValue("--tag-color")).toBe("#111827");
+    expect(chip.style.getPropertyValue("--tag-color-text")).toBe("#f8fafc");
+  });
+
+  it.each([
+    ["edit", "Edit Host"],
+    ["delete", "Delete Host"],
+  ] as const)(
+    "opens the %s legacy drawer from bootstrap when the host is off-page",
+    async (mode, dialogName) => {
+      const target = {
+        ...response.hosts[0],
+        id: 42,
+        name: "off-page-host",
+      };
+      const bootstrap: HostsBootstrap = { mode, host: target };
+      const pageWithoutTarget = {
+        ...response,
+        hosts: [{ ...response.hosts[0], id: 7, name: "visible-host" }],
+      };
+      const fetchMock = vi.fn().mockResolvedValue(ok(pageWithoutTarget));
+      vi.stubGlobal("fetch", fetchMock);
+      window.history.replaceState(
+        {},
+        "",
+        `/ui/hosts?${mode}=${target.id}&q=visible`,
+      );
+
+      render(
+        <HostsPage
+          endpoint="/api/ui/hosts"
+          initialQuery={`${mode}=${target.id}&q=visible`}
+          bootstrap={bootstrap}
+        />,
+      );
+
+      const dialog = await screen.findByRole("dialog", { name: dialogName });
+      await waitFor(() => expect(dialog).toHaveClass("is-open"));
+      expect(dialog).toHaveTextContent("off-page-host");
+      expect(fetchMock).toHaveBeenCalledWith(
+        "/api/ui/hosts?q=visible",
+        expect.objectContaining({ signal: expect.any(AbortSignal) }),
+      );
+    },
+  );
 
   it("creates and edits in the drawer while preserving validation errors", async () => {
     const fetchMock = vi

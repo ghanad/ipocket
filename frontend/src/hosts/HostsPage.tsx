@@ -20,6 +20,7 @@ import { HostsTable } from "./HostsTable";
 import type {
   HostFilters,
   HostFormValues,
+  HostsBootstrap,
   HostRow,
   HostsResponse,
 } from "./types";
@@ -82,9 +83,11 @@ function valuesForHost(host: HostRow, response: HostsResponse): HostFormValues {
 export function HostsPage({
   endpoint,
   initialQuery = "",
+  bootstrap = null,
 }: {
   endpoint: string;
   initialQuery?: string;
+  bootstrap?: HostsBootstrap | null;
 }) {
   const [filters, setFilters] = useState(() =>
     filtersFromSearch(initialQuery || window.location.search),
@@ -147,15 +150,24 @@ export function HostsPage({
     const params = new URLSearchParams(initialQuery || window.location.search);
     const deleteId = Number(params.get("delete"));
     const editId = Number(params.get("edit"));
-    const target = data.hosts.find(
-      (host) => host.id === (deleteId || editId),
-    );
+    const target =
+      bootstrap?.host ??
+      data.hosts.find((host) => host.id === (deleteId || editId));
     if (target && deleteId) openDelete(target);
     if (target && editId) openEdit(target);
     legacyDrawerApplied.current = true;
-  }, [data, initialQuery]);
+  }, [bootstrap, data, initialQuery]);
 
   useEffect(() => {
+    const initialParams = new URLSearchParams(
+      initialQuery || window.location.search,
+    );
+    if (
+      (initialParams.has("edit") || initialParams.has("delete")) &&
+      !legacyDrawerApplied.current
+    ) {
+      return;
+    }
     const next = query ? `/ui/hosts?${query}` : "/ui/hosts";
     if (`${window.location.pathname}${window.location.search}` !== next) {
       window.history.pushState({}, "", next);

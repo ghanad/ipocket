@@ -1,5 +1,6 @@
 import { type KeyboardEvent, useState } from "react";
 
+import { tagColorStyle } from "./tagColor";
 import type { FilterOption, HostFilters } from "./types";
 
 interface Props {
@@ -137,18 +138,24 @@ export function HostsFilters({
             ))}
           </datalist>
           <div className="tag-filter-selected">
-            {filters.tags.map((tag) => (
-              <button
-                key={tag}
-                className="tag tag-color tag-filter-chip"
-                type="button"
-                onClick={() =>
-                  onChange({ tags: filters.tags.filter((item) => item !== tag) })
-                }
-              >
-                {tag} ×
-              </button>
-            ))}
+            {filters.tags.map((tagName) => {
+              const tag = tags.find((item) => item.name === tagName);
+              return (
+                <button
+                  key={tagName}
+                  className="tag tag-color tag-filter-chip"
+                  style={tagColorStyle(tag?.color ?? "#e2e8f0")}
+                  type="button"
+                  onClick={() =>
+                    onChange({
+                      tags: filters.tags.filter((item) => item !== tagName),
+                    })
+                  }
+                >
+                  {tagName} ×
+                </button>
+              );
+            })}
           </div>
         </label>
       </div>

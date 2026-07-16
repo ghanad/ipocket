@@ -163,9 +163,14 @@ bundles are served locally from `/static/react/management/management.js` and
 parameters and legacy HTML mutation routes remain compatible.
 The Hosts list uses `GET/POST /api/ui/hosts` and
 `PATCH/DELETE /api/ui/hosts/{id}` from `/static/react/hosts/hosts.js`.
-These endpoints use the existing UI session cookie; Viewer is read-only, while
-Editor and Superuser can mutate Hosts. `/ui/hosts/{id}` remains the existing
-Jinja detail page, and legacy Host form/partial routes remain available.
+`GET /api/ui/hosts` is public like the other inventory read routes and returns
+`can_edit=false` for signed-out requests. POST/PATCH/DELETE use the existing UI
+session cookie and allow only Editor and Superuser; Viewer is read-only.
+Legacy `/ui/hosts?edit=<id>` and `/ui/hosts?delete=<id>` links receive a
+server-resolved Drawer bootstrap, so the target remains available when filters
+or pagination hide it, and an unknown Host returns 404. `/ui/hosts/{id}` remains
+the existing Jinja detail page, and legacy Host form/partial routes remain
+available.
 The IP Assets page also stays fully local: `/static/js/ip-assets.js` is a native
 ES-module entrypoint whose focused dependencies are served from
 `/static/js/ip-assets/`. No bundler, package install, or external JavaScript host

@@ -30,11 +30,24 @@ def ui_list_hosts(
     tag: Optional[list[str]] = Query(default=None),
     unassigned_only: bool = Query(default=False, alias="unassigned-only"),
     status_filter: Optional[str] = Query(default=None, alias="status"),
+    edit: Optional[int] = Query(default=None),
     delete: Optional[int] = Query(default=None),
     page: Optional[str] = None,
     per_page: Optional[str] = Query(default=None, alias="per-page"),
     connection=Depends(get_connection),
 ) -> HTMLResponse:
+    drawer_mode = (
+        "edit" if edit is not None else "delete" if delete is not None else None
+    )
+    drawer_host_id = edit if edit is not None else delete
+    drawer_host = (
+        repository.get_host_with_ip_counts(connection, drawer_host_id)
+        if drawer_host_id is not None
+        else None
+    )
+    if drawer_host_id is not None and drawer_host is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
+
     if request.headers.get("HX-Request") is None:
         return _render_template(
             request,
@@ -42,6 +55,11 @@ def ui_list_hosts(
             {
                 "title": "ipocket - Hosts",
                 "initial_query": str(request.url.query),
+                "hosts_bootstrap": (
+                    {"mode": drawer_mode, "host": drawer_host}
+                    if drawer_mode and drawer_host
+                    else None
+                ),
             },
             active_nav="hosts",
         )
@@ -116,8 +134,6 @@ def ui_list_hosts(
     delete_host = (
         repository.get_host_by_id(connection, delete) if delete is not None else None
     )
-    if delete is not None and delete_host is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
 
     delete_linked_count = 0
     if delete_host is not None:

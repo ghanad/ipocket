@@ -215,24 +215,25 @@ def _return_to(request: Request) -> str:
     return current_path
 
 
-def get_current_ui_user(request: Request, connection=Depends(get_connection)):
+def get_optional_current_ui_user(request: Request, connection=Depends(get_connection)):
     signed_session = request.cookies.get(SESSION_COOKIE)
     session_token = _verify_session_value(signed_session)
     if not session_token:
-        raise HTTPException(
-            status_code=status.HTTP_303_SEE_OTHER,
-            headers={"Location": f"/ui/login?return_to={_return_to(request)}"},
-        )
+        return None
 
     user_id = auth.get_user_id_for_token(connection, session_token)
     if user_id is None:
-        raise HTTPException(
-            status_code=status.HTTP_303_SEE_OTHER,
-            headers={"Location": f"/ui/login?return_to={_return_to(request)}"},
-        )
+        return None
 
     user = repository.get_user_by_id(connection, user_id)
     if user is None or not user.is_active:
+        return None
+    return user
+
+
+def get_current_ui_user(request: Request, connection=Depends(get_connection)):
+    user = get_optional_current_ui_user(request, connection)
+    if user is None:
         raise HTTPException(
             status_code=status.HTTP_303_SEE_OTHER,
             headers={"Location": f"/ui/login?return_to={_return_to(request)}"},

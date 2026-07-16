@@ -13,7 +13,7 @@ from app.routes.api.schemas import UIHostDelete, UIHostWrite
 from app.routes.ui.utils import (
     _collect_inline_ip_errors,
     _is_auto_host_for_bmc_enabled,
-    get_current_ui_user,
+    get_optional_current_ui_user,
 )
 from app.utils import normalize_tag_names
 
@@ -113,7 +113,7 @@ def list_hosts_for_ui(
     page: int = Query(default=1, ge=1),
     per_page: int = Query(default=20, alias="per-page"),
     connection=Depends(get_connection),
-    user=Depends(get_current_ui_user),
+    user=Depends(get_optional_current_ui_user),
 ):
     per_page = normalize_per_page(per_page)
     project_value = (project_id or "").strip()
@@ -161,7 +161,7 @@ def list_hosts_for_ui(
             "total": total,
             "total_pages": total_pages,
         },
-        "can_edit": user.role in {UserRole.EDITOR, UserRole.SUPERUSER},
+        "can_edit": bool(user and user.role in {UserRole.EDITOR, UserRole.SUPERUSER}),
     }
 
 
@@ -180,9 +180,7 @@ def create_host_for_ui(
             notes=payload.notes,
             vendor=vendor.name if vendor else None,
         )
-        _apply_inline_ips(
-            connection, host.id, payload.project_id, to_create, to_update
-        )
+        _apply_inline_ips(connection, host.id, payload.project_id, to_create, to_update)
     except sqlite3.IntegrityError as exc:
         raise HTTPException(
             status_code=409, detail="Host name already exists."
@@ -241,9 +239,7 @@ def update_host_for_ui(
                 project_id=payload.project_id,
                 set_project_id=True,
             )
-        _apply_inline_ips(
-            connection, host_id, payload.project_id, to_create, to_update
-        )
+        _apply_inline_ips(connection, host_id, payload.project_id, to_create, to_update)
     except sqlite3.IntegrityError as exc:
         raise HTTPException(
             status_code=409, detail="Host name already exists."

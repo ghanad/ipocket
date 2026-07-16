@@ -45,6 +45,11 @@ export interface HostsResponse {
   can_edit: boolean;
 }
 
+export interface HostsBootstrap {
+  mode: "edit" | "delete";
+  host: HostRow;
+}
+
 export interface HostFormValues {
   name: string;
   vendor_id: string;

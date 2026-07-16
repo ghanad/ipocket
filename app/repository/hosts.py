@@ -451,8 +451,7 @@ def _host_count_row_payloads(
             "project_count": int(row["project_count"] or 0),
             "project_id": (
                 int(row["project_id"])
-                if int(row["project_count"] or 0) == 1
-                and row["project_id"] is not None
+                if int(row["project_count"] or 0) == 1 and row["project_id"] is not None
                 else None
             ),
             "project_name": row["project_name"] or "",
@@ -501,6 +500,24 @@ def list_hosts_with_ip_counts(
         links_by_host = _host_os_bmc_ip_links(session, host_ids)
         tags_by_host = _host_ip_tag_details(session, host_ids)
     return _host_count_row_payloads(rows, links_by_host, tags_by_host)
+
+
+def get_host_with_ip_counts(
+    connection_or_session: sqlite3.Connection | Session, host_id: int
+) -> Optional[dict[str, object]]:
+    with session_scope(connection_or_session) as session:
+        row = (
+            session.execute(
+                _list_hosts_with_counts_query().where(db_schema.Host.id == host_id)
+            )
+            .mappings()
+            .one_or_none()
+        )
+        if row is None:
+            return None
+        links_by_host = _host_os_bmc_ip_links(session, [host_id])
+        tags_by_host = _host_ip_tag_details(session, [host_id])
+    return _host_count_row_payloads([row], links_by_host, tags_by_host)[0]
 
 
 def count_hosts(
