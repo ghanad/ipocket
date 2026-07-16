@@ -68,11 +68,20 @@ def test_management_page_shows_summary_counts(client) -> None:
     assert response.status_code == 200
     assert "Management Overview" in response.text
     assert 'id="management-root"' in response.text
+    assert 'class="management-root"' in response.text
     assert 'data-endpoint="/api/management/overview"' in response.text
     assert (
         '<script type="module" src="/static/react/management/management.js"></script>'
         in response.text
     )
+
+
+def test_management_react_root_preserves_page_section_spacing() -> None:
+    css = _read_application_css()
+
+    assert ".management-root {" in css
+    assert "flex-direction: column;" in css
+    assert "gap: 24px;" in css
 
 
 def test_flash_messages_render_once(client) -> None:

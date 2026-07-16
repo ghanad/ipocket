@@ -57,7 +57,7 @@ def test_ui_assets_are_local() -> None:
         in base_html
     )
     assert (
-        '<link rel="stylesheet" href="/static/app.css?v=hosts-table-fit" />'
+        '<link rel="stylesheet" href="/static/app.css?v=react-management-spacing" />'
         in base_html
     )
     assert '<script src="/static/js/tag-picker.js" defer></script>' in base_html
