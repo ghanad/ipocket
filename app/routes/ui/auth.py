@@ -1,9 +1,11 @@
 from __future__ import annotations
 
 import sqlite3
+import unicodedata
 from dataclasses import dataclass
 from json import JSONDecodeError
 from typing import Optional
+from urllib.parse import urljoin, urlsplit
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse, Response
@@ -23,6 +25,7 @@ from .utils import (
 router = APIRouter()
 DEFAULT_LOGIN_REDIRECT = "/ui/ip-assets"
 INVALID_LOGIN_MESSAGE = "Invalid username or password."
+_LOGIN_REDIRECT_VALIDATION_ORIGIN = "https://ipocket.invalid"
 
 
 @dataclass(frozen=True)
@@ -34,8 +37,33 @@ class _LoginResult:
 def _approved_login_redirect(return_to: object) -> str:
     if not isinstance(return_to, str):
         return DEFAULT_LOGIN_REDIRECT
+    if "\\" in return_to or any(
+        unicodedata.category(character) == "Cc" for character in return_to
+    ):
+        return DEFAULT_LOGIN_REDIRECT
+
     target = return_to.strip()
     if not target.startswith("/") or target.startswith("//"):
+        return DEFAULT_LOGIN_REDIRECT
+
+    try:
+        parsed_target = urlsplit(target)
+        normalized_target = urlsplit(
+            urljoin(f"{_LOGIN_REDIRECT_VALIDATION_ORIGIN}/", target)
+        )
+    except ValueError:
+        return DEFAULT_LOGIN_REDIRECT
+
+    if (
+        parsed_target.scheme
+        or parsed_target.netloc
+        or not parsed_target.path.startswith("/")
+        or parsed_target.path.startswith("//")
+        or normalized_target.scheme != "https"
+        or normalized_target.netloc != "ipocket.invalid"
+        or not normalized_target.path.startswith("/")
+        or normalized_target.path.startswith("//")
+    ):
         return DEFAULT_LOGIN_REDIRECT
     return target
 

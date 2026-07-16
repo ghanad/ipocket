@@ -18,6 +18,29 @@ export class LoginApiError extends Error {
 }
 
 const GENERIC_REQUEST_ERROR = "Login could not be completed. Please try again.";
+const CONTROL_CHARACTER = /[\u0000-\u001f\u007f-\u009f]/u;
+
+function isApprovedRedirect(target: string): boolean {
+  if (
+    !target.startsWith("/") ||
+    target.startsWith("//") ||
+    target.includes("\\") ||
+    CONTROL_CHARACTER.test(target)
+  ) {
+    return false;
+  }
+
+  try {
+    const resolved = new URL(target, window.location.href);
+    return (
+      resolved.origin === window.location.origin &&
+      resolved.pathname.startsWith("/") &&
+      !resolved.pathname.startsWith("//")
+    );
+  } catch {
+    return false;
+  }
+}
 
 async function readError(response: Response): Promise<string> {
   try {
@@ -56,8 +79,7 @@ export async function login(
     const payload = (await response.json()) as { redirect_to?: unknown };
     if (
       typeof payload.redirect_to !== "string" ||
-      !payload.redirect_to.startsWith("/") ||
-      payload.redirect_to.startsWith("//")
+      !isApprovedRedirect(payload.redirect_to)
     ) {
       throw new Error("Invalid redirect response.");
     }

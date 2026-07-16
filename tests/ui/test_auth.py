@@ -3,9 +3,12 @@ from __future__ import annotations
 import hashlib
 from http.cookies import SimpleCookie
 
+import pytest
+
 from app import auth, db, repository
 from app.models import IPAssetType, UserRole
 from app.routes import ui
+from app.routes.ui import auth as ui_auth
 from app.routes.ui import utils as ui_utils
 
 
@@ -159,6 +162,56 @@ def test_json_login_rejects_external_return_target(client, _create_user) -> None
 
     assert response.status_code == 200
     assert response.json() == {"redirect_to": "/ui/ip-assets"}
+
+
+def test_json_login_rejects_backslash_authority_return_target(
+    client, _create_user
+) -> None:
+    _create_user("json-backslash-return-user", "login-pass", UserRole.VIEWER)
+
+    response = client.post(
+        "/api/ui/login",
+        json={
+            "username": "json-backslash-return-user",
+            "password": "login-pass",
+            "return_to": "/\\external.example/path",
+        },
+    )
+
+    assert response.status_code == 200
+    assert response.json() == {"redirect_to": "/ui/ip-assets"}
+
+
+@pytest.mark.parametrize(
+    "return_to",
+    [
+        None,
+        1,
+        "//external.example/path",
+        "/\\external.example/path",
+        "https://external.example/path",
+        "/ui/ip-assets\r\nLocation: https://external.example",
+        "/ui/ip-assets\x00",
+        "/ui/ip-assets\x1f",
+        "///external.example/path",
+        "/\\\\external.example/path",
+    ],
+)
+def test_login_return_target_validation_rejects_unsafe_values(return_to) -> None:
+    assert ui_auth._approved_login_redirect(return_to) == "/ui/ip-assets"
+
+
+@pytest.mark.parametrize(
+    "return_to",
+    [
+        "/ui/audit-log",
+        "/ui/audit-log?scope=recent",
+        "/ui/ip-assets?page=2",
+        "/ui/audit-log#recent",
+    ],
+)
+def test_login_return_target_validation_preserves_local_values(return_to) -> None:
+    assert ui_auth._approved_login_redirect(return_to) == return_to
 
 
 def test_json_login_authentication_failures_are_identical(
@@ -378,6 +431,25 @@ def test_login_redirects_to_return_url_after_success(client) -> None:
     )
     assert response.status_code == 303
     assert response.headers["Location"] == "/ui/audit-log"
+
+
+def test_legacy_login_rejects_backslash_authority_return_target(
+    client, _create_user
+) -> None:
+    _create_user("form-backslash-return-user", "login-pass", UserRole.VIEWER)
+
+    response = client.post(
+        "/ui/login",
+        data={
+            "username": "form-backslash-return-user",
+            "password": "login-pass",
+            "return_to": "/\\external.example/path",
+        },
+        follow_redirects=False,
+    )
+
+    assert response.status_code == 303
+    assert response.headers["Location"] == "/ui/ip-assets"
 
 
 def test_legacy_login_failure_renders_react_shell_with_safe_bootstrap(

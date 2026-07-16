@@ -123,6 +123,27 @@ describe("LoginPage", () => {
     );
   });
 
+  it("rejects an unsafe API redirect without navigating", async () => {
+    const onNavigate = vi.fn();
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        response({ redirect_to: "/\\evil.example/path" }),
+      ),
+    );
+    render(
+      <LoginPage endpoint="/api/ui/login" onNavigate={onNavigate} />,
+    );
+    fillCredentials();
+
+    fireEvent.click(screen.getByRole("button", { name: "Login" }));
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "Login could not be completed. Please try again.",
+    );
+    expect(onNavigate).not.toHaveBeenCalled();
+  });
+
   it("shows the generic invalid-credential error and preserves username", async () => {
     vi.stubGlobal(
       "fetch",
