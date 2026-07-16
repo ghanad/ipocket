@@ -19,6 +19,12 @@
   .ip-drawer-footer-actions { display: flex; gap: 12px; }
   @media (max-width: 600px) { .ip-drawer-row-two { grid-template-columns: 1fr; } }
 
+.range-addresses-root {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
 .range-addresses-root,
 .range-addresses-root .card,
 .range-addresses-root .table-wrapper {

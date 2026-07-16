@@ -39,7 +39,7 @@ def test_ui_assets_are_local() -> None:
         in base_html
     )
     assert (
-        '<link rel="stylesheet" href="/static/app.css?v=react-range-addresses" />'
+        '<link rel="stylesheet" href="/static/app.css?v=react-range-addresses-spacing" />'
         in base_html
     )
     assert '<script src="/static/js/tag-picker.js" defer></script>' in base_html
@@ -84,6 +84,13 @@ def test_ui_assets_are_local() -> None:
     assert ".bulk-common-tag-chip.is-marked {" in css
     assert ".ranges-root {" in css
     assert ".library-root {" in css
+    assert (
+        ".range-addresses-root {\n"
+        "  display: flex;\n"
+        "  flex-direction: column;\n"
+        "  gap: 24px;\n"
+        "}"
+    ) in css
     assert (
         ".host-detail-root,\n"
         ".ip-asset-detail-root {\n"
