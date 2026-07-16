@@ -106,6 +106,8 @@ def test_row_actions_overflow_menu_styles_present() -> None:
     css = _read_application_css()
     assert ".row-with-actions:hover .row-actions" in css
     assert ".row-with-actions:focus-within .row-actions" in css
+    assert "text-align: end;" in css
+    assert "justify-content: flex-end;" in css
     assert "opacity: 0" in css
     assert "transition:" in css
     assert ".row-action-control {" in css

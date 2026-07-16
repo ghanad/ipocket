@@ -122,7 +122,7 @@ export function IPAssetsTable({
               <th className="col-type">Type</th>
               <th>Tags</th>
               <th>Notes</th>
-              {canEdit && <th>Actions</th>}
+              {canEdit && <th className="asset-actions-cell">Actions</th>}
             </tr>
           </thead>
           <tbody>

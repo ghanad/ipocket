@@ -61,6 +61,8 @@ def test_ui_assets_are_local() -> None:
     assert ".table.table-hosts .host-col-actions {" in css
     assert "width: 9%;" in css
     assert ".row-actions {" in css
+    assert "text-align: end;" in css
+    assert "justify-content: flex-end;" in css
     assert ".row-with-actions:hover .row-actions" in css
     assert ".row-with-actions:focus-within .row-actions" in css
     assert "opacity: 0;" in css

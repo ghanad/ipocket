@@ -234,7 +234,7 @@ export function VendorsTab({
               <tr>
                 <th>Name</th>
                 <th>IPs</th>
-                <th>Actions</th>
+                <th className="asset-actions-cell">Actions</th>
               </tr>
             </thead>
             <tbody>

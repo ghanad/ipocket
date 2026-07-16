@@ -52,6 +52,9 @@ describe("RangesPage", () => {
     expect(screen.getByText("0.8%")).toBeInTheDocument();
     expect(screen.getAllByRole("columnheader")).toHaveLength(7);
     expect(screen.getByRole("columnheader", { name: "Used" })).toBeInTheDocument();
+    expect(
+      screen.getByRole("columnheader", { name: "Actions" }),
+    ).toHaveClass("asset-actions-cell");
     expect(screen.getByRole("link", { name: "2" })).toHaveAttribute(
       "href",
       "/ui/ranges/7/addresses?status=used#used",

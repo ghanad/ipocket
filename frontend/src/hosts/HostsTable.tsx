@@ -98,7 +98,7 @@ export function HostsTable({
               <th>BMC IPs</th>
               <th>IP tags</th>
               <th>Linked IPs</th>
-              {canEdit && <th>Actions</th>}
+              {canEdit && <th className="asset-actions-cell">Actions</th>}
             </tr>
           </thead>
           <tbody>

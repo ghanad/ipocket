@@ -270,7 +270,7 @@ export function TagsTab({
                 <th>Color</th>
                 <th>Preview</th>
                 <th>IPs</th>
-                <th>Actions</th>
+                <th className="asset-actions-cell">Actions</th>
               </tr>
             </thead>
             <tbody>

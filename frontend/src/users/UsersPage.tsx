@@ -303,7 +303,7 @@ export function UsersPage({ endpoint, bootstrap }: UsersPageProps) {
                 <th>Username</th>
                 <th>Role</th>
                 <th>Status</th>
-                <th>Actions</th>
+                <th className="asset-actions-cell">Actions</th>
               </tr>
             </thead>
             <tbody>

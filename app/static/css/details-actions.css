@@ -102,14 +102,15 @@
 .asset-actions-cell {
   width: 104px;
   min-width: 104px;
-  text-align: center;
+  text-align: end;
   white-space: nowrap;
 }
 
 .row-actions {
-  display: inline-flex;
+  display: flex;
+  width: 100%;
   align-items: center;
-  justify-content: center;
+  justify-content: flex-end;
   gap: 2px;
   opacity: 0;
   visibility: hidden;

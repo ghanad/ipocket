@@ -321,7 +321,7 @@ export function RangesPage({
                 <th>Used</th>
                 <th>Free</th>
                 <th>Utilization</th>
-                <th>Actions</th>
+                <th className="asset-actions-cell">Actions</th>
               </tr>
             </thead>
             <tbody>
