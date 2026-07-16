@@ -260,7 +260,9 @@ async def ui_edit_host(
             host_id=host_id,
             name=name,
             notes=notes,
+            notes_provided=True,
             vendor=vendor.name if vendor else None,
+            vendor_provided=True,
         )
         linked = repository.get_host_linked_assets_grouped(connection, host_id)
         current_os_ips = {asset.ip_address for asset in linked["os"]}

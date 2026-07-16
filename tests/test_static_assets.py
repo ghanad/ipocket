@@ -150,11 +150,8 @@ def test_refactored_templates_load_external_page_assets() -> None:
         "audit_log": repo_root / "app/templates/audit_log_list.html",
     }
 
-    assert '<script src="/static/js/drawer.js" defer></script>' in templates[
-        "hosts"
-    ].read_text(encoding="utf-8")
     assert (
-        '<script src="/static/js/hosts.js?v=hosts-ip-tags-more-click" defer></script>'
+        '<script type="module" src="/static/react/hosts/hosts.js"></script>'
         in templates["hosts"].read_text(encoding="utf-8")
     )
     assert "<style>" not in templates["hosts"].read_text(encoding="utf-8")

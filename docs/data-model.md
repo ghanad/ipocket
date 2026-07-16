@@ -126,8 +126,9 @@ Self-service password changes (`/ui/account/password`) do not add fields/tables;
 
 
 ## Host deletion rule
-- Host permanent delete is allowed only when no IP assets are linked to it.
-- UI delete requires typing the exact host name as confirmation (two-step flow).
+- Host permanent delete keeps linked IP assets and clears their `host_id` before
+  removing the Host row.
+- UI delete requires acknowledgement and typing the exact Host name.
 
 ## Assignment workflow
 - Project assignment is managed from the main **IP Assets** list using filters and edit actions.
@@ -135,7 +136,8 @@ Self-service password changes (`/ui/account/password`) do not add fields/tables;
 - Range address drill-down (`/ui/ranges/{id}/addresses`) now adds UI-only search/status/pagination controls; this does not change persisted schema or entity fields.
 - Migrating the `/ui/ranges` list to React changes only presentation and transport. The React page uses `/api/ui/ranges` for list/create/update/delete operations against the existing `IPRange` repository model; no columns, relationships, migrations, or utilization calculations were added.
 - Migrating `/ui/projects` (Projects/Vendors/Tags) to React changes only presentation and transport. The focused `/api/ui/library/*` endpoints use the existing repository models and deletion rules; no tables, columns, relationships, or migrations were added.
-- Hosts list filtering by text, project, assignment, status, vendor, and tags is UI/query behavior only. Text and select filters update the table immediately with HTMX. Host tag filters and the Hosts table **IP tags** column both use tags on linked active IP assets and do not add host-level tag storage; fixed-width table fitting, compact action controls, compact tag-chip sizing, clicking tag chips to apply the existing tag filter, and collapsing extra tag chips behind `+N more` are presentation-only.
+- Migrating the `/ui/hosts` list to React changes only presentation and transport. The focused `/api/ui/hosts` endpoints reuse existing Host/IPAsset repository semantics; `/ui/hosts/{id}` remains unchanged and no tables, columns, or relationships were added.
+- Hosts list filtering by text, project, assignment, status, vendor, and tags is UI/query behavior only. React keeps filters and pagination in the query string. Host tag filters and the Hosts table **IP tags** column both use tags on linked active IP assets and do not add host-level tag storage; compact tag-chip sizing, clicking tag chips to apply the existing tag filter, and collapsing extra tag chips behind `+N more` are presentation-only.
 
 ## Connector ingestion note
 - Prometheus, vCenter, Elasticsearch, Cassandra, Ceph, and Kubernetes connectors do not introduce new database tables or fields.

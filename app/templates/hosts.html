@@ -1,279 +1,34 @@
 {% extends "base.html" %}
 
 {% block content %}
-<section class="page-header">
-  <div>
-    <p class="eyebrow">Inventory</p>
-    <h1>Hosts</h1>
-    <p class="subtitle">Track physical hosts and linked OS/BMC addresses.</p>
-  </div>
-  <div class="page-header-actions">
-    <button class="btn btn-primary" type="button" data-host-add>New Host</button>
-  </div>
-</section>
-
-{% if errors %}
-<div class="alert alert-error">
-  <ul>{% for error in errors %}<li>{{ error }}</li>{% endfor %}</ul>
-</div>
-{% endif %}
-
-<section>
-  <details class="card compact-card collapsible-card filter-card" id="host-search-card"{% if show_search %} open{% endif %}>
-    <summary class="card-header collapsible-summary">
-      <div>
-        <h2>Search Hosts</h2>
-        <p class="subtitle">Filter by host name, vendor, project, notes, or linked IPs.</p>
-      </div>
-      <span class="collapsible-indicator" aria-hidden="true">▸</span>
-    </summary>
-    <form class="filters-grid" method="get" action="/ui/hosts" data-host-filters>
-      <label class="field">
-        <span>Search</span>
-        <input
-          class="input"
-          type="text"
-          name="q"
-          value="{{ filters.q }}"
-          placeholder="Name, vendor, project, notes, or IP"
-          hx-get="/ui/hosts"
-          hx-trigger="keyup changed delay:500ms, search"
-          hx-target="#host-table-container"
-          hx-push-url="true"
-          hx-include="closest form"
-        />
-      </label>
-      <label class="field">
-        <span>Project</span>
-        <select
-          class="select"
-          name="project_id"
-          hx-get="/ui/hosts"
-          hx-trigger="change"
-          hx-target="#host-table-container"
-          hx-push-url="true"
-          hx-include="closest form"
-        >
-          <option value=""{% if filters.project_filter == "" %} selected{% endif %}>All</option>
-          <option value="unassigned"{% if filters.project_filter == "unassigned" %} selected{% endif %}>Unassigned</option>
-          {% for project in projects %}
-          <option value="{{ project.id }}"{% if filters.project_filter == (project.id ~ "") %} selected{% endif %}>{{ project.name }}</option>
-          {% endfor %}
-        </select>
-      </label>
-      <label class="field">
-        <span>Assignment</span>
-        <select
-          class="select"
-          name="unassigned-only"
-          hx-get="/ui/hosts"
-          hx-trigger="change"
-          hx-target="#host-table-container"
-          hx-push-url="true"
-          hx-include="closest form"
-        >
-          <option value="false"{% if not filters.unassigned_only %} selected{% endif %}>All</option>
-          <option value="true"{% if filters.unassigned_only %} selected{% endif %}>Unassigned only</option>
-        </select>
-      </label>
-      <label class="field">
-        <span>Status</span>
-        <select
-          class="select"
-          name="status"
-          hx-get="/ui/hosts"
-          hx-trigger="change"
-          hx-target="#host-table-container"
-          hx-push-url="true"
-          hx-include="closest form"
-        >
-          <option value=""{% if filters.status == "" %} selected{% endif %}>All</option>
-          <option value="linked"{% if filters.status == "linked" %} selected{% endif %}>Linked IPs</option>
-          <option value="free"{% if filters.status == "free" %} selected{% endif %}>No linked IPs</option>
-        </select>
-      </label>
-      <label class="field">
-        <span>Vendor</span>
-        <select
-          class="select"
-          name="vendor_id"
-          hx-get="/ui/hosts"
-          hx-trigger="change"
-          hx-target="#host-table-container"
-          hx-push-url="true"
-          hx-include="closest form"
-        >
-          <option value=""{% if not filters.vendor_id %} selected{% endif %}>All</option>
-          {% for vendor in vendors %}
-          <option value="{{ vendor.id }}"{% if filters.vendor_id == vendor.id %} selected{% endif %}>{{ vendor.name }}</option>
-          {% endfor %}
-        </select>
-      </label>
-      <label class="field field-tag-filter">
-        <span>Tags</span>
-        <div class="tag-filter-controls">
-          <input
-            class="input"
-            type="text"
-            placeholder="Type tag and press Enter"
-            list="host-tag-filter-suggestions"
-            data-host-tag-filter-input
-          />
-        </div>
-        <datalist id="host-tag-filter-suggestions" data-host-tag-filter-suggestions>
-          {% for tag in tags %}
-          <option value="{{ tag.name }}" data-tag-color="{{ tag.color }}"></option>
-          {% endfor %}
-        </datalist>
-        <div class="tag-filter-selected" data-host-tag-filter-selected>
-          {% for selected_tag in filters.tag %}
-          {% set selected_tag_obj = (tags | selectattr("name", "equalto", selected_tag) | list | first) %}
-          <span class="tag-filter-entry" data-host-tag-filter-entry="{{ selected_tag }}">
-            <input type="hidden" name="tag" value="{{ selected_tag }}" />
-            <button
-              class="tag tag-color tag-filter-chip"
-              type="button"
-              data-host-remove-tag-filter="{{ selected_tag }}"
-              {% if selected_tag_obj %}
-              style="--tag-color: {{ selected_tag_obj.color }}"
-              {% endif %}
-            >{{ selected_tag }} ×</button>
-          </span>
-          {% endfor %}
-        </div>
-      </label>
-    </form>
-  </details>
-</section>
-
-<div id="host-table-container">
-  {% include "partials/hosts_table.html" %}
-</div>
-
-<div class="host-drawer-overlay" data-host-drawer-overlay aria-hidden="true"></div>
-<aside
-  class="host-drawer"
-  data-host-drawer
-  data-host-drawer-mode="edit"
-  data-host-delete-open="{{ 'true' if delete_host else 'false' }}"
-  role="dialog"
-  aria-modal="true"
-  aria-label="Host drawer"
+<div
+  id="hosts-root"
+  class="hosts-root"
+  data-endpoint="/api/ui/hosts"
+  data-initial-query="{{ initial_query|default('') }}"
+  aria-live="polite"
 >
-  <div class="host-drawer-header">
-    <div class="host-drawer-header-row">
-      <div>
-        <h2 class="host-drawer-title" data-host-drawer-title>Edit Host</h2>
-        <p class="host-drawer-subtitle" data-host-drawer-subtitle>—</p>
-      </div>
-      <button class="host-drawer-close" type="button" aria-label="Close drawer" data-host-drawer-close>
-        ✕
-      </button>
+  <section class="page-header">
+    <div>
+      <p class="eyebrow">Inventory</p>
+      <h1>Hosts</h1>
+      <p class="subtitle">Track physical hosts and linked OS/BMC addresses.</p>
     </div>
-    <div class="host-drawer-meta" data-host-drawer-meta>
-      <span class="host-drawer-pill" data-host-drawer-project>Project: Unassigned</span>
-      <span class="host-drawer-pill host-drawer-pill-success" data-host-drawer-status>Status: Free</span>
-    </div>
+  </section>
+</div>
+{% if errors %}
+<noscript>
+  <div class="alert alert-error">
+    <ul>{% for error in errors %}<li>{{ error }}</li>{% endfor %}</ul>
   </div>
-  <div class="host-drawer-body">
-    <form class="host-drawer-form" method="post" data-host-edit-form data-host-mode-panel="edit" id="host-edit-form">
-      <section class="host-drawer-section">
-        <h3>Basic</h3>
-        <label class="field">
-          <span>Name</span>
-          <input class="input" type="text" name="name" required data-host-input="name" />
-          <span class="host-drawer-error" data-host-error="name" role="alert"></span>
-        </label>
-        <div class="host-drawer-row host-drawer-row-two">
-          <label class="field">
-            <span>Vendor</span>
-            <select class="select" name="vendor_id" data-host-input="vendor_id">
-              <option value="">UNASSIGNED</option>
-              {% for vendor in vendors %}
-              <option value="{{ vendor.id }}">{{ vendor.name }}</option>
-              {% endfor %}
-            </select>
-          </label>
-          <label class="field" data-host-project-field>
-            <span>Project</span>
-            <select class="select" name="project_id" data-host-input="project_id" data-host-project-select>
-              <option value="">Unassigned</option>
-              {% for project in projects %}
-              <option value="{{ project.id }}" data-project-name="{{ project.name }}">{{ project.name }}</option>
-              {% endfor %}
-            </select>
-          </label>
-        </div>
-      </section>
-      <section class="host-drawer-section">
-        <h3>IP Configuration</h3>
-        <div class="host-drawer-row host-drawer-row-two">
-          <label class="field">
-            <span>OS IP</span>
-            <input class="input" type="text" name="os_ips" placeholder="e.g. 192.168.10.200" data-host-input="os_ips" />
-            <span class="host-drawer-error" data-host-error="os_ips" role="alert"></span>
-          </label>
-          <label class="field">
-            <span>BMC IP (Out-of-band)</span>
-            <input class="input" type="text" name="bmc_ips" placeholder="e.g. 192.168.20.10" data-host-input="bmc_ips" />
-            <span class="host-drawer-error" data-host-error="bmc_ips" role="alert"></span>
-          </label>
-        </div>
-        <p class="host-drawer-help">Both fields are single-value based on your product assumptions.</p>
-      </section>
-      <section class="host-drawer-section">
-        <h3>Notes</h3>
-        <label class="field">
-          <span>Notes</span>
-          <textarea class="textarea" name="notes" rows="3" data-host-input="notes"></textarea>
-        </label>
-      </section>
-    </form>
-    <form
-      class="host-drawer-form ip-drawer-delete-form"
-      method="post"
-      data-host-delete-form
-      data-host-mode-panel="delete"
-      id="host-delete-form"
-      data-host-delete-id="{{ delete_host.id if delete_host else '' }}"
-      data-host-delete-name="{{ delete_host.name if delete_host else '' }}"
-      hidden
-    >
-      <section class="ip-drawer-section">
-        <h3 class="ip-drawer-delete-heading">Delete host?</h3>
-        <p class="ip-drawer-delete-warning">Permanent and cannot be undone.</p>
-        <p class="ip-drawer-helper">Linked IP assets will be kept and unassigned from this host.</p>
-        {% if delete_errors %}
-        <div class="alert alert-error">
-          <ul>{% for error in delete_errors %}<li>{{ error }}</li>{% endfor %}</ul>
-        </div>
-        {% endif %}
-        <dl class="ip-drawer-delete-details">
-          <div><dt>Name</dt><dd class="mono" data-host-delete-name-display>{{ delete_host.name if delete_host else '—' }}</dd></div>
-          <div><dt>Linked IPs</dt><dd data-host-delete-linked-value>{{ delete_linked_count if delete_host else 0 }}</dd></div>
-        </dl>
-        <label class="field field-inline">
-          <input class="checkbox" type="checkbox" data-host-delete-ack />
-          <span>I understand this cannot be undone</span>
-        </label>
-        <label class="field">
-          <span>Type the host name to confirm: <strong data-host-delete-name-inline>{{ delete_host.name if delete_host else '—' }}</strong></span>
-          <input class="input" type="text" name="confirm_name" data-host-delete-confirm autocomplete="off" value="{{ delete_confirm_value }}" />
-        </label>
-      </section>
-    </form>
+</noscript>
+{% endif %}
+{% if delete_errors %}
+<noscript>
+  <div class="alert alert-error">
+    <ul>{% for error in delete_errors %}<li>{{ error }}</li>{% endfor %}</ul>
   </div>
-  <div class="host-drawer-footer">
-    <span class="host-drawer-footer-status" data-host-drawer-dirty>No changes</span>
-    <div class="host-drawer-footer-actions">
-      <button class="btn btn-secondary" type="button" data-host-drawer-cancel>Cancel</button>
-      <button class="btn btn-primary" type="submit" form="host-edit-form" data-host-drawer-save data-host-mode-action="edit" disabled>Save changes</button>
-      <button class="btn btn-danger" type="submit" form="host-delete-form" data-host-drawer-delete data-host-mode-action="delete" hidden disabled>Delete permanently</button>
-    </div>
-  </div>
-</aside>
-
-
-<script src="/static/js/drawer.js" defer></script>
-<script src="/static/js/hosts.js?v=hosts-ip-tags-more-click" defer></script>
+</noscript>
+{% endif %}
+<script type="module" src="/static/react/hosts/hosts.js"></script>
 {% endblock %}

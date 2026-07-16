@@ -49,7 +49,9 @@ def test_update_host_vendor_by_vendor_id(
     assert updated.json()["vendor"] == "Dell"
 
 
-def test_hosts_ui_form_uses_vendor_dropdown(client, _setup_connection) -> None:
+def test_hosts_ui_uses_react_mount_for_vendor_selection(
+    client, _setup_connection
+) -> None:
     connection = _setup_connection()
     try:
         repository.create_vendor(connection, "HPE")
@@ -58,8 +60,9 @@ def test_hosts_ui_form_uses_vendor_dropdown(client, _setup_connection) -> None:
 
     response = client.get("/ui/hosts")
     assert response.status_code == 200
-    assert 'name="vendor_id"' in response.text
-    assert "HPE" in response.text
+    assert 'id="hosts-root"' in response.text
+    assert 'data-endpoint="/api/ui/hosts"' in response.text
+    assert "/static/react/hosts/hosts.js" in response.text
 
 
 def test_vendors_ui_page_uses_drawer_actions(client, _setup_connection) -> None:

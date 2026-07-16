@@ -16,6 +16,12 @@
   gap: 24px;
 }
 
+.hosts-root {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
 .library-tabs {
   margin-bottom: 0;
 }

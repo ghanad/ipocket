@@ -35,6 +35,16 @@ def ui_list_hosts(
     per_page: Optional[str] = Query(default=None, alias="per-page"),
     connection=Depends(get_connection),
 ) -> HTMLResponse:
+    if request.headers.get("HX-Request") is None:
+        return _render_template(
+            request,
+            "hosts.html",
+            {
+                "title": "ipocket - Hosts",
+                "initial_query": str(request.url.query),
+            },
+            active_nav="hosts",
+        )
     per_page_value = normalize_per_page(_parse_positive_int_query(per_page, 20))
     page_value = _parse_positive_int_query(page, 1)
 

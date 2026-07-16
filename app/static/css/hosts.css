@@ -193,6 +193,14 @@
   background: transparent;
 }
 
+.hosts-tags-popover {
+  position: fixed;
+  z-index: 60;
+  right: 24px;
+  top: 120px;
+  width: min(340px, calc(100vw - 48px));
+}
+
 .host-drawer [data-host-mode-panel='delete'] .ip-drawer-section {
   border: none;
   border-radius: 0;
@@ -243,4 +251,3 @@
     outline: none;
     border-color: #94a3b8;
   }
-

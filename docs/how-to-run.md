@@ -25,10 +25,11 @@ npm run build
 cd ..
 ```
 
-The build writes the Management, Ranges, and Library entry bundles to
+The build writes the Management, Ranges, Library, and Hosts entry bundles to
 `app/static/react/management/management.js` and
 `app/static/react/ranges/ranges.js`, and
-`app/static/react/library/library.js`, with shared chunks under
+`app/static/react/library/library.js` and
+`app/static/react/hosts/hosts.js`, with shared chunks under
 `app/static/react/shared/`. Re-run `npm run build` after changing React sources.
 The Docker image builds all React entrypoints automatically in a separate Node
 stage; Node.js is not included in the final runtime image.
@@ -147,7 +148,7 @@ ordered, focused modules under `/static/css/`. When adding styles, place shared
 rules in the matching module and page-only rules in that page's module, while
 keeping the import order in `app.css` unchanged unless the cascade is intentionally
 being updated.
-Management Overview, IP Ranges, and Library are incrementally migrated React pages.
+Management Overview, IP Ranges, Library, and the Hosts list are incrementally migrated React pages.
 FastAPI/Jinja still renders the application shell and sidebar. Management loads
 dashboard data from `GET /api/management/overview`; `/ui/ranges` uses
 `GET/POST /api/ui/ranges` and `PATCH/DELETE /api/ui/ranges/{id}` for its table
@@ -160,6 +161,11 @@ bundles are served locally from `/static/react/management/management.js` and
 `PATCH/DELETE /api/ui/library/{entity}/{id}`, and its bundle is served from
 `/static/react/library/library.js`. Existing `tab`, `edit`, and `delete` query
 parameters and legacy HTML mutation routes remain compatible.
+The Hosts list uses `GET/POST /api/ui/hosts` and
+`PATCH/DELETE /api/ui/hosts/{id}` from `/static/react/hosts/hosts.js`.
+These endpoints use the existing UI session cookie; Viewer is read-only, while
+Editor and Superuser can mutate Hosts. `/ui/hosts/{id}` remains the existing
+Jinja detail page, and legacy Host form/partial routes remain available.
 The IP Assets page also stays fully local: `/static/js/ip-assets.js` is a native
 ES-module entrypoint whose focused dependencies are served from
 `/static/js/ip-assets/`. No bundler, package install, or external JavaScript host
@@ -282,7 +288,7 @@ UI design reference templates live in `/ui_template` for layout and styling guid
 3) Open **Library** from the sidebar and use tabs to create Projects, Tags, and Vendors.
    - The header **New Project / New Tag / New Vendor** button opens the matching create drawer for the active tab.
 4) In **Library → Tags**, the create drawer now suggests a random color by default; you can keep it or pick another color before saving.
-5) Create Hosts from the **Hosts** page and pick a Vendor when needed. Use the Hosts search panel to filter by text, Vendor, Project, Assignment, linked/free Status, or tags from linked active IPs. Text and select filters update the table immediately with HTMX and no full page reload; there is no separate Clear button in this panel. The compact Hosts table is sized to the page width to avoid horizontal scrolling in normal desktop views, with stacked equal-width Edit/Delete controls in the Actions column. The OS IPs and BMC IPs columns link directly to each address detail page, and the **IP tags** column shows deduplicated tags from linked active IP assets (not host-level tags) with compact chip sizing matching IP Assets, only the first 2 shown inline, and the rest available through `+N more`; clicking any shown tag applies it as a Hosts tag filter immediately. Open a Host name from the table to review vendor/status chips and grouped OS, BMC, and other linked IP tables with each IP's project, tags, and notes.
+5) Create Hosts from the **Hosts** page and pick a Vendor when needed. Use the React search panel to filter by text, Vendor, Project, Assignment, linked/free Status, or tags from linked active IPs. Filters and pagination stay in the URL, back/forward navigation restores them, and changes refresh the table without reloading the shell. The OS IPs and BMC IPs columns link directly to each address detail page, and the **IP tags** column shows deduplicated tags from linked active IP assets (not host-level tags), with only the first 2 shown inline and the rest available through `+N more`; clicking any shown tag applies it as a Hosts tag filter. Create/edit/delete runs in the right-side drawer; deleting requires acknowledgement plus the exact Host name and unlinks rather than deletes IP assets. Open a Host name to use the unchanged Host detail page.
 6) Add IPs from the **IP Assets** page. In IP create/edit forms, use the searchable Host combobox to filter large host lists and select the host from the same control before assigning OS/BMC addresses. The IP Assets Tags filter has three chip groups: **OR** matches one or more selected tags (`prod` or `edge`), **AND** requires every selected tag (`prod` and `edge`), and **NOT** hides IPs with selected tags such as `deprecated`. Clicking a tag chip in the table adds it to the active group; older URLs using repeated `tag=...` still behave as OR filters.
 7) When you paginate in **IP Assets**, edits from the drawer return you to the same filtered/paginated list state (current `page` and `per-page` are preserved).
 8) Open **Data Ops** from the sidebar to import or export data using one unified page with tabs. `hosts.csv` exports now include `project_name`, `os_ip`, and `bmc_ip` for round-trip compatibility with CSV import.
@@ -344,7 +350,7 @@ Host UI safety flow: deleting a Host from UI requires opening the host delete co
 ## Developer code map (UI routes)
 - Aggregated UI router entrypoint: `app/routes/ui/__init__.py`
 - IP assets routes: `app/routes/ui/ip_assets/` (`listing.py`, `forms.py`, `actions.py`, `helpers.py`)
-- Hosts routes: `app/routes/ui/hosts/` (`listing.py`, `mutations.py`, `detail.py`)
+- Hosts routes: `app/routes/ui/hosts/` (`api.py`, `listing.py`, `mutations.py`, `detail.py`)
 - Ranges routes: `app/routes/ui/ranges/` (`crud.py`, `addresses.py`, `common.py`)
 - Library/settings routes: `app/routes/ui/settings/` (`api.py`, `projects.py`, `tags.py`, `vendors.py`, `audit.py`, `common.py`)
 

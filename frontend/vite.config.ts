@@ -13,6 +13,7 @@ export default defineConfig(({ mode }) => ({
         management: resolve(__dirname, "src/management/main.tsx"),
         ranges: resolve(__dirname, "src/ranges/main.tsx"),
         library: resolve(__dirname, "src/library/main.tsx"),
+        hosts: resolve(__dirname, "src/hosts/main.tsx"),
       },
       output: {
         entryFileNames: "[name]/[name].js",

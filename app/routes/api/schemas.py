@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Optional
 
-from pydantic import BaseModel, field_validator
+from pydantic import BaseModel, Field, field_validator
 
 from app.models import IPAssetType
 from app.utils import (
@@ -127,6 +127,46 @@ class HostUpdate(BaseModel):
     name: Optional[str] = None
     notes: Optional[str] = None
     vendor_id: Optional[int] = None
+
+
+class UIHostWrite(BaseModel):
+    name: str
+    notes: Optional[str] = None
+    vendor_id: Optional[int] = None
+    project_id: Optional[int] = None
+    os_ips: list[str] = Field(default_factory=list)
+    bmc_ips: list[str] = Field(default_factory=list)
+
+    @field_validator("name")
+    @classmethod
+    def normalize_name(cls, value: str) -> str:
+        normalized = value.strip()
+        if not normalized:
+            raise ValueError("Host name is required.")
+        return normalized
+
+    @field_validator("notes")
+    @classmethod
+    def normalize_notes(cls, value: Optional[str]) -> Optional[str]:
+        if value is None:
+            return None
+        normalized = value.strip()
+        return normalized or None
+
+    @field_validator("os_ips", "bmc_ips", mode="before")
+    @classmethod
+    def normalize_ip_lists(cls, value):
+        if value is None:
+            return []
+        if isinstance(value, str):
+            return [item.strip() for item in value.split(",") if item.strip()]
+        if isinstance(value, list):
+            return [str(item).strip() for item in value if str(item).strip()]
+        raise ValueError("IP addresses must be a list.")
+
+
+class UIHostDelete(BaseModel):
+    confirm_name: str
 
 
 class VendorCreate(BaseModel):
