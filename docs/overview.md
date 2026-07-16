@@ -65,9 +65,11 @@ ipocket is a lightweight IP inventory app to track addresses and their project a
 - Authenticated users can open **Change Password** from the sidebar account section (`/ui/account/password`) to rotate their own password by providing current password + new password confirmation.
 - In the sidebar account section, authenticated actions are grouped as a compact stack (`Change Password` + `Logout`) so account actions stay visually connected.
 - User access model distinguishes `Editor` (data write) from `Superuser` (user management, plus Library catalog maintenance); read routes stay public except audit log, which still requires authentication.
-- User management is available on `/ui/users` (superuser-only) and writes user-management actions to audit logs with target type `USER`.
-- The `/ui/users` page is visible and accessible only to authenticated superusers.
-- User create/edit/delete on `/ui/users` uses the same right-side drawer pattern as other management pages.
+- User management is available on the React-powered `/ui/users` page and writes changed user-management actions to audit logs with target type `USER`.
+- `/ui/users` keeps the authenticated Jinja application shell but loads its table and drawers from the local Vite entry at `/static/react/users/users.js`.
+- The page and all `GET/POST/PATCH/DELETE /api/ui/users` endpoints are restricted to authenticated Superusers; Viewer and Editor requests are forbidden by the backend.
+- User create/edit/delete uses the same right-side drawer pattern as other management pages, while password hashing, Viewer/Editor role semantics, Superuser protection, last-active-Superuser safeguards, self-delete prevention, and exact-username deletion confirmation remain server-enforced.
+- Legacy `/ui/users` HTML form mutation routes remain compatible and share validation, mutation, and audit helpers with the JSON API.
 - The sidebar footer shows build metadata (`version/commit/build time`) whenever the sidebar is visible, including signed-out views.
 - IP ranges page supports editing and deleting saved CIDR ranges for cleanup, with a confirmation step that requires typing the exact range name.
 - Saved ranges now use the same inline Edit/Delete button style as Hosts so table actions stay visually consistent across pages.

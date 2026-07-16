@@ -25,13 +25,15 @@ npm run build
 cd ..
 ```
 
-The build writes the Management, Ranges, Library, Hosts list, Host Detail, and IP Asset Detail entry bundles to
+The build writes the Management, Ranges, Library, Hosts list, Host Detail, IP
+Asset Detail, and User Management entry bundles to
 `app/static/react/management/management.js` and
 `app/static/react/ranges/ranges.js`, and
 `app/static/react/library/library.js` and
 `app/static/react/hosts/hosts.js` and
 `app/static/react/host-detail/host-detail.js` and
-`app/static/react/ip-asset-detail/ip-asset-detail.js`, with shared chunks under
+`app/static/react/ip-asset-detail/ip-asset-detail.js` and
+`app/static/react/users/users.js`, with shared chunks under
 `app/static/react/shared/`. Re-run `npm run build` after changing React sources.
 The Docker image builds all React entrypoints automatically in a separate Node
 stage; Node.js is not included in the final runtime image.
@@ -150,7 +152,8 @@ ordered, focused modules under `/static/css/`. When adding styles, place shared
 rules in the matching module and page-only rules in that page's module, while
 keeping the import order in `app.css` unchanged unless the cascade is intentionally
 being updated.
-Management Overview, IP Ranges, Library, the Hosts list, Host Detail, and IP Asset Detail are incrementally migrated React pages.
+Management Overview, IP Ranges, Library, the Hosts list, Host Detail, IP Asset
+Detail, and User Management are incrementally migrated React pages.
 FastAPI/Jinja still renders the application shell and sidebar. Management loads
 dashboard data from `GET /api/management/overview`; `/ui/ranges` uses
 `GET/POST /api/ui/ranges` and `PATCH/DELETE /api/ui/ranges/{id}` for its table
@@ -174,6 +177,14 @@ or pagination hide it, and an unknown Host returns 404. `/ui/hosts/{id}` keeps
 the Jinja shell/sidebar and mounts `/static/react/host-detail/host-detail.js`;
 its display-ready data comes from public `GET /api/ui/hosts/{id}/detail`.
 Legacy Host form/partial routes remain available.
+`/ui/users` keeps the authenticated Jinja shell/sidebar and mounts
+`/static/react/users/users.js`. Its table and drawer workflows use
+`GET/POST /api/ui/users` and `PATCH/DELETE /api/ui/users/{id}`. The page and
+every endpoint remain server-authorized for Superusers only; Viewer and Editor
+requests are forbidden. Password hashing, role protection, last-active-
+Superuser safeguards, exact-username deletion confirmation, and USER audit
+entries remain backend responsibilities. Legacy HTML form mutation routes are
+retained for compatibility.
 `/ui/ip-assets/{id}` keeps the authenticated Jinja shell/sidebar and mounts
 `/static/react/ip-asset-detail/ip-asset-detail.js`. It reads
 `GET /api/ui/ip-assets/{id}/detail` and uses focused PATCH, DELETE, and
@@ -283,7 +294,7 @@ After logging in as superuser, open:
 http://127.0.0.1:8000/ui/users
 ```
 
-This page is restricted to superusers and supports:
+This React-powered page is restricted to Superusers and supports:
 - creating users
 - granting/revoking edit access
 - activating/deactivating users
@@ -291,8 +302,19 @@ This page is restricted to superusers and supports:
 - deleting users (with confirmation)
 
 Safety rules:
+- Viewer and Editor accounts cannot open the page or call its management API
+- managed accounts can be Viewer or Editor; User Management cannot grant or remove Superuser access
+- passwords are hashed on the server and are never returned by the management API
+- empty password fields during edit leave the current password unchanged
+- a user cannot delete their own account
+- the last active superuser cannot be deactivated
 - the last active superuser cannot be deleted
 - user-related audit logs are retained when a user is deleted
+- CREATE, changed UPDATE, and DELETE operations write USER audit entries; no-op edits do not
+
+The legacy direct form routes under `/ui/users` remain available for existing
+links and tests, and share the same backend validation and mutation helpers as
+the JSON API.
 
 UI design reference templates live in `/ui_template` for layout and styling guidance.
 
