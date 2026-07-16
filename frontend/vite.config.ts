@@ -14,6 +14,7 @@ export default defineConfig(({ mode }) => ({
         ranges: resolve(__dirname, "src/ranges/main.tsx"),
         library: resolve(__dirname, "src/library/main.tsx"),
         hosts: resolve(__dirname, "src/hosts/main.tsx"),
+        "host-detail": resolve(__dirname, "src/host-detail/main.tsx"),
       },
       output: {
         entryFileNames: "[name]/[name].js",

@@ -1,6 +1,6 @@
 import { type KeyboardEvent, useState } from "react";
 
-import { tagColorStyle } from "./tagColor";
+import { tagColorStyle } from "../shared/tagColor";
 import type { FilterOption, HostFilters } from "./types";
 
 interface Props {

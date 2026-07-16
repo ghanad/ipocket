@@ -102,6 +102,8 @@ def test_ui_assets_are_local() -> None:
     assert ".bulk-common-tag-chip.is-marked {" in css
     assert ".ranges-root {" in css
     assert ".library-root {" in css
+    assert ".host-detail-root {" in css
+    assert ".host-detail-root {\n  display: flex;\n  flex-direction: column;\n  gap: 24px;" in css
 
 
 def test_application_css_is_split_into_focused_modules(client) -> None:

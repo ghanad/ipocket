@@ -341,6 +341,116 @@ def test_ui_hosts_api_preserves_catalog_tag_color_for_filtered_hosts(
     assert payload["hosts"][0]["ip_tags"] == [{"name": "critical", "color": "#111827"}]
 
 
+def test_ui_host_detail_api_returns_display_ready_grouped_payload(client) -> None:
+    connection = db.connect(os.environ["IPAM_DB_PATH"])
+    try:
+        project = repository.create_project(connection, name="Compute", color="#0f766e")
+        vendor = repository.create_vendor(connection, name="Supermicro")
+        repository.create_tag(connection, name="prod", color="#111827")
+        repository.create_tag(connection, name="oob", color="#fef08a")
+        host = repository.create_host(
+            connection, name="compute-08", vendor=vendor.name, notes="rack 4"
+        )
+        os_asset = repository.create_ip_asset(
+            connection,
+            ip_address="10.80.0.8",
+            asset_type=IPAssetType.OS,
+            project_id=project.id,
+            host_id=host.id,
+            notes="primary",
+            tags=["prod"],
+        )
+        bmc_asset = repository.create_ip_asset(
+            connection,
+            ip_address="10.80.1.8",
+            asset_type=IPAssetType.BMC,
+            host_id=host.id,
+            tags=["oob"],
+        )
+        other_asset = repository.create_ip_asset(
+            connection,
+            ip_address="10.80.2.8",
+            asset_type=IPAssetType.VIP,
+            project_id=project.id,
+            host_id=host.id,
+        )
+    finally:
+        connection.close()
+
+    response = client.get(f"/api/ui/hosts/{host.id}/detail")
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["host"] == {
+        "id": host.id,
+        "name": "compute-08",
+        "vendor": "Supermicro",
+        "notes": "rack 4",
+    }
+    assert payload["summary"] == {
+        "linked_count": 3,
+        "os_count": 1,
+        "bmc_count": 1,
+        "other_count": 1,
+    }
+    assert payload["groups"]["os"] == [
+        {
+            "id": os_asset.id,
+            "ip_address": "10.80.0.8",
+            "type": "OS",
+            "project": {"name": "Compute", "color": "#0f766e"},
+            "tags": [{"name": "prod", "color": "#111827"}],
+            "notes": "primary",
+        }
+    ]
+    assert payload["groups"]["bmc"] == [
+        {
+            "id": bmc_asset.id,
+            "ip_address": "10.80.1.8",
+            "type": "BMC",
+            "project": None,
+            "tags": [{"name": "oob", "color": "#fef08a"}],
+            "notes": "—",
+        }
+    ]
+    assert payload["groups"]["other"][0]["id"] == other_asset.id
+    assert payload["groups"]["other"][0]["type"] == "VIP"
+    assert payload["groups"]["other"][0]["project"] == {
+        "name": "Compute",
+        "color": "#0f766e",
+    }
+
+
+def test_ui_host_detail_api_is_public_handles_empty_host_and_404(client) -> None:
+    connection = db.connect(os.environ["IPAM_DB_PATH"])
+    try:
+        host = repository.create_host(connection, name="empty-host")
+    finally:
+        connection.close()
+
+    response = client.get(f"/api/ui/hosts/{host.id}/detail")
+
+    assert response.status_code == 200
+    assert response.json() == {
+        "host": {
+            "id": host.id,
+            "name": "empty-host",
+            "vendor": "Unassigned",
+            "notes": "No notes",
+        },
+        "summary": {
+            "linked_count": 0,
+            "os_count": 0,
+            "bmc_count": 0,
+            "other_count": 0,
+        },
+        "groups": {"os": [], "bmc": [], "other": []},
+    }
+    missing = client.get("/api/ui/hosts/999999/detail")
+    assert missing.status_code == 404
+    assert missing.json()["detail"] == "Host not found."
+
+
 @pytest.mark.parametrize("role", [UserRole.EDITOR, UserRole.SUPERUSER])
 def test_ui_hosts_api_allows_editor_and_superuser_writes(
     client, _create_user, role
@@ -373,4 +483,6 @@ def test_hosts_page_uses_react_mount_and_keeps_detail_route(
     assert 'data-initial-query="status=free"' in page.text
     assert "/static/react/hosts/hosts.js" in page.text
     assert detail.status_code == 200
-    assert "detail-host" in detail.text
+    assert 'id="host-detail-root"' in detail.text
+    assert f'data-endpoint="/api/ui/hosts/{host.id}/detail"' in detail.text
+    assert "/static/react/host-detail/host-detail.js" in detail.text

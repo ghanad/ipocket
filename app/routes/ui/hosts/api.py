@@ -17,7 +17,11 @@ from app.routes.ui.utils import (
 )
 from app.utils import normalize_tag_names
 
-from .common import normalize_per_page, require_ui_host_writer
+from .common import (
+    build_host_detail_payload,
+    normalize_per_page,
+    require_ui_host_writer,
+)
 
 router = APIRouter()
 
@@ -163,6 +167,17 @@ def list_hosts_for_ui(
         },
         "can_edit": bool(user and user.role in {UserRole.EDITOR, UserRole.SUPERUSER}),
     }
+
+
+@router.get("/api/ui/hosts/{host_id}/detail")
+def get_host_detail_for_ui(
+    host_id: int,
+    connection=Depends(get_connection),
+):
+    payload = build_host_detail_payload(connection, host_id)
+    if payload is None:
+        raise HTTPException(status_code=404, detail="Host not found.")
+    return payload
 
 
 @router.post("/api/ui/hosts", status_code=status.HTTP_201_CREATED)

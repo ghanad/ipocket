@@ -25,11 +25,12 @@ npm run build
 cd ..
 ```
 
-The build writes the Management, Ranges, Library, and Hosts entry bundles to
+The build writes the Management, Ranges, Library, Hosts list, and Host Detail entry bundles to
 `app/static/react/management/management.js` and
 `app/static/react/ranges/ranges.js`, and
 `app/static/react/library/library.js` and
-`app/static/react/hosts/hosts.js`, with shared chunks under
+`app/static/react/hosts/hosts.js` and
+`app/static/react/host-detail/host-detail.js`, with shared chunks under
 `app/static/react/shared/`. Re-run `npm run build` after changing React sources.
 The Docker image builds all React entrypoints automatically in a separate Node
 stage; Node.js is not included in the final runtime image.
@@ -148,7 +149,7 @@ ordered, focused modules under `/static/css/`. When adding styles, place shared
 rules in the matching module and page-only rules in that page's module, while
 keeping the import order in `app.css` unchanged unless the cascade is intentionally
 being updated.
-Management Overview, IP Ranges, Library, and the Hosts list are incrementally migrated React pages.
+Management Overview, IP Ranges, Library, the Hosts list, and Host Detail are incrementally migrated React pages.
 FastAPI/Jinja still renders the application shell and sidebar. Management loads
 dashboard data from `GET /api/management/overview`; `/ui/ranges` uses
 `GET/POST /api/ui/ranges` and `PATCH/DELETE /api/ui/ranges/{id}` for its table
@@ -168,9 +169,10 @@ The Hosts list uses `GET/POST /api/ui/hosts` and
 session cookie and allow only Editor and Superuser; Viewer is read-only.
 Legacy `/ui/hosts?edit=<id>` and `/ui/hosts?delete=<id>` links receive a
 server-resolved Drawer bootstrap, so the target remains available when filters
-or pagination hide it, and an unknown Host returns 404. `/ui/hosts/{id}` remains
-the existing Jinja detail page, and legacy Host form/partial routes remain
-available.
+or pagination hide it, and an unknown Host returns 404. `/ui/hosts/{id}` keeps
+the Jinja shell/sidebar and mounts `/static/react/host-detail/host-detail.js`;
+its display-ready data comes from public `GET /api/ui/hosts/{id}/detail`.
+Legacy Host form/partial routes remain available.
 The IP Assets page also stays fully local: `/static/js/ip-assets.js` is a native
 ES-module entrypoint whose focused dependencies are served from
 `/static/js/ip-assets/`. No bundler, package install, or external JavaScript host
