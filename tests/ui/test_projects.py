@@ -1,14 +1,12 @@
 from __future__ import annotations
 
 from app import db, repository
-from app.environment import use_local_assets
 from app.main import app
 from app.models import IPAssetType, UserRole
 from app.routes import ui
-from app.routes.ui import settings as settings_routes
 
 
-def test_projects_page_uses_drawer_actions(client) -> None:
+def test_projects_page_uses_react_library_shell(client) -> None:
     import os
 
     connection = db.connect(os.environ["IPAM_DB_PATH"])
@@ -35,36 +33,12 @@ def test_projects_page_uses_drawer_actions(client) -> None:
     response = client.get("/ui/projects")
 
     assert response.status_code == 200
-    assert "data-project-add" in response.text
-    assert "@click=\"$dispatch('project-create-open')\"" in response.text
-    assert "data-project-create-drawer" in response.text
-    assert "data-project-edit-drawer" in response.text
-    assert "data-project-delete-drawer" in response.text
-    assert 'data-project-create-overlay x-show="createOpen"' in response.text
-    assert 'data-project-edit-overlay x-show="editOpen"' in response.text
-    assert 'data-project-delete-overlay x-show="deleteOpen"' in response.text
-    assert ':class="{ &#39;is-open&#39;: createOpen }"' in response.text
-    assert ':class="{ &#39;is-open&#39;: editOpen }"' in response.text
-    assert ':class="{ &#39;is-open&#39;: deleteOpen }"' in response.text
-    assert 'x-transition:enter="transition ease-out duration-150"' in response.text
-    assert 'x-bind:aria-hidden="(!createOpen).toString()"' in response.text
-    assert 'x-bind:aria-hidden="(!editOpen).toString()"' in response.text
-    assert 'x-bind:aria-hidden="(!deleteOpen).toString()"' in response.text
-    assert 'x-data="{' in response.text
-    assert '@project-create-open.window="openCreate()"' in response.text
-    if use_local_assets():
-        assert '<script src="/static/js/projects.js" defer></script>' in response.text
-        assert '<script src="/static/js/drawer.js" defer></script>' in response.text
-    else:
-        assert (
-            '<script src="/static/js/projects.js" defer></script>' not in response.text
-        )
-        assert '<script src="/static/js/drawer.js" defer></script>' not in response.text
-    assert 'class="table table-compact"' in response.text
-    assert f'data-project-edit="{project.id}"' in response.text
-    assert f'data-project-delete="{project.id}"' in response.text
-    assert "<th>IPs</th>" in response.text
-    assert ">2</td>" in response.text
+    assert 'id="library-root"' in response.text
+    assert 'class="library-root"' in response.text
+    assert 'data-endpoint="/api/ui/library"' in response.text
+    assert 'data-active-tab="projects"' in response.text
+    assert '<script type="module" src="/static/react/library/library.js">' in response.text
+    assert "data-project-create-drawer" not in response.text
 
 
 def test_projects_edit_and_delete_flow(client) -> None:
@@ -120,7 +94,8 @@ def test_projects_edit_and_delete_flow(client) -> None:
         )
         assert delete_error.status_code == 400
         assert "Project name confirmation does not match." in delete_error.text
-        assert 'data-project-delete-open="true"' in delete_error.text
+        assert '"mode": "delete"' in delete_error.text
+        assert f'"entity_id": {project.id}' in delete_error.text
 
         deleted = client.post(
             f"/ui/projects/{project.id}/delete",
@@ -153,25 +128,18 @@ def test_library_tabs_render_tag_and_vendor_content(client, _setup_connection) -
     tags_response = client.get("/ui/projects?tab=tags")
     assert tags_response.status_code == 200
     assert "Catalog Settings" in tags_response.text
-    assert 'href="/ui/projects?tab=tags"' in tags_response.text
-    assert "data-tag-add" in tags_response.text
-    assert 'class="table table-compact"' in tags_response.text
+    assert 'data-active-tab="tags"' in tags_response.text
+    assert 'src="/static/react/library/library.js"' in tags_response.text
 
     vendors_response = client.get("/ui/projects?tab=vendors")
     assert vendors_response.status_code == 200
-    assert "data-vendor-add" in vendors_response.text
-    assert "@click=\"$dispatch('vendor-create-open')\"" in vendors_response.text
-    assert 'x-data="{' in vendors_response.text
-    assert '@vendor-create-open.window="openCreate()"' in vendors_response.text
-    assert 'data-vendor-create-overlay x-show="createOpen"' in vendors_response.text
-    assert 'data-vendor-edit-overlay x-show="editOpen"' in vendors_response.text
-    assert 'data-vendor-delete-overlay x-show="deleteOpen"' in vendors_response.text
-    assert 'x-model="createName"' in vendors_response.text
-    assert 'x-model="editName"' in vendors_response.text
-    assert 'x-model="deleteConfirmName"' in vendors_response.text
+    assert 'data-active-tab="vendors"' in vendors_response.text
+    assert 'src="/static/react/library/library.js"' in vendors_response.text
 
 
-def test_vendors_tab_shows_vendor_ip_counts(client, _setup_connection) -> None:
+def test_vendors_tab_keeps_the_react_shell_when_usage_exists(
+    client, _setup_connection
+) -> None:
     connection = _setup_connection()
     try:
         vendor = repository.create_vendor(connection, name="Cisco")
@@ -195,23 +163,16 @@ def test_vendors_tab_shows_vendor_ip_counts(client, _setup_connection) -> None:
     response = client.get("/ui/projects?tab=vendors")
 
     assert response.status_code == 200
-    assert "<th>IPs</th>" in response.text
-    assert ">Cisco</td>" in response.text
-    assert ">1</td>" in response.text
+    assert 'data-active-tab="vendors"' in response.text
+    assert "Cisco" not in response.text
 
 
-def test_tags_tab_create_drawer_uses_random_suggested_color(
-    client, monkeypatch
-) -> None:
-    monkeypatch.setattr(settings_routes, "suggest_random_tag_color", lambda: "#123abc")
-
+def test_tags_tab_defers_suggested_color_to_the_ui_api(client) -> None:
     response = client.get("/ui/projects?tab=tags")
 
     assert response.status_code == 200
-    assert 'name="color"' in response.text
-    assert 'value="#123abc"' in response.text
-    assert 'data-tag-input="color"' in response.text
-    assert 'x-model="createColor"' in response.text
+    assert 'data-active-tab="tags"' in response.text
+    assert 'data-endpoint="/api/ui/library"' in response.text
 
 
 def test_tags_route_renders_unified_library_page(client) -> None:
@@ -225,30 +186,24 @@ def test_tags_route_renders_unified_library_page(client) -> None:
 def test_library_page_has_single_header_and_dynamic_primary_action(client) -> None:
     projects_response = client.get("/ui/projects")
     assert projects_response.status_code == 200
-    assert "data-library-page" in projects_response.text
-    assert 'x-data="{}"' in projects_response.text
+    assert 'id="library-root"' in projects_response.text
     assert projects_response.text.count("<h1>Catalog Settings</h1>") == 1
     assert "<h1>Projects</h1>" not in projects_response.text
-    assert "data-project-add" in projects_response.text
-    assert "New Project" in projects_response.text
+    assert 'data-active-tab="projects"' in projects_response.text
 
     tags_response = client.get("/ui/projects?tab=tags")
     assert tags_response.status_code == 200
     assert "<h1>Tags</h1>" not in tags_response.text
-    assert "data-tag-add" in tags_response.text
-    assert "New Tag" in tags_response.text
+    assert 'data-active-tab="tags"' in tags_response.text
 
     vendors_response = client.get("/ui/projects?tab=vendors")
     assert vendors_response.status_code == 200
     assert "<h1>Vendors</h1>" not in vendors_response.text
-    assert "data-vendor-add" in vendors_response.text
-    assert "New Vendor" in vendors_response.text
+    assert 'data-active-tab="vendors"' in vendors_response.text
 
 
 def test_library_tabs_are_not_wrapped_in_card_container(client) -> None:
     response = client.get("/ui/projects")
     assert response.status_code == 200
-    tabs_index = response.text.index('class="tabs" role="tablist"')
-    first_table_card_index = response.text.index('class="card table-card')
-    assert tabs_index < first_table_card_index
+    assert 'class="library-root"' in response.text
     assert '<section class="card" style="margin-bottom: 16px;">' not in response.text

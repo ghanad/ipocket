@@ -25,6 +25,15 @@ def test_docker_build_context_excludes_local_frontend_artifacts():
     assert ".venv" in content
 
 
+def test_vite_build_has_a_library_entry():
+    vite_config = (
+        Path(__file__).resolve().parents[1] / "frontend" / "vite.config.ts"
+    ).read_text(encoding="utf-8")
+
+    assert 'library: resolve(__dirname, "src/library/main.tsx")' in vite_config
+    assert 'entryFileNames: "[name]/[name].js"' in vite_config
+
+
 def test_docker_compose_configures_database_and_admin():
     compose_path = Path(__file__).resolve().parents[1] / "docker-compose.yml"
     content = compose_path.read_text(encoding="utf-8")

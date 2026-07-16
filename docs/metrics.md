@@ -11,6 +11,8 @@ The app exposes Prometheus metrics at `GET /metrics`:
 The React migration of `/ui/ranges` does not change metric names or calculation
 semantics. Range CRUD through `/api/ui/ranges` writes the same `ip_ranges`
 records as the legacy HTML form routes.
+The React migration of `/ui/projects` (Projects/Vendors/Tags) is also
+presentation/transport-only and does not change metric names or calculations.
 
 Archived restore note:
 - Re-creating an IP that currently exists only as archived restores that row (sets `archived=0`) rather than creating a duplicate row, so totals reflect a single record transitioning between archived/active states.

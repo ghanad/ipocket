@@ -125,7 +125,8 @@ def test_vendors_ui_edit_and_delete_flow(client, _setup_connection) -> None:
         )
         assert delete_error.status_code == 400
         assert "Vendor name confirmation does not match." in delete_error.text
-        assert 'data-vendor-delete-open="true"' in delete_error.text
+        assert '"mode": "delete"' in delete_error.text
+        assert f'"entity_id": {vendor.id}' in delete_error.text
 
         delete_response = client.post(
             f"/ui/vendors/{vendor.id}/delete",

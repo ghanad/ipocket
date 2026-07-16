@@ -10,6 +10,21 @@
   gap: 24px;
 }
 
+.library-root {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.library-tabs {
+  margin-bottom: 0;
+}
+
+.library-success {
+  position: static;
+  max-width: 480px;
+}
+
 .login-page {
   min-height: 100vh;
   display: flex;

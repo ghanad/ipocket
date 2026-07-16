@@ -210,8 +210,8 @@ def test_tag_delete_requires_exact_name_confirmation(client) -> None:
 
     assert response.status_code == 400
     assert "Tag name confirmation does not match." in response.text
-    assert ':action="deleteAction()"' in response.text
-    assert f"deleteTagId: {tag.id}" in response.text
+    assert '"mode": "delete"' in response.text
+    assert f'"entity_id": {tag.id}' in response.text
 
 
 def test_ip_assets_list_uses_drawer_actions_for_edit_and_delete(client) -> None:

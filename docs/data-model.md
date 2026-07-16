@@ -33,6 +33,10 @@ Export ordering behavior:
 - `description` (optional)
 - `color` (hex color, default `#94a3b8`)
 
+Deleting a Project unassigns its linked IP assets (`project_id=NULL`) before
+removing the catalog row. The React Library UI does not change this relationship
+behavior.
+
 ## IPRange
 - `name` (range label)
 - `cidr` (IPv4 CIDR, unique)
@@ -49,6 +53,8 @@ Tag names are normalized by trimming whitespace and lowercasing. Allowed charact
 underscores (`^[a-z0-9_-]+$`).
 UI assignment flows only allow selecting from existing tags; they do not create new tags during IP assignment.
 IP Assets tag filtering is UI/query behavior only and does not change tag relationships. The list supports **OR** (`tag_any`), **AND** (`tag_all`), and **NOT** (`tag_not`) filter groups; legacy repeated `tag` query values are treated as **OR** filters for compatibility.
+Deleting a Tag removes its `ip_asset_tags` relationship rows before deleting the
+Tag. Library usage counts include active IP assets only.
 
 
 ## IPAssetTag
@@ -78,6 +84,10 @@ Host detail grouping is presentation-only: active linked IP assets are grouped a
 
 ## Vendor
 - `name` (TEXT, unique)
+
+Deleting a Vendor clears matching `hosts.vendor_id` values before deleting the
+Vendor. Vendor Library usage counts include active IP assets linked through
+those Hosts.
 
 ## User
 - `username` (TEXT, unique)
@@ -124,6 +134,7 @@ Self-service password changes (`/ui/account/password`) do not add fields/tables;
 - There is no separate "Needs Assignment" page in the current UI.
 - Range address drill-down (`/ui/ranges/{id}/addresses`) now adds UI-only search/status/pagination controls; this does not change persisted schema or entity fields.
 - Migrating the `/ui/ranges` list to React changes only presentation and transport. The React page uses `/api/ui/ranges` for list/create/update/delete operations against the existing `IPRange` repository model; no columns, relationships, migrations, or utilization calculations were added.
+- Migrating `/ui/projects` (Projects/Vendors/Tags) to React changes only presentation and transport. The focused `/api/ui/library/*` endpoints use the existing repository models and deletion rules; no tables, columns, relationships, or migrations were added.
 - Hosts list filtering by text, project, assignment, status, vendor, and tags is UI/query behavior only. Text and select filters update the table immediately with HTMX. Host tag filters and the Hosts table **IP tags** column both use tags on linked active IP assets and do not add host-level tag storage; fixed-width table fitting, compact action controls, compact tag-chip sizing, clicking tag chips to apply the existing tag filter, and collapsing extra tag chips behind `+N more` are presentation-only.
 
 ## Connector ingestion note

@@ -25,9 +25,10 @@ npm run build
 cd ..
 ```
 
-The build writes the Management and Ranges entry bundles to
+The build writes the Management, Ranges, and Library entry bundles to
 `app/static/react/management/management.js` and
-`app/static/react/ranges/ranges.js`, with shared chunks under
+`app/static/react/ranges/ranges.js`, and
+`app/static/react/library/library.js`, with shared chunks under
 `app/static/react/shared/`. Re-run `npm run build` after changing React sources.
 The Docker image builds all React entrypoints automatically in a separate Node
 stage; Node.js is not included in the final runtime image.
@@ -136,18 +137,17 @@ service on port `8000`, and stores SQLite data at `/data/ipocket.db`
 Docker deployments default to local/static assets (CSS + JS like htmx) so the UI
 renders without downloading from public CDNs. Non-Docker runs will load the
 Inter font from Google Fonts and htmx/Alpine.js from CDNs by default. Library
-Projects, Tags, and Vendors drawers are Alpine-driven in the Jinja templates, and the Tags
-create drawer auto-suggests a random color when not prefilled. In local asset mode
-(`IPOCKET_DOCKER_ASSETS=1`), Library drawer interactivity falls back to local scripts
-(`/static/js/projects.js`, `/static/js/tags.js`, `/static/js/vendors.js`, and
-`/static/js/drawer.js`) so all Library tab drawer actions stay available offline.
+Projects, Vendors, and Tags are served from the locally built React bundle, so
+their table and drawer workflows do not depend on Alpine or a remote JavaScript
+host. The Tags create drawer requests its suggested random color from the
+focused UI API.
 The browser favicon is always served locally from `/static/favicon.png`.
 The `/static/app.css` stylesheet is the stable CSS entrypoint; it loads the
 ordered, focused modules under `/static/css/`. When adding styles, place shared
 rules in the matching module and page-only rules in that page's module, while
 keeping the import order in `app.css` unchanged unless the cascade is intentionally
 being updated.
-Management Overview and IP Ranges are incrementally migrated React pages.
+Management Overview, IP Ranges, and Library are incrementally migrated React pages.
 FastAPI/Jinja still renders the application shell and sidebar. Management loads
 dashboard data from `GET /api/management/overview`; `/ui/ranges` uses
 `GET/POST /api/ui/ranges` and `PATCH/DELETE /api/ui/ranges/{id}` for its table
@@ -155,7 +155,11 @@ and drawer workflows. The Ranges implementation preserves CIDR validation,
 duplicate handling, exact-name delete confirmation, `?edit=<id>` and
 `?delete=<id>` entry links, and Used/Free address drill-down links. Production
 bundles are served locally from `/static/react/management/management.js` and
-`/static/react/ranges/ranges.js`.
+`/static/react/ranges/ranges.js`. Library uses
+`GET/POST /api/ui/library/{projects|vendors|tags}` plus
+`PATCH/DELETE /api/ui/library/{entity}/{id}`, and its bundle is served from
+`/static/react/library/library.js`. Existing `tab`, `edit`, and `delete` query
+parameters and legacy HTML mutation routes remain compatible.
 The IP Assets page also stays fully local: `/static/js/ip-assets.js` is a native
 ES-module entrypoint whose focused dependencies are served from
 `/static/js/ip-assets/`. No bundler, package install, or external JavaScript host
@@ -341,7 +345,7 @@ Host UI safety flow: deleting a Host from UI requires opening the host delete co
 - IP assets routes: `app/routes/ui/ip_assets/` (`listing.py`, `forms.py`, `actions.py`, `helpers.py`)
 - Hosts routes: `app/routes/ui/hosts/` (`listing.py`, `mutations.py`, `detail.py`)
 - Ranges routes: `app/routes/ui/ranges/` (`crud.py`, `addresses.py`, `common.py`)
-- Library/settings routes: `app/routes/ui/settings/` (`projects.py`, `tags.py`, `vendors.py`, `audit.py`, `common.py`)
+- Library/settings routes: `app/routes/ui/settings/` (`api.py`, `projects.py`, `tags.py`, `vendors.py`, `audit.py`, `common.py`)
 
 ## Manual vCenter export connector
 
