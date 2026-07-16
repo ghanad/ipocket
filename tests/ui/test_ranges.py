@@ -8,49 +8,19 @@ from app.models import IPAssetType, User, UserRole
 from app.routes import ui
 
 
-def test_ranges_page_renders_single_combined_ranges_table(client) -> None:
-    import os
-    from app import db, repository
-
-    connection = db.connect(os.environ["IPAM_DB_PATH"])
-    try:
-        db.init_db(connection)
-        ip_range = repository.create_ip_range(
-            connection, name="Corp LAN", cidr="192.168.10.0/24"
-        )
-    finally:
-        connection.close()
-
+def test_ranges_page_renders_react_mount_inside_jinja_shell(client) -> None:
     response = client.get("/ui/ranges")
 
     assert response.status_code == 200
-    assert "data-range-add" in response.text
-    assert "Add IP Range" in response.text
-    assert "data-range-create-drawer" in response.text
-    assert "192.168.10.0/24" in response.text
-    assert "Saved ranges" not in response.text
-    assert "Subnet Utilization" not in response.text
-    assert "<h2>IP Ranges</h2>" in response.text
-    assert "Total usable" in response.text
-    assert "Used" in response.text
-    assert "Free" in response.text
-    assert "Utilization" in response.text
-    assert "Actions" in response.text
-    assert "Created" not in response.text
+    assert 'id="ranges-root"' in response.text
+    assert 'class="ranges-root"' in response.text
+    assert 'data-endpoint="/api/ui/ranges"' in response.text
+    assert 'id="ranges-bootstrap"' in response.text
     assert (
-        f'href="/ui/ranges/{ip_range.id}/addresses?status=used#used"' in response.text
+        '<script type="module" src="/static/react/ranges/ranges.js"></script>'
+        in response.text
     )
-    assert (
-        f'href="/ui/ranges/{ip_range.id}/addresses?status=free#free"' in response.text
-    )
-    assert 'class="btn btn-secondary btn-small"' in response.text
-    assert 'class="btn btn-danger btn-small"' in response.text
-    assert "data-range-edit" in response.text
-    assert "data-range-delete" in response.text
-    assert 'data-range-delete-cidr="192.168.10.0/24"' in response.text
-    assert "data-range-delete-cidr-display" in response.text
-    assert "data-range-delete-used-display" in response.text
-    assert "data-range-delete-drawer" in response.text
+    assert 'class="nav-link nav-link-active" href="/ui/ranges"' in response.text
 
 
 def test_ranges_page_shows_em_dash_when_utilization_missing(
@@ -71,11 +41,21 @@ def test_ranges_page_shows_em_dash_when_utilization_missing(
         ranges_ui.repository, "get_ip_range_utilization", lambda _connection: []
     )
 
-    response = client.get("/ui/ranges")
+    response = client.get("/api/ui/ranges")
 
     assert response.status_code == 200
-    assert "No Util" in response.text
-    assert "—" in response.text
+    assert response.json()["ranges"] == [
+        {
+            "id": 1,
+            "name": "No Util",
+            "cidr": "10.10.10.0/30",
+            "notes": None,
+            "total_usable": None,
+            "used": None,
+            "free": None,
+            "utilization_percent": None,
+        }
+    ]
 
 
 def test_ranges_page_reopens_create_drawer_with_errors(client) -> None:
@@ -104,7 +84,7 @@ def test_ranges_page_reopens_create_drawer_with_errors(client) -> None:
     assert response.status_code == 400
     assert "Range name is required." in response.text
     assert "CIDR is required." in response.text
-    assert 'data-range-open="true"' in response.text
+    assert '"mode": "create"' in response.text
 
 
 def test_range_addresses_page_shows_tags(client) -> None:
@@ -584,8 +564,7 @@ def test_ranges_edit_and_delete_flow(client) -> None:
 
         delete_drawer = client.get(f"/ui/ranges?delete={ip_range.id}")
         assert delete_drawer.status_code == 200
-        assert 'data-range-delete-open="true"' in delete_drawer.text
-        assert f'action="/ui/ranges/{ip_range.id}/delete"' in delete_drawer.text
+        assert f'data-initial-delete-id="{ip_range.id}"' in delete_drawer.text
 
         delete_error = client.post(
             f"/ui/ranges/{ip_range.id}/delete",
@@ -593,7 +572,7 @@ def test_ranges_edit_and_delete_flow(client) -> None:
         )
         assert delete_error.status_code == 400
         assert "نام رنج" in delete_error.text
-        assert 'data-range-delete-open="true"' in delete_error.text
+        assert '"mode": "delete"' in delete_error.text
 
         delete_response = client.post(
             f"/ui/ranges/{ip_range.id}/delete",
@@ -621,10 +600,8 @@ def test_ranges_page_opens_delete_drawer_from_query_param(client) -> None:
     response = client.get(f"/ui/ranges?delete={ip_range.id}")
 
     assert response.status_code == 200
-    assert "data-range-delete-drawer" in response.text
-    assert 'data-range-delete-open="true"' in response.text
-    assert f'data-range-delete-id="{ip_range.id}"' in response.text
-    assert f'action="/ui/ranges/{ip_range.id}/delete"' in response.text
+    assert f'data-initial-delete-id="{ip_range.id}"' in response.text
+    assert 'id="ranges-root"' in response.text
 
 
 def test_ranges_page_opens_edit_drawer_from_query_param(client) -> None:
@@ -643,10 +620,8 @@ def test_ranges_page_opens_edit_drawer_from_query_param(client) -> None:
     response = client.get(f"/ui/ranges?edit={ip_range.id}")
 
     assert response.status_code == 200
-    assert "data-range-edit-drawer" in response.text
-    assert f'data-range-edit-id="{ip_range.id}"' in response.text
-    assert f'action="/ui/ranges/{ip_range.id}/edit"' in response.text
-    assert 'value="Corp LAN"' in response.text
+    assert f'data-initial-edit-id="{ip_range.id}"' in response.text
+    assert 'id="ranges-root"' in response.text
 
 
 def test_range_edit_error_reopens_edit_drawer(client) -> None:
@@ -678,4 +653,4 @@ def test_range_edit_error_reopens_edit_drawer(client) -> None:
     assert response.status_code == 400
     assert "Range name is required." in response.text
     assert "CIDR is required." in response.text
-    assert 'data-range-edit-open="true"' in response.text
+    assert '"mode": "edit"' in response.text

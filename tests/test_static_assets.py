@@ -57,7 +57,7 @@ def test_ui_assets_are_local() -> None:
         in base_html
     )
     assert (
-        '<link rel="stylesheet" href="/static/app.css?v=react-management-spacing" />'
+        '<link rel="stylesheet" href="/static/app.css?v=react-ranges" />'
         in base_html
     )
     assert '<script src="/static/js/tag-picker.js" defer></script>' in base_html
@@ -100,6 +100,7 @@ def test_ui_assets_are_local() -> None:
     assert ".bulk-drawer-selection {" in css
     assert ".bulk-common-tags {" in css
     assert ".bulk-common-tag-chip.is-marked {" in css
+    assert ".ranges-root {" in css
 
 
 def test_application_css_is_split_into_focused_modules(client) -> None:
@@ -195,7 +196,6 @@ def test_refactored_templates_load_external_page_assets() -> None:
     assert "<style>" not in templates["audit_log"].read_text(encoding="utf-8")
 
     assert (repo_root / "app/static/js/drawer.js").exists()
-    assert (repo_root / "app/static/js/ranges.js").exists()
     assert (repo_root / "app/static/js/hosts.js").exists()
     assert (repo_root / "app/static/js/ip-assets.js").exists()
     assert (repo_root / "app/static/js/range-addresses.js").exists()

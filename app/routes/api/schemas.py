@@ -184,7 +184,40 @@ class IPRangeCreate(BaseModel):
     cidr: str
     notes: Optional[str] = None
 
+    @field_validator("name")
+    @classmethod
+    def normalize_name(cls, value: str) -> str:
+        normalized = value.strip()
+        if not normalized:
+            raise ValueError("Range name is required.")
+        return normalized
+
     @field_validator("cidr")
     @classmethod
     def normalize_cidr_value(cls, value: str) -> str:
-        return normalize_cidr(value)
+        normalized = value.strip()
+        if not normalized:
+            raise ValueError("CIDR is required.")
+        try:
+            return normalize_cidr(normalized)
+        except ValueError as exc:
+            raise ValueError(
+                "CIDR must be a valid IPv4 network "
+                "(example: 192.168.10.0/24)."
+            ) from exc
+
+    @field_validator("notes")
+    @classmethod
+    def normalize_notes(cls, value: Optional[str]) -> Optional[str]:
+        if value is None:
+            return None
+        normalized = value.strip()
+        return normalized or None
+
+
+class IPRangeUpdate(IPRangeCreate):
+    pass
+
+
+class IPRangeDelete(BaseModel):
+    confirm_name: str

@@ -8,6 +8,10 @@ The app exposes Prometheus metrics at `GET /metrics`:
 - `ipam_ip_unassigned_owner_total`: number of active IP records without an owner assignment (currently `0` while owner support is paused).
 - `ipam_ip_unassigned_both_total`: number of active IP records without both owner and project assignments (currently `0` while owner support is paused).
 
+The React migration of `/ui/ranges` does not change metric names or calculation
+semantics. Range CRUD through `/api/ui/ranges` writes the same `ip_ranges`
+records as the legacy HTML form routes.
+
 Archived restore note:
 - Re-creating an IP that currently exists only as archived restores that row (sets `archived=0`) rather than creating a duplicate row, so totals reflect a single record transitioning between archived/active states.
 

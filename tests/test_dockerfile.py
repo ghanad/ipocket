@@ -13,10 +13,7 @@ def test_dockerfile_exists_and_runs_app():
     assert "FROM node:22-slim AS frontend" in content
     assert "RUN npm ci" in content
     assert "RUN npm run build" in content
-    assert (
-        "COPY --from=frontend /app/static/react/management "
-        "./app/static/react/management"
-    ) in content
+    assert "COPY --from=frontend /app/static/react ./app/static/react" in content
 
 
 def test_docker_build_context_excludes_local_frontend_artifacts():

@@ -25,10 +25,12 @@ npm run build
 cd ..
 ```
 
-The build writes the Management page bundle to
-`app/static/react/management/management.js`. Re-run `npm run build` after
-changing React sources. The Docker image builds this bundle automatically in a
-separate Node stage; Node.js is not included in the final runtime image.
+The build writes the Management and Ranges entry bundles to
+`app/static/react/management/management.js` and
+`app/static/react/ranges/ranges.js`, with shared chunks under
+`app/static/react/shared/`. Re-run `npm run build` after changing React sources.
+The Docker image builds all React entrypoints automatically in a separate Node
+stage; Node.js is not included in the final runtime image.
 
 Initialize the database (runs migrations):
 
@@ -145,11 +147,15 @@ ordered, focused modules under `/static/css/`. When adding styles, place shared
 rules in the matching module and page-only rules in that page's module, while
 keeping the import order in `app.css` unchanged unless the cascade is intentionally
 being updated.
-The Management Overview page is the first incrementally migrated React page.
-FastAPI/Jinja still renders the application shell and sidebar, while React loads
-dashboard data from `GET /api/management/overview` and renders loading, error,
-empty, summary-card, and subnet-utilization states. Its production bundle is
-served locally from `/static/react/management/management.js`.
+Management Overview and IP Ranges are incrementally migrated React pages.
+FastAPI/Jinja still renders the application shell and sidebar. Management loads
+dashboard data from `GET /api/management/overview`; `/ui/ranges` uses
+`GET/POST /api/ui/ranges` and `PATCH/DELETE /api/ui/ranges/{id}` for its table
+and drawer workflows. The Ranges implementation preserves CIDR validation,
+duplicate handling, exact-name delete confirmation, `?edit=<id>` and
+`?delete=<id>` entry links, and Used/Free address drill-down links. Production
+bundles are served locally from `/static/react/management/management.js` and
+`/static/react/ranges/ranges.js`.
 The IP Assets page also stays fully local: `/static/js/ip-assets.js` is a native
 ES-module entrypoint whose focused dependencies are served from
 `/static/js/ip-assets/`. No bundler, package install, or external JavaScript host

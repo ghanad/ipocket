@@ -27,7 +27,7 @@ COPY requirements.txt ./
 RUN pip install --no-cache-dir -r requirements.txt
 
 COPY . ./
-COPY --from=frontend /app/static/react/management ./app/static/react/management
+COPY --from=frontend /app/static/react ./app/static/react
 
 EXPOSE 8000
 

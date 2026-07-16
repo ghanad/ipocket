@@ -5,13 +5,19 @@ import { resolve } from "node:path";
 export default defineConfig(({ mode }) => ({
   plugins: [react()],
   build: {
-    outDir: "../app/static/react/management",
+    outDir: "../app/static/react",
     emptyOutDir: true,
     minify: "esbuild",
-    lib: {
-      entry: resolve(__dirname, "src/management/main.tsx"),
-      formats: ["es"],
-      fileName: () => "management.js",
+    rollupOptions: {
+      input: {
+        management: resolve(__dirname, "src/management/main.tsx"),
+        ranges: resolve(__dirname, "src/ranges/main.tsx"),
+      },
+      output: {
+        entryFileNames: "[name]/[name].js",
+        chunkFileNames: "shared/[name]-[hash].js",
+        assetFileNames: "shared/[name]-[hash][extname]",
+      },
     },
   },
   define: {
