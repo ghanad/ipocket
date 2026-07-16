@@ -175,11 +175,20 @@ def test_refactored_templates_load_external_page_assets() -> None:
     assert "<script>" not in templates["tags"].read_text(encoding="utf-8")
 
     assert "<style>" not in templates["audit_log"].read_text(encoding="utf-8")
+    audit_log_template = templates["audit_log"].read_text(encoding="utf-8")
+    assert 'id="audit-log-root"' in audit_log_template
+    assert 'data-endpoint="/api/ui/audit-log"' in audit_log_template
+    assert (
+        '<script type="module" src="/static/react/audit-log/audit-log.js"></script>'
+        in audit_log_template
+    )
+    assert "<table" not in audit_log_template
 
     assert (repo_root / "app/static/js/drawer.js").exists()
     assert (repo_root / "app/static/js/hosts.js").exists()
     assert not (repo_root / "app/static/js/ip-assets.js").exists()
     assert (repo_root / "app/static/react/ip-assets/ip-assets.js").exists()
+    assert (repo_root / "app/static/react/audit-log/audit-log.js").exists()
     assert (repo_root / "app/static/js/range-addresses.js").exists()
     assert (repo_root / "app/static/js/tag-picker.js").exists()
     assert (repo_root / "app/static/js/host-select-search.js").exists()

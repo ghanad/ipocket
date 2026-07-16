@@ -1,4 +1,5 @@
 import type { AuditLog } from "./types";
+import { AuditActionBadge } from "../shared/AuditActionBadge";
 
 export function AuditLogTable({ logs }: { logs: AuditLog[] }) {
   return (
@@ -20,17 +21,7 @@ export function AuditLogTable({ logs }: { logs: AuditLog[] }) {
                 <td>{log.created_at}</td>
                 <td>{log.user || "System"}</td>
                 <td>
-                  <span
-                    className={`pill ${
-                      log.action === "DELETE"
-                        ? "pill-danger"
-                        : log.action === "CREATE"
-                          ? "pill-success"
-                          : "pill-warning"
-                    }`}
-                  >
-                    {log.action}
-                  </span>
+                  <AuditActionBadge action={log.action} />
                 </td>
                 <td>
                   <p className="ip-audit-summary">{log.changes.summary}</p>

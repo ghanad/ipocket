@@ -111,7 +111,7 @@ ipocket is a lightweight IP inventory app to track addresses and their project a
 - Prometheus metrics on `/metrics`
 - Prometheus SD endpoint on `/sd/node` with project grouping
 - Kubernetes deployment via Helm chart (`helm/ipocket`) with configurable image, persistence, ingress, and bootstrap/session secrets
-- Audit logging for IP asset create/update/delete actions, surfaced on the IP detail page and a global Audit Log view (both require authentication).
+- Audit logging for IP asset create/update/delete actions is surfaced on the IP detail page and the authenticated, read-only `/ui/audit-log` history page. The global Audit Log is React/Vite/TypeScript-powered inside the standard Jinja application shell, keeps server-side repository pagination and ordering, and is readable by Viewer, Editor, and Superuser roles.
 - Database schema managed through Alembic migrations
 - SQLite connections are configured for concurrent request handling (`journal_mode=WAL`, `synchronous=NORMAL`, `busy_timeout=5000`).
 - Repository data-access layer is modularized under `app/repository/` (assets, hosts, ranges, metadata, users, audit, summary), while `app.repository` remains the stable import surface via package re-exports.
