@@ -25,12 +25,13 @@ npm run build
 cd ..
 ```
 
-The build writes the Management, Ranges, Library, Hosts list, and Host Detail entry bundles to
+The build writes the Management, Ranges, Library, Hosts list, Host Detail, and IP Asset Detail entry bundles to
 `app/static/react/management/management.js` and
 `app/static/react/ranges/ranges.js`, and
 `app/static/react/library/library.js` and
 `app/static/react/hosts/hosts.js` and
-`app/static/react/host-detail/host-detail.js`, with shared chunks under
+`app/static/react/host-detail/host-detail.js` and
+`app/static/react/ip-asset-detail/ip-asset-detail.js`, with shared chunks under
 `app/static/react/shared/`. Re-run `npm run build` after changing React sources.
 The Docker image builds all React entrypoints automatically in a separate Node
 stage; Node.js is not included in the final runtime image.
@@ -149,7 +150,7 @@ ordered, focused modules under `/static/css/`. When adding styles, place shared
 rules in the matching module and page-only rules in that page's module, while
 keeping the import order in `app.css` unchanged unless the cascade is intentionally
 being updated.
-Management Overview, IP Ranges, Library, the Hosts list, and Host Detail are incrementally migrated React pages.
+Management Overview, IP Ranges, Library, the Hosts list, Host Detail, and IP Asset Detail are incrementally migrated React pages.
 FastAPI/Jinja still renders the application shell and sidebar. Management loads
 dashboard data from `GET /api/management/overview`; `/ui/ranges` uses
 `GET/POST /api/ui/ranges` and `PATCH/DELETE /api/ui/ranges/{id}` for its table
@@ -173,7 +174,13 @@ or pagination hide it, and an unknown Host returns 404. `/ui/hosts/{id}` keeps
 the Jinja shell/sidebar and mounts `/static/react/host-detail/host-detail.js`;
 its display-ready data comes from public `GET /api/ui/hosts/{id}/detail`.
 Legacy Host form/partial routes remain available.
-The IP Assets page also stays fully local: `/static/js/ip-assets.js` is a native
+`/ui/ip-assets/{id}` keeps the authenticated Jinja shell/sidebar and mounts
+`/static/react/ip-asset-detail/ip-asset-detail.js`. It reads
+`GET /api/ui/ip-assets/{id}/detail` and uses focused PATCH, DELETE, and
+`POST .../auto-host` endpoints. Viewer can read Detail and Audit Log; mutations
+reuse the existing IP Asset Editor-only dependency. Legacy edit/delete/auto-host
+HTML routes remain available.
+The IP Assets list stays fully local and unchanged: `/static/js/ip-assets.js` is a native
 ES-module entrypoint whose focused dependencies are served from
 `/static/js/ip-assets/`. No bundler, package install, or external JavaScript host
 is required for these modules.
@@ -219,7 +226,7 @@ services:
 
 Service discovery token (optional):
 - `IPOCKET_SD_TOKEN` (when set, `/sd/node` requires header `X-SD-Token`)
-- `IPOCKET_AUTO_HOST_FOR_BMC` (default: enabled). Set to `0`, `false`, `no`, or `off` to disable auto-creating `server_{ip}` Host records when creating BMC IP assets without `host_id`.
+- `IPOCKET_AUTO_HOST_FOR_BMC` (default: enabled). Set to `0`, `false`, `no`, or `off` to disable auto-creating `server_{ip}` Host records when creating BMC IP assets without `host_id` and to disable the BMC Detail auto-host action.
 - `IPOCKET_LOG_LEVEL` (default: `INFO`). Controls application logging verbosity (e.g., `DEBUG`, `INFO`, `WARNING`).
 
 Session security:
@@ -304,7 +311,7 @@ UI design reference templates live in `/ui_template` for layout and styling guid
 9) Open **Connectors** from the sidebar and use **vCenter**, **Prometheus**, **Elasticsearch**, **Cassandra**, **Ceph**, or **Kubernetes** tabs to run connectors directly from UI (`dry-run` or `apply`) as background jobs; while a run is queued/running, the tab auto-refreshes (same `job_id` URL) to show final status and logs without manual refresh.
 10) When assigning tags on IP Assets or Range Address drawers, use the chip picker (`Add tags...`) to search and select existing tags only (create new tag names first in **Library → Tags**).
 11) For multi-row assignment changes, select IPs in **IP Assets** and use **Bulk update** to open the right-side drawer for batch Type/Project/Tag updates; shared tags appear under **Common tags** and can be removed for all selected rows in one apply. For notes, use **Notes action**: keep current notes, overwrite with a provided value, or clear notes for all selected rows.
-12) On an IP Asset detail page, use the header **Edit** and **Delete** buttons to open the same right-side drawer workflow used by the IP Assets list; deleting from detail returns to the IP Assets list.
+12) On an IP Asset detail page, use the React **Edit** and **Delete** drawers without reloading the shell. Edit refreshes Detail and Audit Log after success. Delete requires acknowledgement, plus exact-IP typing for high-risk records, and returns to the IP Assets list. An unassigned BMC also offers **Create host** when `IPOCKET_AUTO_HOST_FOR_BMC` is enabled.
 13) On an OS or BMC IP Asset detail page, use the Details panel to see the paired address from the same host: OS records show BMC addresses, and BMC records show OS addresses. The IP address, Host, and paired OS/BMC address values link directly to their detail pages. Other asset types do not show the paired-address field.
 14) Open **Audit Log** to review run-level `apply` entries for Data Ops and Connectors (`IMPORT_RUN`); dry-run executions are intentionally excluded from run-level audit logging.
 15) On a range details page (`/ui/ranges/<id>/addresses`), use separate filters for **IP address** (live search), **Project**, **Type**, and chip-based **Tags** (same Enter/add/remove flow as IP Assets), plus **Status** (`All/Used/Free`) and table pagination controls (`Rows`, `Previous`, `Next`) to review large ranges efficiently. In the table, tag cells show up to 3 tags inline and collapse the rest into a `+N more` popover; clicking a tag chip (inline or popover) adds that tag directly to the active Tags filter. Example: `/ui/ranges/1/addresses?project_id=unassigned&type=BMC&tag=mgmt&status=used`.

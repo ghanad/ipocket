@@ -169,6 +169,19 @@ class UIHostDelete(BaseModel):
     confirm_name: str
 
 
+class UIIPAssetWrite(BaseModel):
+    type: str
+    project_id: Optional[int] = None
+    host_id: Optional[int] = None
+    tags: list[str] = Field(default_factory=list)
+    notes: Optional[str] = None
+
+
+class UIIPAssetDelete(BaseModel):
+    acknowledged: bool = False
+    confirm_ip: str = ""
+
+
 class VendorCreate(BaseModel):
     name: str
 

@@ -18,6 +18,7 @@ from app.routes.ui.utils import (
     require_ui_editor,
 )
 
+from .common import auto_host_ip_asset, get_active_ip_asset
 from .helpers import _delete_requires_exact_ip, _parse_selected_tags
 
 router = APIRouter()
@@ -139,33 +140,14 @@ def ui_create_auto_host(
     connection=Depends(get_connection),
     user=Depends(require_ui_editor),
 ) -> JSONResponse:
-    asset = repository.get_ip_asset_by_id(connection, asset_id)
-    if asset is None or asset.archived:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
-    if asset.asset_type != IPAssetType.BMC:
+    asset = get_active_ip_asset(connection, asset_id)
+    try:
+        host = auto_host_ip_asset(connection, asset=asset, user=user)
+    except HTTPException as exc:
         return JSONResponse(
-            {"error": "Auto-host creation is only available for BMC assets."},
-            status_code=400,
+            {"error": exc.detail},
+            status_code=exc.status_code,
         )
-    if asset.host_id is not None:
-        return JSONResponse(
-            {"error": "This IP is already assigned to a host."}, status_code=409
-        )
-
-    host_name = f"server_{asset.ip_address}"
-    host = repository.get_host_by_name(connection, host_name)
-    if host is None:
-        host = repository.create_host(
-            connection, name=host_name, notes=None, vendor=None
-        )
-
-    repository.update_ip_asset(
-        connection,
-        ip_address=asset.ip_address,
-        host_id=host.id,
-        current_user=user,
-    )
-
     return JSONResponse({"host_id": host.id, "host_name": host.name})
 
 

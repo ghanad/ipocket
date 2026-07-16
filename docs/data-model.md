@@ -23,6 +23,7 @@ Bulk edit note behavior:
 UI redirect behavior:
 - IP Assets bulk/update/delete flows strip stale toast query parameters (`bulk-error`, `bulk-success`, `delete-error`, `delete-success`) before appending a new result message.
 - Deleting an IP Asset from its detail page returns to `/ui/ip-assets`; this is a navigation/UI behavior only and does not change stored relationships.
+- The React IP Asset Detail API reuses the same repository update/delete operations and audit user attribution as legacy HTML routes. Clearing Project or Host sends explicit null assignments; no schema or relationship semantics changed.
 
 Export ordering behavior:
 - IP asset exports (`/export/ip-assets.csv`, `/export/ip-assets.json`, bundle payload) are ordered by numeric IPv4 value.
@@ -67,6 +68,7 @@ Tag. Library usage counts include active IP assets only.
 - On create (both REST API and UI form), when an IPAsset has `type=BMC` and `host_id` is omitted/null, ipocket auto-links it to a Host named exactly `server_{ip_address}`.
 - If that Host already exists, it is reused (no duplicate Host creation).
 - If `host_id` is provided explicitly, no auto-host creation is performed.
+- On an authenticated BMC detail page with no Host, an Editor can run the same `server_{ip_address}` create/reuse-and-assign operation. `IPOCKET_AUTO_HOST_FOR_BMC=0|false|no|off` disables this action.
 
 
 ## OS/BMC host pairing
@@ -137,6 +139,7 @@ Self-service password changes (`/ui/account/password`) do not add fields/tables;
 - Migrating the `/ui/ranges` list to React changes only presentation and transport. The React page uses `/api/ui/ranges` for list/create/update/delete operations against the existing `IPRange` repository model; no columns, relationships, migrations, or utilization calculations were added.
 - Migrating `/ui/projects` (Projects/Vendors/Tags) to React changes only presentation and transport. The focused `/api/ui/library/*` endpoints use the existing repository models and deletion rules; no tables, columns, relationships, or migrations were added.
 - Migrating the `/ui/hosts` list and `/ui/hosts/{id}` detail page to React changes only presentation and transport. The focused `/api/ui/hosts` endpoints reuse existing Host/IPAsset repository semantics; public GET access, role-gated mutations, server-resolved legacy Drawer bootstrap, and the display-ready `/api/ui/hosts/{id}/detail` grouping payload do not add tables, columns, or relationships.
+- Migrating `/ui/ip-assets/{id}` to React changes only presentation and transport. The authenticated `/api/ui/ip-assets/{id}/detail` payload and focused PATCH/DELETE/auto-host endpoints reuse existing IPAsset, tag, host-pair, audit, role, and high-risk delete rules; the IP Assets list and standalone create form remain unchanged.
 - Hosts list filtering by text, project, assignment, status, vendor, and tags is UI/query behavior only. React keeps filters and pagination in the query string, while legacy `edit`/`delete` targets are loaded independently so a valid Host does not depend on appearing in the current page. Host tag filters and the Hosts table **IP tags** column both use tags on linked active IP assets and do not add host-level tag storage; selected filter chips retain the catalog `--tag-color` and contrast text color. Compact tag-chip sizing, clicking tag chips to apply the existing tag filter, and collapsing extra tag chips behind `+N more` are presentation-only.
 
 ## Connector ingestion note

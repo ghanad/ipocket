@@ -1293,7 +1293,7 @@ def test_ui_create_bmc_passes_auto_host_flag_disabled(client, monkeypatch) -> No
     assert captured["auto_host_for_bmc"] is False
 
 
-def test_ip_asset_detail_uses_enhanced_layout_and_delete_drawer(client) -> None:
+def test_ip_asset_detail_uses_react_mount_and_display_api(client) -> None:
     import os
 
     connection = db.connect(os.environ["IPAM_DB_PATH"])
@@ -1322,30 +1322,28 @@ def test_ip_asset_detail_uses_enhanced_layout_and_delete_drawer(client) -> None:
     app.dependency_overrides[ui.get_current_ui_user] = lambda: user
     try:
         response = client.get(f"/ui/ip-assets/{asset.id}")
+        detail = client.get(f"/api/ui/ip-assets/{asset.id}/detail")
     finally:
         app.dependency_overrides.pop(ui.get_current_ui_user, None)
 
     assert response.status_code == 200
-    assert "<h2>Details</h2>" in response.text
-    assert "Status: Assigned" in response.text
-    assert f'href="/ui/ip-assets/{asset.id}"' in response.text
-    assert f'href="/ui/hosts/{host.id}"' in response.text
-    assert 'data-ip-edit="' in response.text
-    assert 'data-ip-delete="' in response.text
-    assert 'class="row-actions-menu ip-detail-actions"' not in response.text
-    assert 'href="/ui/ip-assets/' not in response.text.split("data-ip-edit=", 1)[0]
-    assert 'data-ip-drawer-mode="edit"' in response.text
-    assert "data-ip-edit-form" in response.text
-    assert 'data-ip-mode-panel="edit"' in response.text
-    assert 'data-ip-mode-action="edit"' in response.text
-    assert "Save changes" in response.text
-    assert "data-ip-delete-form" in response.text
-    assert 'data-ip-mode-panel="delete"' in response.text
-    assert 'value="/ui/ip-assets" data-ip-delete-return-to' in response.text
-    assert "/static/js/ip-assets.js" in response.text
-    assert 'class="pill pill-success"' in response.text
-    assert "Type: OS; Project ID:" in response.text
-    assert "View details" in response.text
+    assert 'id="ip-asset-detail-root"' in response.text
+    assert f'data-endpoint="/api/ui/ip-assets/{asset.id}"' in response.text
+    assert "/static/react/ip-asset-detail/ip-asset-detail.js" in response.text
+    assert "/static/js/ip-assets.js" not in response.text
+    assert detail.status_code == 200
+    payload = detail.json()
+    assert payload["asset"]["project_name"] == "Platform"
+    assert payload["asset"]["host_name"] == "node-10"
+    assert payload["asset"]["tags"] == [{"name": "core", "color": "#e2e8f0"}]
+    assert payload["asset"]["notes"] == "Primary node"
+    assert payload["asset"]["unassigned"] is False
+    assert payload["can_edit"] is False
+    assert payload["audit_logs"][0]["action"] == "CREATE"
+    assert payload["audit_logs"][0]["changes"]["summary"].startswith("Type: OS")
+    assert payload["audit_logs"][0]["changes"]["raw"].startswith(
+        "Created IP asset"
+    )
 
 
 def test_ip_asset_detail_shows_no_tags_and_no_notes_defaults(client) -> None:
@@ -1365,14 +1363,15 @@ def test_ip_asset_detail_shows_no_tags_and_no_notes_defaults(client) -> None:
 
     app.dependency_overrides[ui.get_current_ui_user] = lambda: user
     try:
-        response = client.get(f"/ui/ip-assets/{asset.id}")
+        response = client.get(f"/api/ui/ip-assets/{asset.id}/detail")
     finally:
         app.dependency_overrides.pop(ui.get_current_ui_user, None)
 
     assert response.status_code == 200
-    assert "No tags" in response.text
-    assert "No notes" in response.text
-    assert "Status: Needs assignment" in response.text
+    payload = response.json()["asset"]
+    assert payload["tags"] == []
+    assert payload["notes"] == ""
+    assert payload["unassigned"] is True
 
 
 def test_ip_asset_detail_shows_os_bmc_pair_for_host_linked_assets(client) -> None:
@@ -1405,20 +1404,20 @@ def test_ip_asset_detail_shows_os_bmc_pair_for_host_linked_assets(client) -> Non
 
     app.dependency_overrides[ui.get_current_ui_user] = lambda: user
     try:
-        os_response = client.get(f"/ui/ip-assets/{os_asset.id}")
-        bmc_response = client.get(f"/ui/ip-assets/{bmc_asset.id}")
+        os_response = client.get(f"/api/ui/ip-assets/{os_asset.id}/detail")
+        bmc_response = client.get(f"/api/ui/ip-assets/{bmc_asset.id}/detail")
     finally:
         app.dependency_overrides.pop(ui.get_current_ui_user, None)
 
     assert os_response.status_code == 200
-    assert "BMC address" in os_response.text
-    assert f'href="/ui/ip-assets/{bmc_asset.id}">10.91.0.20</a>' in os_response.text
-    assert "OS address" not in os_response.text
+    assert os_response.json()["asset"]["host_pair_assets"] == [
+        {"id": bmc_asset.id, "ip_address": "10.91.0.20"}
+    ]
 
     assert bmc_response.status_code == 200
-    assert "OS address" in bmc_response.text
-    assert f'href="/ui/ip-assets/{os_asset.id}">10.91.0.10</a>' in bmc_response.text
-    assert "BMC address" not in bmc_response.text
+    assert bmc_response.json()["asset"]["host_pair_assets"] == [
+        {"id": os_asset.id, "ip_address": "10.91.0.10"}
+    ]
 
 
 def test_ip_asset_detail_hides_pair_address_for_other_types(client) -> None:
@@ -1451,11 +1450,9 @@ def test_ip_asset_detail_hides_pair_address_for_other_types(client) -> None:
 
     app.dependency_overrides[ui.get_current_ui_user] = lambda: user
     try:
-        response = client.get(f"/ui/ip-assets/{asset.id}")
+        response = client.get(f"/api/ui/ip-assets/{asset.id}/detail")
     finally:
         app.dependency_overrides.pop(ui.get_current_ui_user, None)
 
     assert response.status_code == 200
-    assert "BMC address" not in response.text
-    assert "OS address" not in response.text
-    assert "10.91.0.31" not in response.text
+    assert response.json()["asset"]["host_pair_assets"] == []

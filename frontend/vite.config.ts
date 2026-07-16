@@ -15,6 +15,7 @@ export default defineConfig(({ mode }) => ({
         library: resolve(__dirname, "src/library/main.tsx"),
         hosts: resolve(__dirname, "src/hosts/main.tsx"),
         "host-detail": resolve(__dirname, "src/host-detail/main.tsx"),
+        "ip-asset-detail": resolve(__dirname, "src/ip-asset-detail/main.tsx"),
       },
       output: {
         entryFileNames: "[name]/[name].js",

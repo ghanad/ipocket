@@ -39,6 +39,7 @@ UI note: IP Asset detail OS/BMC paired-address display is presentation-only and 
 UI note: IP Asset detail links for IP address, Host, and paired OS/BMC addresses are navigation-only and do not affect `/metrics` payloads.
 UI note: Host detail linked-IP grouping and per-IP project/tag display are presentation-only and do not affect `/metrics` payloads.
 UI note: Migrating Host Detail to React and loading its existing view data from `/api/ui/hosts/{id}/detail` is presentation/transport-only and does not affect `/metrics` names or calculations.
+UI note: Migrating authenticated IP Asset Detail to React and using focused detail/edit/delete/auto-host endpoints reuses existing inventory mutations and does not add or alter `/metrics` names or calculations.
 
 Connector note: connectors import through the same IP upsert pipeline (Prometheus preserves non-empty notes and existing `type` on update and shows per-IP dry-run diffs; vCenter overwrites `type`, merges connector tags, and only writes notes when existing notes are empty; Elasticsearch and Cassandra merge tags, can optionally append a normalized cluster-name tag, can overwrite `type`/`project`, and overwrite notes only when connector note is provided; Ceph and Kubernetes also create/update linked Hosts from host/node inventory and can overwrite IP `host` links), but they do not add exporter-side Prometheus metrics in ipocket; `/metrics` remains limited to IP inventory counters listed above.
 
