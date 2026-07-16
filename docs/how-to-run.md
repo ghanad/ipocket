@@ -153,7 +153,8 @@ rules in the matching module and page-only rules in that page's module, while
 keeping the import order in `app.css` unchanged unless the cascade is intentionally
 being updated.
 Management Overview, IP Ranges, Library, the Hosts list, Host Detail, IP Asset
-Detail, and User Management are incrementally migrated React pages.
+Detail, User Management, and Change Password are incrementally migrated React
+pages.
 FastAPI/Jinja still renders the application shell and sidebar. Management loads
 dashboard data from `GET /api/management/overview`; `/ui/ranges` uses
 `GET/POST /api/ui/ranges` and `PATCH/DELETE /api/ui/ranges/{id}` for its table
@@ -185,6 +186,12 @@ requests are forbidden. Password hashing, role protection, last-active-
 Superuser safeguards, exact-username deletion confirmation, and USER audit
 entries remain backend responsibilities. Legacy HTML form mutation routes are
 retained for compatibility.
+`/ui/account/password` keeps the authenticated Jinja shell/sidebar and mounts
+`/static/react/account-password/account-password.js`. Its form submits to
+`POST /api/ui/account/password`; current-password verification, bcrypt hashing,
+self-only mutation, and the single USER audit entry remain server-side. The
+legacy `POST /ui/account/password` form route uses the same validation and
+mutation helper and remains available for compatibility.
 `/ui/ip-assets/{id}` keeps the authenticated Jinja shell/sidebar and mounts
 `/static/react/ip-asset-detail/ip-asset-detail.js`. It reads
 `GET /api/ui/ip-assets/{id}/detail` and uses focused PATCH, DELETE, and
@@ -282,7 +289,7 @@ Start the app and sign in:
 - API/UI login sessions are stored in the SQLite `sessions` table, so tokens remain valid across app restarts until logout or token revocation.
 - Editors can add or edit IPs from the UI.
 - Editors and Superusers can maintain Projects, Vendors, and Tags from the Library page; Viewers see the catalog without mutation controls.
-- Any authenticated user (Viewer/Editor/Superuser) can change their own password at `http://127.0.0.1:8000/ui/account/password` by entering current password + new password (with confirmation).
+- Any authenticated user (Viewer/Editor/Superuser) can change their own password on the React-powered page at `http://127.0.0.1:8000/ui/account/password` by entering current password + new password (with confirmation). Password verification, hashing, and USER audit logging remain server-side; the page never receives a password hash.
 
 ## User management
 User management requires the bootstrap superuser env vars.

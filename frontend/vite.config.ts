@@ -19,6 +19,10 @@ export default defineConfig(({ mode }) => ({
         "ip-asset-detail": resolve(__dirname, "src/ip-asset-detail/main.tsx"),
         "audit-log": resolve(__dirname, "src/audit-log/main.tsx"),
         users: resolve(__dirname, "src/users/main.tsx"),
+        "account-password": resolve(
+          __dirname,
+          "src/account-password/main.tsx",
+        ),
       },
       output: {
         entryFileNames: "[name]/[name].js",
