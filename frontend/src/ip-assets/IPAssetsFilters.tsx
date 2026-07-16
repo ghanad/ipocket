@@ -37,7 +37,7 @@ export function IPAssetsFilters({
 
   return (
     <section className="card filter-card">
-      <div className="filters-grid">
+      <div className="filters-grid ip-assets-filters-grid">
         <label className="field">
           <span>Search</span>
           <input
@@ -78,31 +78,28 @@ export function IPAssetsFilters({
           </select>
         </label>
         <label className="field">
-          <span>Assignment</span>
+          <span>Project Assignment</span>
           <select
             className="select"
-            aria-label="Assignment"
-            value={String(filters.unassigned_only)}
-            onChange={(event) =>
-              onChange({ unassigned_only: event.target.value === "true" })
+            aria-label="Project Assignment"
+            value={
+              filters.assigned_only
+                ? "assigned"
+                : filters.unassigned_only
+                  ? "unassigned"
+                  : "all"
             }
+            onChange={(event) => {
+              const assignment = event.target.value;
+              onChange({
+                assigned_only: assignment === "assigned",
+                unassigned_only: assignment === "unassigned",
+              });
+            }}
           >
-            <option value="false">All</option>
-            <option value="true">Unassigned only</option>
-          </select>
-        </label>
-        <label className="field">
-          <span>Status</span>
-          <select
-            className="select"
-            aria-label="Status"
-            value={String(filters.archived_only)}
-            onChange={(event) =>
-              onChange({ archived_only: event.target.value === "true" })
-            }
-          >
-            <option value="false">Active only</option>
-            <option value="true">Archived only</option>
+            <option value="all">All</option>
+            <option value="assigned">Assigned only</option>
+            <option value="unassigned">Unassigned only</option>
           </select>
         </label>
         <div className="field field-tag-filter">

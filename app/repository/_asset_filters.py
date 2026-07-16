@@ -18,6 +18,7 @@ def _apply_asset_filters(
     *,
     project_id: Optional[int],
     project_unassigned_only: bool,
+    project_assigned_only: bool,
     asset_type: Optional[IPAssetType],
     unassigned_only: bool,
     query_text: Optional[str],
@@ -32,6 +33,8 @@ def _apply_asset_filters(
     )
     if project_unassigned_only:
         statement = statement.where(db_schema.IPAsset.project_id.is_(None))
+    elif project_assigned_only:
+        statement = statement.where(db_schema.IPAsset.project_id.is_not(None))
     elif project_id is not None:
         statement = statement.where(db_schema.IPAsset.project_id == project_id)
     if asset_type is not None:
@@ -112,6 +115,7 @@ def count_active_assets(
     *,
     project_id: Optional[int],
     project_unassigned_only: bool,
+    project_assigned_only: bool,
     asset_type: Optional[IPAssetType],
     unassigned_only: bool,
     query_text: Optional[str],
@@ -125,6 +129,7 @@ def count_active_assets(
         select(func.count()).select_from(db_schema.IPAsset),
         project_id=project_id,
         project_unassigned_only=project_unassigned_only,
+        project_assigned_only=project_assigned_only,
         asset_type=asset_type,
         unassigned_only=unassigned_only,
         query_text=query_text,
@@ -143,6 +148,7 @@ def list_active_assets(
     *,
     project_id: Optional[int],
     project_unassigned_only: bool,
+    project_assigned_only: bool,
     asset_type: Optional[IPAssetType],
     unassigned_only: bool,
     query_text: Optional[str],
@@ -158,6 +164,7 @@ def list_active_assets(
         _asset_select(),
         project_id=project_id,
         project_unassigned_only=project_unassigned_only,
+        project_assigned_only=project_assigned_only,
         asset_type=asset_type,
         unassigned_only=unassigned_only,
         query_text=query_text,

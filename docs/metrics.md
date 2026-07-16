@@ -20,7 +20,7 @@ Archived restore note:
 
 Note: Vendor catalog/host vendor selection does not introduce new Prometheus metrics in this release.
 
-UI note: unassigned-related metrics are still available even though the dedicated **Needs Assignment** page was removed; use the IP Assets list filters for assignment workflows.
+UI note: unassigned-related metrics are still available even though the dedicated **Needs Assignment** page was removed; use the IP Assets list's **Project Assignment** filter for assignment workflows. Removing the visible Status filter does not change metric calculation or archived asset data.
 UI note: range-address search/status/pagination changes are presentation-only and do not affect `/metrics` payloads.
 UI note: the React Range Addresses shell and its JSON list/add/edit endpoints reuse existing IP asset repository mutations and do not add or alter metric names or calculations.
 UI note: Hosts list search/filter changes are presentation-only and do not affect `/metrics` payloads.

@@ -49,11 +49,14 @@ const emptyBulk: BulkValues = {
 export function filtersFromSearch(search: string): AssetFilters {
   const params = new URLSearchParams(search);
   const perPage = Number(params.get("per-page") || 20);
+  const unassignedOnly = params.get("unassigned-only") === "true";
   return {
     q: params.get("q") ?? "",
     project_id: params.get("project_id") ?? "",
     type: params.get("type") ?? "",
-    unassigned_only: params.get("unassigned-only") === "true",
+    assigned_only:
+      params.get("assigned-only") === "true" && !unassignedOnly,
+    unassigned_only: unassignedOnly,
     archived_only: params.get("archived-only") === "true",
     tag_any: [...params.getAll("tag"), ...params.getAll("tag_any")].filter(
       (value, index, values) => values.indexOf(value) === index,
@@ -70,7 +73,11 @@ export function searchFromFilters(filters: AssetFilters): string {
   if (filters.q.trim()) params.set("q", filters.q.trim());
   if (filters.project_id) params.set("project_id", filters.project_id);
   if (filters.type) params.set("type", filters.type);
-  if (filters.unassigned_only) params.set("unassigned-only", "true");
+  if (filters.unassigned_only) {
+    params.set("unassigned-only", "true");
+  } else if (filters.assigned_only) {
+    params.set("assigned-only", "true");
+  }
   if (filters.archived_only) params.set("archived-only", "true");
   filters.tag_any.forEach((tag) => params.append("tag_any", tag));
   filters.tag_all.forEach((tag) => params.append("tag_all", tag));

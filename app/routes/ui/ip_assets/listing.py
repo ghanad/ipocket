@@ -8,7 +8,6 @@ from fastapi import APIRouter, Depends, Query, Request
 from fastapi.responses import HTMLResponse
 
 from app import repository
-from app.dependencies import get_connection
 from app.models import IPAssetType, User, UserRole
 from app.routes.ui.utils import (
     _build_asset_view_models,
@@ -41,7 +40,9 @@ class IPAssetListQuery:
     project_id: int | None
     project_filter: str
     project_unassigned_only: bool
+    project_assigned_only: bool
     asset_type: IPAssetType | None
+    assigned_only: bool
     unassigned_only: bool
     archived_only: bool
     tag_all: list[str]
@@ -60,6 +61,7 @@ def normalize_ip_asset_list_query(
     tag_any: list[str] | None,
     tag_not: list[str] | None,
     asset_type: str | None,
+    assigned_only: bool,
     unassigned_only: bool,
     archived_only: bool,
     page: str | None,
@@ -71,6 +73,9 @@ def normalize_ip_asset_list_query(
     page_value = _parse_positive_int_query(page, 1)
     project_filter = (project_id or "").strip()
     project_unassigned_only = project_filter == "unassigned"
+    project_assigned_only = (
+        assigned_only and not unassigned_only and not project_unassigned_only
+    )
     parsed_project_id = (
         None
         if project_unassigned_only
@@ -92,7 +97,9 @@ def normalize_ip_asset_list_query(
             else str(parsed_project_id or "")
         ),
         project_unassigned_only=project_unassigned_only,
+        project_assigned_only=project_assigned_only,
         asset_type=asset_type_enum,
+        assigned_only=project_assigned_only,
         unassigned_only=unassigned_only,
         archived_only=archived_only,
         tag_all=_normalize_query_tags(tag_all),
@@ -112,6 +119,7 @@ def build_ip_asset_list_payload(
         connection,
         project_id=query.project_id,
         project_unassigned_only=query.project_unassigned_only,
+        project_assigned_only=query.project_assigned_only,
         asset_type=query.asset_type,
         unassigned_only=query.unassigned_only,
         query_text=query.q or None,
@@ -126,6 +134,7 @@ def build_ip_asset_list_payload(
         connection,
         project_id=query.project_id,
         project_unassigned_only=query.project_unassigned_only,
+        project_assigned_only=query.project_assigned_only,
         asset_type=query.asset_type,
         unassigned_only=query.unassigned_only,
         query_text=query.q or None,
@@ -186,6 +195,7 @@ def build_ip_asset_list_payload(
                 "q": query.q,
                 "project_id": query.project_filter,
                 "type": query.asset_type.value if query.asset_type else "",
+                "assigned_only": query.assigned_only,
                 "unassigned_only": query.unassigned_only,
                 "archived_only": query.archived_only,
                 "tag_all": query.tag_all,

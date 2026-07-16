@@ -33,6 +33,7 @@ export interface AssetFilters {
   q: string;
   project_id: string;
   type: string;
+  assigned_only: boolean;
   unassigned_only: boolean;
   archived_only: boolean;
   tag_any: string[];

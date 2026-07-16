@@ -135,6 +135,8 @@ Self-service password changes (`/ui/account/password`) do not add fields/tables;
 ## Assignment workflow
 - Project assignment is managed from the main **IP Assets** list using filters and edit actions.
 - There is no separate "Needs Assignment" page in the current UI.
+- The IP Assets list exposes project-presence filtering as **Project Assignment** with `All`, `Assigned only`, and `Unassigned only`. This changes only list selection; project names and the `Unassigned` badge remain in the existing Project column.
+- The IP Assets filter panel does not expose an active/archived Status control. Existing archived-list URLs and archive data behavior are unchanged.
 - Range address drill-down (`/ui/ranges/{id}/addresses`) is a React presentation/transport migration only. `GET/POST/PATCH /api/ui/ranges/{id}/addresses...` reuse existing `IPRange`, `IPAsset`, `Project`, `Tag`, host-pair, and audit data; no schema, relationship, or range-semantics changes were introduced.
 - Migrating the `/ui/ranges` list to React changes only presentation and transport. The React page uses `/api/ui/ranges` for list/create/update/delete operations against the existing `IPRange` repository model; no columns, relationships, migrations, or utilization calculations were added.
 - Migrating `/ui/projects` (Projects/Vendors/Tags) to React changes only presentation and transport. The focused `/api/ui/library/*` endpoints use the existing repository models and deletion rules; no tables, columns, relationships, or migrations were added.

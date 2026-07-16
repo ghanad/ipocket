@@ -51,6 +51,7 @@ const response: AssetsResponse = {
       q: "",
       project_id: "",
       type: "",
+      assigned_only: false,
       unassigned_only: false,
       archived_only: false,
       tag_any: [],
@@ -147,20 +148,33 @@ describe("IPAssetsPage", () => {
     );
   });
 
-  it("applies project, type, assignment, status, OR/AND/NOT tags, quick filters, and page size", async () => {
+  it("uses the simplified project-assignment filters with tags, quick filters, and page size", async () => {
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue(ok()));
     render(<IPAssetsPage endpoint="/api/ui/ip-assets" />);
     await screen.findByText("10.0.0.7");
 
+    const assignment = screen.getByLabelText("Project Assignment");
+    expect(screen.queryByLabelText("Assignment")).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("Status")).not.toBeInTheDocument();
+    expect(
+      within(assignment)
+        .getAllByRole("option")
+        .map((option) => option.textContent),
+    ).toEqual(["All", "Assigned only", "Unassigned only"]);
+
     fireEvent.change(screen.getAllByLabelText("Project")[0], { target: { value: "3" } });
     fireEvent.change(screen.getByLabelText("Type filter"), { target: { value: "BMC" } });
-    fireEvent.change(screen.getByLabelText("Assignment"), { target: { value: "true" } });
-    fireEvent.change(screen.getByLabelText("Status"), { target: { value: "true" } });
+    fireEvent.change(assignment, { target: { value: "assigned" } });
     await waitFor(() => {
       expect(window.location.search).toContain("project_id=3");
       expect(window.location.search).toContain("type=BMC");
+      expect(window.location.search).toContain("assigned-only=true");
+      expect(new URLSearchParams(window.location.search).has("unassigned-only")).toBe(false);
+    });
+    fireEvent.change(assignment, { target: { value: "unassigned" } });
+    await waitFor(() => {
       expect(window.location.search).toContain("unassigned-only=true");
-      expect(window.location.search).toContain("archived-only=true");
+      expect(new URLSearchParams(window.location.search).has("assigned-only")).toBe(false);
     });
 
     const tagInput = screen.getByLabelText("Tag filter");

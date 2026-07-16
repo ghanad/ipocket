@@ -76,6 +76,7 @@ def test_ip_assets_list_api_normalizes_filters_and_bounds_pagination(client) -> 
         "q": "10.1",
         "project_id": str(project.id),
         "type": "VM",
+        "assigned_only": False,
         "unassigned_only": False,
         "archived_only": False,
         "tag_all": ["prod"],
@@ -103,6 +104,12 @@ def test_ip_assets_list_api_supports_unassigned_archived_and_editor_policy(clien
             ip_address="10.2.0.1",
             asset_type=IPAssetType.OS,
         )
+        assigned_active = repository.create_ip_asset(
+            connection,
+            ip_address="10.2.0.3",
+            asset_type=IPAssetType.VM,
+            project_id=project.id,
+        )
         archived = repository.create_ip_asset(
             connection,
             ip_address="10.2.0.2",
@@ -121,6 +128,10 @@ def test_ip_assets_list_api_supports_unassigned_archived_and_editor_policy(clien
             "/api/ui/ip-assets",
             params={"project_id": "unassigned", "unassigned-only": "true"},
         )
+        assigned = client.get(
+            "/api/ui/ip-assets",
+            params={"assigned-only": "true"},
+        )
         archived_response = client.get(
             "/api/ui/ip-assets",
             params={"archived-only": "true"},
@@ -131,6 +142,10 @@ def test_ip_assets_list_api_supports_unassigned_archived_and_editor_policy(clien
     assert unassigned.status_code == 200
     assert [item["id"] for item in unassigned.json()["assets"]] == [active.id]
     assert unassigned.json()["can_edit"] is True
+    assert [item["id"] for item in assigned.json()["assets"]] == [
+        assigned_active.id
+    ]
+    assert assigned.json()["filters"]["normalized"]["assigned_only"] is True
     assert [item["id"] for item in archived_response.json()["assets"]] == [
         archived.id
     ]
