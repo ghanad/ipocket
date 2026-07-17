@@ -1,3 +1,4 @@
+import { ApiError as SharedApiError, apiRequest } from "../shared/apiClient";
 import type {
   AddressFormValues,
   RangeAddressesResponse,
@@ -9,43 +10,35 @@ export class RangeAddressesApiError extends Error {
   }
 }
 
-async function messages(response: Response): Promise<string[]> {
-  try {
-    const body = await response.json();
-    if (typeof body.detail === "string") return [body.detail];
-    if (Array.isArray(body.detail)) {
-      return body.detail
-        .map((item: unknown) =>
-          typeof item === "string"
-            ? item
-            : String((item as { msg?: string }).msg ?? "").replace(
-                /^Value error,\s*/,
-                "",
-              ),
-        )
-        .filter(Boolean);
-    }
-  } catch {
-    // Fall through to the generic message.
-  }
-  return [`Range address request failed (${response.status}).`];
-}
-
 async function request<T>(
   url: string,
-  options: RequestInit = {},
+  options: Parameters<typeof apiRequest>[1] = {},
 ): Promise<T> {
-  const response = await fetch(url, {
-    credentials: "same-origin",
-    headers: {
-      Accept: "application/json",
-      ...(options.body ? { "Content-Type": "application/json" } : {}),
-      ...options.headers,
-    },
-    ...options,
-  });
-  if (!response.ok) throw new RangeAddressesApiError(await messages(response));
-  return response.json() as Promise<T>;
+  let authenticationRequired = false;
+  try {
+    return await apiRequest<T>(url, {
+      ...options,
+      onAuthenticationRequired: (loginUrl) => {
+        authenticationRequired = true;
+        window.location.assign(loginUrl);
+      },
+    });
+  } catch (error) {
+    if (!(error instanceof SharedApiError)) throw error;
+
+    let messages: string[];
+    if (authenticationRequired) {
+      messages = ["Authentication required."];
+    } else if (error.payload && typeof error.payload === "object") {
+      const detail = (error.payload as Record<string, unknown>).detail;
+      messages = typeof detail === "string" || Array.isArray(detail)
+        ? error.messages
+        : [`Range address request failed (${error.status}).`];
+    } else {
+      messages = [`Range address request failed (${error.status}).`];
+    }
+    throw new RangeAddressesApiError(messages);
+  }
 }
 
 export function fetchRangeAddresses(url: string, signal?: AbortSignal) {
@@ -68,7 +61,7 @@ export function createRangeAddress(
 ) {
   return request<{ asset_id: number; ip_address: string }>(endpoint, {
     method: "POST",
-    body: JSON.stringify(body(values)),
+    json: body(values),
   });
 }
 
@@ -80,6 +73,6 @@ export function updateRangeAddress(
   const { ip_address: _ipAddress, ...payload } = body(values);
   return request<{ asset_id: number; ip_address: string }>(
     `${endpoint}/${assetId}`,
-    { method: "PATCH", body: JSON.stringify(payload) },
+    { method: "PATCH", json: payload },
   );
 }

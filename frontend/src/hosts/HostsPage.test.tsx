@@ -45,15 +45,17 @@ const response: HostsResponse = {
   can_edit: true,
 };
 
-function ok(payload: HostsResponse = response) {
+function reply(payload: unknown = response, status = 200) {
   return {
-    ok: true,
-    status: 200,
+    ok: status >= 200 && status < 300,
+    status,
     redirected: false,
     headers: new Headers(),
-    json: async () => payload,
-  };
+    text: async () => JSON.stringify(payload),
+  } as Response;
 }
+
+const ok = (payload: HostsResponse = response) => reply(payload);
 
 afterEach(() => {
   cleanup();
@@ -273,16 +275,10 @@ describe("HostsPage", () => {
     const fetchMock = vi
       .fn()
       .mockResolvedValueOnce(ok({ ...response, hosts: [], pagination: { ...response.pagination, total: 0 } }))
-      .mockResolvedValueOnce({
-        ok: false,
-        status: 422,
-        redirected: false,
-        headers: new Headers(),
-        json: async () => ({ detail: "Invalid IP address (bad-ip)" }),
-      })
-      .mockResolvedValueOnce({ ok: true, status: 201, redirected: false, headers: new Headers(), json: async () => ({ id: 8, name: "node" }) })
+      .mockResolvedValueOnce(reply({ detail: "Invalid IP address (bad-ip)" }, 422))
+      .mockResolvedValueOnce(reply({ id: 8, name: "node" }, 201))
       .mockResolvedValueOnce(ok())
-      .mockResolvedValueOnce({ ok: true, status: 200, redirected: false, headers: new Headers(), json: async () => ({ id: 7, name: "edge-renamed" }) })
+      .mockResolvedValueOnce(reply({ id: 7, name: "edge-renamed" }))
       .mockResolvedValueOnce(ok());
     vi.stubGlobal("fetch", fetchMock);
     render(<HostsPage endpoint="/api/ui/hosts" />);

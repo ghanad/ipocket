@@ -1,3 +1,4 @@
+import { ApiError as SharedApiError, apiRequest } from "../shared/apiClient";
 import type { HostFormValues, HostsResponse } from "./types";
 
 export class ApiError extends Error {
@@ -6,51 +7,35 @@ export class ApiError extends Error {
   }
 }
 
-async function readErrors(response: Response): Promise<string[]> {
-  try {
-    const payload = (await response.json()) as {
-      detail?: string | string[] | Array<{ msg?: string }>;
-    };
-    if (typeof payload.detail === "string") return [payload.detail];
-    if (Array.isArray(payload.detail)) {
-      return payload.detail
-        .map((item) =>
-          typeof item === "string"
-            ? item
-            : item.msg?.replace(/^Value error,\s*/, "") ?? "",
-        )
-        .filter(Boolean);
-    }
-  } catch {
-    // Use the stable fallback below.
-  }
-  return [`Host request failed (${response.status}).`];
-}
-
 async function request<T>(
   url: string,
-  options: RequestInit = {},
+  options: Parameters<typeof apiRequest>[1] = {},
 ): Promise<T> {
-  const response = await fetch(url, {
-    credentials: "same-origin",
-    headers: {
-      Accept: "application/json",
-      ...(options.body ? { "Content-Type": "application/json" } : {}),
-      ...options.headers,
-    },
-    ...options,
-  });
-  if (
-    response.redirected &&
-    (response.url.includes("/ui/login") ||
-      response.headers.get("location")?.includes("/ui/login"))
-  ) {
-    window.location.assign("/ui/login?return_to=/ui/hosts");
-    throw new ApiError(["Authentication required."]);
+  let authenticationRequired = false;
+  try {
+    return await apiRequest<T>(url, {
+      ...options,
+      onAuthenticationRequired: () => {
+        authenticationRequired = true;
+        window.location.assign("/ui/login?return_to=/ui/hosts");
+      },
+    });
+  } catch (error) {
+    if (!(error instanceof SharedApiError)) throw error;
+
+    let messages: string[];
+    if (authenticationRequired) {
+      messages = ["Authentication required."];
+    } else if (error.payload && typeof error.payload === "object") {
+      const detail = (error.payload as Record<string, unknown>).detail;
+      messages = typeof detail === "string" || Array.isArray(detail)
+        ? error.messages
+        : [`Host request failed (${error.status}).`];
+    } else {
+      messages = [`Host request failed (${error.status}).`];
+    }
+    throw new ApiError(messages);
   }
-  if (!response.ok) throw new ApiError(await readErrors(response));
-  if (response.status === 204) return undefined as T;
-  return response.json() as Promise<T>;
 }
 
 function payload(values: HostFormValues) {
@@ -86,7 +71,7 @@ export function fetchHosts(url: string, signal?: AbortSignal) {
 export function createHost(endpoint: string, values: HostFormValues) {
   return request<{ id: number; name: string }>(endpoint, {
     method: "POST",
-    body: JSON.stringify(payload(values)),
+    json: payload(values),
   });
 }
 
@@ -97,7 +82,7 @@ export function updateHost(
 ) {
   return request<{ id: number; name: string }>(`${endpoint}/${hostId}`, {
     method: "PATCH",
-    body: JSON.stringify(payload(values)),
+    json: payload(values),
   });
 }
 
@@ -108,6 +93,6 @@ export function deleteHost(
 ) {
   return request<void>(`${endpoint}/${hostId}`, {
     method: "DELETE",
-    body: JSON.stringify({ confirm_name: confirmName }),
+    json: { confirm_name: confirmName },
   });
 }

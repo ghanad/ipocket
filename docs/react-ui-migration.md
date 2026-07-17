@@ -73,8 +73,9 @@ templates. They remain unchanged.
 
 The framework-independent `frontend/src/shared/apiClient.ts` is the common
 transport for About, Management Overview, the global Audit Log, Host Detail,
-and Ranges while endpoint-specific types and page-domain adapters stay in each
-page's `api.ts` module. The client keeps requests same-origin with the existing
+Ranges, Range Addresses, and the Hosts listing/CRUD flow while endpoint-specific
+types and page-domain adapters stay in each page's `api.ts` module. The client
+keeps requests same-origin with the existing
 session cookie, supports JSON and FormData request bodies, forwards abort
 signals, handles empty responses, and exposes typed HTTP errors for FastAPI
 validation/detail payloads and non-JSON failures. Validation errors also expose
@@ -83,9 +84,13 @@ existing primary error message, status, or payload. The client detects API
 redirects to `/ui/login`; each migrated page retains its established
 `return_to` policy and user-facing error behavior.
 
-Phase 2 moves Host Detail's read-only request and the complete Ranges
-fetch/create/update/delete flow onto that transport. Ranges is the first full
-CRUD page to use the shared client. Its endpoint URLs, methods, JSON payloads,
+Phase 2 moved Host Detail's read-only request and the complete Ranges
+fetch/create/update/delete flow onto that transport. Phase 3 moves Range
+Addresses and the Hosts listing/create/update/delete flow to the same transport;
+Hosts is the second full CRUD page to use the shared client. Their endpoint URLs,
+methods, payload transformations, cancellation behavior, drawer behavior, and
+page-facing validation/fallback messages remain unchanged. Ranges was the first
+full CRUD page to use the shared client. Its endpoint URLs, methods, JSON payloads,
 204 delete handling, drawer behavior, FastAPI validation messages, non-JSON
 fallback, and `/ui/login?return_to=/ui/ranges` redirect are unchanged. Host
 Detail continues to preserve cancellation, its stable network/404/HTTP
@@ -96,11 +101,18 @@ for a native `Blob` or raw `Response`, so the shared transport does not force
 downloads through JSON parsing. This capability is tested but the existing
 download links have not been migrated in this phase.
 
-Range Addresses, Hosts listing, Account Password, Login, Users, Library, IP
-Assets, Data Operations, and Connectors remain deferred from shared-client
-consolidation. Multipart uploads, native downloads, and other mutation-heavy
-page API modules are candidates for later, separately tested phases; their
-current behavior and authentication policy are unchanged.
+Range Addresses now consistently detects an expired-session login redirect and
+returns to its current pathname and query string. Authentication return-target
+policies remain page-specific: Hosts keeps its fixed
+`/ui/login?return_to=/ui/hosts` target, while Range Addresses uses an encoded
+current location. This is a client consistency correction only; endpoint access
+policy is unchanged.
+
+Account Password, Login, Users, Library, IP Assets, IP Asset Detail, Data
+Operations, and Connectors remain deferred from shared-client consolidation.
+Multipart uploads, native downloads, and other mutation-heavy page API modules
+are candidates for later, separately tested phases; their current behavior and
+authentication policy are unchanged.
 
 No registered GET route is classified as obsolete/unreachable. The unreachable
 artifacts were templates and partials left behind after their routes had moved.
