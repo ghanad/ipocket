@@ -37,7 +37,15 @@ function AssetSection({
   );
 }
 
-export function HostDetailPage({ endpoint }: { endpoint: string }) {
+const navigateToLogin = (url: string) => window.location.assign(url);
+
+export function HostDetailPage({
+  endpoint,
+  onAuthenticationRequired = navigateToLogin,
+}: {
+  endpoint: string;
+  onAuthenticationRequired?: (url: string) => void;
+}) {
   const [data, setData] = useState<HostDetailResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<HostDetailApiError | null>(null);
@@ -49,6 +57,10 @@ export function HostDetailPage({ endpoint }: { endpoint: string }) {
       setData(await fetchHostDetail(endpoint, signal));
     } catch (loadError) {
       if (!(loadError instanceof DOMException)) {
+        if (loadError instanceof HostDetailApiError && loadError.loginUrl) {
+          onAuthenticationRequired(loadError.loginUrl);
+          return;
+        }
         setError(
           loadError instanceof HostDetailApiError
             ? loadError
@@ -58,7 +70,7 @@ export function HostDetailPage({ endpoint }: { endpoint: string }) {
     } finally {
       setLoading(false);
     }
-  }, [endpoint]);
+  }, [endpoint, onAuthenticationRequired]);
 
   useEffect(() => {
     const controller = new AbortController();

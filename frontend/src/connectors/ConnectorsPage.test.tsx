@@ -36,7 +36,11 @@ function config(canApply = false): ConnectorsConfig {
 }
 
 function reply(payload: unknown, status = 200): Response {
-  return { ok: status >= 200 && status < 300, status, json: async () => payload } as Response;
+  return { ok: status >= 200 && status < 300, status, redirected: false, url: "http://testserver/api/ui/connectors", headers: new Headers(), json: async () => payload } as Response;
+}
+
+function loginRedirect(): Response {
+  return { ...reply(null), redirected: true, url: "http://testserver/ui/login?return_to=/api/ui/connectors" };
 }
 
 function deferred<T>() {
@@ -58,6 +62,25 @@ afterEach(() => {
 });
 
 describe("ConnectorsPage", () => {
+  it("returns authentication redirects to the login flow", async () => {
+    const onAuthenticationRequired = vi.fn();
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(loginRedirect()));
+    window.history.replaceState({}, "", "/ui/connectors");
+
+    render(
+      <ConnectorsPage
+        endpoint="/api/ui/connectors"
+        onAuthenticationRequired={onAuthenticationRequired}
+      />,
+    );
+
+    await waitFor(() =>
+      expect(onAuthenticationRequired).toHaveBeenCalledWith(
+        "/ui/login?return_to=%2Fui%2Fconnectors",
+      ),
+    );
+  });
+
   it("defaults to Overview and exposes accessible tabs for every connector", async () => {
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue(reply(config())));
     render(<ConnectorsPage endpoint="/api/ui/connectors" />);

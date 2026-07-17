@@ -337,35 +337,6 @@ def test_ip_assets_list_renders_note_preview_with_hover_content(client) -> None:
     assert "transition-delay: 0.45s, 0.45s;" in css_source
 
 
-@pytest.mark.skip(reason="Replaced by React list and JSON API coverage.")
-def test_ip_assets_js_rebinds_actions_after_htmx_pagination_swap() -> None:
-    js_source = _read_ip_assets_javascript()
-    table_template = (
-        Path(__file__).resolve().parents[2]
-        / "app/templates/partials/ip_assets_table.html"
-    ).read_text(encoding="utf-8")
-
-    assert "const getIpTableContainerFromEvent = (event) => {" in js_source
-    assert "document.body.addEventListener('htmx:afterSwap'" in js_source
-    assert "document.body.addEventListener('htmx:afterSettle'" in js_source
-    assert "table.bind(container);" in js_source
-    assert "event.target && event.target.id === 'ip-table-container'" not in js_source
-    assert "const bindPerPageControl = (root = document) => {" in js_source
-    assert "event.target.closest('[data-per-page-control]')" in js_source
-    assert (
-        "const getCurrentListUrl = () => window.location.pathname + window.location.search;"
-        in js_source
-    )
-    assert "const syncEditReturnTo = () => {" in js_source
-    assert "form?.querySelector('input[name=\"return_to\"]')" in js_source
-    assert "form.action = `/ui/ip-assets/${assetData.id}/edit`;" in js_source
-    assert "form.action = '/ui/ip-assets/new';" in js_source
-    assert js_source.count("syncEditReturnTo();") >= 3
-    assert "window.ipocketResetHostSearch(hostField);" in js_source
-    assert "data-per-page-control" in table_template
-    assert "data-per-page-select" in table_template
-
-
 def test_ip_asset_direct_form_template_includes_host_search() -> None:
     template_source = (
         Path(__file__).resolve().parents[2] / "app/templates/ip_asset_form.html"
@@ -465,28 +436,6 @@ def test_ip_assets_list_collapses_tag_chips_and_renders_more_popover_trigger(
     assert "trigger.addEventListener('mouseenter'" in js_source
     assert "trigger.addEventListener('mouseleave'" in js_source
     assert "const close = () =>" in js_source
-
-
-@pytest.mark.skip(reason="HTMX list partials were removed by the React migration.")
-def test_ip_assets_list_htmx_response_renders_table_partial(client) -> None:
-    import os
-
-    connection = db.connect(os.environ["IPAM_DB_PATH"])
-    try:
-        db.init_db(connection)
-        asset = repository.create_ip_asset(
-            connection, ip_address="10.30.0.12", asset_type=IPAssetType.VM
-        )
-    finally:
-        connection.close()
-
-    response = client.get("/ui/ip-assets", headers={"HX-Request": "true"})
-
-    assert response.status_code == 200
-    assert f"/ui/ip-assets/{asset.id}" in response.text
-    assert "data-ip-edit" in response.text
-    assert "<table" in response.text
-    assert "Apply filters" not in response.text
 
 
 def test_ip_assets_bulk_edit_updates_selected_assets(client) -> None:

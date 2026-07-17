@@ -2,6 +2,13 @@
 
 ipocket is a lightweight IP inventory app to track addresses and their project assignment.
 
+The primary user-facing UI migration is complete: 15 normal pages are powered
+by React/Vite/TypeScript, while FastAPI/Jinja intentionally remains the shared
+application shell, navigation, session/flash boundary, and renderer for legacy
+HTML POST/error compatibility. Focused `/api/ui/...` endpoints provide page
+data and enforce server-side authorization. The complete route and retained-
+asset inventory is in [react-ui-migration.md](react-ui-migration.md).
+
 ## Highlights
 - CRUD API for IP records (including permanent delete endpoint for editors only)
 - Project management
@@ -94,7 +101,7 @@ ipocket is a lightweight IP inventory app to track addresses and their project a
 - Jinja-driven pages continue to share drawer open/close behavior through `app/static/js/drawer.js`; the React Ranges page mirrors the same classes, spacing, close confirmation, and footer states in a typed component.
 - Reusable drawer shell markup is centralized in `app/templates/macros/drawer.html` for Jinja-driven drawer pages, while the React Ranges implementation keeps an equivalent `RangeDrawer` component.
 - `/ui/projects` is React/Vite/TypeScript-powered while the Jinja application shell, sidebar, session cookie, and role rules remain unchanged. The page uses focused `/api/ui/library/projects`, `/api/ui/library/vendors`, and `/api/ui/library/tags` endpoints; legacy HTML form and redirect routes remain available for compatibility.
-- `/ui/hosts` and `/ui/hosts/{id}` are React/Vite/TypeScript-powered inside the existing Jinja shell. The list uses public `GET /api/ui/hosts`, while Host Detail uses public `GET /api/ui/hosts/{id}/detail` and preserves the existing OS/BMC/Other grouping, project/tag colors, empty states, and links to IP Asset detail pages. Host list POST/PATCH/DELETE still require Editor or Superuser. The list preserves filter/pagination state in the URL with browser back/forward support, debounces text search, rejects stale responses, and refreshes the table after drawer mutations without a full-page reload. Legacy `?edit=<id>` and `?delete=<id>` links use server bootstrap so their Drawer target is resolved independently of the current filters or pagination, with missing Hosts returning 404.
+- `/ui/hosts` and `/ui/hosts/{id}` are React/Vite/TypeScript-powered inside the existing Jinja shell. The list uses public `GET /api/ui/hosts`; Host Detail uses authenticated `GET /api/ui/hosts/{id}/detail`, returns expired sessions to login, and preserves the existing OS/BMC/Other grouping, project/tag colors, empty states, and links to IP Asset detail pages. Host list POST/PATCH/DELETE still require Editor or Superuser. The list preserves filter/pagination state in the URL with browser back/forward support, debounces text search, rejects stale responses, and refreshes the table after drawer mutations without a full-page reload. Legacy `?edit=<id>` and `?delete=<id>` links use server bootstrap so their Drawer target is resolved independently of the current filters or pagination, with missing Hosts returning 404.
 - Projects, Vendors, and Tags keep the existing right-side drawer UX for create/edit/delete, dirty-close confirmation, Escape/overlay close, exact-name destructive confirmation, validation messages, usage counts, and tab/query links. Successful mutations refresh only the active table rather than reloading the full page.
 - Library API validation preserves project/tag color normalization, tag-name normalization, and random Tag create colors. Viewer remains read-only, while Editor and Superuser can create, edit, and delete Library catalog entries. Authentication redirects detected by React return the browser to the login flow.
 - The Library page uses one shared "Catalog Settings" header with compact segmented tabs (Projects/Tags/Vendors) and a tab-aware primary action button (New Project/Tag/Vendor) to keep controls in one place.

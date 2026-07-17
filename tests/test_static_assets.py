@@ -1,6 +1,7 @@
 from pathlib import Path
 
 from app.environment import use_local_assets
+from tests.react_ui_manifest import REACT_PAGES
 
 
 CSS_MODULES = (
@@ -153,10 +154,7 @@ def test_refactored_templates_load_external_page_assets() -> None:
     templates = {
         "hosts": repo_root / "app/templates/hosts.html",
         "ip_assets": repo_root / "app/templates/ip_assets_list.html",
-        "ip_assets_table": repo_root / "app/templates/partials/ip_assets_table.html",
-        "ip_assets_rows": repo_root / "app/templates/partials/ip_table_rows.html",
         "range_addresses": repo_root / "app/templates/range_addresses.html",
-        "tags": repo_root / "app/templates/tags.html",
         "audit_log": repo_root / "app/templates/audit_log_list.html",
         "about": repo_root / "app/templates/about.html",
     }
@@ -186,14 +184,6 @@ def test_refactored_templates_load_external_page_assets() -> None:
     assert "hx-get=" not in range_addresses_template
     assert "<style>" not in range_addresses_template
 
-    assert '{% include "partials/tags_tab_content.html" %}' in templates[
-        "tags"
-    ].read_text(encoding="utf-8")
-    assert "@click=\"$dispatch('tag-create-open')\"" in templates["tags"].read_text(
-        encoding="utf-8"
-    )
-    assert "<script>" not in templates["tags"].read_text(encoding="utf-8")
-
     assert "<style>" not in templates["audit_log"].read_text(encoding="utf-8")
     audit_log_template = templates["audit_log"].read_text(encoding="utf-8")
     assert 'id="audit-log-root"' in audit_log_template
@@ -218,14 +208,12 @@ def test_refactored_templates_load_external_page_assets() -> None:
     assert (repo_root / "app/static/js/drawer.js").exists()
     assert (repo_root / "app/static/js/hosts.js").exists()
     assert not (repo_root / "app/static/js/ip-assets.js").exists()
-    assert (repo_root / "app/static/react/ip-assets/ip-assets.js").exists()
-    assert (repo_root / "app/static/react/audit-log/audit-log.js").exists()
-    assert (repo_root / "app/static/react/about/about.js").exists()
-    assert (repo_root / "frontend/src/about/main.tsx").exists()
     vite_config = (repo_root / "frontend/vite.config.ts").read_text(encoding="utf-8")
-    assert 'about: resolve(__dirname, "src/about/main.tsx")' in vite_config
+    for page in REACT_PAGES:
+        assert (repo_root / f"frontend/src/{page.entry}/main.tsx").exists()
+        assert f'"src/{page.entry}/main.tsx"' in vite_config
+        assert (repo_root / "app" / page.bundle.lstrip("/")).exists()
     assert not (repo_root / "app/static/js/range-addresses.js").exists()
-    assert (repo_root / "app/static/react/range-addresses/range-addresses.js").exists()
     assert (repo_root / "app/static/js/tag-picker.js").exists()
     assert (repo_root / "app/static/js/host-select-search.js").exists()
     host_select_search_js = (

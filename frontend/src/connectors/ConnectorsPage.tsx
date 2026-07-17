@@ -22,7 +22,9 @@ function canonicalUrl(tab: ConnectorTab, jobId = ""): string {
   return `/ui/connectors?${params}`;
 }
 
-export function ConnectorsPage({ endpoint, initialTab = "overview", initialJobId = "" }: { endpoint: string; initialTab?: ConnectorTab; initialJobId?: string }) {
+const navigateToLogin = (url: string) => window.location.assign(url);
+
+export function ConnectorsPage({ endpoint, initialTab = "overview", initialJobId = "", onAuthenticationRequired = navigateToLogin }: { endpoint: string; initialTab?: ConnectorTab; initialJobId?: string; onAuthenticationRequired?: (url: string) => void }) {
   const [config, setConfig] = useState<ConnectorsConfig | null>(null);
   const [tab, setTab] = useState<ConnectorTab>(initialTab);
   const [forms, setForms] = useState<Partial<Record<ConnectorName, Record<string, FieldValue>>>>({});
@@ -93,6 +95,11 @@ export function ConnectorsPage({ endpoint, initialTab = "overview", initialJobId
         if (job.polling) timer.current = window.setTimeout(run, config.poll_interval_ms);
       } catch (error) {
         if (controller.signal.aborted) return;
+        if (error instanceof ConnectorApiError && error.loginUrl) {
+          onAuthenticationRequired(error.loginUrl);
+          activePoll.current = null;
+          return;
+        }
         const expired = error instanceof ConnectorApiError && error.status === 404;
         setPollFailures((current) => ({ ...current, [pollingTarget.connector]: {
           message: expired ? "Connector job was not found or has expired. Dismiss it and run the connector again." : "Polling was interrupted. Retry to continue.",
@@ -102,7 +109,7 @@ export function ConnectorsPage({ endpoint, initialTab = "overview", initialJobId
       }
     };
     if (immediate) void run(); else timer.current = window.setTimeout(run, config.poll_interval_ms);
-  }, [config]);
+  }, [config, onAuthenticationRequired]);
 
   const beginPolling = useCallback((connector: ConnectorName, id: string, immediate = true, url?: string) => {
     if (!config) return;
@@ -116,9 +123,16 @@ export function ConnectorsPage({ endpoint, initialTab = "overview", initialJobId
     void fetchConnectorsConfig(endpoint, controller.signal).then((value) => {
       setConfig(value);
       setForms(Object.fromEntries(value.connectors.map((schema) => [schema.name, defaultFormState(schema)])));
-    }).catch((error) => { if (!controller.signal.aborted) setLoadError(error instanceof Error ? error.message : "Unable to load connector configuration."); });
+    }).catch((error) => {
+      if (controller.signal.aborted) return;
+      if (error instanceof ConnectorApiError && error.loginUrl) {
+        onAuthenticationRequired(error.loginUrl);
+        return;
+      }
+      setLoadError(error instanceof Error ? error.message : "Unable to load connector configuration.");
+    });
     return () => controller.abort();
-  }, [endpoint]);
+  }, [endpoint, onAuthenticationRequired]);
 
   useEffect(() => {
     if (!config || !initialJob.current || !isConnectorName(tab)) return;
@@ -170,6 +184,10 @@ export function ConnectorsPage({ endpoint, initialTab = "overview", initialJobId
       stopPolling();
       beginPolling(connector, started.job_id, false, started.poll_url);
     } catch (error) {
+      if (error instanceof ConnectorApiError && error.loginUrl) {
+        onAuthenticationRequired(error.loginUrl);
+        return;
+      }
       const message = error instanceof ConnectorApiError ? error.message : "Unable to start the connector. No credentials were retained.";
       setErrors((current) => ({ ...current, [connector]: message }));
       setForms((current) => ({ ...current, [connector]: clearSecrets(schema, current[connector] ?? {}) }));

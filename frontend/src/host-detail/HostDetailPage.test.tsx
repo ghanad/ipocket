@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { HostDetailPage } from "./HostDetailPage";
@@ -59,6 +59,17 @@ function jsonResponse(payload: HostDetailResponse, status = 200) {
   };
 }
 
+function loginRedirect() {
+  return {
+    ok: true,
+    status: 200,
+    redirected: true,
+    url: "http://testserver/ui/login?return_to=/api/ui/hosts/7/detail",
+    headers: new Headers(),
+    json: async () => null,
+  };
+}
+
 afterEach(() => {
   cleanup();
   vi.restoreAllMocks();
@@ -66,6 +77,25 @@ afterEach(() => {
 });
 
 describe("HostDetailPage", () => {
+  it("returns authentication redirects to the login flow", async () => {
+    const onAuthenticationRequired = vi.fn();
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(loginRedirect()));
+    window.history.replaceState({}, "", "/ui/hosts/7");
+
+    render(
+      <HostDetailPage
+        endpoint="/api/ui/hosts/7/detail"
+        onAuthenticationRequired={onAuthenticationRequired}
+      />,
+    );
+
+    await waitFor(() =>
+      expect(onAuthenticationRequired).toHaveBeenCalledWith(
+        "/ui/login?return_to=%2Fui%2Fhosts%2F7",
+      ),
+    );
+  });
+
   it("renders loading, header, details, all asset tables, links, colors, and fallbacks", async () => {
     let resolveRequest!: (value: ReturnType<typeof jsonResponse>) => void;
     const pending = new Promise<ReturnType<typeof jsonResponse>>((resolve) => {

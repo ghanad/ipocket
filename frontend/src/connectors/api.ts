@@ -1,7 +1,11 @@
 import type { ConnectorsConfig, ConnectorName, FieldValue, JobStart, ConnectorJob } from "./types";
 
 export class ConnectorApiError extends Error {
-  constructor(message: string, public status: number) { super(message); }
+  constructor(
+    message: string,
+    public status: number,
+    public loginUrl: string | null = null,
+  ) { super(message); }
 }
 
 async function errorMessage(response: Response): Promise<string> {
@@ -19,6 +23,19 @@ async function request<T>(url: string, init?: RequestInit): Promise<T> {
     headers: { Accept: "application/json", "Content-Type": "application/json", ...init?.headers },
     ...init,
   });
+  if (
+    response.redirected &&
+    (response.url.includes("/ui/login") ||
+      response.headers.get("location")?.includes("/ui/login"))
+  ) {
+    throw new ConnectorApiError(
+      "Authentication required.",
+      401,
+      `/ui/login?return_to=${encodeURIComponent(
+        `${window.location.pathname}${window.location.search}`,
+      )}`,
+    );
+  }
   if (!response.ok) throw new ConnectorApiError(await errorMessage(response), response.status);
   return response.json() as Promise<T>;
 }

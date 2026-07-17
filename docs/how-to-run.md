@@ -25,19 +25,12 @@ npm run build
 cd ..
 ```
 
-The build writes the About, Management, Ranges, Library, Hosts list, Host Detail,
-IP Asset Detail, User Management, and Data Operations entry bundles to
-`app/static/react/about/about.js`,
-`app/static/react/management/management.js` and
-`app/static/react/ranges/ranges.js`, and
-`app/static/react/library/library.js` and
-`app/static/react/hosts/hosts.js` and
-`app/static/react/host-detail/host-detail.js` and
-`app/static/react/ip-asset-detail/ip-asset-detail.js` and
-`app/static/react/users/users.js`, with shared chunks under
-`app/static/react/shared/`; Data Operations is emitted at
-`app/static/react/data-ops/data-ops.js`. Re-run `npm run build` after changing
-React sources.
+The build writes 15 entry bundles under
+`app/static/react/<entry>/<entry>.js`: About, Account Password, Audit Log,
+Connectors, Data Operations, Host Detail, Hosts, IP Asset Detail, IP Assets,
+Library, Login, Management, Range Addresses, Ranges, and Users. Hashed shared
+chunks are emitted under `app/static/react/shared/`. Re-run `npm run build`
+after changing React sources; generated bundles must not be edited manually.
 The Docker image builds all React entrypoints automatically in a separate Node
 stage; Node.js is not included in the final runtime image.
 
@@ -155,9 +148,7 @@ ordered, focused modules under `/static/css/`. When adding styles, place shared
 rules in the matching module and page-only rules in that page's module, while
 keeping the import order in `app.css` unchanged unless the cascade is intentionally
 being updated.
-About, Management Overview, IP Ranges, Library, the Hosts list, Host Detail, IP
-Asset Detail, User Management, and Change Password are incrementally migrated
-React pages.
+The primary migration is complete across the 15 React entries listed above.
 FastAPI/Jinja still renders the application shell and sidebar. Management loads
 dashboard data from `GET /api/management/overview`; `/ui/ranges` uses
 `GET/POST /api/ui/ranges` and `PATCH/DELETE /api/ui/ranges/{id}` for its table
@@ -179,7 +170,8 @@ Legacy `/ui/hosts?edit=<id>` and `/ui/hosts?delete=<id>` links receive a
 server-resolved Drawer bootstrap, so the target remains available when filters
 or pagination hide it, and an unknown Host returns 404. `/ui/hosts/{id}` keeps
 the Jinja shell/sidebar and mounts `/static/react/host-detail/host-detail.js`;
-its display-ready data comes from public `GET /api/ui/hosts/{id}/detail`.
+its display-ready data comes from authenticated `GET /api/ui/hosts/{id}/detail`;
+an expired session is sent through the existing login return flow.
 Legacy Host form/partial routes remain available.
 `/ui/users` keeps the authenticated Jinja shell/sidebar and mounts
 `/static/react/users/users.js`. Its table and drawer workflows use
@@ -201,10 +193,28 @@ mutation helper and remains available for compatibility.
 `POST .../auto-host` endpoints. Viewer can read Detail and Audit Log; mutations
 reuse the existing IP Asset Editor-only dependency. Legacy edit/delete/auto-host
 HTML routes remain available.
-The IP Assets list stays fully local and unchanged: `/static/js/ip-assets.js` is a native
-ES-module entrypoint whose focused dependencies are served from
-`/static/js/ip-assets/`. No bundler, package install, or external JavaScript host
-is required for these modules.
+The IP Assets list is built from `frontend/src/ip-assets/` and served from
+`/static/react/ip-assets/ip-assets.js`. Direct create/edit/delete HTML forms
+remain available for compatibility and continue to use the shared Jinja form
+helpers.
+
+## Tests and React page maintenance
+
+Run the complete verification suite from the repository root:
+
+```bash
+.venv/bin/pytest -q
+cd frontend
+npm test -- --run
+npm run typecheck
+npm run build
+```
+
+When adding a React page, add its entry to `frontend/vite.config.ts`, add the
+lightweight Jinja mount and focused frontend tests, and add one record to
+`tests/react_ui_manifest.py`. That single manifest drives the parametrized page
+mount/API smoke tests and the Vite/generated-bundle checks. Update
+`docs/react-ui-migration.md` with its access policy and any compatibility route.
 To force local assets in any environment, set:
 
 ```
