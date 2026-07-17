@@ -25,8 +25,9 @@ npm run build
 cd ..
 ```
 
-The build writes the Management, Ranges, Library, Hosts list, Host Detail, IP
-Asset Detail, User Management, and Data Operations entry bundles to
+The build writes the About, Management, Ranges, Library, Hosts list, Host Detail,
+IP Asset Detail, User Management, and Data Operations entry bundles to
+`app/static/react/about/about.js`,
 `app/static/react/management/management.js` and
 `app/static/react/ranges/ranges.js`, and
 `app/static/react/library/library.js` and
@@ -154,9 +155,9 @@ ordered, focused modules under `/static/css/`. When adding styles, place shared
 rules in the matching module and page-only rules in that page's module, while
 keeping the import order in `app.css` unchanged unless the cascade is intentionally
 being updated.
-Management Overview, IP Ranges, Library, the Hosts list, Host Detail, IP Asset
-Detail, User Management, and Change Password are incrementally migrated React
-pages.
+About, Management Overview, IP Ranges, Library, the Hosts list, Host Detail, IP
+Asset Detail, User Management, and Change Password are incrementally migrated
+React pages.
 FastAPI/Jinja still renders the application shell and sidebar. Management loads
 dashboard data from `GET /api/management/overview`; `/ui/ranges` uses
 `GET/POST /api/ui/ranges` and `PATCH/DELETE /api/ui/ranges/{id}` for its table
@@ -220,6 +221,10 @@ IPOCKET_DOCKER_ASSETS=0
 ipocket includes build metadata in `/health` and in the sidebar footer in the UI
 (including signed-out pages that render the sidebar).
 The sidebar renders the version value as-is (for example: `ipocket dev (abc1234)`).
+The authenticated `/ui/about` React page obtains its safe display metadata from
+`GET /api/ui/about`; its lightweight Jinja mount does not embed that metadata.
+The `/health` JSON and `/metrics` Prometheus text endpoints remain directly
+available with their existing payloads and authentication behavior.
 
 In Docker, if no version env vars are provided, ipocket attempts to detect commit
 from the embedded `.git` metadata and uses a Docker-friendly fallback version

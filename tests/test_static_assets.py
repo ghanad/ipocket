@@ -221,6 +221,9 @@ def test_refactored_templates_load_external_page_assets() -> None:
     assert (repo_root / "app/static/react/ip-assets/ip-assets.js").exists()
     assert (repo_root / "app/static/react/audit-log/audit-log.js").exists()
     assert (repo_root / "app/static/react/about/about.js").exists()
+    assert (repo_root / "frontend/src/about/main.tsx").exists()
+    vite_config = (repo_root / "frontend/vite.config.ts").read_text(encoding="utf-8")
+    assert 'about: resolve(__dirname, "src/about/main.tsx")' in vite_config
     assert not (repo_root / "app/static/js/range-addresses.js").exists()
     assert (repo_root / "app/static/react/range-addresses/range-addresses.js").exists()
     assert (repo_root / "app/static/js/tag-picker.js").exists()
