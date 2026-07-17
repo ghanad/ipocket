@@ -1,12 +1,14 @@
 # vCenter connector (manual export)
 
+## React UI
+
+Open `/ui/connectors?tab=vcenter`. Viewers can dry-run; Editors can Apply after confirmation. Runs execute in the background and are polled without a page reload. Passwords are never restored or returned and are cleared after submission or leaving the tab. The legacy form POST remains compatible.
+
 ipocket includes a manual vCenter connector that exports ESXi hosts and VMs into an importable `bundle.json`.
 
 ## Why manual
 
-This connector does not run automatically. You run it on demand, then import the generated file from **Data Ops → Import**.
-You can access the same command snippets from the UI at **Connectors → vCenter**.
-That UI also supports direct connector execution with `dry-run`/`apply` modes and shows run logs inline.
+This connector does not run on a schedule. Run it on demand from **Connectors → vCenter**, or export a bundle with the CLI and import it from **Data Ops → Import**. The React UI supports direct `dry-run`/`apply` execution and shows background-job logs inline.
 
 ## Install dependencies
 

@@ -4,6 +4,8 @@ import threading
 import time
 import uuid
 
+from .registry import safe_form_state
+
 _CONNECTOR_JOB_RETENTION_SECONDS = 3600
 _CONNECTOR_JOB_LOCK = threading.Lock()
 _CONNECTOR_JOBS: dict[str, dict[str, object]] = {}
@@ -28,7 +30,8 @@ def _create_connector_job(*, active_tab: str, form_state: dict[str, object]) -> 
     with _CONNECTOR_JOB_LOCK:
         _CONNECTOR_JOBS[job_id] = {
             "active_tab": active_tab,
-            "form_state": dict(form_state),
+            "connector": active_tab,
+            "form_state": safe_form_state(form_state),
             "status": "queued",
             "logs": [],
             "toast_messages": [],
@@ -38,6 +41,8 @@ def _create_connector_job(*, active_tab: str, form_state: dict[str, object]) -> 
 
 
 def _update_connector_job(job_id: str, **fields: object) -> None:
+    if isinstance(fields.get("form_state"), dict):
+        fields["form_state"] = safe_form_state(fields["form_state"])  # type: ignore[arg-type]
     with _CONNECTOR_JOB_LOCK:
         existing = _CONNECTOR_JOBS.get(job_id)
         if existing is None:

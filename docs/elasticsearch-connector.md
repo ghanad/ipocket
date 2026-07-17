@@ -1,5 +1,9 @@
 # Elasticsearch connector (node inventory IP import)
 
+## React UI
+
+Open `/ui/connectors?tab=elasticsearch`. The shared schema-driven form preserves API-key versus username/password validation. Viewers can dry-run; Editors can Apply after confirmation. Credentials are cleared after submission/tab changes and excluded from job responses and logs. The legacy form POST remains compatible.
+
 ipocket includes an Elasticsearch connector that reads cluster node inventory from
 `/_nodes/http,transport`, extracts IPv4 addresses, and imports those addresses
 through the standard bundle import pipeline.
@@ -31,7 +35,7 @@ TLS behavior:
 3. Set optional mapping fields (`type/project/tags/note`).
 4. Optionally check **Add cluster name as tag** to tag every imported node IP
    with the Elasticsearch response `cluster_name`.
-5. Run **dry-run** first and review execution log. The tab auto-refreshes while the run is still queued/running.
+5. Run **dry-run** first and review the execution log. React polls the background job without reloading the page.
 6. Run **apply** as an editor account.
 
 ## CLI usage

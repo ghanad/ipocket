@@ -10,7 +10,7 @@ from app.dependencies import get_db_path
 from app.models import IPAssetType, UserRole
 from app.routes.ui.utils import _parse_form_data, _render_template, get_current_ui_user
 from app.utils import split_tag_string
-from .common import _finalize_job_logs
+from .common import _finalize_job_logs, _redact_connector_logs
 from .forms import _connectors_context
 from .job_store import _create_connector_job, _update_connector_job
 
@@ -75,14 +75,14 @@ def _run_ceph_connector_job(
         _update_connector_job(
             job_id,
             status="completed",
-            logs=final_logs,
+            logs=_redact_connector_logs(final_logs, password),
             toast_messages=toast_messages,
         )
     except CephConnectorError as exc:
         _update_connector_job(
             job_id,
             status="failed",
-            logs=[f"Connector failed: {exc}"],
+            logs=["Connector failed. Review server logs for details."],
             toast_messages=[
                 {
                     "type": "error",
@@ -262,7 +262,7 @@ async def ui_run_ceph_connector(
     if errors:
         return _render_template(
             request,
-            "connectors.html",
+            "connectors_legacy.html",
             _connectors_context(
                 active_tab="ceph",
                 ceph_form_state=form_state,
@@ -275,7 +275,7 @@ async def ui_run_ceph_connector(
     if mode == "apply" and user.role != UserRole.EDITOR:
         return _render_template(
             request,
-            "connectors.html",
+            "connectors_legacy.html",
             _connectors_context(
                 active_tab="ceph",
                 ceph_form_state=form_state,

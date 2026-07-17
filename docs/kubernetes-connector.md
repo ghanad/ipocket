@@ -1,5 +1,9 @@
 # Kubernetes connector (Node InternalIP import)
 
+## React UI
+
+Open `/ui/connectors?tab=kubernetes`. Viewers can dry-run; Editors can Apply after confirmation. Runs remain background jobs with API polling and reload recovery while retained. Bearer tokens are cleared after submission/tab changes and never returned, logged, or restored. The legacy form POST remains compatible.
+
 ipocket includes a Kubernetes connector that uses the Kubernetes REST API to
 read Node inventory, create/update matching ipocket Hosts, and link imported
 Node `InternalIP` IPv4 addresses to those Hosts.
@@ -32,7 +36,7 @@ Optional inputs:
 2. Fill the Kubernetes API URL and bearer token.
 3. Set optional mapping fields (`type/project/tags/note`).
 4. Optionally add a normalized cluster name or Kubernetes node labels as tags.
-5. Run **dry-run** first and review the execution log. The tab auto-refreshes
+5. Run **dry-run** first and review the execution log. React polls the background job
    while the run is queued/running.
 6. Run **apply** as an editor account.
 
