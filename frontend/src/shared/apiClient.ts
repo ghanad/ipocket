@@ -3,10 +3,23 @@ export class ApiError extends Error {
     public readonly status: number,
     message: string,
     public readonly payload?: unknown,
+    public readonly messages: string[] = [message],
   ) {
     super(message);
     this.name = "ApiError";
   }
+}
+
+function normalizedValidationMessages(detail: unknown[]): string[] {
+  return detail.flatMap((item) => {
+    if (typeof item === "string") return [item];
+    if (!item || typeof item !== "object") return [];
+
+    const message = (item as Record<string, unknown>).msg;
+    return typeof message === "string"
+      ? [message.replace(/^Value error,\s*/, "")]
+      : [];
+  });
 }
 
 type ResponseMode = "json" | "blob" | "response";
@@ -58,6 +71,17 @@ function errorMessage(status: number, payload: unknown, fallbackText: string): s
   }
   if (fallbackText.trim()) return fallbackText.trim();
   return `Request failed (${status}).`;
+}
+
+function errorMessages(payload: unknown, message: string): string[] {
+  if (payload && typeof payload === "object") {
+    const detail = (payload as Record<string, unknown>).detail;
+    if (typeof detail === "string") return [detail];
+    if (Array.isArray(detail)) {
+      return normalizedValidationMessages(detail);
+    }
+  }
+  return [message];
 }
 
 async function readText(response: Response): Promise<string> {
@@ -119,7 +143,8 @@ export async function apiRequest<T = unknown>(
     } catch {
       payload = undefined;
     }
-    throw new ApiError(response.status, errorMessage(response.status, payload, text), payload);
+    const message = errorMessage(response.status, payload, text);
+    throw new ApiError(response.status, message, payload, errorMessages(payload, message));
   }
 
   if (responseMode === "response") return response as T;

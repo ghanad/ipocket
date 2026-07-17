@@ -24,6 +24,10 @@ const rangeResponse = {
   ],
 };
 
+function jsonResponse(payload: unknown, status = 200): Response {
+  return new Response(JSON.stringify(payload), { status });
+}
+
 afterEach(() => {
   cleanup();
   vi.restoreAllMocks();
@@ -34,12 +38,7 @@ describe("RangesPage", () => {
   it("renders the existing table values, actions, and drill-down links", async () => {
     vi.stubGlobal(
       "fetch",
-      vi.fn().mockResolvedValue({
-        ok: true,
-        status: 200,
-        redirected: false,
-        json: async () => rangeResponse,
-      }),
+      vi.fn().mockResolvedValue(jsonResponse(rangeResponse)),
     );
 
     render(<RangesPage endpoint="/api/ui/ranges" />);
@@ -68,24 +67,9 @@ describe("RangesPage", () => {
   it("creates a range through the drawer and refreshes the table", async () => {
     const fetchMock = vi
       .fn()
-      .mockResolvedValueOnce({
-        ok: true,
-        status: 200,
-        redirected: false,
-        json: async () => ({ ranges: [] }),
-      })
-      .mockResolvedValueOnce({
-        ok: true,
-        status: 201,
-        redirected: false,
-        json: async () => rangeResponse.ranges[0],
-      })
-      .mockResolvedValueOnce({
-        ok: true,
-        status: 200,
-        redirected: false,
-        json: async () => rangeResponse,
-      });
+      .mockResolvedValueOnce(jsonResponse({ ranges: [] }))
+      .mockResolvedValueOnce(jsonResponse(rangeResponse.ranges[0], 201))
+      .mockResolvedValueOnce(jsonResponse(rangeResponse));
     vi.stubGlobal("fetch", fetchMock);
 
     render(<RangesPage endpoint="/api/ui/ranges" />);
@@ -121,18 +105,8 @@ describe("RangesPage", () => {
   it("keeps edit validation errors in the drawer", async () => {
     const fetchMock = vi
       .fn()
-      .mockResolvedValueOnce({
-        ok: true,
-        status: 200,
-        redirected: false,
-        json: async () => rangeResponse,
-      })
-      .mockResolvedValueOnce({
-        ok: false,
-        status: 409,
-        redirected: false,
-        json: async () => ({ detail: "CIDR already exists." }),
-      });
+      .mockResolvedValueOnce(jsonResponse(rangeResponse))
+      .mockResolvedValueOnce(jsonResponse({ detail: "CIDR already exists." }, 409));
     vi.stubGlobal("fetch", fetchMock);
 
     render(<RangesPage endpoint="/api/ui/ranges" />);
@@ -154,23 +128,9 @@ describe("RangesPage", () => {
   it("requires acknowledgement and exact-name confirmation before delete", async () => {
     const fetchMock = vi
       .fn()
-      .mockResolvedValueOnce({
-        ok: true,
-        status: 200,
-        redirected: false,
-        json: async () => rangeResponse,
-      })
-      .mockResolvedValueOnce({
-        ok: true,
-        status: 204,
-        redirected: false,
-      })
-      .mockResolvedValueOnce({
-        ok: true,
-        status: 200,
-        redirected: false,
-        json: async () => ({ ranges: [] }),
-      });
+      .mockResolvedValueOnce(jsonResponse(rangeResponse))
+      .mockResolvedValueOnce(new Response(null, { status: 204 }))
+      .mockResolvedValueOnce(jsonResponse({ ranges: [] }));
     vi.stubGlobal("fetch", fetchMock);
 
     render(<RangesPage endpoint="/api/ui/ranges" />);
@@ -212,12 +172,7 @@ describe("RangesPage", () => {
   it("opens an edit drawer requested by the legacy query link", async () => {
     vi.stubGlobal(
       "fetch",
-      vi.fn().mockResolvedValue({
-        ok: true,
-        status: 200,
-        redirected: false,
-        json: async () => rangeResponse,
-      }),
+      vi.fn().mockResolvedValue(jsonResponse(rangeResponse)),
     );
 
     render(

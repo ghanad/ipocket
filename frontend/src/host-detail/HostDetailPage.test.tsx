@@ -52,11 +52,7 @@ const response: HostDetailResponse = {
 };
 
 function jsonResponse(payload: HostDetailResponse, status = 200) {
-  return {
-    ok: status >= 200 && status < 300,
-    status,
-    json: async () => payload,
-  };
+  return new Response(JSON.stringify(payload), { status });
 }
 
 function loginRedirect() {
@@ -186,7 +182,7 @@ describe("HostDetailPage", () => {
   it("renders a dedicated not-found state for a 404", async () => {
     vi.stubGlobal(
       "fetch",
-      vi.fn().mockResolvedValue({ ok: false, status: 404, json: async () => ({}) }),
+      vi.fn().mockResolvedValue(new Response(JSON.stringify({}), { status: 404 })),
     );
 
     render(<HostDetailPage endpoint="/api/ui/hosts/999/detail" />);

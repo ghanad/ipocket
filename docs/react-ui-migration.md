@@ -71,25 +71,36 @@ templates. They remain unchanged.
 
 ## Frontend foundation consolidation
 
-The first consolidation phase adds the framework-independent
-`frontend/src/shared/apiClient.ts`. It is the common transport for About,
-Management Overview, and the global Audit Log while endpoint-specific types
-and functions stay in each page's `api.ts` module. The client keeps requests
-same-origin with the existing session cookie, supports JSON and FormData
-request bodies, forwards abort signals, handles empty responses, and exposes
-typed HTTP errors for FastAPI validation/detail payloads and non-JSON failures.
-It also detects API redirects to `/ui/login` and preserves the current UI path
-and query string in `return_to`.
+The framework-independent `frontend/src/shared/apiClient.ts` is the common
+transport for About, Management Overview, the global Audit Log, Host Detail,
+and Ranges while endpoint-specific types and page-domain adapters stay in each
+page's `api.ts` module. The client keeps requests same-origin with the existing
+session cookie, supports JSON and FormData request bodies, forwards abort
+signals, handles empty responses, and exposes typed HTTP errors for FastAPI
+validation/detail payloads and non-JSON failures. Validation errors also expose
+normalized message arrays for form-oriented callers without changing the
+existing primary error message, status, or payload. The client detects API
+redirects to `/ui/login`; each migrated page retains its established
+`return_to` policy and user-facing error behavior.
+
+Phase 2 moves Host Detail's read-only request and the complete Ranges
+fetch/create/update/delete flow onto that transport. Ranges is the first full
+CRUD page to use the shared client. Its endpoint URLs, methods, JSON payloads,
+204 delete handling, drawer behavior, FastAPI validation messages, non-JSON
+fallback, and `/ui/login?return_to=/ui/ranges` redirect are unchanged. Host
+Detail continues to preserve cancellation, its stable network/404/HTTP
+messages, and its existing page-owned authentication callback.
 
 JSON remains the default response mode. Callers that need binary data can ask
 for a native `Blob` or raw `Response`, so the shared transport does not force
 downloads through JSON parsing. This capability is tested but the existing
 download links have not been migrated in this phase.
 
-This phase intentionally leaves Login, Data Operations multipart uploads,
-native downloads, Connectors, and other mutation-heavy page API modules on
-their existing request paths. They are candidates for later, separately
-tested phases; their current behavior and authentication policy are unchanged.
+Range Addresses, Hosts listing, Account Password, Login, Users, Library, IP
+Assets, Data Operations, and Connectors remain deferred from shared-client
+consolidation. Multipart uploads, native downloads, and other mutation-heavy
+page API modules are candidates for later, separately tested phases; their
+current behavior and authentication policy are unchanged.
 
 No registered GET route is classified as obsolete/unreachable. The unreachable
 artifacts were templates and partials left behind after their routes had moved.

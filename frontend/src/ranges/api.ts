@@ -1,3 +1,4 @@
+import { ApiError as SharedApiError, apiRequest } from "../shared/apiClient";
 import type {
   RangeFormValues,
   RangeRow,
@@ -15,54 +16,35 @@ export class ApiError extends Error {
 
 async function request<T>(
   url: string,
-  options: RequestInit = {},
+  options: Parameters<typeof apiRequest>[1] = {},
 ): Promise<T> {
-  const response = await fetch(url, {
-    credentials: "same-origin",
-    headers: {
-      Accept: "application/json",
-      ...(options.body ? { "Content-Type": "application/json" } : {}),
-      ...options.headers,
-    },
-    ...options,
-  });
-
-  if (response.redirected && response.url.includes("/ui/login")) {
-    window.location.assign("/ui/login?return_to=/ui/ranges");
-    throw new ApiError("Authentication required.", ["Authentication required."]);
-  }
-
-  if (!response.ok) {
-    const messages = await readErrorMessages(response);
+  let authenticationRequired = false;
+  try {
+    return await apiRequest<T>(url, {
+      ...options,
+      onAuthenticationRequired: () => {
+        authenticationRequired = true;
+        window.location.assign("/ui/login?return_to=/ui/ranges");
+      },
+    });
+  } catch (error) {
+    if (!(error instanceof SharedApiError)) throw error;
+    let messages: string[];
+    if (authenticationRequired) {
+      messages = ["Authentication required."];
+    } else if (error.payload && typeof error.payload === "object") {
+      const detail = (error.payload as Record<string, unknown>).detail;
+      messages = typeof detail === "string" || Array.isArray(detail)
+        ? error.messages
+        : [`Range request failed (${error.status})`];
+    } else {
+      messages = [`Range request failed (${error.status})`];
+    }
     throw new ApiError(
-      messages[0] ?? `Range request failed (${response.status})`,
+      messages[0] ?? `Range request failed (${error.status})`,
       messages,
     );
   }
-
-  if (response.status === 204) {
-    return undefined as T;
-  }
-  return response.json() as Promise<T>;
-}
-
-async function readErrorMessages(response: Response): Promise<string[]> {
-  try {
-    const payload = (await response.json()) as {
-      detail?: string | Array<{ msg?: string }>;
-    };
-    if (typeof payload.detail === "string") {
-      return [payload.detail];
-    }
-    if (Array.isArray(payload.detail)) {
-      return payload.detail
-        .map((item) => item.msg?.replace(/^Value error,\s*/, "") ?? "")
-        .filter(Boolean);
-    }
-  } catch {
-    // Fall through to the stable generic message below.
-  }
-  return [`Range request failed (${response.status})`];
 }
 
 export async function fetchRanges(endpoint: string): Promise<RangesResponse> {
@@ -75,7 +57,7 @@ export async function createRange(
 ): Promise<RangeRow> {
   return request<RangeRow>(endpoint, {
     method: "POST",
-    body: JSON.stringify(values),
+    json: values,
   });
 }
 
@@ -86,7 +68,7 @@ export async function updateRange(
 ): Promise<RangeRow> {
   return request<RangeRow>(`${endpoint}/${rangeId}`, {
     method: "PATCH",
-    body: JSON.stringify(values),
+    json: values,
   });
 }
 
@@ -97,6 +79,6 @@ export async function deleteRange(
 ): Promise<void> {
   return request<void>(`${endpoint}/${rangeId}`, {
     method: "DELETE",
-    body: JSON.stringify({ confirm_name: confirmName }),
+    json: { confirm_name: confirmName },
   });
 }

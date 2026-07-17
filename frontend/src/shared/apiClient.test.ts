@@ -91,6 +91,27 @@ describe("apiRequest", () => {
     await expect(apiRequest("/api/items")).rejects.toMatchObject({
       status: 422,
       message: "body.ip_address: Field required",
+      messages: ["Field required"],
+    });
+  });
+
+  it("exposes every normalized FastAPI validation message without changing the primary message", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(
+      response(
+        JSON.stringify({
+          detail: [
+            { loc: ["body", "name"], msg: "Value error, Name is reserved" },
+            { loc: ["body", "cidr"], msg: "Invalid network" },
+          ],
+        }),
+        { status: 422 },
+      ),
+    ));
+
+    await expect(apiRequest("/api/items")).rejects.toMatchObject({
+      status: 422,
+      message: "body.name: Value error, Name is reserved; body.cidr: Invalid network",
+      messages: ["Name is reserved", "Invalid network"],
     });
   });
 
