@@ -1,4 +1,4 @@
-import { type FormEvent, useEffect, useState } from "react";
+import { type FormEvent, useEffect, useRef, useState } from "react";
 
 import {
   DataOpsApiError,
@@ -14,32 +14,10 @@ import type {
   NmapResult,
 } from "./types";
 
-const exportCards = [
-  {
-    title: "Export All Data",
-    description: "Bundle every entity for backup, migration, or re-import.",
-    links: [
-      ["bundle.zip", "/export/bundle.zip"],
-      ["bundle.json", "/export/bundle.json"],
-    ],
-  },
-  {
-    title: "Export IP Assets",
-    description: "Download addresses, assignments, tags, notes, and archive state.",
-    links: [
-      ["CSV", "/export/ip-assets.csv"],
-      ["JSON", "/export/ip-assets.json"],
-    ],
-  },
-  {
-    title: "Export Hosts",
-    description: "Download host, vendor, project, OS IP, and BMC IP data.",
-    links: [
-      ["CSV", "/export/hosts.csv"],
-      ["JSON", "/export/hosts.json"],
-    ],
-  },
-];
+function tabFromLocation(): DataOpsTab {
+  if (window.location.pathname === "/ui/export") return "export";
+  return new URLSearchParams(window.location.search).get("tab") === "export" ? "export" : "import";
+}
 
 function StandardResult({ result }: { result: ImportResult }) {
   const rows: Array<[string, ImportResult["summary"]["total"]]> = [
@@ -104,11 +82,9 @@ function IssueList({ title, issues }: { title: string; issues: string[] }) {
 
 export function DataOpsPage({
   endpoint,
-  importEndpoint,
   initialTab = "import",
 }: {
   endpoint: string;
-  importEndpoint: string;
   initialTab?: DataOpsTab;
 }) {
   const [tab, setTab] = useState<DataOpsTab>(initialTab);
@@ -122,6 +98,7 @@ export function DataOpsPage({
   const [errors, setErrors] = useState<Partial<Record<ImportKind, string>>>({});
   const [running, setRunning] = useState<ImportKind | null>(null);
   const [toast, setToast] = useState<string | null>(null);
+  const submissionLock = useRef(false);
 
   useEffect(() => {
     fetchDataOpsConfig(endpoint)
@@ -129,14 +106,22 @@ export function DataOpsPage({
       .catch(() => setLoadError("Data Operations could not be loaded. Please try again."));
   }, [endpoint]);
 
+  useEffect(() => {
+    function restoreTab() {
+      setTab(tabFromLocation());
+    }
+    window.addEventListener("popstate", restoreTab);
+    return () => window.removeEventListener("popstate", restoreTab);
+  }, []);
+
   function selectTab(next: DataOpsTab) {
     setTab(next);
-    window.history.replaceState({}, "", `/ui/import?tab=${next}`);
+    window.history.pushState({}, "", `/ui/import?tab=${next}`);
   }
 
   async function submit(kind: ImportKind, mode: ImportMode, event?: FormEvent) {
     event?.preventDefault();
-    if (running) return;
+    if (submissionLock.current || running || !config) return;
     const form = new FormData();
     if (kind === "bundle" && bundleFile) form.append("file", bundleFile);
     if (kind === "csv" && hostsFile) form.append("hosts", hostsFile);
@@ -146,10 +131,15 @@ export function DataOpsPage({
       setErrors((current) => ({ ...current, [kind]: kind === "csv" ? "Select at least one CSV file." : "Select a file." }));
       return;
     }
+    submissionLock.current = true;
+    if (mode === "apply" && !window.confirm("Apply this import? Inventory data may be created or updated.")) {
+      submissionLock.current = false;
+      return;
+    }
     setRunning(kind);
     setErrors((current) => ({ ...current, [kind]: undefined }));
     try {
-      const result = await runDataImport(importEndpoint, kind, mode, form);
+      const result = await runDataImport(config.imports[kind], mode, form);
       setResults((current) => ({ ...current, [kind]: result }));
       setToast(`${kind === "nmap" ? "Nmap" : kind === "csv" ? "CSV" : "Bundle"} ${mode === "apply" ? "import applied" : "dry-run completed"}.`);
     } catch (error) {
@@ -158,6 +148,7 @@ export function DataOpsPage({
         [kind]: error instanceof DataOpsApiError ? error.message : "Import request could not be completed.",
       }));
     } finally {
+      submissionLock.current = false;
       setRunning(null);
     }
   }
@@ -179,24 +170,30 @@ export function DataOpsPage({
       </div>
       {loadError ? <section className="card"><p className="alert" role="alert">{loadError}</p></section> : !config ? <section className="card empty-state" role="status">Loading Data Operations…</section> : tab === "export" ? (
         <div className="export-options-grid">
-          {exportCards.map((card) => (
+          {[
+            { title: "Export All Data", description: "Bundle every entity for backup, migration, or re-import.", links: [["bundle.zip", config.exports.bundle_zip], ["bundle.json", config.exports.bundle_json]] },
+            { title: "Export IP Assets", description: "Download addresses, assignments, tags, notes, and archive state.", links: [["CSV", config.exports.ip_assets_csv], ["JSON", config.exports.ip_assets_json]] },
+            { title: "Export Hosts", description: "Download host, vendor, project, OS IP, and BMC IP data.", links: [["CSV", config.exports.hosts_csv], ["JSON", config.exports.hosts_json]] },
+            { title: "Export Vendors", description: "Download the vendor catalog.", links: [["CSV", config.exports.vendors_csv], ["JSON", config.exports.vendors_json]] },
+            { title: "Export Projects", description: "Download project names, descriptions, and colors.", links: [["CSV", config.exports.projects_csv], ["JSON", config.exports.projects_json]] },
+          ].map((card) => (
             <section className="card export-option-card" key={card.title}>
               <div className="card-header"><div><h2>{card.title}</h2><p className="subtitle">{card.description}</p></div></div>
-              <div className="card-body"><div className="export-option-footer"><div className="form-actions">{card.links.map(([label, href], index) => <a key={href} className={`btn ${index ? "btn-primary" : "btn-secondary"}`} href={href}>{label}</a>)}</div></div></div>
+              <div className="card-body"><div className="export-option-footer"><div className="form-actions">{card.links.map(([label, href], index) => <a key={href} className={`btn ${index ? "btn-primary" : "btn-secondary"}`} href={href} onClick={() => setToast("Export started.")}>{label}</a>)}</div></div></div>
             </section>
           ))}
         </div>
       ) : (
         <div className="import-options-grid">
-          <ImportCard title="Import Bundle (JSON)" description={`Upload bundle.json (maximum ${config.upload.max_size}).`} kind="bundle" canApply={config.policy.can_apply} running={running} error={errors.bundle} result={results.bundle} onSubmit={submit}>
+          <ImportCard title="Import Bundle (JSON)" description={`Upload bundle.json (maximum ${config.upload.max_size}).`} kind="bundle" ready={bundleFile !== null} canApply={config.policy.can_apply} running={running} error={errors.bundle} result={results.bundle} onSubmit={submit}>
             <label className="field"><span>bundle.json</span><input className="input" type="file" aria-label="bundle.json" accept="application/json" onChange={(event) => setBundleFile(event.target.files?.[0] ?? null)} /></label>
           </ImportCard>
-          <ImportCard title="Import CSV" description="Upload hosts.csv and/or ip-assets.csv exports." kind="csv" canApply={config.policy.can_apply} running={running} error={errors.csv} result={results.csv} onSubmit={submit}>
+          <ImportCard title="Import CSV" description="Upload hosts.csv and/or ip-assets.csv exports." kind="csv" ready={hostsFile !== null || assetsFile !== null} canApply={config.policy.can_apply} running={running} error={errors.csv} result={results.csv} onSubmit={submit}>
             <p className="subtitle">Sample files: <a className="link" href={config.samples.hosts} download>hosts.csv</a> and <a className="link" href={config.samples.ip_assets} download>ip-assets.csv</a></p>
             <label className="field"><span>hosts.csv</span><input className="input" type="file" aria-label="hosts.csv" accept="text/csv" onChange={(event) => setHostsFile(event.target.files?.[0] ?? null)} /></label>
             <label className="field"><span>ip-assets.csv</span><input className="input" type="file" aria-label="ip-assets.csv" accept="text/csv" onChange={(event) => setAssetsFile(event.target.files?.[0] ?? null)} /></label>
           </ImportCard>
-          <ImportCard title="Upload Nmap XML" description="Import discovered IPv4 hosts without overwriting existing assets." kind="nmap" canApply={config.policy.can_apply} running={running} error={errors.nmap} result={results.nmap} onSubmit={submit}>
+          <ImportCard title="Upload Nmap XML" description="Import discovered IPv4 hosts without overwriting existing assets." kind="nmap" ready={nmapFile !== null} canApply={config.policy.can_apply} running={running} error={errors.nmap} result={results.nmap} onSubmit={submit}>
             <p className="subtitle"><code>nmap -sn -oX ipocket.xml &lt;CIDR&gt;</code></p>
             <label className="field"><span>Nmap XML file</span><input className="input" type="file" aria-label="Nmap XML file" accept=".xml,application/xml,text/xml" onChange={(event) => setNmapFile(event.target.files?.[0] ?? null)} /></label>
           </ImportCard>
@@ -206,8 +203,8 @@ export function DataOpsPage({
   );
 }
 
-function ImportCard({ title, description, kind, canApply, running, error, result, onSubmit, children }: {
-  title: string; description: string; kind: ImportKind; canApply: boolean; running: ImportKind | null; error?: string; result?: ImportResult | NmapResult; onSubmit: (kind: ImportKind, mode: ImportMode, event?: FormEvent) => void; children: React.ReactNode;
+function ImportCard({ title, description, kind, ready, canApply, running, error, result, onSubmit, children }: {
+  title: string; description: string; kind: ImportKind; ready: boolean; canApply: boolean; running: ImportKind | null; error?: string; result?: ImportResult | NmapResult; onSubmit: (kind: ImportKind, mode: ImportMode, event?: FormEvent) => void; children: React.ReactNode;
 }) {
   const busy = running === kind;
   return (
@@ -218,8 +215,8 @@ function ImportCard({ title, description, kind, canApply, running, error, result
         {error && <p className="alert" role="alert">{error}</p>}
         {result && (kind === "nmap" ? <NmapImportResult result={result as NmapResult} /> : <StandardResult result={result as ImportResult} />)}
         <div className="import-option-footer"><div className="form-actions">
-          <button className="btn btn-secondary" type="button" disabled={running !== null} onClick={() => void onSubmit(kind, "dry-run")}>{busy ? "Running…" : "Dry-run"}</button>
-          <button className="btn btn-primary" type="button" disabled={!canApply || running !== null} title={!canApply ? "Editor role required to apply imports." : undefined} onClick={() => void onSubmit(kind, "apply")}>Apply</button>
+          <button className="btn btn-secondary" type="button" disabled={!ready || running !== null} onClick={() => void onSubmit(kind, "dry-run")}>{busy ? "Running…" : "Dry-run"}</button>
+          <button className="btn btn-primary" type="button" disabled={!ready || !canApply || running !== null} title={!canApply ? "Editor role required to apply imports." : undefined} onClick={() => void onSubmit(kind, "apply")}>Apply</button>
         </div>{!canApply && <p className="subtitle">Viewer role can dry-run; Editor role is required to apply.</p>}</div>
       </div>
     </section>

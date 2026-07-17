@@ -10,7 +10,6 @@ if (root) {
     <StrictMode>
       <DataOpsPage
         endpoint={root.dataset.endpoint ?? "/api/ui/data-ops"}
-        importEndpoint={root.dataset.importEndpoint ?? "/api/ui/import"}
         initialTab={(root.dataset.initialTab as DataOpsTab) ?? "import"}
       />
     </StrictMode>,

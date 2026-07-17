@@ -89,7 +89,7 @@ ipocket is a lightweight IP inventory app to track addresses and their project a
 - Range delete drawer now reliably displays CIDR/usage context from the selected row (including when opened inline), reducing confirmation mistakes.
 - IP ranges render in a single unified table card (name/CIDR/usable/used/free/utilization/actions), with Used/Free counts staying clickable for address drill-down and row-level actions kept compact.
 - The `/ui/ranges` list is React/Vite/TypeScript-powered while retaining the existing Jinja shell/sidebar, table styling, drawer interactions, validation messages, query-based edit/delete links, and address drill-down URLs. It reads and mutates range data through `/api/ui/ranges`; legacy HTML form routes remain available for compatibility.
-- Data Operations at `/ui/import` and `/ui/export` is React/Vite/TypeScript-powered inside the existing Jinja shell. It loads upload limits and apply policy from `GET /api/ui/data-ops`, submits multipart imports to `/api/ui/import/{bundle,csv,nmap}`, and continues to use the established `/export/*` download URLs. Legacy HTML import posts and bearer-token `/import/*` APIs remain compatible.
+- Data Operations at `/ui/import` and `/ui/export` is React/Vite/TypeScript-powered inside the existing Jinja shell. It loads upload limits, apply policy, React import endpoints, and download URLs from `GET /api/ui/data-ops`. Import/Export tab changes use canonical `/ui/import?tab=import|export` browser-history entries, with Back/Forward restoration and `/ui/export` compatibility. Legacy HTML import posts and bearer-token `/import/*` APIs remain compatible.
 - Jinja-driven pages continue to share drawer open/close behavior through `app/static/js/drawer.js`; the React Ranges page mirrors the same classes, spacing, close confirmation, and footer states in a typed component.
 - Reusable drawer shell markup is centralized in `app/templates/macros/drawer.html` for Jinja-driven drawer pages, while the React Ranges implementation keeps an equivalent `RangeDrawer` component.
 - `/ui/projects` is React/Vite/TypeScript-powered while the Jinja application shell, sidebar, session cookie, and role rules remain unchanged. The page uses focused `/api/ui/library/projects`, `/api/ui/library/vendors`, and `/api/ui/library/tags` endpoints; legacy HTML form and redirect routes remain available for compatibility.
@@ -101,12 +101,12 @@ ipocket is a lightweight IP inventory app to track addresses and their project a
 - The Projects and Tags tab tables now use compact row spacing so catalog rows stay denser and easier to scan.
 - Projects table now shows an **IPs** count column so you can quickly see how many active IP assets are currently assigned to each project.
 - Use the shared **Data Ops** page (Import/Export tabs) for round-trip workflows.
-- Export data as CSV, JSON, or bundle (JSON/ZIP) from the Data Ops Export tab.
+- Export IP Assets, Hosts, Vendors, and Projects as CSV or JSON, or export all data as bundle JSON/ZIP, from native download links on the Data Ops Export tab.
 - `ip-assets.csv` export ordering is numeric by IP value (`10.0.0.2` before `10.0.0.10`), including fallback numeric parsing when legacy rows have null `ip_int`.
 - `hosts.csv` export now includes `project_name`, `os_ip`, and `bmc_ip` so host exports can round-trip through CSV import without manual column edits.
-- Import data from bundle.json or CSV with dry-run support and upserts from the Data Ops Import tab.
+- Import data from bundle.json or CSV with dry-run support and upserts from the Data Ops Import tab. Actions remain disabled until the relevant card has a file; every Apply requires confirmation that inventory can be created or updated, while Dry-run never prompts.
 - Upload Nmap XML from the Data Ops Import tab to discover reachable IPs and add them as `OTHER` assets, with inline example commands.
-- Data Ops and API import uploads enforce a per-file size cap of `10 MB` and return HTTP `413` when exceeded.
+- Data Ops and API import uploads enforce a per-file size cap of `10 MB` and return HTTP `413` when exceeded. Viewer sessions may Dry-run but receive HTTP `403` for Apply; Editor sessions may Apply.
 - Sidebar includes a **Connectors** page with tabs (`Overview` / `vCenter` / `Prometheus` / `Elasticsearch` / `Cassandra` / `Ceph` / `Kubernetes`) so operators can run import connectors directly from UI.
 - **Connectors → vCenter** supports both `dry-run` and `apply` execution modes, now runs as a background job from UI to avoid long request blocking, and shows an in-page execution log/status on the connector tab.
 - Manual vCenter connector is available via `python -m app.connectors.vcenter` (ESXi hosts as `OS` + tag `esxi`, VMs as `VM`) with file export mode and local DB dry-run/apply modes (`--db-path`); on update it always overwrites `type`, merges connector tags into existing tags, and only writes connector notes when the existing note is empty.

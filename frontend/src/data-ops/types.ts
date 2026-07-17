@@ -2,6 +2,19 @@ export interface DataOpsConfig {
   policy: { can_apply: boolean };
   upload: { max_bytes: number; max_size: string };
   samples: { hosts: string; ip_assets: string };
+  imports: Record<ImportKind, string>;
+  exports: {
+    bundle_json: string;
+    bundle_zip: string;
+    ip_assets_csv: string;
+    ip_assets_json: string;
+    hosts_csv: string;
+    hosts_json: string;
+    vendors_csv: string;
+    vendors_json: string;
+    projects_csv: string;
+    projects_json: string;
+  };
 }
 
 export interface ImportCount {

@@ -111,6 +111,23 @@ def ui_data_ops_api(user=Depends(get_current_ui_user)) -> dict[str, object]:
             "hosts": "/static/samples/hosts.csv",
             "ip_assets": "/static/samples/ip-assets.csv",
         },
+        "imports": {
+            "bundle": "/api/ui/import/bundle",
+            "csv": "/api/ui/import/csv",
+            "nmap": "/api/ui/import/nmap",
+        },
+        "exports": {
+            "bundle_json": "/export/bundle.json",
+            "bundle_zip": "/export/bundle.zip",
+            "ip_assets_csv": "/export/ip-assets.csv",
+            "ip_assets_json": "/export/ip-assets.json",
+            "hosts_csv": "/export/hosts.csv",
+            "hosts_json": "/export/hosts.json",
+            "vendors_csv": "/export/vendors.csv",
+            "vendors_json": "/export/vendors.json",
+            "projects_csv": "/export/projects.csv",
+            "projects_json": "/export/projects.json",
+        },
     }
 
 

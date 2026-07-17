@@ -1,6 +1,5 @@
 import type {
   DataOpsConfig,
-  ImportKind,
   ImportMode,
   ImportResult,
   NmapResult,
@@ -43,12 +42,11 @@ export function fetchDataOpsConfig(endpoint: string): Promise<DataOpsConfig> {
 
 export function runDataImport(
   endpoint: string,
-  kind: ImportKind,
   mode: ImportMode,
   formData: FormData,
 ): Promise<ImportResult | NmapResult> {
   const dryRun = mode === "dry-run" ? "1" : "0";
-  return request(`${endpoint}/${kind}?dry_run=${dryRun}`, {
+  return request(`${endpoint}?dry_run=${dryRun}`, {
     method: "POST",
     body: formData,
   });

@@ -19,7 +19,12 @@ Nmap XML imports use a hardened XML parser (`defusedxml`) to reject XML external
 Open `/ui/import` and use the tabs:
 
 - `Import` tab for uploads
-- `Export` tab for downloads (bundle plus per-entity IP Assets/Hosts links)
+- `Export` tab for downloads (bundle plus IP Assets, Hosts, Vendors, and Projects)
+
+Tab changes add canonical `/ui/import?tab=import|export` entries to browser
+history, so Back and Forward restore the visible tab. `/ui/import` and invalid tab
+values open Import; `/ui/import?tab=export` and the compatible `/ui/export` route
+open Export.
 
 The page is a React entry mounted in the authenticated Jinja shell. It reads
 capabilities and the upload limit from `GET /api/ui/data-ops`, then submits:
@@ -31,6 +36,17 @@ capabilities and the upload limit from `GET /api/ui/data-ops`, then submits:
 These session-authenticated endpoints return JSON summaries. The existing HTML
 `POST /ui/import/{bundle,csv,nmap}` routes, bearer-token `/import/*` routes, and
 all `/export/*` downloads remain available for compatibility.
+
+The Export tab provides native browser downloads for:
+
+- `/export/bundle.json` and `/export/bundle.zip`
+- `/export/ip-assets.csv` and `/export/ip-assets.json`
+- `/export/hosts.csv` and `/export/hosts.json`
+- `/export/vendors.csv` and `/export/vendors.json`
+- `/export/projects.csv` and `/export/projects.json`
+
+Starting a download shows a non-blocking notification; React does not fetch or
+buffer the export file.
 
 The Export tab uses the same responsive multi-card layout pattern as Import.
 `ip-assets.csv` export rows are sorted by numeric IP value (for example `10.0.0.2` before `10.0.0.10`), with fallback numeric parsing when `ip_int` is null.
@@ -50,6 +66,14 @@ Sample CSVs are available for download on the import page (or directly via `/sta
 
 Dry-run runs validation and returns a summary without writing to the database. Apply performs upserts.
 All three import sections (Bundle, CSV, Nmap XML) use the same `Dry-run` and `Apply` button pattern in the UI.
+Both actions stay disabled until that card has input selected: `bundle.json` for
+Bundle, at least one CSV input for CSV, and an XML file for Nmap. Apply always
+asks for explicit confirmation that inventory may be created or updated; Dry-run
+never asks for confirmation. Viewer Apply remains disabled.
+
+Selected files, results, errors, and busy presentation are maintained separately
+for Bundle, CSV, and Nmap. Imports are globally serialized for safety, so the
+other cards are disabled only while one import request is running.
 
 ## Audit behavior
 
@@ -64,7 +88,10 @@ All three import sections (Bundle, CSV, Nmap XML) use the same `Dry-run` and `Ap
 - Editor: allowed to Apply.
 
 The React UI disables Apply for Viewers, and every React-facing import endpoint
-also enforces the same rule server-side.
+also enforces the same rule server-side with HTTP `403`. Unauthenticated access
+to the React bootstrap and import endpoints redirects to the login page. Each
+uploaded Bundle, CSV, or Nmap file is limited to `10 MB`; oversized files return
+HTTP `413`.
 
 ## Bundle JSON schema
 
