@@ -158,6 +158,7 @@ def test_refactored_templates_load_external_page_assets() -> None:
         "range_addresses": repo_root / "app/templates/range_addresses.html",
         "tags": repo_root / "app/templates/tags.html",
         "audit_log": repo_root / "app/templates/audit_log_list.html",
+        "about": repo_root / "app/templates/about.html",
     }
 
     assert (
@@ -203,11 +204,23 @@ def test_refactored_templates_load_external_page_assets() -> None:
     )
     assert "<table" not in audit_log_template
 
+    about_template = templates["about"].read_text(encoding="utf-8")
+    assert 'id="about-root"' in about_template
+    assert 'data-endpoint="/api/ui/about"' in about_template
+    assert (
+        '<script type="module" src="/static/react/about/about.js"></script>'
+        in about_template
+    )
+    assert "{{ build_info" not in about_template
+    assert "Version:" not in about_template
+    assert 'class="panel"' not in about_template
+
     assert (repo_root / "app/static/js/drawer.js").exists()
     assert (repo_root / "app/static/js/hosts.js").exists()
     assert not (repo_root / "app/static/js/ip-assets.js").exists()
     assert (repo_root / "app/static/react/ip-assets/ip-assets.js").exists()
     assert (repo_root / "app/static/react/audit-log/audit-log.js").exists()
+    assert (repo_root / "app/static/react/about/about.js").exists()
     assert not (repo_root / "app/static/js/range-addresses.js").exists()
     assert (repo_root / "app/static/react/range-addresses/range-addresses.js").exists()
     assert (repo_root / "app/static/js/tag-picker.js").exists()

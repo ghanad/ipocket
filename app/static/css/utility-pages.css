@@ -4,6 +4,22 @@
   gap: 24px;
 }
 
+.about-root {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.about-build-list {
+  margin: 0;
+}
+
+.about-metadata-value {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
 .ranges-root {
   display: flex;
   flex-direction: column;

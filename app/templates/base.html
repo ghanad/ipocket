@@ -71,9 +71,7 @@
         <a class="nav-link sidebar-login-link" href="/ui/login">Login</a>
         {% endif %}
       </div>
-      {% if build_info %}
-      <p class="sidebar-note">ipocket {{ build_info.version }} ({{ build_info.commit }}) • built {{ build_info.build_time }} · <a href="/ui/about">About</a></p>
-      {% endif %}
+      <p class="sidebar-note">{% if build_info %}ipocket {{ build_info.version }} ({{ build_info.commit }}) • built {{ build_info.build_time }} · {% endif %}<a href="/ui/about">About</a></p>
     </div>
   </aside>
   <div class="app-main">

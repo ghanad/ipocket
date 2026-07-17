@@ -1,15 +1,8 @@
 {% extends "base.html" %}
 
 {% block content %}
-<section class="panel">
-  <div class="panel-header">
-    <h1>About ipocket</h1>
-  </div>
-  <div class="panel-body">
-    <p>Version: {{ build_info.version }}</p>
-    <p>Commit: {{ build_info.commit }}</p>
-    <p>Build time: {{ build_info.build_time }}</p>
-    <p><a href="/health">Health</a> · <a href="/metrics">Metrics</a></p>
-  </div>
-</section>
+<div id="about-root" class="about-root" data-endpoint="/api/ui/about">
+  <section class="card" role="status">Loading About…</section>
+</div>
+<script type="module" src="/static/react/about/about.js"></script>
 {% endblock %}
