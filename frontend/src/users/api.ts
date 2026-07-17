@@ -1,3 +1,4 @@
+import { ApiError as SharedApiError, apiRequest } from "../shared/apiClient";
 import type {
   CreateUserValues,
   EditUserValues,
@@ -16,57 +17,36 @@ export class ApiError extends Error {
   }
 }
 
-async function readErrorMessages(response: Response): Promise<string[]> {
-  try {
-    const payload = (await response.json()) as {
-      detail?: string | Array<{ msg?: string }>;
-    };
-    if (typeof payload.detail === "string") {
-      return [payload.detail];
-    }
-    if (Array.isArray(payload.detail)) {
-      return payload.detail
-        .map((item) => item.msg?.replace(/^Value error,\s*/, "") ?? "")
-        .filter(Boolean);
-    }
-  } catch {
-    // Use the stable fallback below.
-  }
-  return [`User request failed (${response.status}).`];
-}
-
 async function request<T>(
   url: string,
-  options: RequestInit = {},
+  options: Parameters<typeof apiRequest>[1] = {},
 ): Promise<T> {
-  const response = await fetch(url, {
-    credentials: "same-origin",
-    headers: {
-      Accept: "application/json",
-      ...(options.body ? { "Content-Type": "application/json" } : {}),
-      ...options.headers,
-    },
-    ...options,
-  });
-
-  if (response.redirected && response.url.includes("/ui/login")) {
-    window.location.assign("/ui/login?return_to=/ui/users");
-    throw new ApiError("Authentication required.", ["Authentication required."], 401);
-  }
-
-  if (!response.ok) {
-    const messages = await readErrorMessages(response);
+  let authenticationRequired = false;
+  try {
+    return await apiRequest<T>(url, {
+      ...options,
+      onAuthenticationRequired: () => {
+        authenticationRequired = true;
+        window.location.assign("/ui/login?return_to=/ui/users");
+      },
+    });
+  } catch (error) {
+    if (!(error instanceof SharedApiError)) throw error;
+    const detail = error.payload && typeof error.payload === "object"
+      ? (error.payload as Record<string, unknown>).detail
+      : undefined;
+    const messages = authenticationRequired
+      ? ["Authentication required."]
+      : (typeof detail === "string" || Array.isArray(detail)) &&
+          error.messages.length
+        ? error.messages
+        : [`User request failed (${error.status}).`];
     throw new ApiError(
-      messages[0] ?? `User request failed (${response.status}).`,
+      messages[0] ?? `User request failed (${error.status}).`,
       messages,
-      response.status,
+      error.status,
     );
   }
-
-  if (response.status === 204) {
-    return undefined as T;
-  }
-  return response.json() as Promise<T>;
 }
 
 export function fetchUsers(endpoint: string): Promise<UsersResponse> {
@@ -79,7 +59,7 @@ export function createUser(
 ): Promise<UserRow> {
   return request<UserRow>(endpoint, {
     method: "POST",
-    body: JSON.stringify(values),
+    json: values,
   });
 }
 
@@ -90,7 +70,7 @@ export function updateUser(
 ): Promise<UserUpdateResponse> {
   return request<UserUpdateResponse>(`${endpoint}/${userId}`, {
     method: "PATCH",
-    body: JSON.stringify(values),
+    json: values,
   });
 }
 
@@ -101,6 +81,6 @@ export function deleteUser(
 ): Promise<void> {
   return request<void>(`${endpoint}/${userId}`, {
     method: "DELETE",
-    body: JSON.stringify({ confirm_username: confirmUsername }),
+    json: { confirm_username: confirmUsername },
   });
 }

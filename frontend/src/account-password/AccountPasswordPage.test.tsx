@@ -18,6 +18,8 @@ function response(
     redirected: options.redirected ?? false,
     url: options.url ?? "http://testserver/api/ui/account/password",
     json: async () => payload,
+    text: async () => payload == null ? "" : JSON.stringify(payload),
+    headers: new Headers(),
   };
 }
 

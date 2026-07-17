@@ -66,6 +66,8 @@ function response(
     status: options.status ?? 200,
     redirected: false,
     json: async () => payload,
+    text: async () => payload == null ? "" : JSON.stringify(payload),
+    headers: new Headers(),
   };
 }
 
