@@ -39,6 +39,12 @@ function reply(payload: unknown, status = 200): Response {
   return { ok: status >= 200 && status < 300, status, json: async () => payload } as Response;
 }
 
+function deferred<T>() {
+  let resolve!: (value: T) => void;
+  const promise = new Promise<T>((done) => { resolve = done; });
+  return { promise, resolve };
+}
+
 function completeJob(connector = "vcenter") {
   return { job_id: "job-1", connector, active_tab: connector, status: "completed", form_state: {}, logs: ["Import mode: dry-run."], toast_messages: [{ type: "success", message: "Done." }], polling: false };
 }
@@ -146,18 +152,51 @@ describe("ConnectorsPage", () => {
     expect(await screen.findByRole("alert")).toHaveTextContent("restricted to editor");
   });
 
-  it("restores a running job URL, renders logs, failure, and expired-job retry state", async () => {
+  it("retries an initially failed restored poll and renders its successful response", async () => {
+    window.history.replaceState({}, "", "/ui/connectors?tab=kubernetes&job_id=job-1");
+    const fetchMock = vi.fn().mockResolvedValueOnce(reply(config())).mockRejectedValueOnce(new TypeError("temporary network error")).mockResolvedValueOnce(reply({ ...completeJob("kubernetes"), logs: ["Recovered job"] }));
+    vi.stubGlobal("fetch", fetchMock);
+    render(<ConnectorsPage endpoint="/api/ui/connectors" initialTab="kubernetes" initialJobId="job-1" />);
+    const retry = await screen.findByRole("button", { name: "Retry polling" });
+    expect(window.location.search).toBe("?tab=kubernetes&job_id=job-1");
+    fireEvent.click(retry);
+    expect(await screen.findByText("Recovered job")).toBeVisible();
+    expect(fetchMock).toHaveBeenCalledTimes(3);
+  });
+
+  it("does not overlap duplicate Retry polling clicks", async () => {
+    const retryPoll = deferred<Response>();
+    const fetchMock = vi.fn().mockResolvedValueOnce(reply(config())).mockRejectedValueOnce(new TypeError("temporary")).mockImplementationOnce(() => retryPoll.promise);
+    vi.stubGlobal("fetch", fetchMock);
+    render(<ConnectorsPage endpoint="/api/ui/connectors" initialTab="vcenter" initialJobId="job-1" />);
+    const retry = await screen.findByRole("button", { name: "Retry polling" });
+    fireEvent.click(retry);
+    fireEvent.click(retry);
+    expect(fetchMock).toHaveBeenCalledTimes(3);
+    retryPoll.resolve(reply(completeJob()));
+    expect(await screen.findByText("Import mode: dry-run.")).toBeVisible();
+  });
+
+  it("treats 404 as expired and dismisses job_id while preserving the connector tab", async () => {
+    window.history.replaceState({}, "", "/ui/connectors?tab=kubernetes&job_id=gone");
+    const fetchMock = vi.fn().mockResolvedValueOnce(reply(config())).mockResolvedValueOnce(reply({ detail: "expired" }, 404));
+    vi.stubGlobal("fetch", fetchMock);
+    render(<ConnectorsPage endpoint="/api/ui/connectors" initialTab="kubernetes" initialJobId="gone" />);
+    expect(await screen.findByText(/not found or has expired/)).toBeVisible();
+    expect(screen.queryByRole("button", { name: "Retry polling" })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Dismiss job" }));
+    expect(window.location.search).toBe("?tab=kubernetes");
+    expect(screen.queryByText(/not found or has expired/)).not.toBeInTheDocument();
+  });
+
+  it("restores a running job URL and renders later failure logs", async () => {
     const running = { ...completeJob("kubernetes"), status: "running", polling: true, logs: ["working"] };
     const failed = { ...running, status: "failed", polling: false, logs: ["Connector failed."] };
     const fetchMock = vi.fn().mockResolvedValueOnce(reply(config())).mockResolvedValueOnce(reply(running)).mockResolvedValueOnce(reply(failed));
     vi.stubGlobal("fetch", fetchMock);
     render(<ConnectorsPage endpoint="/api/ui/connectors" initialTab="kubernetes" initialJobId="job-1" />);
     expect(await screen.findByText("working")).toBeVisible();
-    cleanup();
-    const expiredFetch = vi.fn().mockResolvedValueOnce(reply(config())).mockResolvedValueOnce(reply({ detail: "expired" }, 404));
-    vi.stubGlobal("fetch", expiredFetch);
-    render(<ConnectorsPage endpoint="/api/ui/connectors" initialTab="kubernetes" initialJobId="gone" />);
-    expect(await screen.findByText(/not found or has expired/)).toBeVisible();
+    expect(await screen.findByText("Connector failed.")).toBeVisible();
   });
 
   it("keeps connector form state independent and clears secrets on tab changes", async () => {
@@ -175,16 +214,50 @@ describe("ConnectorsPage", () => {
     expect(screen.getByLabelText(/Prometheus URL/)).toHaveValue("http://prom.saved");
   });
 
-  it("aborts polling when unmounted so stale responses cannot update state", async () => {
-    let capturedSignal: AbortSignal | undefined;
-    const fetchMock = vi.fn().mockImplementation((_url, init) => {
-      capturedSignal = init?.signal;
-      return Promise.resolve(reply(config()));
+  it("aborts an active job poll when unmounted", async () => {
+    let pollSignal: AbortSignal | undefined;
+    const pending = deferred<Response>();
+    const fetchMock = vi.fn().mockResolvedValueOnce(reply(config())).mockImplementationOnce((_url, init) => {
+      pollSignal = init?.signal;
+      return pending.promise;
     });
     vi.stubGlobal("fetch", fetchMock);
-    const view = render(<ConnectorsPage endpoint="/api/ui/connectors" />);
-    await screen.findByRole("heading", { name: "Available Connectors" });
+    const view = render(<ConnectorsPage endpoint="/api/ui/connectors" initialTab="vcenter" initialJobId="job-1" />);
+    await waitFor(() => expect(pollSignal).toBeDefined());
     view.unmount();
-    expect(capturedSignal?.aborted).toBe(true);
+    expect(pollSignal?.aborted).toBe(true);
+  });
+
+  it("ignores a stale response after popstate starts a newer job", async () => {
+    const oldPoll = deferred<Response>();
+    const fetchMock = vi.fn().mockResolvedValueOnce(reply(config())).mockImplementationOnce(() => oldPoll.promise).mockResolvedValueOnce(reply({ ...completeJob("prometheus"), job_id: "new", logs: ["New job result"] }));
+    vi.stubGlobal("fetch", fetchMock);
+    render(<ConnectorsPage endpoint="/api/ui/connectors" initialTab="vcenter" initialJobId="old" />);
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
+    window.history.pushState({}, "", "/ui/connectors?tab=prometheus&job_id=new");
+    fireEvent.popState(window);
+    expect(await screen.findByText("New job result")).toBeVisible();
+    oldPoll.resolve(reply({ ...completeJob(), job_id: "old", logs: ["Stale job result"] }));
+    await Promise.resolve();
+    expect(screen.queryByText("Stale job result")).not.toBeInTheDocument();
+  });
+
+  it("moves a mismatched job to its validated server connector without cross-merging forms", async () => {
+    const mismatched = { ...completeJob("prometheus"), job_id: "job-1", form_state: { query: "server_query", prometheus_url: "http://server" }, logs: ["Prometheus result"] };
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValueOnce(reply(config())).mockResolvedValueOnce(reply(mismatched)));
+    render(<ConnectorsPage endpoint="/api/ui/connectors" initialTab="vcenter" initialJobId="job-1" />);
+    expect(await screen.findByRole("heading", { name: "Run Prometheus Connector" })).toBeVisible();
+    expect(screen.getByLabelText(/PromQL Query/)).toHaveValue("server_query");
+    expect(window.location.search).toBe("?tab=prometheus&job_id=job-1");
+    fireEvent.click(screen.getByRole("tab", { name: "vCenter" }));
+    expect(screen.getByLabelText(/vCenter server/)).toHaveValue("");
+  });
+
+  it("safely rejects an unknown connector in a job response", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValueOnce(reply(config())).mockResolvedValueOnce(reply({ ...completeJob(), connector: "unknown", logs: ["Untrusted result"] })));
+    render(<ConnectorsPage endpoint="/api/ui/connectors" initialTab="vcenter" initialJobId="job-1" />);
+    expect(await screen.findByText(/invalid connector/)).toBeVisible();
+    expect(screen.getByRole("heading", { name: "Run vCenter Connector" })).toBeVisible();
+    expect(screen.queryByText("Untrusted result")).not.toBeInTheDocument();
   });
 });

@@ -3,9 +3,9 @@ import { ConnectorField } from "./ConnectorField";
 import { ConnectorJobResult } from "./ConnectorJobResult";
 import type { ConnectorJob, ConnectorMode, ConnectorSchema, FieldValue } from "./types";
 
-export function ConnectorForm({ schema, values, canApply, submitting, error, job, pollError, onChange, onSubmit, onRetry }: {
-  schema: ConnectorSchema; values: Record<string, FieldValue>; canApply: boolean; submitting: boolean; error?: string; job?: ConnectorJob; pollError?: string;
-  onChange: (name: string, value: FieldValue) => void; onSubmit: (mode: ConnectorMode) => void; onRetry: () => void;
+export function ConnectorForm({ schema, values, canApply, submitting, error, job, pollError, pollRetryable, onChange, onSubmit, onRetry, onDismissJob }: {
+  schema: ConnectorSchema; values: Record<string, FieldValue>; canApply: boolean; submitting: boolean; error?: string; job?: ConnectorJob; pollError?: string; pollRetryable?: boolean;
+  onChange: (name: string, value: FieldValue) => void; onSubmit: (mode: ConnectorMode) => void; onRetry: () => void; onDismissJob: () => void;
 }) {
   const fields = schema.fields.filter((field) => field.name !== "mode");
   const ready = useMemo(() => fields.every((field) => !field.required || field.type === "checkbox" || String(values[field.name] ?? "").trim().length > 0), [fields, values]);
@@ -21,7 +21,7 @@ export function ConnectorForm({ schema, values, canApply, submitting, error, job
         {!canApply && <p className="subtitle field-span">Viewer role can dry-run; Editor role is required to apply.</p>}
       </form>
       {error && <div className="alert alert-error connector-errors" role="alert"><p>{error}</p></div>}
-      <ConnectorJobResult job={job} pollError={pollError} onRetry={onRetry} />
+      <ConnectorJobResult job={job} pollError={pollError} retryable={pollRetryable} onRetry={onRetry} onDismiss={onDismissJob} />
       </div>
     </section>
     <section className="card"><div className="card-header card-header-padded"><div><h2>CLI (kept as-is)</h2><p className="subtitle">You can still run this connector manually.</p></div></div><div className="card-body"><pre className="connector-code-block"><code>{schema.command}</code></pre><p>{schema.help}</p></div></section>

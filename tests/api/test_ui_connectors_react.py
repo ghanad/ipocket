@@ -7,7 +7,7 @@ import pytest
 from app.main import app
 from app.models import User, UserRole
 from app.routes import ui
-from app.routes.ui.connector_routes import api, job_store
+from app.routes.ui.connector_routes import api, cassandra, ceph, elasticsearch, job_store, kubernetes, prometheus, vcenter
 from app.routes.ui.connector_routes.common import _redact_connector_logs
 
 
@@ -97,6 +97,8 @@ def test_viewer_can_create_every_dry_run_job_and_poll_sanitized_result(client, m
     result = polled.json()
     assert result["status"] == "completed"
     assert result["polling"] is False
+    assert result["logs"] == ["Connector completed without credentials."]
+    assert result["toast_messages"] == [{"type": "success", "message": "Done."}]
     serialized = str(result)
     for value in VALID_PAYLOADS[connector].values():
         if "secret" in str(value):
@@ -121,6 +123,85 @@ def test_editor_can_create_every_apply_job(client, monkeypatch, connector) -> No
     _mock_runners(monkeypatch)
     response = client.post(f"/api/ui/connectors/{connector}/run", json={**VALID_PAYLOADS[connector], "mode": "apply"})
     assert response.status_code == 202
+
+
+@pytest.mark.parametrize(
+    "connector,payload,expected",
+    [
+        ("vcenter", {"server": "vc", "username": "u", "password": "p", "port": "444", "insecure": True}, {"server": "vc", "port": 444, "insecure": True}),
+        ("prometheus", {"prometheus_url": "http://prom", "query": 'up{job="node"}', "ip_label": "address", "token": "tok"}, {"query": 'up{job="node"}', "ip_label": "address", "token": "tok"}),
+        ("elasticsearch", {"elasticsearch_url": "https://es", "api_key": "key", "include_cluster_name_tag": True}, {"api_key": "key", "include_cluster_name_tag": True}),
+        ("cassandra", {"contact_points": "10.0.0.1, 10.0.0.2,10.0.0.1", "port": "9142", "username": "u", "password": "p", "use_tls": True, "insecure": True, "include_cluster_name_tag": True}, {"contact_points": ["10.0.0.1", "10.0.0.2"], "port": 9142, "use_tls": True, "insecure": True, "include_cluster_name_tag": True}),
+        ("ceph", {"ceph_url": "https://ceph", "username": "u", "password": "p", "include_cluster_name_tag": True, "include_label_tags": True}, {"include_cluster_name_tag": True, "include_label_tags": True}),
+        ("kubernetes", {"api_url": "https://k8s", "token": "tok", "cluster_name": "Prod Cluster", "include_cluster_name_tag": True, "include_label_tags": True}, {"cluster_name": "Prod Cluster", "include_cluster_name_tag": True, "include_label_tags": True}),
+    ],
+)
+def test_connector_api_propagates_connector_specific_mapping(client, monkeypatch, connector, payload, expected) -> None:
+    captured: dict[str, object] = {}
+
+    def runner(**kwargs) -> None:
+        captured.update(kwargs)
+
+    monkeypatch.setitem(api.RUNNERS, connector, runner)
+    response = client.post(f"/api/ui/connectors/{connector}/run", json={**payload, "mode": "dry-run"})
+    assert response.status_code == 202
+    for key, value in expected.items():
+        assert captured[key] == value
+
+
+@pytest.mark.parametrize(
+    "connector,payload,message",
+    [
+        ("elasticsearch", {"elasticsearch_url": "https://es", "api_key": "key", "username": "u", "password": "p"}, "not both"),
+        ("elasticsearch", {"elasticsearch_url": "https://es", "username": "u"}, "Password is required"),
+        ("elasticsearch", {"elasticsearch_url": "https://es", "password": "p"}, "Username is required"),
+        ("cassandra", {"contact_points": "10.0.0.1", "username": "u"}, "Password is required"),
+        ("cassandra", {"contact_points": "10.0.0.1", "password": "p"}, "Username is required"),
+        ("cassandra", {"contact_points": "10.0.0.1", "insecure": True}, "requires TLS"),
+        ("cassandra", {"contact_points": "10.0.0.1", "port": "0"}, "Port must be"),
+        ("cassandra", {"contact_points": "10.0.0.1", "timeout": "0"}, "Timeout must be"),
+        ("ceph", {"ceph_url": "https://ceph", "username": "u", "password": "p", "timeout": "0"}, "Timeout must be"),
+        ("kubernetes", {"api_url": "", "token": ""}, "Kubernetes API URL is required"),
+    ],
+)
+def test_connector_api_retains_auth_tls_and_numeric_validation(client, connector, payload, message) -> None:
+    response = client.post(f"/api/ui/connectors/{connector}/run", json={**payload, "mode": "dry-run"})
+    assert response.status_code == 400
+    assert message.lower() in str(response.json()["detail"]).lower()
+
+
+@pytest.mark.parametrize("payload", [
+    {"elasticsearch_url": "https://es"},
+    {"elasticsearch_url": "https://es", "api_key": "key"},
+    {"elasticsearch_url": "https://es", "username": "u", "password": "p"},
+])
+def test_elasticsearch_optional_authentication_combinations_are_accepted(client, monkeypatch, payload) -> None:
+    monkeypatch.setitem(api.RUNNERS, "elasticsearch", lambda **_kwargs: None)
+    assert client.post("/api/ui/connectors/elasticsearch/run", json={**payload, "mode": "dry-run"}).status_code == 202
+
+
+@pytest.mark.parametrize(
+    "module,error_name,job_name,kwargs,secret",
+    [
+        (vcenter, "VCenterConnectorError", "_run_vcenter_connector_job", {"server": "vc", "username": "u", "password": "v-secret", "port": 443, "insecure": False}, "v-secret"),
+        (prometheus, "PrometheusConnectorError", "_run_prometheus_connector_job", {"prometheus_url": "http://prom", "query": "up", "ip_label": "instance", "asset_type": "OTHER", "project_name": None, "tags": None, "token": "p-secret", "insecure": False, "timeout": 30}, "p-secret"),
+        (elasticsearch, "ElasticsearchConnectorError", "_run_elasticsearch_connector_job", {"elasticsearch_url": "https://es", "username": None, "password": "e-secret", "api_key": None, "asset_type": "OTHER", "project_name": None, "tags": None, "note": None, "include_cluster_name_tag": False, "timeout": 30}, "e-secret"),
+        (cassandra, "CassandraConnectorError", "_run_cassandra_connector_job", {"contact_points": ["10.0.0.1"], "port": 9042, "username": "u", "password": "c-secret", "use_tls": False, "insecure": False, "asset_type": "OTHER", "project_name": None, "tags": None, "note": None, "include_cluster_name_tag": False, "timeout": 30}, "c-secret"),
+        (ceph, "CephConnectorError", "_run_ceph_connector_job", {"ceph_url": "https://ceph", "username": "u", "password": "ceph-secret", "insecure": False, "asset_type": "OTHER", "project_name": None, "tags": None, "note": None, "include_cluster_name_tag": False, "include_label_tags": False, "timeout": 30}, "ceph-secret"),
+        (kubernetes, "KubernetesConnectorError", "_run_kubernetes_connector_job", {"api_url": "https://k8s", "token": "k-secret", "insecure": False, "asset_type": "OS", "project_name": None, "tags": None, "note": None, "cluster_name": None, "include_cluster_name_tag": False, "include_label_tags": False, "timeout": 30}, "k-secret"),
+    ],
+)
+def test_connector_job_failures_are_safe_and_redact_credentials(monkeypatch, module, error_name, job_name, kwargs, secret, tmp_path) -> None:
+    job_id = job_store._create_connector_job(active_tab=module.__name__.rsplit(".", 1)[-1], form_state={})
+    error_type = getattr(module, error_name)
+    monkeypatch.setattr(module, f"_run_{module.__name__.rsplit('.', 1)[-1]}_connector", lambda **_kwargs: (_ for _ in ()).throw(error_type(f"failure {secret}")))
+    getattr(module, job_name)(job_id=job_id, db_path=str(tmp_path / "jobs.db"), user_id=None, mode="dry-run", **kwargs)
+    result = job_store._get_connector_job(job_id)
+    assert result is not None
+    assert result["status"] == "failed"
+    assert result["logs"] == ["Connector failed. Review server logs for details."]
+    assert result["toast_messages"][0]["type"] == "error"
+    assert secret not in str(result)
 
 
 def test_connector_api_rejects_unknown_connector_invalid_mode_ports_and_timeouts(client) -> None:
@@ -167,6 +248,7 @@ def test_unknown_and_expired_jobs_return_404(client, monkeypatch) -> None:
     job_id = job_store._create_connector_job(active_tab="ceph", form_state={})
     job_store._CONNECTOR_JOBS[job_id]["updated_at"] = time.time() - 7200
     assert client.get(f"/api/ui/connectors/jobs/{job_id}").status_code == 404
+    assert job_id not in job_store._CONNECTOR_JOBS
 
 
 def test_run_scoped_credentials_are_redacted_before_log_storage() -> None:

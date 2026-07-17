@@ -7,6 +7,9 @@ import { ConnectorsOverview } from "./ConnectorsOverview";
 import { clearSecrets, defaultFormState } from "./connectorSchemas";
 import type { ConnectorJob, ConnectorMode, ConnectorName, ConnectorsConfig, ConnectorTab, FieldValue } from "./types";
 
+type PollTarget = { connector: ConnectorName; jobId: string; url: string };
+type PollFailure = { message: string; retryable: boolean };
+
 function locationState(): { tab: ConnectorTab; jobId: string } {
   const params = new URLSearchParams(window.location.search);
   const value = params.get("tab");
@@ -25,10 +28,11 @@ export function ConnectorsPage({ endpoint, initialTab = "overview", initialJobId
   const [forms, setForms] = useState<Partial<Record<ConnectorName, Record<string, FieldValue>>>>({});
   const [jobs, setJobs] = useState<Partial<Record<ConnectorName, ConnectorJob>>>({});
   const [errors, setErrors] = useState<Partial<Record<ConnectorName, string>>>({});
-  const [pollErrors, setPollErrors] = useState<Partial<Record<ConnectorName, string>>>({});
+  const [pollTargets, setPollTargets] = useState<Partial<Record<ConnectorName, PollTarget>>>({});
+  const [pollFailures, setPollFailures] = useState<Partial<Record<ConnectorName, PollFailure>>>({});
   const [submitting, setSubmitting] = useState<ConnectorName | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
-  const activePoll = useRef<{ id: string; controller: AbortController } | null>(null);
+  const activePoll = useRef<{ target: PollTarget; controller: AbortController } | null>(null);
   const timer = useRef<number | null>(null);
   const initialJob = useRef(initialJobId);
 
@@ -39,29 +43,73 @@ export function ConnectorsPage({ endpoint, initialTab = "overview", initialJobId
     activePoll.current = null;
   }, []);
 
-  const pollJob = useCallback((connector: ConnectorName, id: string, immediate = true) => {
+  const pollJob = useCallback((target: PollTarget, immediate = true) => {
     if (!config) return;
-    stopPolling();
+    let pollingTarget = target;
     const run = async () => {
+      if (activePoll.current) return;
       const controller = new AbortController();
-      activePoll.current = { id, controller };
+      activePoll.current = { target: pollingTarget, controller };
       try {
-        const job = await fetchConnectorJob(jobUrl(config.jobs_url, id), controller.signal);
-        if (activePoll.current?.id !== id) return;
-        setJobs((current) => ({ ...current, [connector]: job }));
+        const job = await fetchConnectorJob(pollingTarget.url, controller.signal);
+        if (activePoll.current?.controller !== controller) return;
+        if (!isConnectorName(job.connector)) {
+          setPollFailures((current) => ({ ...current, [pollingTarget.connector]: { message: "Connector job returned an invalid connector.", retryable: false } }));
+          activePoll.current = null;
+          return;
+        }
+        const connector = job.connector;
+        const previousConnector = pollingTarget.connector;
+        const nextTarget = {
+          connector,
+          jobId: job.job_id,
+          url: job.job_id === pollingTarget.jobId ? pollingTarget.url : jobUrl(config.jobs_url, job.job_id),
+        };
+        setJobs((current) => {
+          const next = { ...current };
+          if (connector !== previousConnector) delete next[previousConnector];
+          next[connector] = job;
+          return next;
+        });
         setForms((current) => ({ ...current, [connector]: { ...(current[connector] ?? {}), ...job.form_state } }));
-        setPollErrors((current) => ({ ...current, [connector]: undefined }));
+        setPollTargets((current) => {
+          const next = { ...current };
+          if (connector !== previousConnector) delete next[previousConnector];
+          next[connector] = nextTarget;
+          return next;
+        });
+        setPollFailures((current) => {
+          const next = { ...current };
+          delete next[previousConnector];
+          delete next[connector];
+          return next;
+        });
+        if (connector !== previousConnector) {
+          setTab(connector);
+          window.history.replaceState({}, "", canonicalUrl(connector, job.job_id));
+        }
+        pollingTarget = nextTarget;
+        activePoll.current = null;
         if (job.polling) timer.current = window.setTimeout(run, config.poll_interval_ms);
-        else activePoll.current = null;
       } catch (error) {
         if (controller.signal.aborted) return;
-        const message = error instanceof ConnectorApiError && error.status === 404 ? "Connector job was not found or has expired." : "Polling was interrupted. Retry to continue.";
-        setPollErrors((current) => ({ ...current, [connector]: message }));
+        const expired = error instanceof ConnectorApiError && error.status === 404;
+        setPollFailures((current) => ({ ...current, [pollingTarget.connector]: {
+          message: expired ? "Connector job was not found or has expired. Dismiss it and run the connector again." : "Polling was interrupted. Retry to continue.",
+          retryable: !expired,
+        } }));
         activePoll.current = null;
       }
     };
     if (immediate) void run(); else timer.current = window.setTimeout(run, config.poll_interval_ms);
-  }, [config, stopPolling]);
+  }, [config]);
+
+  const beginPolling = useCallback((connector: ConnectorName, id: string, immediate = true, url?: string) => {
+    if (!config) return;
+    const target = { connector, jobId: id, url: url ?? jobUrl(config.jobs_url, id) };
+    setPollTargets((current) => ({ ...current, [connector]: target }));
+    pollJob(target, immediate);
+  }, [config, pollJob]);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -74,8 +122,8 @@ export function ConnectorsPage({ endpoint, initialTab = "overview", initialJobId
 
   useEffect(() => {
     if (!config || !initialJob.current || !isConnectorName(tab)) return;
-    const id = initialJob.current; initialJob.current = ""; pollJob(tab, id);
-  }, [config, pollJob, tab]);
+    const id = initialJob.current; initialJob.current = ""; beginPolling(tab, id);
+  }, [beginPolling, config, tab]);
 
   useEffect(() => {
     const onPopState = () => {
@@ -88,11 +136,11 @@ export function ConnectorsPage({ endpoint, initialTab = "overview", initialJobId
         return next.tab;
       });
       stopPolling();
-      if (config && next.jobId && isConnectorName(next.tab)) pollJob(next.tab, next.jobId);
+      if (config && next.jobId && isConnectorName(next.tab)) beginPolling(next.tab, next.jobId);
     };
     window.addEventListener("popstate", onPopState);
     return () => { window.removeEventListener("popstate", onPopState); stopPolling(); };
-  }, [config, pollJob, stopPolling]);
+  }, [beginPolling, config, stopPolling]);
 
   const selectTab = (next: ConnectorTab) => {
     if (config && isConnectorName(tab)) {
@@ -100,9 +148,9 @@ export function ConnectorsPage({ endpoint, initialTab = "overview", initialJobId
       setForms((current) => ({ ...current, [tab]: clearSecrets(schema, current[tab] ?? {}) }));
     }
     stopPolling(); setTab(next);
-    const id = isConnectorName(next) ? jobs[next]?.job_id ?? "" : "";
+    const id = isConnectorName(next) ? jobs[next]?.job_id ?? pollTargets[next]?.jobId ?? "" : "";
     window.history.pushState({}, "", canonicalUrl(next, id));
-    if (id && isConnectorName(next) && jobs[next]?.polling) pollJob(next, id);
+    if (id && isConnectorName(next) && jobs[next]?.polling) beginPolling(next, id);
   };
 
   const submit = async (connector: ConnectorName, mode: ConnectorMode) => {
@@ -119,7 +167,8 @@ export function ConnectorsPage({ endpoint, initialTab = "overview", initialJobId
       setForms((current) => ({ ...current, [connector]: clearSecrets(schema, current[connector] ?? {}) }));
       setJobs((current) => ({ ...current, [connector]: { job_id: started.job_id, connector, active_tab: connector, status: "queued", form_state: {}, logs: [], toast_messages: [], polling: true } }));
       window.history.replaceState({}, "", canonicalUrl(connector, started.job_id));
-      pollJob(connector, started.job_id, false);
+      stopPolling();
+      beginPolling(connector, started.job_id, false, started.poll_url);
     } catch (error) {
       const message = error instanceof ConnectorApiError ? error.message : "Unable to start the connector. No credentials were retained.";
       setErrors((current) => ({ ...current, [connector]: message }));
@@ -133,6 +182,12 @@ export function ConnectorsPage({ endpoint, initialTab = "overview", initialJobId
   return <>
     <section className="page-header"><div><p className="eyebrow">Connectors</p><h1>Integrations</h1><p className="subtitle">Manage external inventory connectors and import flow guidance.</p></div></section>
     <ConnectorTabs connectors={config.connectors} active={tab} onSelect={selectTab} />
-    {tab === "overview" ? <ConnectorsOverview connectors={config.connectors} onSelect={selectTab} /> : schema && <ConnectorForm schema={schema} values={forms[schema.name] ?? defaultFormState(schema)} canApply={config.policy.can_apply} submitting={submitting === schema.name} error={errors[schema.name]} job={jobs[schema.name]} pollError={pollErrors[schema.name]} onChange={(name, value) => setForms((current) => ({ ...current, [schema.name]: { ...(current[schema.name] ?? {}), [name]: value } }))} onSubmit={(mode) => void submit(schema.name, mode)} onRetry={() => { const id = jobs[schema.name]?.job_id; if (id) pollJob(schema.name, id); }} />}
+    {tab === "overview" ? <ConnectorsOverview connectors={config.connectors} onSelect={selectTab} /> : schema && <ConnectorForm schema={schema} values={forms[schema.name] ?? defaultFormState(schema)} canApply={config.policy.can_apply} submitting={submitting === schema.name} error={errors[schema.name]} job={jobs[schema.name]} pollError={pollFailures[schema.name]?.message} pollRetryable={pollFailures[schema.name]?.retryable} onChange={(name, value) => setForms((current) => ({ ...current, [schema.name]: { ...(current[schema.name] ?? {}), [name]: value } }))} onSubmit={(mode) => void submit(schema.name, mode)} onRetry={() => { const target = pollTargets[schema.name]; if (target) pollJob(target); }} onDismissJob={() => {
+      stopPolling();
+      setJobs((current) => { const next = { ...current }; delete next[schema.name]; return next; });
+      setPollTargets((current) => { const next = { ...current }; delete next[schema.name]; return next; });
+      setPollFailures((current) => { const next = { ...current }; delete next[schema.name]; return next; });
+      window.history.replaceState({}, "", canonicalUrl(schema.name));
+    }} />}
   </>;
 }
