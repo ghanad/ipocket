@@ -212,7 +212,6 @@ def test_refactored_templates_load_external_page_assets() -> None:
     for page in REACT_PAGES:
         assert (repo_root / f"frontend/src/{page.entry}/main.tsx").exists()
         assert f'"src/{page.entry}/main.tsx"' in vite_config
-        assert (repo_root / "app" / page.bundle.lstrip("/")).exists()
     assert not (repo_root / "app/static/js/range-addresses.js").exists()
     assert (repo_root / "app/static/js/tag-picker.js").exists()
     assert (repo_root / "app/static/js/host-select-search.js").exists()

@@ -21,6 +21,8 @@ Install and build the React UI:
 ```bash
 cd frontend
 npm ci
+npm test
+npm run typecheck
 npm run build
 cd ..
 ```
@@ -30,7 +32,9 @@ The build writes 15 entry bundles under
 Connectors, Data Operations, Host Detail, Hosts, IP Asset Detail, IP Assets,
 Library, Login, Management, Range Addresses, Ranges, and Users. Hashed shared
 chunks are emitted under `app/static/react/shared/`. Re-run `npm run build`
-after changing React sources; generated bundles must not be edited manually.
+after changing React sources. Everything under `app/static/react/` is generated
+build output: do not edit or commit these bundles. Git ignores the directory,
+and CI builds it from `frontend/` sources for verification and Docker packaging.
 The Docker image builds all React entrypoints automatically in a separate Node
 stage; Node.js is not included in the final runtime image.
 
@@ -81,6 +85,12 @@ Build the image:
 
 ```bash
 docker build -t ipocket:latest .
+```
+
+Run the same credential-free smoke build used by pull request CI:
+
+```bash
+docker build --tag ipocket:ci-smoke .
 ```
 
 Run the container (persisting SQLite in a local `data/` directory):
@@ -213,7 +223,7 @@ Run the complete verification suite from the repository root:
 ```bash
 .venv/bin/pytest -q
 cd frontend
-npm test -- --run
+npm test
 npm run typecheck
 npm run build
 ```
@@ -221,7 +231,7 @@ npm run build
 When adding a React page, add its entry to `frontend/vite.config.ts`, add the
 lightweight Jinja mount and focused frontend tests, and add one record to
 `tests/react_ui_manifest.py`. That single manifest drives the parametrized page
-mount/API smoke tests and the Vite/generated-bundle checks. Update
+mount/API smoke tests and the Vite bundle-reference checks. Update
 `docs/react-ui-migration.md` with its access policy and any compatibility route.
 To force local assets in any environment, set:
 
@@ -673,9 +683,10 @@ python -m app.connectors.kubernetes \
 
 See `/docs/kubernetes-connector.md` for full options and mapping details.
 
-## CI (quality + full tests)
-The GitHub Actions workflow runs code quality checks and the full pytest suite
-on each pull request and push to `main`.
+## CI (quality + backend, frontend, and Docker checks)
+The GitHub Actions workflow runs code quality checks, the full pytest suite,
+frontend tests/typechecking/build, and a credential-free Docker smoke build on
+each pull request and push to `main`.
 
 Quality job:
 
@@ -688,6 +699,21 @@ Test job:
 
 ```bash
 pytest tests --cov=app --cov-fail-under=75
+```
+
+Frontend job (from `frontend/`):
+
+```bash
+npm ci
+npm test
+npm run typecheck
+npm run build
+```
+
+Docker smoke-build job:
+
+```bash
+docker build --tag ipocket:ci-smoke .
 ```
 
 ## Docker Hub release automation

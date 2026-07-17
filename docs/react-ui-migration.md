@@ -35,7 +35,16 @@ All entries above are registered in `frontend/vite.config.ts`. A production
 build emits one entry at `app/static/react/<entry>/<entry>.js`, plus hashed
 shared chunks under `app/static/react/shared/`. The test-side manifest in
 `tests/react_ui_manifest.py` drives page mounts, endpoint smoke coverage, Vite
-entry checks, and generated-bundle checks from one list.
+entry checks, and bundle-reference checks from one list.
+
+## Generated-artifact policy
+
+The completed migration treats the entire `app/static/react/` tree as generated
+build output. It is ignored by Git and must not be committed. Local development,
+frontend CI, and the Docker frontend stage regenerate all entry bundles and
+hashed shared chunks from the tracked `frontend/` sources and lockfile. The
+runtime Docker stage copies the complete generated directory from the Node 22
+build stage.
 
 ## Retained GET compatibility and redirect routes
 
@@ -152,4 +161,5 @@ client auth-expiry correction only; endpoint access policy did not change.
    client when the page shell can render signed out, and document any retained
    compatibility route here.
 6. Run the backend/frontend verification commands in `docs/how-to-run.md` and
-   commit the generated Vite output; do not edit bundles manually.
+   commit the source and configuration changes only; do not edit or commit the
+   generated Vite output.
