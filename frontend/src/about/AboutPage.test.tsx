@@ -20,7 +20,11 @@ const aboutData: AboutData = {
 function successfulResponse(data: AboutData = aboutData) {
   return {
     ok: true,
-    json: async () => data,
+    status: 200,
+    redirected: false,
+    url: "",
+    headers: new Headers(),
+    text: async () => JSON.stringify(data),
   };
 }
 
@@ -129,9 +133,9 @@ describe("AboutPage", () => {
     await screen.findByText("2.4.1");
 
     expect(fetchMock).toHaveBeenCalledOnce();
-    expect(fetchMock).toHaveBeenCalledWith("/custom/about", {
-      credentials: "same-origin",
-      headers: { Accept: "application/json" },
-    });
+    const [url, init] = fetchMock.mock.calls[0];
+    expect(url).toBe("/custom/about");
+    expect(init.credentials).toBe("same-origin");
+    expect(new Headers(init.headers).get("Accept")).toBe("application/json");
   });
 });

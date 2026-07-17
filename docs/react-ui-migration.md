@@ -60,6 +60,28 @@ The authenticated download GETs under `/export/` (`ip-assets.csv/json`,
 `bundle.json/zip`) are intentional Data Operations downloads, not page
 templates. They remain unchanged.
 
+## Frontend foundation consolidation
+
+The first consolidation phase adds the framework-independent
+`frontend/src/shared/apiClient.ts`. It is the common transport for About,
+Management Overview, and the global Audit Log while endpoint-specific types
+and functions stay in each page's `api.ts` module. The client keeps requests
+same-origin with the existing session cookie, supports JSON and FormData
+request bodies, forwards abort signals, handles empty responses, and exposes
+typed HTTP errors for FastAPI validation/detail payloads and non-JSON failures.
+It also detects API redirects to `/ui/login` and preserves the current UI path
+and query string in `return_to`.
+
+JSON remains the default response mode. Callers that need binary data can ask
+for a native `Blob` or raw `Response`, so the shared transport does not force
+downloads through JSON parsing. This capability is tested but the existing
+download links have not been migrated in this phase.
+
+This phase intentionally leaves Login, Data Operations multipart uploads,
+native downloads, Connectors, and other mutation-heavy page API modules on
+their existing request paths. They are candidates for later, separately
+tested phases; their current behavior and authentication policy are unchanged.
+
 No registered GET route is classified as obsolete/unreachable. The unreachable
 artifacts were templates and partials left behind after their routes had moved.
 

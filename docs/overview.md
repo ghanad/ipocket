@@ -8,6 +8,9 @@ application shell, navigation, session/flash boundary, and renderer for legacy
 HTML POST/error compatibility. Focused `/api/ui/...` endpoints provide page
 data and enforce server-side authorization. The complete route and retained-
 asset inventory is in [react-ui-migration.md](react-ui-migration.md).
+About, Management Overview, and Audit Log are the first pages consolidated on
+the shared typed frontend HTTP client; uploads, downloads, Login, Connectors,
+and mutation-heavy modules remain on their existing paths for later phases.
 
 ## Highlights
 - CRUD API for IP records (including permanent delete endpoint for editors only)

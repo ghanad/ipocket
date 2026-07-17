@@ -47,7 +47,7 @@ function ok(payload: AuditLogResponse) {
     redirected: false,
     url: "",
     headers: new Headers(),
-    json: async () => payload,
+    text: async () => JSON.stringify(payload),
   };
 }
 

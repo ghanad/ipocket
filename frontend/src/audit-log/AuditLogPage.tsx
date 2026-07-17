@@ -52,7 +52,8 @@ export function AuditLogPage({
     setLoadError(false);
     try {
       const response = await fetchAuditLogs(
-        `${endpoint}${query ? `?${query}` : ""}`,
+        endpoint,
+        query,
         controller.signal,
       );
       if (id !== requestId.current) return;

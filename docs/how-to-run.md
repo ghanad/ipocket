@@ -34,6 +34,14 @@ after changing React sources; generated bundles must not be edited manually.
 The Docker image builds all React entrypoints automatically in a separate Node
 stage; Node.js is not included in the final runtime image.
 
+Frontend API foundation: About, Management Overview, and Audit Log use
+`frontend/src/shared/apiClient.ts` for same-origin session requests, typed
+FastAPI errors, login-return redirects, empty responses, and request
+cancellation. Its JSON, FormData, and Blob/raw-response behavior is covered by
+unit tests. Multipart/upload flows, native download links, Login, Connectors,
+and mutation-heavy page APIs intentionally remain on their existing clients in
+this phase.
+
 Initialize the database (runs migrations):
 
 ```bash

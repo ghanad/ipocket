@@ -42,7 +42,11 @@ describe("ManagementPage", () => {
       "fetch",
       vi.fn().mockResolvedValue({
         ok: true,
-        json: async () => overview,
+        status: 200,
+        redirected: false,
+        url: "",
+        headers: new Headers(),
+        text: async () => JSON.stringify(overview),
       }),
     );
 
@@ -65,7 +69,11 @@ describe("ManagementPage", () => {
       "fetch",
       vi.fn().mockResolvedValue({
         ok: true,
-        json: async () => ({ ...overview, utilization: [] }),
+        status: 200,
+        redirected: false,
+        url: "",
+        headers: new Headers(),
+        text: async () => JSON.stringify({ ...overview, utilization: [] }),
       }),
     );
 
@@ -82,7 +90,11 @@ describe("ManagementPage", () => {
       .mockResolvedValueOnce({ ok: false, status: 500 })
       .mockResolvedValueOnce({
         ok: true,
-        json: async () => overview,
+        status: 200,
+        redirected: false,
+        url: "",
+        headers: new Headers(),
+        text: async () => JSON.stringify(overview),
       });
     vi.stubGlobal("fetch", fetchMock);
 
