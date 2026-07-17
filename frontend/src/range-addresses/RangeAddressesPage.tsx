@@ -211,9 +211,12 @@ export function RangeAddressesPage({
     return () => controller.current?.abort();
   }, [load]);
   useEffect(() => {
-    const next = `${window.location.pathname}${query ? `?${query}` : ""}${window.location.hash}`;
+    const legacyStatusHash = ["#used", "#free"].includes(window.location.hash);
+    const hash = legacyStatusHash ? "" : window.location.hash;
+    const next = `${window.location.pathname}${query ? `?${query}` : ""}${hash}`;
     if (`${window.location.pathname}${window.location.search}${window.location.hash}` !== next) {
-      window.history.pushState({}, "", next);
+      if (legacyStatusHash) window.history.replaceState({}, "", next);
+      else window.history.pushState({}, "", next);
     }
   }, [query]);
   useEffect(() => {

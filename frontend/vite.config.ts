@@ -28,6 +28,7 @@ export default defineConfig(({ mode }) => ({
           __dirname,
           "src/account-password/main.tsx",
         ),
+        "data-ops": resolve(__dirname, "src/data-ops/main.tsx"),
       },
       output: {
         entryFileNames: "[name]/[name].js",

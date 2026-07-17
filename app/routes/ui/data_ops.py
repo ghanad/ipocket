@@ -4,7 +4,16 @@ import json
 
 from typing import Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
+from fastapi import (
+    APIRouter,
+    Depends,
+    File,
+    HTTPException,
+    Query,
+    Request,
+    UploadFile,
+    status,
+)
 from fastapi.responses import HTMLResponse, RedirectResponse, Response
 
 from app import exports
@@ -63,13 +72,141 @@ def _render_data_ops_template(
     status_code: int = status.HTTP_200_OK,
     **overrides: object,
 ) -> HTMLResponse:
+    # Legacy multipart form posts still receive their server-rendered result page.
+    # React GET routes mount into the shared Data Operations shell.
+    template_name = "import.html" if overrides else "data_ops.html"
     return _render_template(
         request,
-        "data_ops.html",
+        template_name,
         _data_ops_context(active_tab=active_tab, **overrides),
         active_nav="data-ops",
         status_code=status_code,
     )
+
+
+def _require_import_apply_permission(*, dry_run: bool, user) -> None:
+    if not dry_run and user.role != UserRole.EDITOR:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN)
+
+
+async def _read_api_upload(upload: UploadFile) -> bytes:
+    try:
+        return await read_upload_limited(upload, max_bytes=IMPORT_UPLOAD_MAX_BYTES)
+    except UploadTooLargeError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+            detail=_upload_size_error_message(IMPORT_UPLOAD_MAX_BYTES),
+        ) from exc
+
+
+@router.get("/api/ui/data-ops")
+def ui_data_ops_api(user=Depends(get_current_ui_user)) -> dict[str, object]:
+    return {
+        "policy": {"can_apply": user.role == UserRole.EDITOR},
+        "upload": {
+            "max_bytes": IMPORT_UPLOAD_MAX_BYTES,
+            "max_size": describe_upload_limit(IMPORT_UPLOAD_MAX_BYTES),
+        },
+        "samples": {
+            "hosts": "/static/samples/hosts.csv",
+            "ip_assets": "/static/samples/ip-assets.csv",
+        },
+    }
+
+
+@router.post("/api/ui/import/bundle")
+async def ui_import_bundle_api(
+    dry_run: bool = Query(default=True),
+    file: UploadFile = File(...),
+    connection=Depends(get_connection),
+    user=Depends(get_current_ui_user),
+) -> dict[str, object]:
+    _require_import_apply_permission(dry_run=dry_run, user=user)
+    payload = await _read_api_upload(file)
+    if not payload:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="bundle.json file is empty.",
+        )
+    result = run_import(
+        connection,
+        BundleImporter(),
+        {"bundle": payload},
+        dry_run=dry_run,
+        audit_context=ImportAuditContext(
+            user=user,
+            source="ui_import_bundle",
+            mode="dry-run" if dry_run else "apply",
+            input_label="bundle.json",
+        ),
+    )
+    return _import_result_payload(result)
+
+
+@router.post("/api/ui/import/csv")
+async def ui_import_csv_api(
+    dry_run: bool = Query(default=True),
+    hosts: UploadFile | None = File(None),
+    ip_assets: UploadFile | None = File(None),
+    connection=Depends(get_connection),
+    user=Depends(get_current_ui_user),
+) -> dict[str, object]:
+    _require_import_apply_permission(dry_run=dry_run, user=user)
+    if hosts is None and ip_assets is None:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Upload at least one CSV file (hosts.csv or ip-assets.csv).",
+        )
+    inputs: dict[str, bytes] = {}
+    if hosts is not None:
+        payload = await _read_api_upload(hosts)
+        if payload:
+            inputs["hosts"] = payload
+    if ip_assets is not None:
+        payload = await _read_api_upload(ip_assets)
+        if payload:
+            inputs["ip_assets"] = payload
+    if not inputs:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Upload at least one non-empty CSV file (hosts.csv or ip-assets.csv).",
+        )
+    result = run_import(
+        connection,
+        CsvImporter(),
+        inputs,
+        dry_run=dry_run,
+        audit_context=ImportAuditContext(
+            user=user,
+            source="ui_import_csv",
+            mode="dry-run" if dry_run else "apply",
+            input_label="csv",
+        ),
+    )
+    return _import_result_payload(result)
+
+
+@router.post("/api/ui/import/nmap")
+async def ui_import_nmap_api(
+    dry_run: bool = Query(default=True),
+    file: UploadFile = File(...),
+    connection=Depends(get_connection),
+    user=Depends(get_current_ui_user),
+) -> dict[str, object]:
+    _require_import_apply_permission(dry_run=dry_run, user=user)
+    payload = await _read_api_upload(file)
+    if not payload:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Nmap XML file is empty.",
+        )
+    result = import_nmap_xml(
+        connection,
+        payload,
+        dry_run=dry_run,
+        current_user=user,
+    )
+    return _nmap_result_payload(result)
 
 
 @router.get("/ui/export", response_class=HTMLResponse)

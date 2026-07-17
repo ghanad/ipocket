@@ -28,6 +28,8 @@ UI redirect behavior:
 Export ordering behavior:
 - IP asset exports (`/export/ip-assets.csv`, `/export/ip-assets.json`, bundle payload) are ordered by numeric IPv4 value.
 - When legacy rows have `ip_int` as null, export ordering falls back to parsing `ip_address` so numeric order is preserved.
+- The React Data Operations transport does not introduce new stored entities. Bundle, CSV, and Nmap requests continue through the existing import pipeline and persist the same Vendor, Project, Host, IPAsset, Tag, and AuditLog records as the legacy routes.
+- Range Addresses URL canonicalization (`#used`/`#free` to the `status` query parameter) changes navigation state only; range membership and IP asset records are unchanged.
 
 ## Project
 - `name` (unique)

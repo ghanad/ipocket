@@ -219,6 +219,28 @@ describe("RangeAddressesPage", () => {
     expect(combined).not.toMatch(/(^|&)page=/);
   });
 
+  it("canonicalizes legacy used and free hashes into status query parameters", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(reply()));
+    window.history.replaceState({}, "", "/ui/ranges/7/addresses#used");
+
+    const { unmount } = render(
+      <RangeAddressesPage endpoint="/api/ui/ranges/7/addresses" />,
+    );
+
+    await waitFor(() => {
+      expect(window.location.search).toBe("?status=used");
+      expect(window.location.hash).toBe("");
+    });
+    unmount();
+
+    window.history.replaceState({}, "", "/ui/ranges/7/addresses#free");
+    render(<RangeAddressesPage endpoint="/api/ui/ranges/7/addresses" />);
+    await waitFor(() => {
+      expect(window.location.search).toBe("?status=free");
+      expect(window.location.hash).toBe("");
+    });
+  });
+
   it("hides mutation controls for read-only policy", async () => {
     const readOnly = {
       ...response,

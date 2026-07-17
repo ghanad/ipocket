@@ -21,6 +21,17 @@ Open `/ui/import` and use the tabs:
 - `Import` tab for uploads
 - `Export` tab for downloads (bundle plus per-entity IP Assets/Hosts links)
 
+The page is a React entry mounted in the authenticated Jinja shell. It reads
+capabilities and the upload limit from `GET /api/ui/data-ops`, then submits:
+
+- `POST /api/ui/import/bundle?dry_run=1|0` with multipart field `file`
+- `POST /api/ui/import/csv?dry_run=1|0` with multipart fields `hosts` and/or `ip_assets`
+- `POST /api/ui/import/nmap?dry_run=1|0` with multipart field `file`
+
+These session-authenticated endpoints return JSON summaries. The existing HTML
+`POST /ui/import/{bundle,csv,nmap}` routes, bearer-token `/import/*` routes, and
+all `/export/*` downloads remain available for compatibility.
+
 The Export tab uses the same responsive multi-card layout pattern as Import.
 `ip-assets.csv` export rows are sorted by numeric IP value (for example `10.0.0.2` before `10.0.0.10`), with fallback numeric parsing when `ip_int` is null.
 
@@ -51,6 +62,9 @@ All three import sections (Bundle, CSV, Nmap XML) use the same `Dry-run` and `Ap
 
 - Viewer: allowed to Dry-run.
 - Editor: allowed to Apply.
+
+The React UI disables Apply for Viewers, and every React-facing import endpoint
+also enforces the same rule server-side.
 
 ## Bundle JSON schema
 

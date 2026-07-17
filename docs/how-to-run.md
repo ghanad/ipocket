@@ -26,7 +26,7 @@ cd ..
 ```
 
 The build writes the Management, Ranges, Library, Hosts list, Host Detail, IP
-Asset Detail, and User Management entry bundles to
+Asset Detail, User Management, and Data Operations entry bundles to
 `app/static/react/management/management.js` and
 `app/static/react/ranges/ranges.js`, and
 `app/static/react/library/library.js` and
@@ -34,7 +34,9 @@ Asset Detail, and User Management entry bundles to
 `app/static/react/host-detail/host-detail.js` and
 `app/static/react/ip-asset-detail/ip-asset-detail.js` and
 `app/static/react/users/users.js`, with shared chunks under
-`app/static/react/shared/`. Re-run `npm run build` after changing React sources.
+`app/static/react/shared/`; Data Operations is emitted at
+`app/static/react/data-ops/data-ops.js`. Re-run `npm run build` after changing
+React sources.
 The Docker image builds all React entrypoints automatically in a separate Node
 stage; Node.js is not included in the final runtime image.
 
@@ -340,13 +342,14 @@ UI design reference templates live in `/ui_template` for layout and styling guid
 8) Open **Data Ops** from the sidebar to import or export data using one unified page with tabs. `hosts.csv` exports now include `project_name`, `os_ip`, and `bmc_ip` for round-trip compatibility with CSV import.
    `ip-assets.csv` exports are sorted by numeric IP order (for example `10.0.0.2` appears before `10.0.0.10`), including legacy rows where `ip_int` is null.
    Import upload guardrails: each uploaded file (`bundle.json`, CSV, Nmap XML) is limited to `10 MB`; oversize files are rejected with HTTP `413`.
+   The React page uses the current UI session, allows Viewers to run dry-runs, and enables Apply only for Editors; the backend repeats that authorization check.
 9) Open **Connectors** from the sidebar and use **vCenter**, **Prometheus**, **Elasticsearch**, **Cassandra**, **Ceph**, or **Kubernetes** tabs to run connectors directly from UI (`dry-run` or `apply`) as background jobs; while a run is queued/running, the tab auto-refreshes (same `job_id` URL) to show final status and logs without manual refresh.
 10) When assigning tags on IP Assets or Range Address drawers, use the chip picker (`Add tags...`) to search and select existing tags only (create new tag names first in **Library → Tags**).
 11) For multi-row assignment changes, select IPs in **IP Assets** and use **Bulk Edit**, **Assign Project**, or **Manage Tags** in the bulk toolbar to open the existing right-side bulk drawer. **Select all on this page** only changes the current page; its checkbox is unchecked, indeterminate, or checked as the page selection changes, while selections made on other pages remain included in the toolbar's cumulative total. Shared tags appear under **Common tags** and can be removed for all selected rows in one apply. For notes, use **Notes action**: keep current notes, overwrite with a provided value, or clear notes for all selected rows.
 12) On an IP Asset detail page, use the React **Edit** and **Delete** drawers without reloading the shell. Edit refreshes Detail and Audit Log after success. Delete requires acknowledgement, plus exact-IP typing for high-risk records, and returns to the IP Assets list. An unassigned BMC also offers **Create host** when `IPOCKET_AUTO_HOST_FOR_BMC` is enabled.
 13) On an OS or BMC IP Asset detail page, use the Details panel to see the paired address from the same host: OS records show BMC addresses, and BMC records show OS addresses. The IP address, Host, and paired OS/BMC address values link directly to their detail pages. Other asset types do not show the paired-address field.
 14) Open **Audit Log** to review run-level `apply` entries for Data Ops and Connectors (`IMPORT_RUN`); dry-run executions are intentionally excluded from run-level audit logging.
-15) On the React-powered range details page (`/ui/ranges/<id>/addresses`), use separate filters for **IP address** (500 ms live search), **Project**, **Type**, and chip-based **Tags**, plus **Status** (`All/Used/Free`) and table pagination controls (`Rows`, `Previous`, `Next`). Filter state is shareable in the URL and restored by Back/Forward. Tag cells show up to 3 tags inline and collapse the rest into a searchable `+N more` popover; clicking any tag applies it to the active filter. Editors can allocate a free address or edit a used address in the right-side drawer; Viewers see no mutation controls. Example: `/ui/ranges/1/addresses?project_id=unassigned&type=BMC&tag=mgmt&status=used`.
+15) On the React-powered range details page (`/ui/ranges/<id>/addresses`), use separate filters for **IP address** (500 ms live search), **Project**, **Type**, and chip-based **Tags**, plus **Status** (`All/Used/Free`) and table pagination controls (`Rows`, `Previous`, `Next`). Filter state is shareable in the URL and restored by Back/Forward. Legacy `#used`/`#free` drill-down links are immediately replaced with canonical `?status=used`/`?status=free` URLs. Tag cells show up to 3 tags inline and collapse the rest into a searchable `+N more` popover; clicking any tag applies it to the active filter. Editors can allocate a free address or edit a used address in the right-side drawer; Viewers see no mutation controls. Example: `/ui/ranges/1/addresses?project_id=unassigned&type=BMC&tag=mgmt&status=used`.
 
 Assignment workflow note: use **IP Assets → Project Assignment = Unassigned only** to review and update records that still need a project, or `Assigned only` to show records with a project. You can also use **Project = Unassigned** for the same project-missing view. The primary filter row contains Search, Project, Type, and Project Assignment; there is no visible Status filter. Existing `archived-only=true` URLs continue to show archived records. The old dedicated **Needs Assignment** page is removed.
 

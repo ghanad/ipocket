@@ -6,7 +6,7 @@ from app.models import User, UserRole
 from app.routes import ui
 
 
-def test_import_page_includes_sample_csv_links(client) -> None:
+def test_import_page_mounts_react_data_operations(client) -> None:
     app.dependency_overrides[ui.get_current_ui_user] = lambda: User(
         1, "viewer", "x", UserRole.VIEWER, True
     )
@@ -17,19 +17,12 @@ def test_import_page_includes_sample_csv_links(client) -> None:
 
     assert response.status_code == 200
     assert "Import & Export" in response.text
-    assert 'href="/ui/import?tab=import"' in response.text
-    assert 'href="/ui/import?tab=export"' in response.text
-    assert "/static/samples/hosts.csv" in response.text
-    assert "/static/samples/ip-assets.csv" in response.text
-    assert "Run Nmap" in response.text
-    assert "nmap -sn -oX ipocket.xml" in response.text
-    assert "nmap -sn -PS80,443 -oX ipocket.xml" in response.text
-    assert 'class="import-options-grid"' in response.text
-    assert response.text.count('class="card import-option-card"') == 3
-    assert response.text.count('class="import-option-footer"') == 3
-    assert response.text.count('name="mode" value="dry-run"') == 3
-    assert response.text.count('name="mode" value="apply"') == 3
-    assert 'name="dry_run"' not in response.text
+    assert 'id="data-ops-root"' in response.text
+    assert 'data-endpoint="/api/ui/data-ops"' in response.text
+    assert 'data-import-endpoint="/api/ui/import"' in response.text
+    assert 'data-initial-tab="import"' in response.text
+    assert "/static/react/data-ops/data-ops.js" in response.text
+    assert 'class="import-options-grid"' not in response.text
 
 
 def test_export_tab_renders_from_import_page(client) -> None:
@@ -42,14 +35,9 @@ def test_export_tab_renders_from_import_page(client) -> None:
         app.dependency_overrides.pop(ui.get_current_ui_user, None)
 
     assert response.status_code == 200
-    assert "/export/bundle.json" in response.text
-    assert 'class="export-options-grid"' in response.text
-    assert response.text.count('class="card export-option-card"') == 3
-    assert response.text.count('class="export-option-footer"') == 3
-    assert "/export/ip-assets.csv" in response.text
-    assert "/export/hosts.csv" in response.text
-    assert "/export/vendors.csv" not in response.text
-    assert "/export/projects.csv" not in response.text
+    assert 'id="data-ops-root"' in response.text
+    assert 'data-initial-tab="export"' in response.text
+    assert "/static/react/data-ops/data-ops.js" in response.text
 
 
 def test_export_route_renders_unified_data_ops_page(client) -> None:
@@ -63,4 +51,4 @@ def test_export_route_renders_unified_data_ops_page(client) -> None:
 
     assert response.status_code == 200
     assert "Import & Export" in response.text
-    assert "/export/bundle.json" in response.text
+    assert 'data-initial-tab="export"' in response.text
