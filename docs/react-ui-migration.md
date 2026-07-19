@@ -73,9 +73,9 @@ templates. They remain unchanged.
 
 The framework-independent `frontend/src/shared/apiClient.ts` is the common
 transport for About, Management Overview, the global Audit Log, Host Detail,
-Ranges, Range Addresses, Hosts listing/CRUD, Account Password, and User
-Management while endpoint-specific types and page-domain adapters stay in each
-page's `api.ts` module. The client
+Ranges, Range Addresses, Hosts listing/CRUD, Account Password, User Management,
+Library, and IP Asset Detail while endpoint-specific types and page-domain
+adapters stay in each page's `api.ts` module. The client
 keeps requests same-origin with the existing
 session cookie, supports JSON and FormData request bodies, forwards abort
 signals, handles empty responses, and exposes typed HTTP errors for FastAPI
@@ -108,6 +108,14 @@ permission policies remain authoritative and unchanged. Endpoint URLs, methods,
 payload fields (including an empty edit password), validation messages, status
 values, and page behavior are unchanged.
 
+Phase 5 moves Library and IP Asset Detail to the shared transport. Library keeps
+its encoded full current-location authentication return target, including the
+pathname and query string. IP Asset Detail keeps its pathname-only return target
+and continues exposing authentication as page-domain status `303`. Library CRUD
+payloads, IP Asset Detail's update transformation, and both pages' permanent
+deletion confirmation safeguards remain unchanged, as do their tabs, drawers,
+retry behavior, permissions, messages, and navigation.
+
 JSON remains the default response mode. Callers that need binary data can ask
 for a native `Blob` or raw `Response`, so the shared transport does not force
 downloads through JSON parsing. This capability is tested but the existing
@@ -120,8 +128,8 @@ policies remain page-specific: Hosts keeps its fixed
 current location. This is a client consistency correction only; endpoint access
 policy is unchanged.
 
-Login, Library, IP Assets, IP Asset Detail, Data Operations, and Connectors
-remain deferred from shared-client consolidation.
+Login, IP Assets, Data Operations, and Connectors remain deferred from
+shared-client consolidation.
 Multipart uploads, native downloads, and other mutation-heavy page API modules
 are candidates for later, separately tested phases; their current behavior and
 authentication policy are unchanged.

@@ -1,3 +1,4 @@
+import { ApiError as SharedApiError, apiRequest } from "../shared/apiClient";
 import type { LibraryResponse } from "./types";
 
 export class ApiError extends Error {
@@ -9,52 +10,36 @@ export class ApiError extends Error {
   }
 }
 
-async function readErrorMessages(response: Response): Promise<string[]> {
+async function request<T>(
+  url: string,
+  options: Parameters<typeof apiRequest>[1] = {},
+): Promise<T> {
+  let authenticationRequired = false;
   try {
-    const payload = (await response.json()) as {
-      detail?: string | Array<{ msg?: string }>;
-    };
-    if (typeof payload.detail === "string") {
-      return [payload.detail];
-    }
-    if (Array.isArray(payload.detail)) {
-      return payload.detail
-        .map((item) => item.msg?.replace(/^Value error,\s*/, "") ?? "")
-        .filter(Boolean);
-    }
-  } catch {
-    // Use the stable fallback below.
-  }
-  return [`Library request failed (${response.status})`];
-}
+    return await apiRequest<T>(url, {
+      ...options,
+      onAuthenticationRequired: (loginUrl) => {
+        authenticationRequired = true;
+        window.location.assign(loginUrl);
+      },
+    });
+  } catch (error) {
+    if (!(error instanceof SharedApiError)) throw error;
 
-async function request<T>(url: string, options: RequestInit = {}): Promise<T> {
-  const response = await fetch(url, {
-    credentials: "same-origin",
-    headers: {
-      Accept: "application/json",
-      ...(options.body ? { "Content-Type": "application/json" } : {}),
-      ...options.headers,
-    },
-    ...options,
-  });
-
-  if (response.redirected && response.url.includes("/ui/login")) {
-    const returnTo = `${window.location.pathname}${window.location.search}`;
-    window.location.assign(
-      `/ui/login?return_to=${encodeURIComponent(returnTo)}`,
+    const detail = error.payload && typeof error.payload === "object"
+      ? (error.payload as Record<string, unknown>).detail
+      : undefined;
+    const messages = authenticationRequired
+      ? ["Authentication required."]
+      : (typeof detail === "string" || Array.isArray(detail)) &&
+          error.messages.length
+        ? error.messages
+        : [`Library request failed (${error.status})`];
+    throw new ApiError(
+      messages[0] ?? `Library request failed (${error.status})`,
+      messages,
     );
-    throw new ApiError("Authentication required.", ["Authentication required."]);
   }
-
-  if (!response.ok) {
-    const messages = await readErrorMessages(response);
-    throw new ApiError(messages[0] ?? "Library request failed.", messages);
-  }
-  if (response.status === 204) {
-    return undefined as T;
-  }
-  return response.json() as Promise<T>;
 }
 
 export function fetchLibraryItems<T>(
@@ -71,7 +56,7 @@ export function createLibraryItem<T, V extends object = object>(
 ): Promise<T> {
   return request<T>(`${endpoint}/${entity}`, {
     method: "POST",
-    body: JSON.stringify(values),
+    json: values,
   });
 }
 
@@ -83,7 +68,7 @@ export function updateLibraryItem<T, V extends object = object>(
 ): Promise<T> {
   return request<T>(`${endpoint}/${entity}/${entityId}`, {
     method: "PATCH",
-    body: JSON.stringify(values),
+    json: values,
   });
 }
 
@@ -95,6 +80,6 @@ export function deleteLibraryItem(
 ): Promise<void> {
   return request<void>(`${endpoint}/${entity}/${entityId}`, {
     method: "DELETE",
-    body: JSON.stringify({ confirm_name: confirmName }),
+    json: { confirm_name: confirmName },
   });
 }

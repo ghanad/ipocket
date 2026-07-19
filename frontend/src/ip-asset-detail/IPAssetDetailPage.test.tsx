@@ -64,6 +64,8 @@ function ok(payload: DetailResponse = response) {
     ok: true,
     status: 200,
     redirected: false,
+    headers: new Headers(),
+    text: async () => JSON.stringify(payload),
     json: async () => payload,
   };
 }
@@ -145,6 +147,8 @@ describe("IPAssetDetailPage", () => {
         ok: true,
         status: 200,
         redirected: false,
+        headers: new Headers(),
+        text: async () => JSON.stringify({ message: "updated" }),
         json: async () => ({ message: "updated" }),
       })
       .mockResolvedValueOnce(
@@ -240,6 +244,8 @@ describe("IPAssetDetailPage", () => {
         ok: false,
         status: 500,
         redirected: false,
+        headers: new Headers(),
+        text: async () => JSON.stringify({ detail: "failed" }),
         json: async () => ({ detail: "failed" }),
       })
       .mockResolvedValueOnce(ok());

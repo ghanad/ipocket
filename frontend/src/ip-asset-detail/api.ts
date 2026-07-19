@@ -1,3 +1,4 @@
+import { ApiError as SharedApiError, apiRequest } from "../shared/apiClient";
 import type { DetailResponse, EditValues } from "./types";
 
 export class IPAssetApiError extends Error {
@@ -9,50 +10,36 @@ export class IPAssetApiError extends Error {
   }
 }
 
-async function readErrors(response: Response): Promise<string[]> {
+async function request<T>(
+  url: string,
+  options: Parameters<typeof apiRequest>[1] = {},
+): Promise<T> {
+  let authenticationRequired = false;
   try {
-    const payload = (await response.json()) as {
-      detail?: string | string[] | Array<{ msg?: string }>;
-    };
-    if (typeof payload.detail === "string") return [payload.detail];
-    if (Array.isArray(payload.detail)) {
-      return payload.detail
-        .map((item) =>
-          typeof item === "string"
-            ? item
-            : item.msg?.replace(/^Value error,\s*/, "") ?? "",
-        )
-        .filter(Boolean);
+    return await apiRequest<T>(url, {
+      ...options,
+      onAuthenticationRequired: () => {
+        authenticationRequired = true;
+        window.location.assign(
+          `/ui/login?return_to=${window.location.pathname}`,
+        );
+      },
+    });
+  } catch (error) {
+    if (!(error instanceof SharedApiError)) throw error;
+    if (authenticationRequired) {
+      throw new IPAssetApiError(["Authentication required."], 303);
     }
-  } catch {
-    // Fall through to a stable error.
-  }
-  return [`IP asset request failed (${response.status}).`];
-}
 
-async function request<T>(url: string, options: RequestInit = {}): Promise<T> {
-  const response = await fetch(url, {
-    credentials: "same-origin",
-    headers: {
-      Accept: "application/json",
-      ...(options.body ? { "Content-Type": "application/json" } : {}),
-      ...options.headers,
-    },
-    ...options,
-  });
-  if (
-    response.redirected &&
-    (response.url.includes("/ui/login") ||
-      response.headers.get("location")?.includes("/ui/login"))
-  ) {
-    window.location.assign(`/ui/login?return_to=${window.location.pathname}`);
-    throw new IPAssetApiError(["Authentication required."], 303);
+    const detail = error.payload && typeof error.payload === "object"
+      ? (error.payload as Record<string, unknown>).detail
+      : undefined;
+    const messages = (typeof detail === "string" || Array.isArray(detail)) &&
+        error.messages.length
+      ? error.messages
+      : [`IP asset request failed (${error.status}).`];
+    throw new IPAssetApiError(messages, error.status);
   }
-  if (!response.ok) {
-    throw new IPAssetApiError(await readErrors(response), response.status);
-  }
-  if (response.status === 204) return undefined as T;
-  return response.json() as Promise<T>;
 }
 
 export function fetchIPAssetDetail(endpoint: string, signal?: AbortSignal) {
@@ -62,13 +49,13 @@ export function fetchIPAssetDetail(endpoint: string, signal?: AbortSignal) {
 export function updateIPAsset(endpoint: string, values: EditValues) {
   return request<void>(endpoint, {
     method: "PATCH",
-    body: JSON.stringify({
+    json: {
       type: values.type,
       project_id: values.project_id ? Number(values.project_id) : null,
       host_id: values.host_id ? Number(values.host_id) : null,
       tags: values.tags,
       notes: values.notes,
-    }),
+    },
   });
 }
 
@@ -85,9 +72,9 @@ export function deleteIPAsset(
 ) {
   return request<void>(endpoint, {
     method: "DELETE",
-    body: JSON.stringify({
+    json: {
       acknowledged,
       confirm_ip: confirmIp,
-    }),
+    },
   });
 }

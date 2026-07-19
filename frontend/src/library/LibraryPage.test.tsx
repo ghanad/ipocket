@@ -15,6 +15,8 @@ function response(payload: unknown, status = 200) {
     ok: status >= 200 && status < 300,
     status,
     redirected: false,
+    headers: new Headers(),
+    text: async () => payload === undefined ? "" : JSON.stringify(payload),
     json: async () => payload,
   };
 }
