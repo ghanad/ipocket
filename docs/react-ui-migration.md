@@ -151,11 +151,23 @@ policies remain page-specific: Hosts keeps its fixed
 current location. This is a client consistency correction only; endpoint access
 policy is unchanged.
 
-Login, Data Operations, and Connectors remain deferred from shared-client
-consolidation.
-Multipart uploads, native downloads, and other mutation-heavy page API modules
-are candidates for later, separately tested phases; their current behavior and
-authentication policy are unchanged.
+Phase 7 moves Data Operations configuration and multipart imports to the shared
+transport. Bundle, CSV, and Nmap uploads pass their original `FormData` objects;
+the adapter retains `Accept: application/json` and never assigns `Content-Type`,
+so the browser owns the multipart boundary. Dry-run/apply query values, including
+endpoints that already contain query parameters, response mapping, single-message
+error normalization, upload limits, permissions, results, and page behavior are
+unchanged. Expired sessions now consistently navigate to `/ui/login` with the
+encoded current Data Operations pathname and query string (for example,
+`/ui/import?tab=export`) as `return_to`; endpoint access policy is unchanged.
+
+Native downloads are an intentional transport boundary. Data Operations export
+URLs and sample CSV links remain ordinary `<a href>` browser downloads, retain
+their server-provided URLs and download attributes, and are not fetched, parsed,
+buffered, or Blob-wrapped through the shared client. The non-blocking
+`Export started.` notification remains page-owned.
+
+Login and Connectors remain deferred from shared-client consolidation.
 
 No registered GET route is classified as obsolete/unreachable. The unreachable
 artifacts were templates and partials left behind after their routes had moved.

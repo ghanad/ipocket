@@ -42,11 +42,10 @@ const importResult = {
 };
 
 function reply(payload: unknown, status = 200) {
-  return {
-    ok: status >= 200 && status < 300,
+  return new Response(JSON.stringify(payload), {
     status,
-    json: async () => payload,
-  } as Response;
+    headers: { "Content-Type": "application/json" },
+  });
 }
 
 function selectFile(card: HTMLElement, label: string, file: File) {

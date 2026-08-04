@@ -1,3 +1,4 @@
+import { ApiError, apiRequest } from "../shared/apiClient";
 import type {
   DataOpsConfig,
   ImportMode,
@@ -7,12 +8,12 @@ import type {
 
 export class DataOpsApiError extends Error {}
 
-async function errorMessage(response: Response): Promise<string> {
-  try {
-    const payload = (await response.json()) as { detail?: unknown };
-    if (typeof payload.detail === "string") return payload.detail;
-    if (Array.isArray(payload.detail)) {
-      return payload.detail
+function dataOperationErrorMessage(error: ApiError): string {
+  if (error.payload && typeof error.payload === "object") {
+    const detail = (error.payload as Record<string, unknown>).detail;
+    if (typeof detail === "string") return detail;
+    if (Array.isArray(detail)) {
+      return detail
         .map((item) =>
           typeof item === "object" && item && "msg" in item
             ? String(item.msg).replace(/^Value error,\s*/, "")
@@ -20,20 +21,42 @@ async function errorMessage(response: Response): Promise<string> {
         )
         .join(", ");
     }
-  } catch {
-    // Fall through to the status-based message.
   }
-  return `Data operation failed (${response.status}).`;
+  return `Data operation failed (${error.status}).`;
 }
 
-async function request<T>(url: string, init?: RequestInit): Promise<T> {
-  const response = await fetch(url, {
-    credentials: "same-origin",
-    headers: { Accept: "application/json", ...init?.headers },
-    ...init,
-  });
-  if (!response.ok) throw new DataOpsApiError(await errorMessage(response));
-  return response.json() as Promise<T>;
+async function request<T>(
+  url: string,
+  options: Parameters<typeof apiRequest>[1] = {},
+): Promise<T> {
+  let authenticationRequired = false;
+  try {
+    return await apiRequest<T>(url, {
+      ...options,
+      onAuthenticationRequired: (loginUrl) => {
+        authenticationRequired = true;
+        window.location.assign(loginUrl);
+      },
+    });
+  } catch (error) {
+    if (!(error instanceof ApiError)) throw error;
+    throw new DataOpsApiError(
+      authenticationRequired
+        ? "Authentication required."
+        : dataOperationErrorMessage(error),
+    );
+  }
+}
+
+function withDryRun(endpoint: string, dryRun: "0" | "1"): string {
+  const fragmentIndex = endpoint.indexOf("#");
+  const base = fragmentIndex === -1 ? endpoint : endpoint.slice(0, fragmentIndex);
+  const fragment = fragmentIndex === -1 ? "" : endpoint.slice(fragmentIndex);
+  let separator = "?";
+  if (base.includes("?")) {
+    separator = base.endsWith("?") || base.endsWith("&") ? "" : "&";
+  }
+  return `${base}${separator}dry_run=${dryRun}${fragment}`;
 }
 
 export function fetchDataOpsConfig(endpoint: string): Promise<DataOpsConfig> {
@@ -46,7 +69,7 @@ export function runDataImport(
   formData: FormData,
 ): Promise<ImportResult | NmapResult> {
   const dryRun = mode === "dry-run" ? "1" : "0";
-  return request(`${endpoint}?dry_run=${dryRun}`, {
+  return request(withDryRun(endpoint, dryRun), {
     method: "POST",
     body: formData,
   });

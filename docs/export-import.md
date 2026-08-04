@@ -37,6 +37,13 @@ These session-authenticated endpoints return JSON summaries. The existing HTML
 `POST /ui/import/{bundle,csv,nmap}` routes, bearer-token `/import/*` routes, and
 all `/export/*` downloads remain available for compatibility.
 
+The React Data Operations adapter uses the shared same-origin API transport for
+the JSON configuration request and multipart uploads. Uploads pass the original
+`FormData` through unchanged and deliberately omit `Content-Type`, allowing the
+browser to generate the multipart boundary. If the session expires, the shared
+transport returns to the current Data Operations pathname and query string (for
+example, `/ui/import?tab=export`) after login.
+
 The Export tab provides native browser downloads for:
 
 - `/export/bundle.json` and `/export/bundle.zip`
@@ -46,7 +53,8 @@ The Export tab provides native browser downloads for:
 - `/export/projects.csv` and `/export/projects.json`
 
 Starting a download shows a non-blocking notification; React does not fetch or
-buffer the export file.
+buffer the export file. Export and sample CSV links remain ordinary browser
+navigation/download links and do not pass through the shared API transport.
 
 The Export tab uses the same responsive multi-card layout pattern as Import.
 `ip-assets.csv` export rows are sorted by numeric IP value (for example `10.0.0.2` before `10.0.0.10`), with fallback numeric parsing when `ip_int` is null.
