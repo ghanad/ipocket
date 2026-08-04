@@ -74,8 +74,8 @@ templates. They remain unchanged.
 The framework-independent `frontend/src/shared/apiClient.ts` is the common
 transport for About, Management Overview, the global Audit Log, Host Detail,
 Ranges, Range Addresses, Hosts listing/CRUD, Account Password, User Management,
-Library, and IP Asset Detail while endpoint-specific types and page-domain
-adapters stay in each page's `api.ts` module. The client
+Library, IP Asset Detail, and the IP Assets list/workflow while endpoint-specific
+types and page-domain adapters stay in each page's `api.ts` module. The client
 keeps requests same-origin with the existing
 session cookie, supports JSON and FormData request bodies, forwards abort
 signals, handles empty responses, and exposes typed HTTP errors for FastAPI
@@ -116,6 +116,29 @@ payloads, IP Asset Detail's update transformation, and both pages' permanent
 deletion confirmation safeguards remain unchanged, as do their tabs, drawers,
 retry behavior, permissions, messages, and navigation.
 
+Phase 6 moves the main IP Assets list/workflow to the shared transport. Its
+public list read still receives the exact page-built query string and abort
+signal, so search debounce, repeated tag filters, stale-response suppression,
+pagination, and URL history/popstate behavior remain page-owned and unchanged.
+Create and update retain their existing trimming and number/null assignment
+conversions, and update still omits the immutable IP address. Auto-host remains
+a bodyless `POST`. Bulk update retains `asset_ids`, nullable type, the
+`set_project`/nullable `project_id` contract, tag add/remove arrays, notes mode
+and notes, `updated_count` mapping, selection clearing, refresh, validation,
+and toast behavior. Permanent delete remains a `DELETE` with the exact
+`acknowledged` and `confirm_ip` safeguards, including the high-risk exact-IP
+drawer confirmation and 204 response handling; archive/delete policy is not
+changed.
+
+IP Assets keeps its established direct authentication navigation policy. A
+login redirect sends the browser to `/ui/login` with an encoded `return_to`
+containing the current pathname and query string (for example, filters and
+pagination), then exposes the existing page-domain `Authentication required.`
+message without adding a status field. FastAPI detail arrays, multi-message
+validation, `Value error, ` normalization, stable punctuated HTTP fallback,
+and unchanged network/abort propagation remain behind the IP Assets domain
+adapter.
+
 JSON remains the default response mode. Callers that need binary data can ask
 for a native `Blob` or raw `Response`, so the shared transport does not force
 downloads through JSON parsing. This capability is tested but the existing
@@ -128,8 +151,8 @@ policies remain page-specific: Hosts keeps its fixed
 current location. This is a client consistency correction only; endpoint access
 policy is unchanged.
 
-Login, IP Assets, Data Operations, and Connectors remain deferred from
-shared-client consolidation.
+Login, Data Operations, and Connectors remain deferred from shared-client
+consolidation.
 Multipart uploads, native downloads, and other mutation-heavy page API modules
 are candidates for later, separately tested phases; their current behavior and
 authentication policy are unchanged.

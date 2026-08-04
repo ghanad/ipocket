@@ -72,6 +72,7 @@ function ok(payload: unknown = response, status = 200) {
     redirected: false,
     headers: new Headers(),
     json: async () => payload,
+    text: async () => status === 204 ? "" : JSON.stringify(payload),
   };
 }
 

@@ -1,3 +1,4 @@
+import { ApiError as SharedApiError, apiRequest } from "../shared/apiClient";
 import type {
   AssetFormValues,
   AssetsResponse,
@@ -10,52 +11,33 @@ export class IPAssetsApiError extends Error {
   }
 }
 
-async function readErrors(response: Response): Promise<string[]> {
+async function request<T>(
+  url: string,
+  options: Parameters<typeof apiRequest>[1] = {},
+): Promise<T> {
+  let authenticationRequired = false;
   try {
-    const payload = (await response.json()) as {
-      detail?: string | string[] | Array<{ msg?: string }>;
-    };
-    if (typeof payload.detail === "string") return [payload.detail];
-    if (Array.isArray(payload.detail)) {
-      return payload.detail
-        .map((item) =>
-          typeof item === "string"
-            ? item
-            : item.msg?.replace(/^Value error,\s*/, "") ?? "",
-        )
-        .filter(Boolean);
+    return await apiRequest<T>(url, {
+      ...options,
+      onAuthenticationRequired: (loginUrl) => {
+        authenticationRequired = true;
+        window.location.assign(loginUrl);
+      },
+    });
+  } catch (error) {
+    if (!(error instanceof SharedApiError)) throw error;
+    if (authenticationRequired) {
+      throw new IPAssetsApiError(["Authentication required."]);
     }
-  } catch {
-    // Use the stable fallback below.
-  }
-  return [`IP asset request failed (${response.status}).`];
-}
 
-async function request<T>(url: string, options: RequestInit = {}): Promise<T> {
-  const response = await fetch(url, {
-    credentials: "same-origin",
-    headers: {
-      Accept: "application/json",
-      ...(options.body ? { "Content-Type": "application/json" } : {}),
-      ...options.headers,
-    },
-    ...options,
-  });
-  if (
-    response.redirected &&
-    (response.url.includes("/ui/login") ||
-      response.headers.get("location")?.includes("/ui/login"))
-  ) {
-    window.location.assign(
-      `/ui/login?return_to=${encodeURIComponent(
-        `${window.location.pathname}${window.location.search}`,
-      )}`,
-    );
-    throw new IPAssetsApiError(["Authentication required."]);
+    const detail = error.payload && typeof error.payload === "object"
+      ? (error.payload as Record<string, unknown>).detail
+      : undefined;
+    const messages = typeof detail === "string" || Array.isArray(detail)
+      ? error.messages
+      : [`IP asset request failed (${error.status}).`];
+    throw new IPAssetsApiError(messages);
   }
-  if (!response.ok) throw new IPAssetsApiError(await readErrors(response));
-  if (response.status === 204) return undefined as T;
-  return response.json() as Promise<T>;
 }
 
 function assetPayload(values: AssetFormValues) {
@@ -76,7 +58,7 @@ export function fetchAssets(url: string, signal?: AbortSignal) {
 export function createAsset(endpoint: string, values: AssetFormValues) {
   return request<{ asset_id: number }>(endpoint, {
     method: "POST",
-    body: JSON.stringify(assetPayload(values)),
+    json: assetPayload(values),
   });
 }
 
@@ -88,7 +70,7 @@ export function updateAsset(
   const { ip_address: _ipAddress, ...payload } = assetPayload(values);
   return request<void>(`${endpoint}/${assetId}`, {
     method: "PATCH",
-    body: JSON.stringify(payload),
+    json: payload,
   });
 }
 
@@ -107,10 +89,10 @@ export function deleteAsset(
 ) {
   return request<void>(`${endpoint}/${assetId}`, {
     method: "DELETE",
-    body: JSON.stringify({
+    json: {
       acknowledged,
       confirm_ip: confirmIp,
-    }),
+    },
   });
 }
 
@@ -121,7 +103,7 @@ export function bulkUpdateAssets(
 ) {
   return request<{ updated_count: number }>(`${endpoint}/bulk`, {
     method: "POST",
-    body: JSON.stringify({
+    json: {
       asset_ids: assetIds,
       type: values.type || null,
       set_project: Boolean(values.projectMode),
@@ -133,6 +115,6 @@ export function bulkUpdateAssets(
       tags_to_remove: values.tags_to_remove,
       notes_mode: values.notes_mode || null,
       notes: values.notes,
-    }),
+    },
   });
 }
