@@ -94,7 +94,9 @@ def test_ip_assets_list_api_normalizes_filters_and_bounds_pagination(client) -> 
     assert payload["can_edit"] is False
 
 
-def test_ip_assets_list_api_supports_unassigned_archived_and_editor_policy(client) -> None:
+def test_ip_assets_list_api_supports_unassigned_archived_and_editor_policy(
+    client,
+) -> None:
     connection = db.connect(os.environ["IPAM_DB_PATH"])
     try:
         db.init_db(connection)
@@ -142,13 +144,9 @@ def test_ip_assets_list_api_supports_unassigned_archived_and_editor_policy(clien
     assert unassigned.status_code == 200
     assert [item["id"] for item in unassigned.json()["assets"]] == [active.id]
     assert unassigned.json()["can_edit"] is True
-    assert [item["id"] for item in assigned.json()["assets"]] == [
-        assigned_active.id
-    ]
+    assert [item["id"] for item in assigned.json()["assets"]] == [assigned_active.id]
     assert assigned.json()["filters"]["normalized"]["assigned_only"] is True
-    assert [item["id"] for item in archived_response.json()["assets"]] == [
-        archived.id
-    ]
+    assert [item["id"] for item in archived_response.json()["assets"]] == [archived.id]
 
 
 def test_ip_assets_mutation_apis_require_editor(client) -> None:
@@ -161,9 +159,7 @@ def test_ip_assets_mutation_apis_require_editor(client) -> None:
         "notes": "",
     }
 
-    response = client.post(
-        "/api/ui/ip-assets", json=payload, follow_redirects=False
-    )
+    response = client.post("/api/ui/ip-assets", json=payload, follow_redirects=False)
 
     assert response.status_code in {303, 401, 403}
 
@@ -315,9 +311,7 @@ def test_ip_assets_bulk_api_validates_and_updates_common_fields(client) -> None:
     connection = db.connect(os.environ["IPAM_DB_PATH"])
     try:
         assets = repository.list_ip_assets_by_ids(connection, [first.id, second.id])
-        tags = repository.list_tags_for_ip_assets(
-            connection, [first.id, second.id]
-        )
+        tags = repository.list_tags_for_ip_assets(connection, [first.id, second.id])
     finally:
         connection.close()
     assert all(asset.asset_type == IPAssetType.VM for asset in assets)

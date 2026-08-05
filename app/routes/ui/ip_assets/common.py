@@ -47,8 +47,7 @@ def build_ip_asset_detail_payload(connection, asset_id: int, user: User) -> dict
         grouped = repository.get_host_linked_assets_grouped(connection, asset.host_id)
         pair_key = "bmc" if asset.asset_type == IPAssetType.OS else "os"
         view_model["host_pair_assets"] = [
-            {"id": pair.id, "ip_address": pair.ip_address}
-            for pair in grouped[pair_key]
+            {"id": pair.id, "ip_address": pair.ip_address} for pair in grouped[pair_key]
         ]
 
     audit_logs = [
@@ -73,8 +72,7 @@ def build_ip_asset_detail_payload(connection, asset_id: int, user: User) -> dict
             ],
             "hosts": [{"id": item.id, "name": item.name} for item in hosts],
             "tags": [
-                {"id": item.id, "name": item.name, "color": item.color}
-                for item in tags
+                {"id": item.id, "name": item.name, "color": item.color} for item in tags
             ],
             "types": [item.value for item in IPAssetType],
         },
@@ -248,9 +246,7 @@ def bulk_update_ip_assets_from_ui(
             errors.append("Selected project does not exist.")
     tags_to_add, tag_errors = _parse_selected_tags(connection, tags_to_add_raw)
     errors.extend(tag_errors)
-    tags_to_remove, remove_errors = _parse_selected_tags(
-        connection, tags_to_remove_raw
-    )
+    tags_to_remove, remove_errors = _parse_selected_tags(connection, tags_to_remove_raw)
     errors.extend(remove_errors)
     normalized_notes_mode = (notes_mode or "").strip().lower()
     set_notes = False
@@ -307,7 +303,9 @@ def auto_host_ip_asset(connection, *, asset, user: User):
     host_name = f"server_{asset.ip_address}"
     host = repository.get_host_by_name(connection, host_name)
     if host is None:
-        host = repository.create_host(connection, name=host_name, notes=None, vendor=None)
+        host = repository.create_host(
+            connection, name=host_name, notes=None, vendor=None
+        )
     repository.update_ip_asset(
         connection,
         ip_address=asset.ip_address,
@@ -327,7 +325,10 @@ def validate_ip_asset_delete(
     errors: list[str] = []
     if not acknowledged:
         errors.append("Confirm that this delete cannot be undone.")
-    if _delete_requires_exact_ip(asset, tag_names) and confirm_ip.strip() != asset.ip_address:
+    if (
+        _delete_requires_exact_ip(asset, tag_names)
+        and confirm_ip.strip() != asset.ip_address
+    ):
         errors.append("Type the exact IP address to delete this high-risk asset.")
     if errors:
         raise HTTPException(status_code=400, detail=errors)

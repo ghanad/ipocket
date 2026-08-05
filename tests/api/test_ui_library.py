@@ -126,12 +126,16 @@ def test_ui_library_api_crud_validation_and_exact_delete_confirmation(
         )
         assert vendor.status_code == 201
         vendor_id = vendor.json()["id"]
-        assert client.post(
-            "/api/ui/library/vendors", json={"name": "Cisco"}
-        ).status_code == 409
-        assert client.patch(
-            f"/api/ui/library/vendors/{vendor_id}", json={"name": "Juniper"}
-        ).json()["name"] == "Juniper"
+        assert (
+            client.post("/api/ui/library/vendors", json={"name": "Cisco"}).status_code
+            == 409
+        )
+        assert (
+            client.patch(
+                f"/api/ui/library/vendors/{vendor_id}", json={"name": "Juniper"}
+            ).json()["name"]
+            == "Juniper"
+        )
 
         tag = client.post(
             "/api/ui/library/tags",
@@ -178,13 +182,12 @@ def test_ui_library_api_crud_validation_and_exact_delete_confirmation(
 def test_ui_library_api_preserves_session_auth_and_role_rules(
     client, _create_user
 ) -> None:
-    unauthenticated = client.get(
-        "/api/ui/library/projects", follow_redirects=False
-    )
+    unauthenticated = client.get("/api/ui/library/projects", follow_redirects=False)
     assert unauthenticated.status_code == 303
-    assert "/ui/login?return_to=/api/ui/library/projects" in unauthenticated.headers[
-        "location"
-    ]
+    assert (
+        "/ui/login?return_to=/api/ui/library/projects"
+        in unauthenticated.headers["location"]
+    )
 
     _create_user("viewer", "viewer-pass", UserRole.VIEWER)
     viewer_login = client.post(

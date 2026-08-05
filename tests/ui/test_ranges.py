@@ -125,7 +125,9 @@ def test_range_addresses_page_shows_tags(client) -> None:
     assert "hx-get=" not in response.text
 
     payload = client.get(f"/api/ui/ranges/{ip_range.id}/addresses").json()
-    used = next(row for row in payload["addresses"] if row["ip_address"] == "10.40.0.10")
+    used = next(
+        row for row in payload["addresses"] if row["ip_address"] == "10.40.0.10"
+    )
     assert used["host_pair"] == "10.40.0.11"
     assert used["tags"] == [{"name": "core", "color": "#1d4ed8"}]
     assert payload["range"]["used"] == 2
@@ -167,7 +169,11 @@ def test_range_addresses_tags_cell_collapses_after_three_with_more_trigger(
         row for row in response.json()["addresses"] if row["ip_address"] == "10.41.0.10"
     )
     assert {tag["name"] for tag in row["tags"]} == {
-        "alpha", "beta", "gamma", "delta", "epsilon"
+        "alpha",
+        "beta",
+        "gamma",
+        "delta",
+        "epsilon",
     }
 
 
@@ -217,14 +223,18 @@ def test_range_addresses_filters_by_ip_project_type_and_tag(client) -> None:
         params={"project_id": str(project.id)},
     )
     assert by_project.status_code == 200
-    assert [row["ip_address"] for row in by_project.json()["addresses"]] == ["10.80.0.2"]
+    assert [row["ip_address"] for row in by_project.json()["addresses"]] == [
+        "10.80.0.2"
+    ]
 
     by_unassigned_project = client.get(
         f"/api/ui/ranges/{ip_range.id}/addresses",
         params={"project_id": "unassigned"},
     )
     assert by_unassigned_project.status_code == 200
-    assert [row["ip_address"] for row in by_unassigned_project.json()["addresses"]] == ["10.80.0.3"]
+    assert [row["ip_address"] for row in by_unassigned_project.json()["addresses"]] == [
+        "10.80.0.3"
+    ]
 
     by_type = client.get(
         f"/api/ui/ranges/{ip_range.id}/addresses",
@@ -266,11 +276,15 @@ def test_range_addresses_status_filter_supports_used_free_and_invalid(client) ->
     finally:
         connection.close()
 
-    used = client.get(f"/api/ui/ranges/{ip_range.id}/addresses", params={"status": "used"})
+    used = client.get(
+        f"/api/ui/ranges/{ip_range.id}/addresses", params={"status": "used"}
+    )
     assert used.status_code == 200
     assert [row["ip_address"] for row in used.json()["addresses"]] == ["10.81.0.2"]
 
-    free = client.get(f"/api/ui/ranges/{ip_range.id}/addresses", params={"status": "free"})
+    free = client.get(
+        f"/api/ui/ranges/{ip_range.id}/addresses", params={"status": "free"}
+    )
     assert free.status_code == 200
     free_ips = [row["ip_address"] for row in free.json()["addresses"]]
     assert "10.81.0.2" not in free_ips

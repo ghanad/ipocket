@@ -79,9 +79,7 @@ def _normalized_range_query(request: Request, connection) -> dict[str, Any]:
 
     return {
         "q": ip_query,
-        "project_id": "unassigned"
-        if project_unassigned
-        else str(project_id or ""),
+        "project_id": "unassigned" if project_unassigned else str(project_id or ""),
         "parsed_project_id": project_id,
         "project_unassigned": project_unassigned,
         "type": asset_type.value if asset_type else "",
@@ -107,9 +105,7 @@ def _range_addresses_payload(
     query = _normalized_range_query(request, connection)
     addresses = list(breakdown["addresses"])
     if query["status"] != "all":
-        addresses = [
-            row for row in addresses if row.get("status") == query["status"]
-        ]
+        addresses = [row for row in addresses if row.get("status") == query["status"]]
     if query["q"]:
         needle = query["q"].lower()
         addresses = [
@@ -245,11 +241,7 @@ def _validate_range_address_write(
     address_lookup = {row["ip_address"]: row for row in breakdown["addresses"]}
     if ip_address and ip_address not in address_lookup:
         errors.append("IP address is not part of this range.")
-    elif (
-        require_free
-        and ip_address
-        and address_lookup[ip_address]["status"] != "free"
-    ):
+    elif require_free and ip_address and address_lookup[ip_address]["status"] != "free":
         errors.append("IP address is already assigned.")
     return {"asset_type": normalized_type, "tags": tags}, errors
 

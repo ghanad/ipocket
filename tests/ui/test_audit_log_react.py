@@ -76,10 +76,7 @@ def test_audit_log_api_requires_authentication(client) -> None:
     response = client.get("/api/ui/audit-log", follow_redirects=False)
 
     assert response.status_code == 303
-    assert (
-        response.headers["location"]
-        == "/ui/login?return_to=/api/ui/audit-log"
-    )
+    assert response.headers["location"] == "/ui/login?return_to=/api/ui/audit-log"
 
 
 def test_audit_log_api_shape_ordering_and_system_fallback(
@@ -146,9 +143,7 @@ def test_audit_log_api_shape_ordering_and_system_fallback(
     assert payload["audit_logs"][1]["username"] == "auditor"
 
 
-def test_audit_log_api_default_and_custom_pagination(
-    client, _setup_connection
-) -> None:
+def test_audit_log_api_default_and_custom_pagination(client, _setup_connection) -> None:
     connection = _setup_connection()
     try:
         _create_logs(connection, 25)
@@ -158,9 +153,7 @@ def test_audit_log_api_default_and_custom_pagination(
     _override_user()
     try:
         default = client.get("/api/ui/audit-log").json()
-        custom = client.get(
-            "/api/ui/audit-log?page=2&per-page=10"
-        ).json()
+        custom = client.get("/api/ui/audit-log?page=2&per-page=10").json()
     finally:
         _clear_user_override()
 
@@ -241,17 +234,13 @@ def test_audit_log_api_keeps_repository_pagination_compatibility(
             limit=10,
             offset=10,
         )
-        repository_total = repository.count_audit_logs(
-            connection, target_type=None
-        )
+        repository_total = repository.count_audit_logs(connection, target_type=None)
     finally:
         connection.close()
 
     _override_user()
     try:
-        payload = client.get(
-            "/api/ui/audit-log?page=2&per-page=10"
-        ).json()
+        payload = client.get("/api/ui/audit-log?page=2&per-page=10").json()
     finally:
         _clear_user_override()
 

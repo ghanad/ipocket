@@ -60,7 +60,7 @@ def test_frontend_ci_has_all_verification_gates() -> None:
 
     assert "github.event_name == 'pull_request'" in frontend
     assert "github.ref == 'refs/heads/main'" in frontend
-    assert "node-version: \"22\"" in frontend
+    assert 'node-version: "22"' in frontend
     assert "cache: npm" in frontend
     assert "cache-dependency-path: frontend/package-lock.json" in frontend
     assert "working-directory: frontend" in frontend

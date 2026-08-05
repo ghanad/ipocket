@@ -56,10 +56,7 @@ def test_account_password_page_and_api_require_authentication(client) -> None:
     assert page.status_code == 303
     assert page.headers["Location"] == "/ui/login?return_to=/ui/account/password"
     assert api.status_code == 303
-    assert (
-        api.headers["Location"]
-        == "/ui/login?return_to=/api/ui/account/password"
-    )
+    assert api.headers["Location"] == "/ui/login?return_to=/api/ui/account/password"
 
 
 def test_account_password_page_is_a_lightweight_react_mount(
@@ -80,10 +77,7 @@ def test_account_password_page_is_a_lightweight_react_mount(
     assert response.status_code == 200
     assert 'id="account-password-root"' in response.text
     assert 'data-endpoint="/api/ui/account/password"' in response.text
-    assert (
-        'src="/static/react/account-password/account-password.js"'
-        in response.text
-    )
+    assert 'src="/static/react/account-password/account-password.js"' in response.text
     assert 'style="max-width: 640px"' not in response.text
     assert 'name="current_password"' not in response.text
     assert '<form method="post" action="/ui/account/password"' not in response.text
@@ -241,9 +235,9 @@ def test_json_password_validation_preserves_messages_and_does_not_audit(
         unchanged = repository.get_user_by_id(connection, user.id)
         assert unchanged is not None
         assert unchanged.hashed_password == user.hashed_password
-        assert repository.list_audit_logs(
-            connection, target_type="USER", limit=10
-        ) == []
+        assert (
+            repository.list_audit_logs(connection, target_type="USER", limit=10) == []
+        )
     finally:
         connection.close()
 

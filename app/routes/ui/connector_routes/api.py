@@ -10,7 +10,13 @@ from app.routes.ui.utils import get_current_ui_user
 
 from . import cassandra, ceph, elasticsearch, kubernetes, prometheus, vcenter
 from .job_store import _create_connector_job, _get_connector_job
-from .registry import ASSET_TYPES, CONNECTOR_NAMES, CONNECTOR_SCHEMAS, parse_connector_run, safe_form_state
+from .registry import (
+    ASSET_TYPES,
+    CONNECTOR_NAMES,
+    CONNECTOR_SCHEMAS,
+    parse_connector_run,
+    safe_form_state,
+)
 
 router = APIRouter()
 
@@ -55,18 +61,29 @@ async def run_connector_api(
     user=Depends(get_current_ui_user),
 ) -> dict[str, object]:
     if connector not in RUNNERS:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Unknown connector.")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Unknown connector."
+        )
     try:
         raw_payload = await request.json()
     except ValueError as exc:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Request body must be valid JSON.") from exc
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Request body must be valid JSON.",
+        ) from exc
     if not isinstance(raw_payload, dict):
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Request body must be a JSON object.")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Request body must be a JSON object.",
+        )
     parsed, errors = parse_connector_run(connector, raw_payload)
     if errors or parsed is None:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=errors)
     if parsed.mode == "apply" and user.role != UserRole.EDITOR:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Apply mode is restricted to editor accounts.")
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Apply mode is restricted to editor accounts.",
+        )
 
     job_id = _create_connector_job(active_tab=connector, form_state=parsed.form_state)
     background_tasks.add_task(
@@ -91,7 +108,10 @@ def connector_job_api(
 ) -> dict[str, Any]:
     job = _get_connector_job(job_id)
     if job is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Connector job was not found or has expired.")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Connector job was not found or has expired.",
+        )
     job_status = str(job.get("status") or "queued")
     connector = str(job.get("connector") or job.get("active_tab") or "")
     return {

@@ -11,8 +11,7 @@ from app.routes import ui
 def _read_application_css() -> str:
     static_css = Path("app/static/css")
     return "\n".join(
-        path.read_text(encoding="utf-8")
-        for path in sorted(static_css.glob("*.css"))
+        path.read_text(encoding="utf-8") for path in sorted(static_css.glob("*.css"))
     )
 
 
@@ -113,6 +112,6 @@ def test_row_actions_overflow_menu_styles_present() -> None:
     assert ".row-action-control {" in css
     assert ".row-action-control:focus-visible" in css
     assert "@media (hover: none), (pointer: coarse), (max-width: 700px)" in css
-    assert ".row-actions-trigger[aria-expanded=\"true\"]" in css
+    assert '.row-actions-trigger[aria-expanded="true"]' in css
     assert ".row-action-item-danger" in css
-    assert ".row-action-item[aria-disabled=\"true\"]" in css
+    assert '.row-action-item[aria-disabled="true"]' in css

@@ -281,8 +281,7 @@ class IPRangeCreate(BaseModel):
             return normalize_cidr(normalized)
         except ValueError as exc:
             raise ValueError(
-                "CIDR must be a valid IPv4 network "
-                "(example: 192.168.10.0/24)."
+                "CIDR must be a valid IPv4 network (example: 192.168.10.0/24)."
             ) from exc
 
     @field_validator("notes")

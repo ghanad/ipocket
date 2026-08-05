@@ -20,12 +20,8 @@ def test_detail_shell_mount_entry_active_nav_and_legacy_routes(
         )
     finally:
         connection.close()
-    app.dependency_overrides[ui.get_current_ui_user] = lambda: _user(
-        1, UserRole.VIEWER
-    )
-    app.dependency_overrides[ui.require_ui_editor] = lambda: _user(
-        2, UserRole.EDITOR
-    )
+    app.dependency_overrides[ui.get_current_ui_user] = lambda: _user(1, UserRole.VIEWER)
+    app.dependency_overrides[ui.require_ui_editor] = lambda: _user(2, UserRole.EDITOR)
     try:
         detail = client.get(f"/ui/ip-assets/{asset.id}")
         edit = client.get(f"/ui/ip-assets/{asset.id}/edit")
@@ -69,9 +65,7 @@ def test_detail_api_payload_includes_pairs_metadata_audit_and_viewer_access(
 ) -> None:
     connection = _setup_connection()
     try:
-        project = repository.create_project(
-            connection, name="Core", color="#123456"
-        )
+        project = repository.create_project(connection, name="Core", color="#123456")
         host = repository.create_host(connection, name="node-1")
         repository.create_tag(connection, name="prod", color="#ffffff")
         os_asset = repository.create_ip_asset(
@@ -91,9 +85,7 @@ def test_detail_api_payload_includes_pairs_metadata_audit_and_viewer_access(
         )
     finally:
         connection.close()
-    app.dependency_overrides[ui.get_current_ui_user] = lambda: _user(
-        1, UserRole.VIEWER
-    )
+    app.dependency_overrides[ui.get_current_ui_user] = lambda: _user(1, UserRole.VIEWER)
     try:
         response = client.get(f"/api/ui/ip-assets/{os_asset.id}/detail")
     finally:
@@ -111,9 +103,7 @@ def test_detail_api_payload_includes_pairs_metadata_audit_and_viewer_access(
     assert payload["audit_logs"][0]["user"] == "System"
     assert payload["audit_logs"][0]["action"] == "CREATE"
     assert payload["audit_logs"][0]["changes"]["summary"].startswith("Type: OS")
-    assert payload["audit_logs"][0]["changes"]["raw"].startswith(
-        "Created IP asset"
-    )
+    assert payload["audit_logs"][0]["changes"]["raw"].startswith("Created IP asset")
     assert payload["metadata"]["types"] == ["OS", "BMC", "VM", "VIP", "OTHER"]
     assert payload["can_edit"] is False
     assert payload["delete_requires_exact_ip"] is True
@@ -139,9 +129,7 @@ def test_detail_api_omits_pairs_for_non_host_asset_types(
         )
     finally:
         connection.close()
-    app.dependency_overrides[ui.get_current_ui_user] = lambda: _user(
-        1, UserRole.VIEWER
-    )
+    app.dependency_overrides[ui.get_current_ui_user] = lambda: _user(1, UserRole.VIEWER)
     try:
         response = client.get(f"/api/ui/ip-assets/{vm.id}/detail")
     finally:
@@ -160,9 +148,7 @@ def test_detail_api_missing_and_archived_are_not_found(
         repository.archive_ip_asset(connection, archived.ip_address)
     finally:
         connection.close()
-    app.dependency_overrides[ui.get_current_ui_user] = lambda: _user(
-        1, UserRole.VIEWER
-    )
+    app.dependency_overrides[ui.get_current_ui_user] = lambda: _user(1, UserRole.VIEWER)
     try:
         missing = client.get("/api/ui/ip-assets/999/detail")
         hidden = client.get(f"/api/ui/ip-assets/{archived.id}/detail")
@@ -260,9 +246,7 @@ def test_detail_api_auto_host_flag_success_conflict_and_type_errors(
 ) -> None:
     connection = _setup_connection()
     try:
-        editor = repository.create_user(
-            connection, "auto-editor", "x", UserRole.EDITOR
-        )
+        editor = repository.create_user(connection, "auto-editor", "x", UserRole.EDITOR)
         bmc = repository.create_ip_asset(
             connection, ip_address="10.90.4.10", asset_type=IPAssetType.BMC
         )

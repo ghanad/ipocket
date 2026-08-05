@@ -77,9 +77,7 @@ def normalize_ip_asset_list_query(
         assigned_only and not unassigned_only and not project_unassigned_only
     )
     parsed_project_id = (
-        None
-        if project_unassigned_only
-        else _parse_optional_int_query(project_filter)
+        None if project_unassigned_only else _parse_optional_int_query(project_filter)
     )
     try:
         asset_type_enum = _normalize_asset_type(asset_type)
@@ -92,9 +90,7 @@ def normalize_ip_asset_list_query(
         q=(q or "").strip(),
         project_id=parsed_project_id,
         project_filter=(
-            "unassigned"
-            if project_unassigned_only
-            else str(parsed_project_id or "")
+            "unassigned" if project_unassigned_only else str(parsed_project_id or "")
         ),
         project_unassigned_only=project_unassigned_only,
         project_assigned_only=project_assigned_only,
@@ -187,8 +183,7 @@ def build_ip_asset_list_payload(
             ],
             "hosts": [{"id": item.id, "name": item.name} for item in hosts],
             "tags": [
-                {"id": item.id, "name": item.name, "color": item.color}
-                for item in tags
+                {"id": item.id, "name": item.name, "color": item.color} for item in tags
             ],
             "types": [item.value for item in IPAssetType],
             "normalized": {

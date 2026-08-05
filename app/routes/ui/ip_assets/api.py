@@ -169,8 +169,6 @@ def delete_ip_asset_for_ui(
         acknowledged=payload.acknowledged,
         confirm_ip=payload.confirm_ip,
     )
-    if not repository.delete_ip_asset(
-        connection, asset.ip_address, current_user=user
-    ):
+    if not repository.delete_ip_asset(connection, asset.ip_address, current_user=user):
         raise HTTPException(status_code=404)
     return Response(status_code=204)

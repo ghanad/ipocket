@@ -43,7 +43,9 @@ def test_about_page_is_a_lightweight_react_mount(client, monkeypatch) -> None:
     assert response.status_code == 200
     assert 'id="about-root"' in response.text
     assert 'data-endpoint="/api/ui/about"' in response.text
-    assert '<section class="card" role="status">Loading About…</section>' in response.text
+    assert (
+        '<section class="card" role="status">Loading About…</section>' in response.text
+    )
     assert 'src="/static/react/about/about.js"' in response.text
     assert 'href="/ui/about"' in response.text
     assert "server-version-must-not-render" not in response.text
@@ -60,9 +62,7 @@ def test_about_api_requires_authentication(client) -> None:
     assert response.headers["Location"] == "/ui/login?return_to=/api/ui/about"
 
 
-def test_about_api_returns_only_safe_structured_build_data(
-    client, monkeypatch
-) -> None:
+def test_about_api_returns_only_safe_structured_build_data(client, monkeypatch) -> None:
     monkeypatch.setenv("DATABASE_PASSWORD", "must-not-leak")
     monkeypatch.setenv("SESSION_SECRET", "also-must-not-leak")
     monkeypatch.setattr(

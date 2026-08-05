@@ -275,4 +275,6 @@ def test_data_ops_react_import_apis_reject_oversized_uploads(
 
     response = client.post(url, files=files)
     assert response.status_code == 413
-    assert response.json()["detail"] == "Uploaded file exceeds maximum size of 10 bytes."
+    assert (
+        response.json()["detail"] == "Uploaded file exceeds maximum size of 10 bytes."
+    )

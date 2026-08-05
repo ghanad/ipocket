@@ -6,16 +6,48 @@ from app.main import app
 from app.models import User, UserRole
 from app.routes import ui
 from app.routes.ui import connectors as connectors_facade
-from app.routes.ui.connector_routes import cassandra, ceph, elasticsearch, kubernetes, prometheus, vcenter
+from app.routes.ui.connector_routes import (
+    cassandra,
+    ceph,
+    elasticsearch,
+    kubernetes,
+    prometheus,
+    vcenter,
+)
 
 
 CONNECTOR_CASES = {
-    "vcenter": (vcenter, {"server": "vc.example", "username": "admin", "password": "secret", "port": "443"}),
-    "prometheus": (prometheus, {"prometheus_url": "http://prom.example:9090", "query": "up", "ip_label": "instance"}),
+    "vcenter": (
+        vcenter,
+        {
+            "server": "vc.example",
+            "username": "admin",
+            "password": "secret",
+            "port": "443",
+        },
+    ),
+    "prometheus": (
+        prometheus,
+        {
+            "prometheus_url": "http://prom.example:9090",
+            "query": "up",
+            "ip_label": "instance",
+        },
+    ),
     "elasticsearch": (elasticsearch, {"elasticsearch_url": "https://es.example:9200"}),
     "cassandra": (cassandra, {"contact_points": "10.0.0.1", "port": "9042"}),
-    "ceph": (ceph, {"ceph_url": "https://ceph.example:8443", "username": "admin", "password": "secret"}),
-    "kubernetes": (kubernetes, {"api_url": "https://k8s.example:6443", "token": "secret"}),
+    "ceph": (
+        ceph,
+        {
+            "ceph_url": "https://ceph.example:8443",
+            "username": "admin",
+            "password": "secret",
+        },
+    ),
+    "kubernetes": (
+        kubernetes,
+        {"api_url": "https://k8s.example:6443", "token": "secret"},
+    ),
 }
 
 
@@ -49,7 +81,9 @@ def test_connectors_page_is_react_shell_with_safe_canonical_tab(client, tab) -> 
 
 
 @pytest.mark.parametrize("connector", CONNECTOR_CASES)
-def test_legacy_apply_posts_reject_viewer_for_every_connector(client, connector) -> None:
+def test_legacy_apply_posts_reject_viewer_for_every_connector(
+    client, connector
+) -> None:
     app.dependency_overrides[ui.get_current_ui_user] = lambda: _user(UserRole.VIEWER)
     try:
         response = client.post(
@@ -64,9 +98,15 @@ def test_legacy_apply_posts_reject_viewer_for_every_connector(client, connector)
 
 
 @pytest.mark.parametrize("connector", CONNECTOR_CASES)
-def test_legacy_dry_run_posts_start_background_job_and_redirect(client, monkeypatch, connector) -> None:
+def test_legacy_dry_run_posts_start_background_job_and_redirect(
+    client, monkeypatch, connector
+) -> None:
     module, values = CONNECTOR_CASES[connector]
-    monkeypatch.setattr(module, f"_run_{connector}_connector", lambda **_kwargs: (["safe result"], [], 0, 0))
+    monkeypatch.setattr(
+        module,
+        f"_run_{connector}_connector",
+        lambda **_kwargs: (["safe result"], [], 0, 0),
+    )
     app.dependency_overrides[ui.get_current_ui_user] = lambda: _user(UserRole.VIEWER)
     try:
         response = client.post(
@@ -77,7 +117,9 @@ def test_legacy_dry_run_posts_start_background_job_and_redirect(client, monkeypa
     finally:
         app.dependency_overrides.pop(ui.get_current_ui_user, None)
     assert response.status_code == 303
-    assert response.headers["location"].startswith(f"/ui/connectors?tab={connector}&job_id=")
+    assert response.headers["location"].startswith(
+        f"/ui/connectors?tab={connector}&job_id="
+    )
 
 
 @pytest.mark.parametrize(
@@ -91,10 +133,14 @@ def test_legacy_dry_run_posts_start_background_job_and_redirect(client, monkeypa
         ("kubernetes", "Kubernetes API URL is required."),
     ],
 )
-def test_legacy_validation_errors_remain_server_rendered(client, connector, expected) -> None:
+def test_legacy_validation_errors_remain_server_rendered(
+    client, connector, expected
+) -> None:
     app.dependency_overrides[ui.get_current_ui_user] = lambda: _user(UserRole.EDITOR)
     try:
-        response = client.post(f"/ui/connectors/{connector}/run", data={"mode": "dry-run"})
+        response = client.post(
+            f"/ui/connectors/{connector}/run", data={"mode": "dry-run"}
+        )
     finally:
         app.dependency_overrides.pop(ui.get_current_ui_user, None)
     assert response.status_code == 400

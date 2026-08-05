@@ -37,7 +37,9 @@ def test_projects_page_uses_react_library_shell(client) -> None:
     assert 'class="library-root"' in response.text
     assert 'data-endpoint="/api/ui/library"' in response.text
     assert 'data-active-tab="projects"' in response.text
-    assert '<script type="module" src="/static/react/library/library.js">' in response.text
+    assert (
+        '<script type="module" src="/static/react/library/library.js">' in response.text
+    )
     assert "data-project-create-drawer" not in response.text
 
 

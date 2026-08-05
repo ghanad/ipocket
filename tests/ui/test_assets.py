@@ -20,8 +20,7 @@ def _read_ip_assets_javascript() -> str:
 def _read_application_css() -> str:
     static_css = Path(__file__).resolve().parents[2] / "app/static/css"
     return "\n".join(
-        path.read_text(encoding="utf-8")
-        for path in sorted(static_css.glob("*.css"))
+        path.read_text(encoding="utf-8") for path in sorted(static_css.glob("*.css"))
     )
 
 
@@ -1305,9 +1304,7 @@ def test_ip_asset_detail_uses_react_mount_and_display_api(client) -> None:
     assert payload["can_edit"] is False
     assert payload["audit_logs"][0]["action"] == "CREATE"
     assert payload["audit_logs"][0]["changes"]["summary"].startswith("Type: OS")
-    assert payload["audit_logs"][0]["changes"]["raw"].startswith(
-        "Created IP asset"
-    )
+    assert payload["audit_logs"][0]["changes"]["raw"].startswith("Created IP asset")
 
 
 def test_ip_asset_detail_shows_no_tags_and_no_notes_defaults(client) -> None:

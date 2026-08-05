@@ -179,8 +179,14 @@ def test_refactored_templates_load_external_page_assets() -> None:
 
     range_addresses_template = templates["range_addresses"].read_text(encoding="utf-8")
     assert 'id="range-addresses-root"' in range_addresses_template
-    assert 'data-endpoint="/api/ui/ranges/{{ ip_range.id }}/addresses"' in range_addresses_template
-    assert '<script type="module" src="/static/react/range-addresses/range-addresses.js"></script>' in range_addresses_template
+    assert (
+        'data-endpoint="/api/ui/ranges/{{ ip_range.id }}/addresses"'
+        in range_addresses_template
+    )
+    assert (
+        '<script type="module" src="/static/react/range-addresses/range-addresses.js"></script>'
+        in range_addresses_template
+    )
     assert "hx-get=" not in range_addresses_template
     assert "<style>" not in range_addresses_template
 
@@ -234,12 +240,12 @@ def test_refactored_templates_load_external_page_assets() -> None:
     )
     assert "window.ipocketApplyTagContrast = applyTagContrast;" in tag_picker_js
     assert "applyTagContrast(root);" in tag_picker_js
-    ip_assets_page = (
-        repo_root / "frontend/src/ip-assets/IPAssetsPage.tsx"
-    ).read_text(encoding="utf-8")
-    bulk_drawer = (
-        repo_root / "frontend/src/ip-assets/BulkUpdateDrawer.tsx"
-    ).read_text(encoding="utf-8")
+    ip_assets_page = (repo_root / "frontend/src/ip-assets/IPAssetsPage.tsx").read_text(
+        encoding="utf-8"
+    )
+    bulk_drawer = (repo_root / "frontend/src/ip-assets/BulkUpdateDrawer.tsx").read_text(
+        encoding="utf-8"
+    )
     assert "const commonTags = useMemo" in ip_assets_page
     assert "tags_to_remove" in bulk_drawer
     assert "deleteAsset(endpoint, asset.id" in ip_assets_page
