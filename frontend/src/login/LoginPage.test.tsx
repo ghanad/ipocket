@@ -5,13 +5,12 @@ import { LoginPage } from "./LoginPage";
 
 function response(
   payload: unknown,
-  options: { ok?: boolean; status?: number } = {},
-) {
-  return {
-    ok: options.ok ?? true,
+  options: { status?: number } = {},
+): Response {
+  return new Response(JSON.stringify(payload), {
     status: options.status ?? 200,
-    json: async () => payload,
-  };
+    headers: { "Content-Type": "application/json" },
+  });
 }
 
 function fillCredentials(username = "viewer", password = "viewer-pass") {
@@ -150,7 +149,7 @@ describe("LoginPage", () => {
       vi.fn().mockResolvedValue(
         response(
           { detail: "Invalid username or password." },
-          { ok: false, status: 401 },
+          { status: 401 },
         ),
       ),
     );
@@ -171,7 +170,7 @@ describe("LoginPage", () => {
       vi.fn().mockResolvedValue(
         response(
           { detail: "Invalid username or password." },
-          { ok: false, status: 401 },
+          { status: 401 },
         ),
       ),
     );
@@ -191,7 +190,7 @@ describe("LoginPage", () => {
       vi.fn().mockResolvedValue(
         response(
           { detail: "Invalid username or password." },
-          { ok: false, status: 401 },
+          { status: 401 },
         ),
       ),
     );

@@ -1,3 +1,5 @@
+import { ApiError as SharedApiError, apiRequest } from "../shared/apiClient";
+
 export interface LoginValues {
   username: string;
   password: string;
@@ -42,37 +44,37 @@ function isApprovedRedirect(target: string): boolean {
   }
 }
 
-async function readError(response: Response): Promise<string> {
-  try {
-    const payload = (await response.json()) as { detail?: unknown };
-    if (typeof payload.detail === "string") return payload.detail;
-  } catch {
-    // Use the stable fallback below.
-  }
-  return GENERIC_REQUEST_ERROR;
-}
-
 export async function login(
   endpoint: string,
   values: LoginValues,
 ): Promise<LoginResponse> {
   let response: Response;
   try {
-    response = await fetch(endpoint, {
+    response = await apiRequest<Response>(endpoint, {
       method: "POST",
       credentials: "same-origin",
       headers: {
         Accept: "application/json",
         "Content-Type": "application/json",
       },
-      body: JSON.stringify(values),
+      json: values,
+      responseMode: "response",
+      onAuthenticationRequired: () => {
+        // Login is the authentication endpoint; it must never redirect itself.
+      },
     });
-  } catch {
+  } catch (error) {
+    if (error instanceof SharedApiError) {
+      const detail =
+        error.payload && typeof error.payload === "object"
+          ? (error.payload as Record<string, unknown>).detail
+          : undefined;
+      throw new LoginApiError(
+        typeof detail === "string" ? detail : GENERIC_REQUEST_ERROR,
+        error.status,
+      );
+    }
     throw new LoginApiError(GENERIC_REQUEST_ERROR, 0);
-  }
-
-  if (!response.ok) {
-    throw new LoginApiError(await readError(response), response.status);
   }
 
   try {

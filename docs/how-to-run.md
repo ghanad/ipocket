@@ -38,14 +38,15 @@ and CI builds it from `frontend/` sources for verification and Docker packaging.
 The Docker image builds all React entrypoints automatically in a separate Node
 stage; Node.js is not included in the final runtime image.
 
-Frontend API foundation: the React page-domain adapters, including Connectors,
-use `frontend/src/shared/apiClient.ts` for same-origin session requests, typed
-FastAPI errors, login-return redirects, empty responses, and request
-cancellation. Its JSON, FormData, and Blob/raw-response behavior is covered by
-unit tests. Connectors keeps polling, retry, cancellation, and credential
-clearing in its page domain; native download links remain ordinary browser
-downloads. Login is the only React module that intentionally remains on its
-existing client.
+Frontend API foundation: all React page-domain adapters, including Connectors
+and Login, use `frontend/src/shared/apiClient.ts` for same-origin session
+requests, typed FastAPI errors, login-return redirects, empty responses, and
+request cancellation. Its JSON, FormData, and Blob/raw-response behavior is
+covered by unit tests. Connectors keeps polling, retry, cancellation, and
+credential clearing in its page domain; Login keeps its non-navigating
+authentication handling, sanitized error mapping, and redirect validation in
+its page-domain adapter; native download links remain ordinary browser
+downloads. Shared-client consolidation is complete across the React modules.
 
 Initialize the database (runs migrations):
 

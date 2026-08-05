@@ -72,10 +72,12 @@ templates. They remain unchanged.
 ## Frontend foundation consolidation
 
 The framework-independent `frontend/src/shared/apiClient.ts` is the common
-transport for About, Management Overview, the global Audit Log, Host Detail,
-Ranges, Range Addresses, Hosts listing/CRUD, Account Password, User Management,
-Library, IP Asset Detail, and the IP Assets list/workflow while endpoint-specific
-types and page-domain adapters stay in each page's `api.ts` module. The client
+transport for all 15 React page-domain adapters: About, Management Overview,
+the global Audit Log, Host Detail, Ranges, Range Addresses, Hosts
+listing/CRUD, Account Password, User Management, Library, IP Asset Detail,
+the IP Assets list/workflow, Data Operations, Connectors, and Login while
+endpoint-specific types and page-domain adapters stay in each page's `api.ts`
+module. The client
 keeps requests same-origin with the existing
 session cookie, supports JSON and FormData request bodies, forwards abort
 signals, handles empty responses, and exposes typed HTTP errors for FastAPI
@@ -179,7 +181,19 @@ boolean value, while password, token, and API-key values are neither retained by
 the adapter nor exposed by its errors; the existing page-side secret clearing
 continues after both submission outcomes and tab changes.
 
-Login is the only deferred module from shared-client consolidation.
+Phase 9 moves Login's POST transport to the shared client. Login uses raw
+`Response` mode so invalid success payloads retain their HTTP status, keeps a
+non-navigating authentication callback because Login is itself the
+authentication endpoint, and maps only string `detail` payloads to the
+existing domain error. Network failures, malformed/non-JSON errors, unknown
+payloads, and invalid `redirect_to` values remain the stable generic Login
+error without exposing response bodies or submitted credentials. The adapter
+retains the client-side same-origin redirect defense-in-depth check, while the
+server's approved redirect remains authoritative; final navigation remains
+page-owned.
+
+Shared-client consolidation is complete across all React page-domain
+transport adapters. No React page-domain adapter remains deferred.
 
 No registered GET route is classified as obsolete/unreachable. The unreachable
 artifacts were templates and partials left behind after their routes had moved.
