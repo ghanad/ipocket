@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import subprocess
 from pathlib import Path
 
@@ -64,8 +65,23 @@ def test_frontend_ci_has_all_verification_gates() -> None:
     assert "cache: npm" in frontend
     assert "cache-dependency-path: frontend/package-lock.json" in frontend
     assert "working-directory: frontend" in frontend
-    for command in ("npm ci", "npm test", "npm run typecheck", "npm run build"):
+    for command in (
+        "npm ci",
+        "npm audit --audit-level=high",
+        "npm test",
+        "npm run typecheck",
+        "npm run build",
+    ):
         assert f"run: {command}" in frontend
+
+
+def test_frontend_lockfile_uses_patched_postcss() -> None:
+    lockfile = json.loads(
+        (REPO_ROOT / "frontend" / "package-lock.json").read_text(encoding="utf-8")
+    )
+    version = lockfile["packages"]["node_modules/postcss"]["version"]
+
+    assert tuple(int(part) for part in version.split(".")) >= (8, 5, 23)
 
 
 def test_docker_smoke_build_is_separate_from_tag_release() -> None:
@@ -76,6 +92,10 @@ def test_docker_smoke_build_is_separate_from_tag_release() -> None:
     assert "github.event_name == 'pull_request'" in smoke
     assert "github.ref == 'refs/heads/main'" in smoke
     assert "docker build" in smoke
+    assert "docker run --detach --name ipocket-ci-smoke" in smoke
+    assert "--env SESSION_SECRET=ci-smoke-session-secret" in smoke
+    assert "curl --fail --silent http://127.0.0.1:8000/ui/login" in smoke
+    assert "docker rm --force ipocket-ci-smoke" in smoke
     assert "docker/login-action" not in smoke
     assert "DOCKERHUB_" not in smoke
     assert "push: true" not in smoke

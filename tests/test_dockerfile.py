@@ -41,5 +41,6 @@ def test_docker_compose_configures_database_and_admin():
     assert "ipocket:" in content
     assert "./data:/data" in content
     assert "8000:8000" in content
+    assert 'SESSION_SECRET: "${SESSION_SECRET:?' in content
     assert "ADMIN_BOOTSTRAP_USERNAME: admin" in content
     assert "ADMIN_BOOTSTRAP_PASSWORD: admin-pass" in content

@@ -99,11 +99,16 @@ Run the container (persisting SQLite in a local `data/` directory):
 
 ```bash
 mkdir -p data
-docker run --rm -p 8000:8000 -v "$(pwd)/data:/data" ipocket:latest
+export SESSION_SECRET="$(openssl rand -hex 32)"
+docker run --rm -p 8000:8000 \
+  -e SESSION_SECRET="$SESSION_SECRET" \
+  -v "$(pwd)/data:/data" \
+  ipocket:latest
 ```
 
 The container runs `alembic upgrade head` on startup and stores the SQLite
-database at `/data/ipocket.db`.
+database at `/data/ipocket.db`. `SESSION_SECRET` is mandatory and must be a
+stable, random value for the lifetime of the deployment.
 
 ## Run with Docker Compose
 The provided `docker-compose.yml` mounts the SQLite database directory outside
@@ -111,15 +116,21 @@ the container and sets bootstrap superuser credentials.
 
 ```bash
 mkdir -p data
+export SESSION_SECRET="$(openssl rand -hex 32)"
 docker compose up --build
 ```
 
 The app will persist data in `./data/ipocket.db` and is available at
-http://127.0.0.1:8000.
+http://127.0.0.1:8000. Compose fails before startup when `SESSION_SECRET` is
+missing, preventing an unusable container from being launched.
 
 Defaults for the bootstrap superuser are:
 - `ADMIN_BOOTSTRAP_USERNAME=admin`
 - `ADMIN_BOOTSTRAP_PASSWORD=admin-pass`
+
+Pull request CI installs frontend dependencies from the lockfile, rejects High
+or Critical npm advisories, builds the Docker image, starts it with an isolated
+CI session secret, and verifies that `/ui/login` is reachable.
 
 ## Run with Helm (Kubernetes)
 The repository includes a Helm chart at `helm/ipocket`.

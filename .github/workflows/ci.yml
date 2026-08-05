@@ -75,6 +75,9 @@ jobs:
       - name: Install frontend dependencies
         run: npm ci
 
+      - name: Audit frontend dependencies
+        run: npm audit --audit-level=high
+
       - name: Run frontend tests
         run: npm test
 
@@ -93,6 +96,21 @@ jobs:
 
       - name: Smoke-build Docker image
         run: docker build --tag ipocket:ci-smoke .
+
+      - name: Smoke-run Docker image
+        run: |
+          docker run --detach --name ipocket-ci-smoke \
+            --publish 127.0.0.1:8000:8000 \
+            --env SESSION_SECRET=ci-smoke-session-secret \
+            ipocket:ci-smoke
+          trap 'docker logs ipocket-ci-smoke; docker rm --force ipocket-ci-smoke' EXIT
+          for attempt in {1..30}; do
+            if curl --fail --silent http://127.0.0.1:8000/ui/login > /dev/null; then
+              exit 0
+            fi
+            sleep 1
+          done
+          exit 1
 
   docker-release:
     if: startsWith(github.ref, 'refs/tags/')
