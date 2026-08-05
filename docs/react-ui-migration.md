@@ -167,7 +167,19 @@ their server-provided URLs and download attributes, and are not fetched, parsed,
 buffered, or Blob-wrapped through the shared client. The non-blocking
 `Export started.` notification remains page-owned.
 
-Login and Connectors remain deferred from shared-client consolidation.
+Phase 8 moves the Connectors configuration, run, and job-read transport adapter
+to the shared client. The adapter retains the Connectors-specific error shape,
+including status, login URL, detail-array formatting, and the stable
+`Connector request failed (<status>).` fallback. Connector authentication is
+still handed back to the page-owned callback; the adapter never navigates on its
+own. The page continues to own job polling, retry timing, cancellation,
+stale-response suppression, restored job IDs, tab/URL synchronization, and
+expired-job dismissal. JSON submissions retain every schema-provided string or
+boolean value, while password, token, and API-key values are neither retained by
+the adapter nor exposed by its errors; the existing page-side secret clearing
+continues after both submission outcomes and tab changes.
+
+Login is the only deferred module from shared-client consolidation.
 
 No registered GET route is classified as obsolete/unreachable. The unreachable
 artifacts were templates and partials left behind after their routes had moved.

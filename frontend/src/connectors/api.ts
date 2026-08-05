@@ -1,3 +1,4 @@
+import { ApiError as SharedApiError, apiRequest } from "../shared/apiClient";
 import type { ConnectorsConfig, ConnectorName, FieldValue, JobStart, ConnectorJob } from "./types";
 
 export class ConnectorApiError extends Error {
@@ -8,40 +9,38 @@ export class ConnectorApiError extends Error {
   ) { super(message); }
 }
 
-async function errorMessage(response: Response): Promise<string> {
-  try {
-    const payload = await response.json() as { detail?: unknown };
-    if (typeof payload.detail === "string") return payload.detail;
-    if (Array.isArray(payload.detail)) return payload.detail.map(String).join(" ");
-  } catch { /* use safe fallback */ }
-  return `Connector request failed (${response.status}).`;
+function connectorErrorMessage(error: SharedApiError): string {
+  const detail = error.payload && typeof error.payload === "object"
+    ? (error.payload as Record<string, unknown>).detail
+    : undefined;
+  if (typeof detail === "string") return detail;
+  if (Array.isArray(detail)) return detail.map(String).join(" ");
+  return `Connector request failed (${error.status}).`;
 }
 
-async function request<T>(url: string, init?: RequestInit): Promise<T> {
-  const response = await fetch(url, {
-    credentials: "same-origin",
-    headers: { Accept: "application/json", "Content-Type": "application/json", ...init?.headers },
-    ...init,
-  });
-  if (
-    response.redirected &&
-    (response.url.includes("/ui/login") ||
-      response.headers.get("location")?.includes("/ui/login"))
-  ) {
-    throw new ConnectorApiError(
-      "Authentication required.",
-      401,
-      `/ui/login?return_to=${encodeURIComponent(
-        `${window.location.pathname}${window.location.search}`,
-      )}`,
-    );
+async function request<T>(
+  url: string,
+  options: Parameters<typeof apiRequest>[1] = {},
+): Promise<T> {
+  let loginUrl: string | null = null;
+  try {
+    return await apiRequest<T>(url, {
+      ...options,
+      onAuthenticationRequired: (url) => {
+        loginUrl = url;
+      },
+    });
+  } catch (error) {
+    if (!(error instanceof SharedApiError)) throw error;
+    if (error.status === 401 && loginUrl) {
+      throw new ConnectorApiError("Authentication required.", 401, loginUrl);
+    }
+    throw new ConnectorApiError(connectorErrorMessage(error), error.status);
   }
-  if (!response.ok) throw new ConnectorApiError(await errorMessage(response), response.status);
-  return response.json() as Promise<T>;
 }
 
 export const fetchConnectorsConfig = (url: string, signal?: AbortSignal) => request<ConnectorsConfig>(url, { signal });
-export const runConnector = (url: string, values: Record<string, FieldValue>) => request<JobStart>(url, { method: "POST", body: JSON.stringify(values) });
+export const runConnector = (url: string, values: Record<string, FieldValue>) => request<JobStart>(url, { method: "POST", json: values });
 export const fetchConnectorJob = (url: string, signal?: AbortSignal) => request<ConnectorJob>(url, { signal });
 
 export function jobUrl(template: string, id: string): string {

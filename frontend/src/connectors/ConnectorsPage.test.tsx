@@ -36,11 +36,20 @@ function config(canApply = false): ConnectorsConfig {
 }
 
 function reply(payload: unknown, status = 200): Response {
-  return { ok: status >= 200 && status < 300, status, redirected: false, url: "http://testserver/api/ui/connectors", headers: new Headers(), json: async () => payload } as Response;
+  return new Response(JSON.stringify(payload), {
+    status,
+    headers: { "Content-Type": "application/json" },
+  });
 }
 
 function loginRedirect(): Response {
-  return { ...reply(null), redirected: true, url: "http://testserver/ui/login?return_to=/api/ui/connectors" };
+  return {
+    ok: true,
+    status: 200,
+    redirected: true,
+    url: "http://testserver/ui/login?return_to=/api/ui/connectors",
+    headers: new Headers(),
+  } as Response;
 }
 
 function deferred<T>() {
