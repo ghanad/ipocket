@@ -14,3 +14,9 @@
 
 ## Phase 4
 - discovery/scanner (ranges + NEW/GONE detection)
+
+## Future design proposals
+
+- [Host Completion Agents](host-completion-agents.md): a human-in-the-loop,
+  self-improving workflow for completing OS/BMC Host pairs without requiring
+  DNS, network reachability, or direct Agent access to the database.
