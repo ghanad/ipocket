@@ -22,7 +22,7 @@ from app.routes.ui.utils import (
 )
 
 from . import repository
-from .common import _tags_template_context
+from .common import _library_react_context, _tags_template_context
 
 router = APIRouter()
 
@@ -118,14 +118,25 @@ async def ui_create_tag(
         return _render_template(
             request,
             "projects.html",
-            _tags_template_context(
-                session,
-                errors=errors,
-                form_state={
-                    "name": name,
-                    "color": color or settings_routes.suggest_random_tag_color(),
-                },
-            ),
+            {
+                **_tags_template_context(
+                    session,
+                    errors=errors,
+                    form_state={
+                        "name": name,
+                        "color": color or settings_routes.suggest_random_tag_color(),
+                    },
+                ),
+                **_library_react_context(
+                    "tags",
+                    "create",
+                    values={
+                        "name": name,
+                        "color": color or settings_routes.suggest_random_tag_color(),
+                    },
+                    errors=errors,
+                ),
+            },
             status_code=400,
             active_nav="library",
         )
@@ -139,14 +150,25 @@ async def ui_create_tag(
         return _render_template(
             request,
             "projects.html",
-            _tags_template_context(
-                session,
-                errors=["Tag name already exists."],
-                form_state={
-                    "name": name,
-                    "color": color or settings_routes.suggest_random_tag_color(),
-                },
-            ),
+            {
+                **_tags_template_context(
+                    session,
+                    errors=["Tag name already exists."],
+                    form_state={
+                        "name": name,
+                        "color": color or settings_routes.suggest_random_tag_color(),
+                    },
+                ),
+                **_library_react_context(
+                    "tags",
+                    "create",
+                    values={
+                        "name": name,
+                        "color": color or settings_routes.suggest_random_tag_color(),
+                    },
+                    errors=["Tag name already exists."],
+                ),
+            },
             status_code=409,
             active_nav="library",
         )
@@ -186,12 +208,21 @@ async def ui_edit_tag(
         return _render_template(
             request,
             "projects.html",
-            _tags_template_context(
-                session,
-                edit_errors=errors,
-                edit_tag=edit_tag,
-                edit_form_state={"name": name, "color": color or DEFAULT_TAG_COLOR},
-            ),
+            {
+                **_tags_template_context(
+                    session,
+                    edit_errors=errors,
+                    edit_tag=edit_tag,
+                    edit_form_state={"name": name, "color": color or DEFAULT_TAG_COLOR},
+                ),
+                **_library_react_context(
+                    "tags",
+                    "edit",
+                    entity_id=tag_id,
+                    values={"name": name, "color": color or DEFAULT_TAG_COLOR},
+                    errors=errors,
+                ),
+            },
             status_code=400,
             active_nav="library",
         )
@@ -210,12 +241,21 @@ async def ui_edit_tag(
         return _render_template(
             request,
             "projects.html",
-            _tags_template_context(
-                session,
-                edit_errors=["Tag name already exists."],
-                edit_tag=edit_tag,
-                edit_form_state={"name": name, "color": color or DEFAULT_TAG_COLOR},
-            ),
+            {
+                **_tags_template_context(
+                    session,
+                    edit_errors=["Tag name already exists."],
+                    edit_tag=edit_tag,
+                    edit_form_state={"name": name, "color": color or DEFAULT_TAG_COLOR},
+                ),
+                **_library_react_context(
+                    "tags",
+                    "edit",
+                    entity_id=tag_id,
+                    values={"name": name, "color": color or DEFAULT_TAG_COLOR},
+                    errors=["Tag name already exists."],
+                ),
+            },
             status_code=409,
             active_nav="library",
         )
@@ -249,12 +289,21 @@ async def ui_delete_tag(
         return _render_template(
             request,
             "projects.html",
-            _tags_template_context(
-                session,
-                delete_errors=["Tag name confirmation does not match."],
-                delete_tag=tag,
-                delete_confirm_value=confirm_name,
-            ),
+            {
+                **_tags_template_context(
+                    session,
+                    delete_errors=["Tag name confirmation does not match."],
+                    delete_tag=tag,
+                    delete_confirm_value=confirm_name,
+                ),
+                **_library_react_context(
+                    "tags",
+                    "delete",
+                    entity_id=tag_id,
+                    errors=["Tag name confirmation does not match."],
+                    confirm_name=confirm_name,
+                ),
+            },
             status_code=400,
             active_nav="library",
         )

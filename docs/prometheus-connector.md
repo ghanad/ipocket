@@ -1,5 +1,9 @@
 # Prometheus connector (query-driven IP import)
 
+## React UI
+
+Open `/ui/connectors?tab=prometheus`. Viewers can dry-run; Editors can Apply after confirmation. Background status and logs are polled without reloading, and a retained `job_id` supports reload recovery. Authentication values are never restored or returned. The legacy form POST remains compatible.
+
 ipocket includes a Prometheus connector that reads vector query results from
 `/api/v1/query`, extracts IPv4 addresses from a selected label, and imports
 those addresses through the existing bundle import pipeline.

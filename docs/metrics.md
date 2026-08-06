@@ -8,14 +8,27 @@ The app exposes Prometheus metrics at `GET /metrics`:
 - `ipam_ip_unassigned_owner_total`: number of active IP records without an owner assignment (currently `0` while owner support is paused).
 - `ipam_ip_unassigned_both_total`: number of active IP records without both owner and project assignments (currently `0` while owner support is paused).
 
+The React migration of `/ui/ranges` does not change metric names or calculation
+semantics. Range CRUD through `/api/ui/ranges` writes the same `ip_ranges`
+records as the legacy HTML form routes.
+The React migration of `/ui/projects` (Projects/Vendors/Tags) is also
+presentation/transport-only and does not change metric names or calculations.
+
+The read-only Host Completion `cases` and `examples` endpoints derive their
+responses from existing active Host/IP relationships and do not add or alter
+Prometheus metric names or calculations.
+
 Archived restore note:
 - Re-creating an IP that currently exists only as archived restores that row (sets `archived=0`) rather than creating a duplicate row, so totals reflect a single record transitioning between archived/active states.
 
 
 Note: Vendor catalog/host vendor selection does not introduce new Prometheus metrics in this release.
 
-UI note: unassigned-related metrics are still available even though the dedicated **Needs Assignment** page was removed; use the IP Assets list filters for assignment workflows.
+UI note: unassigned-related metrics are still available even though the dedicated **Needs Assignment** page was removed; use the IP Assets list's **Project Assignment** filter for assignment workflows. Removing the visible Status filter does not change metric calculation or archived asset data.
 UI note: range-address search/status/pagination changes are presentation-only and do not affect `/metrics` payloads.
+UI note: the React Range Addresses shell and its JSON list/add/edit endpoints reuse existing IP asset repository mutations and do not add or alter metric names or calculations.
+UI note: canonicalizing legacy Range Addresses `#used`/`#free` fragments to `status` query parameters only stabilizes filtering and does not alter metric values.
+UI note: the React Data Operations page and `/api/ui/import/*` multipart transport reuse the existing import pipeline; they add no metric names and applied imports affect inventory counters exactly as the preserved legacy import routes do.
 UI note: Hosts list search/filter changes are presentation-only and do not affect `/metrics` payloads.
 UI note: Hosts text/select filters applying immediately with HTMX table updates is a UI behavior change only and does not affect `/metrics` payloads.
 UI note: Hosts list OS/BMC address links are navigation-only and do not affect `/metrics` payloads.
@@ -32,9 +45,12 @@ UI note: IP asset export numeric sort fallback (when `ip_int` is null) is export
 UI note: IP Asset detail OS/BMC paired-address display is presentation-only and does not affect `/metrics` payloads.
 UI note: IP Asset detail links for IP address, Host, and paired OS/BMC addresses are navigation-only and do not affect `/metrics` payloads.
 UI note: Host detail linked-IP grouping and per-IP project/tag display are presentation-only and do not affect `/metrics` payloads.
+UI note: Migrating Host Detail to React and loading its existing view data from `/api/ui/hosts/{id}/detail` is presentation/transport-only and does not affect `/metrics` names or calculations.
+UI note: Migrating authenticated IP Asset Detail to React and using focused detail/edit/delete/auto-host endpoints reuses existing inventory mutations and does not add or alter `/metrics` names or calculations.
 
 Connector note: connectors import through the same IP upsert pipeline (Prometheus preserves non-empty notes and existing `type` on update and shows per-IP dry-run diffs; vCenter overwrites `type`, merges connector tags, and only writes notes when existing notes are empty; Elasticsearch and Cassandra merge tags, can optionally append a normalized cluster-name tag, can overwrite `type`/`project`, and overwrite notes only when connector note is provided; Ceph and Kubernetes also create/update linked Hosts from host/node inventory and can overwrite IP `host` links), but they do not add exporter-side Prometheus metrics in ipocket; `/metrics` remains limited to IP inventory counters listed above.
 
 Account note: self-service password change (`/ui/account/password`) is a UI/audit behavior change only and does not add or alter `/metrics` counters.
 Auth/session note: bcrypt password hashing and database-backed session tokens do not add or alter `/metrics` counters.
+Auth UI note: the React-powered `/ui/login` and its JSON login transport reuse the existing server-side authentication/session path and do not add or alter `/metrics` counters.
 Performance note: DB-side `ip_int` sorting/range filtering and background connector execution improve scale behavior but do not change `/metrics` names or payload fields.

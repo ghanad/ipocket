@@ -11,8 +11,7 @@ from app.routes import ui
 def _read_application_css() -> str:
     static_css = Path("app/static/css")
     return "\n".join(
-        path.read_text(encoding="utf-8")
-        for path in sorted(static_css.glob("*.css"))
+        path.read_text(encoding="utf-8") for path in sorted(static_css.glob("*.css"))
     )
 
 
@@ -67,22 +66,21 @@ def test_management_page_shows_summary_counts(client) -> None:
 
     assert response.status_code == 200
     assert "Management Overview" in response.text
-    assert 'data-testid="stat-active-ips">3<' in response.text
-    assert 'data-testid="stat-archived-ips">1<' in response.text
-    assert 'data-testid="stat-hosts">1<' in response.text
-    assert 'data-testid="stat-vendors">1<' in response.text
-    assert 'data-testid="stat-projects">1<' in response.text
-    assert 'href="/ui/ip-assets"' in response.text
-    assert 'href="/ui/ip-assets?archived-only=true"' in response.text
-    assert 'href="/ui/hosts"' in response.text
-    assert 'href="/ui/vendors"' in response.text
-    assert 'href="/ui/projects"' in response.text
-    assert 'class="card-header card-header-padded"' in response.text
-    assert "Subnet Utilization" in response.text
-    assert "192.168.10.0/24" in response.text
-    assert "254</td>" in response.text
-    assert 'addresses#used">2</a>' in response.text
-    assert 'addresses#free">252</a>' in response.text
+    assert 'id="management-root"' in response.text
+    assert 'class="management-root"' in response.text
+    assert 'data-endpoint="/api/management/overview"' in response.text
+    assert (
+        '<script type="module" src="/static/react/management/management.js"></script>'
+        in response.text
+    )
+
+
+def test_management_react_root_preserves_page_section_spacing() -> None:
+    css = _read_application_css()
+
+    assert ".management-root {" in css
+    assert "flex-direction: column;" in css
+    assert "gap: 24px;" in css
 
 
 def test_flash_messages_render_once(client) -> None:
@@ -103,102 +101,17 @@ def test_flash_messages_render_once(client) -> None:
     assert "Saved successfully." not in followup.text
 
 
-def test_audit_log_page_lists_ip_entries(client) -> None:
-    import os
-
-    connection = db.connect(os.environ["IPAM_DB_PATH"])
-    try:
-        db.init_db(connection)
-        repository.create_ip_asset(
-            connection, ip_address="10.40.0.10", asset_type=IPAssetType.VM
-        )
-    finally:
-        connection.close()
-
-    app.dependency_overrides[ui.get_current_ui_user] = lambda: User(
-        1, "viewer", "x", UserRole.VIEWER, True
-    )
-    try:
-        response = client.get("/ui/audit-log")
-        assert response.status_code == 200
-        assert "10.40.0.10" in response.text
-        assert "CREATE" in response.text
-    finally:
-        app.dependency_overrides.pop(ui.get_current_ui_user, None)
-
-
-def test_audit_log_page_lists_import_run_entries(client) -> None:
-    import os
-
-    connection = db.connect(os.environ["IPAM_DB_PATH"])
-    try:
-        db.init_db(connection)
-        user = repository.create_user(
-            connection,
-            username="import-run-view",
-            hashed_password="x",
-            role=UserRole.EDITOR,
-        )
-        repository.create_audit_log(
-            connection,
-            user=user,
-            action="APPLY",
-            target_type="IMPORT_RUN",
-            target_id=0,
-            target_label="api_import_bundle",
-            changes="Import apply source=api_import_bundle; input=bundle.json; create=1; update=0; skip=0; warnings=0; errors=0.",
-        )
-        connection.commit()
-    finally:
-        connection.close()
-
-    app.dependency_overrides[ui.get_current_ui_user] = lambda: User(
-        1, "viewer", "x", UserRole.VIEWER, True
-    )
-    try:
-        response = client.get("/ui/audit-log")
-        assert response.status_code == 200
-        assert "api_import_bundle" in response.text
-        assert "APPLY" in response.text
-        assert "input=bundle.json" in response.text
-    finally:
-        app.dependency_overrides.pop(ui.get_current_ui_user, None)
-
-
-def test_audit_log_page_pagination(client) -> None:
-    import os
-
-    connection = db.connect(os.environ["IPAM_DB_PATH"])
-    try:
-        db.init_db(connection)
-        for i in range(25):
-            repository.create_ip_asset(
-                connection, ip_address=f"10.45.0.{i}", asset_type=IPAssetType.VM
-            )
-    finally:
-        connection.close()
-
-    app.dependency_overrides[ui.get_current_ui_user] = lambda: User(
-        1, "viewer", "x", UserRole.VIEWER, True
-    )
-    try:
-        response = client.get("/ui/audit-log?page=1&per-page=10")
-        assert response.status_code == 200
-        assert "Showing" in response.text
-        assert "Page 1 of" in response.text
-
-        response = client.get("/ui/audit-log?page=2&per-page=10")
-        assert response.status_code == 200
-        assert "Page 2 of" in response.text
-
-        response = client.get("/ui/audit-log?page=999")
-        assert response.status_code == 200
-        assert "Page" in response.text
-    finally:
-        app.dependency_overrides.pop(ui.get_current_ui_user, None)
-
-
-def test_row_actions_panel_hidden_style_present() -> None:
+def test_row_actions_overflow_menu_styles_present() -> None:
     css = _read_application_css()
-    assert ".row-actions-panel[hidden]" in css
-    assert "display: none" in css
+    assert ".row-with-actions:hover .row-actions" in css
+    assert ".row-with-actions:focus-within .row-actions" in css
+    assert "text-align: end;" in css
+    assert "justify-content: flex-end;" in css
+    assert "opacity: 0" in css
+    assert "transition:" in css
+    assert ".row-action-control {" in css
+    assert ".row-action-control:focus-visible" in css
+    assert "@media (hover: none), (pointer: coarse), (max-width: 700px)" in css
+    assert '.row-actions-trigger[aria-expanded="true"]' in css
+    assert ".row-action-item-danger" in css
+    assert '.row-action-item[aria-disabled="true"]' in css

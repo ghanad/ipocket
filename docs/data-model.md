@@ -23,15 +23,22 @@ Bulk edit note behavior:
 UI redirect behavior:
 - IP Assets bulk/update/delete flows strip stale toast query parameters (`bulk-error`, `bulk-success`, `delete-error`, `delete-success`) before appending a new result message.
 - Deleting an IP Asset from its detail page returns to `/ui/ip-assets`; this is a navigation/UI behavior only and does not change stored relationships.
+- The React IP Asset Detail API reuses the same repository update/delete operations and audit user attribution as legacy HTML routes. Clearing Project or Host sends explicit null assignments; no schema or relationship semantics changed.
 
 Export ordering behavior:
 - IP asset exports (`/export/ip-assets.csv`, `/export/ip-assets.json`, bundle payload) are ordered by numeric IPv4 value.
 - When legacy rows have `ip_int` as null, export ordering falls back to parsing `ip_address` so numeric order is preserved.
+- The React Data Operations transport does not introduce new stored entities. Bundle, CSV, and Nmap requests continue through the existing import pipeline and persist the same Vendor, Project, Host, IPAsset, Tag, and AuditLog records as the legacy routes.
+- Range Addresses URL canonicalization (`#used`/`#free` to the `status` query parameter) changes navigation state only; range membership and IP asset records are unchanged.
 
 ## Project
 - `name` (unique)
 - `description` (optional)
 - `color` (hex color, default `#94a3b8`)
+
+Deleting a Project unassigns its linked IP assets (`project_id=NULL`) before
+removing the catalog row. The React Library UI does not change this relationship
+behavior.
 
 ## IPRange
 - `name` (range label)
@@ -49,6 +56,8 @@ Tag names are normalized by trimming whitespace and lowercasing. Allowed charact
 underscores (`^[a-z0-9_-]+$`).
 UI assignment flows only allow selecting from existing tags; they do not create new tags during IP assignment.
 IP Assets tag filtering is UI/query behavior only and does not change tag relationships. The list supports **OR** (`tag_any`), **AND** (`tag_all`), and **NOT** (`tag_not`) filter groups; legacy repeated `tag` query values are treated as **OR** filters for compatibility.
+Deleting a Tag removes its `ip_asset_tags` relationship rows before deleting the
+Tag. Library usage counts include active IP assets only.
 
 
 ## IPAssetTag
@@ -61,12 +70,17 @@ IP Assets tag filtering is UI/query behavior only and does not change tag relati
 - On create (both REST API and UI form), when an IPAsset has `type=BMC` and `host_id` is omitted/null, ipocket auto-links it to a Host named exactly `server_{ip_address}`.
 - If that Host already exists, it is reused (no duplicate Host creation).
 - If `host_id` is provided explicitly, no auto-host creation is performed.
+- On an authenticated BMC detail page with no Host, an Editor can run the same `server_{ip_address}` create/reuse-and-assign operation. `IPOCKET_AUTO_HOST_FOR_BMC=0|false|no|off` disables this action.
 
 
 ## OS/BMC host pairing
 - OS and BMC IP assets are paired through their shared `host_id`.
 - On an IP Asset detail page, OS records show linked BMC addresses for the same host, and BMC records show linked OS addresses for the same host. The IP address, Host, and paired OS/BMC address values are navigation links to the corresponding detail pages.
 - Pair addresses are not shown for `VM`, `VIP`, or `OTHER` asset types.
+- Host Completion API cases and examples are derived read-only from the existing
+  `Host` and active `IPAsset` relationships. They add no tables or stored
+  completion state: a case has exactly one active OS/BMC side, and an example
+  has at least one active asset of each type for the same `host_id`.
 
 
 ## Host
@@ -78,6 +92,10 @@ Host detail grouping is presentation-only: active linked IP assets are grouped a
 
 ## Vendor
 - `name` (TEXT, unique)
+
+Deleting a Vendor clears matching `hosts.vendor_id` values before deleting the
+Vendor. Vendor Library usage counts include active IP assets linked through
+those Hosts.
 
 ## User
 - `username` (TEXT, unique)
@@ -92,7 +110,7 @@ Host detail grouping is presentation-only: active linked IP assets are grouped a
 - `user_id` (INTEGER, FK to `users.id`, cascade delete)
 - `created_at` (TEXT timestamp)
 
-API bearer tokens and UI login cookies both map to this table for session validation and revocation.
+API bearer tokens and UI login cookies both map to this table for session validation and revocation. The React login transport (`POST /api/ui/login`) and retained legacy form transport (`POST /ui/login`) share the same server-side authentication and session-creation path, so the migration adds no session fields or alternate token storage.
 
 
 ## AuditLog
@@ -116,14 +134,21 @@ Self-service password changes (`/ui/account/password`) do not add fields/tables;
 
 
 ## Host deletion rule
-- Host permanent delete is allowed only when no IP assets are linked to it.
-- UI delete requires typing the exact host name as confirmation (two-step flow).
+- Host permanent delete keeps linked IP assets and clears their `host_id` before
+  removing the Host row.
+- UI delete requires acknowledgement and typing the exact Host name.
 
 ## Assignment workflow
 - Project assignment is managed from the main **IP Assets** list using filters and edit actions.
 - There is no separate "Needs Assignment" page in the current UI.
-- Range address drill-down (`/ui/ranges/{id}/addresses`) now adds UI-only search/status/pagination controls; this does not change persisted schema or entity fields.
-- Hosts list filtering by text, project, assignment, status, vendor, and tags is UI/query behavior only. Text and select filters update the table immediately with HTMX. Host tag filters and the Hosts table **IP tags** column both use tags on linked active IP assets and do not add host-level tag storage; fixed-width table fitting, compact action controls, compact tag-chip sizing, clicking tag chips to apply the existing tag filter, and collapsing extra tag chips behind `+N more` are presentation-only.
+- The IP Assets list exposes project-presence filtering as **Project Assignment** with `All`, `Assigned only`, and `Unassigned only`. This changes only list selection; project names and the `Unassigned` badge remain in the existing Project column.
+- The IP Assets filter panel does not expose an active/archived Status control. Existing archived-list URLs and archive data behavior are unchanged.
+- Range address drill-down (`/ui/ranges/{id}/addresses`) is a React presentation/transport migration only. `GET/POST/PATCH /api/ui/ranges/{id}/addresses...` reuse existing `IPRange`, `IPAsset`, `Project`, `Tag`, host-pair, and audit data; no schema, relationship, or range-semantics changes were introduced.
+- Migrating the `/ui/ranges` list to React changes only presentation and transport. The React page uses `/api/ui/ranges` for list/create/update/delete operations against the existing `IPRange` repository model; no columns, relationships, migrations, or utilization calculations were added.
+- Migrating `/ui/projects` (Projects/Vendors/Tags) to React changes only presentation and transport. The focused `/api/ui/library/*` endpoints use the existing repository models and deletion rules; no tables, columns, relationships, or migrations were added.
+- Migrating the `/ui/hosts` list and `/ui/hosts/{id}` detail page to React changes only presentation and transport. The focused `/api/ui/hosts` endpoints reuse existing Host/IPAsset repository semantics; the list GET remains public, Host Detail remains authenticated, mutations are role-gated, and the server-resolved legacy Drawer bootstrap plus display-ready grouping payload add no tables, columns, or relationships.
+- Migrating `/ui/ip-assets/{id}` to React changes only presentation and transport. The authenticated `/api/ui/ip-assets/{id}/detail` payload and focused PATCH/DELETE/auto-host endpoints reuse existing IPAsset, tag, host-pair, audit, role, and high-risk delete rules; the IP Assets list and standalone create form remain unchanged.
+- Hosts list filtering by text, project, assignment, status, vendor, and tags is UI/query behavior only. React keeps filters and pagination in the query string, while legacy `edit`/`delete` targets are loaded independently so a valid Host does not depend on appearing in the current page. Host tag filters and the Hosts table **IP tags** column both use tags on linked active IP assets and do not add host-level tag storage; selected filter chips retain the catalog `--tag-color` and contrast text color. Compact tag-chip sizing, clicking tag chips to apply the existing tag filter, and collapsing extra tag chips behind `+N more` are presentation-only.
 
 ## Connector ingestion note
 - Prometheus, vCenter, Elasticsearch, Cassandra, Ceph, and Kubernetes connectors do not introduce new database tables or fields.

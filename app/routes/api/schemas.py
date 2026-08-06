@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Optional
 
-from pydantic import BaseModel, field_validator
+from pydantic import BaseModel, Field, field_validator
 
 from app.models import IPAssetType
 from app.utils import (
@@ -129,6 +129,85 @@ class HostUpdate(BaseModel):
     vendor_id: Optional[int] = None
 
 
+class UIHostWrite(BaseModel):
+    name: str
+    notes: Optional[str] = None
+    vendor_id: Optional[int] = None
+    project_id: Optional[int] = None
+    os_ips: list[str] = Field(default_factory=list)
+    bmc_ips: list[str] = Field(default_factory=list)
+
+    @field_validator("name")
+    @classmethod
+    def normalize_name(cls, value: str) -> str:
+        normalized = value.strip()
+        if not normalized:
+            raise ValueError("Host name is required.")
+        return normalized
+
+    @field_validator("notes")
+    @classmethod
+    def normalize_notes(cls, value: Optional[str]) -> Optional[str]:
+        if value is None:
+            return None
+        normalized = value.strip()
+        return normalized or None
+
+    @field_validator("os_ips", "bmc_ips", mode="before")
+    @classmethod
+    def normalize_ip_lists(cls, value):
+        if value is None:
+            return []
+        if isinstance(value, str):
+            return [item.strip() for item in value.split(",") if item.strip()]
+        if isinstance(value, list):
+            return [str(item).strip() for item in value if str(item).strip()]
+        raise ValueError("IP addresses must be a list.")
+
+
+class UIHostDelete(BaseModel):
+    confirm_name: str
+
+
+class UIIPAssetWrite(BaseModel):
+    type: str
+    project_id: Optional[int] = None
+    host_id: Optional[int] = None
+    tags: list[str] = Field(default_factory=list)
+    notes: Optional[str] = None
+
+
+class UIIPAssetCreate(UIIPAssetWrite):
+    ip_address: str
+
+
+class UIRangeAddressWrite(BaseModel):
+    type: str
+    project_id: Optional[int] = None
+    tags: list[str] = Field(default_factory=list)
+    notes: Optional[str] = None
+
+
+class UIRangeAddressCreate(UIRangeAddressWrite):
+    ip_address: str
+
+
+class UIIPAssetDelete(BaseModel):
+    acknowledged: bool = False
+    confirm_ip: str = ""
+
+
+class UIIPAssetBulkWrite(BaseModel):
+    asset_ids: list[int] = Field(default_factory=list)
+    type: Optional[str] = None
+    project_id: Optional[int] = None
+    set_project: bool = False
+    tags_to_add: list[str] = Field(default_factory=list)
+    tags_to_remove: list[str] = Field(default_factory=list)
+    notes: Optional[str] = None
+    notes_mode: Optional[str] = None
+
+
 class VendorCreate(BaseModel):
     name: str
 
@@ -184,7 +263,39 @@ class IPRangeCreate(BaseModel):
     cidr: str
     notes: Optional[str] = None
 
+    @field_validator("name")
+    @classmethod
+    def normalize_name(cls, value: str) -> str:
+        normalized = value.strip()
+        if not normalized:
+            raise ValueError("Range name is required.")
+        return normalized
+
     @field_validator("cidr")
     @classmethod
     def normalize_cidr_value(cls, value: str) -> str:
-        return normalize_cidr(value)
+        normalized = value.strip()
+        if not normalized:
+            raise ValueError("CIDR is required.")
+        try:
+            return normalize_cidr(normalized)
+        except ValueError as exc:
+            raise ValueError(
+                "CIDR must be a valid IPv4 network (example: 192.168.10.0/24)."
+            ) from exc
+
+    @field_validator("notes")
+    @classmethod
+    def normalize_notes(cls, value: Optional[str]) -> Optional[str]:
+        if value is None:
+            return None
+        normalized = value.strip()
+        return normalized or None
+
+
+class IPRangeUpdate(IPRangeCreate):
+    pass
+
+
+class IPRangeDelete(BaseModel):
+    confirm_name: str

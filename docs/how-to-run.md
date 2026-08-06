@@ -2,6 +2,7 @@
 
 ## Requirements
 - Python 3.11+
+- Node.js 22+ and npm (only for building/testing React UI assets locally)
 - SQLite (built-in)
 - HTTP client support comes from the pip-installed `httpx` package in `requirements.txt`; ipocket does not ship a local `httpx/` package in the repo to avoid import shadowing.
 - Cassandra connector support comes from the pip-installed `cassandra-driver` package in `requirements.txt`.
@@ -14,6 +15,42 @@ python -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
 ```
+
+Install and build the React UI:
+
+```bash
+cd frontend
+npm ci
+npm test
+npm run typecheck
+npm run build
+cd ..
+```
+
+The build writes 15 entry bundles under
+`app/static/react/<entry>/<entry>.js`: About, Account Password, Audit Log,
+Connectors, Data Operations, Host Detail, Hosts, IP Asset Detail, IP Assets,
+Library, Login, Management, Range Addresses, Ranges, and Users. Hashed shared
+chunks are emitted under `app/static/react/shared/`. Re-run `npm run build`
+after changing React sources. Everything under `app/static/react/` is generated
+build output: do not edit or commit these bundles. Git ignores the directory,
+and CI builds it from `frontend/` sources for verification and Docker packaging.
+The Docker image builds all React entrypoints automatically in a separate Node
+stage; Node.js is not included in the final runtime image.
+
+The frontend declares Rollup's Linux x64 binary as an optional dependency so a
+lockfile generated on macOS remains usable by Linux CI and Docker builds. Keep
+optional dependencies enabled when refreshing `frontend/package-lock.json`.
+
+Frontend API foundation: all React page-domain adapters, including Connectors
+and Login, use `frontend/src/shared/apiClient.ts` for same-origin session
+requests, typed FastAPI errors, login-return redirects, empty responses, and
+request cancellation. Its JSON, FormData, and Blob/raw-response behavior is
+covered by unit tests. Connectors keeps polling, retry, cancellation, and
+credential clearing in its page domain; Login keeps its non-navigating
+authentication handling, sanitized error mapping, and redirect validation in
+its page-domain adapter; native download links remain ordinary browser
+downloads. Shared-client consolidation is complete across the React modules.
 
 Initialize the database (runs migrations):
 
@@ -56,15 +93,26 @@ Build the image:
 docker build -t ipocket:latest .
 ```
 
+Run the same credential-free smoke build used by pull request CI:
+
+```bash
+docker build --tag ipocket:ci-smoke .
+```
+
 Run the container (persisting SQLite in a local `data/` directory):
 
 ```bash
 mkdir -p data
-docker run --rm -p 8000:8000 -v "$(pwd)/data:/data" ipocket:latest
+export SESSION_SECRET="$(openssl rand -hex 32)"
+docker run --rm -p 8000:8000 \
+  -e SESSION_SECRET="$SESSION_SECRET" \
+  -v "$(pwd)/data:/data" \
+  ipocket:latest
 ```
 
 The container runs `alembic upgrade head` on startup and stores the SQLite
-database at `/data/ipocket.db`.
+database at `/data/ipocket.db`. `SESSION_SECRET` is mandatory and must be a
+stable, random value for the lifetime of the deployment.
 
 ## Run with Docker Compose
 The provided `docker-compose.yml` mounts the SQLite database directory outside
@@ -72,15 +120,21 @@ the container and sets bootstrap superuser credentials.
 
 ```bash
 mkdir -p data
+export SESSION_SECRET="$(openssl rand -hex 32)"
 docker compose up --build
 ```
 
 The app will persist data in `./data/ipocket.db` and is available at
-http://127.0.0.1:8000.
+http://127.0.0.1:8000. Compose fails before startup when `SESSION_SECRET` is
+missing, preventing an unusable container from being launched.
 
 Defaults for the bootstrap superuser are:
 - `ADMIN_BOOTSTRAP_USERNAME=admin`
 - `ADMIN_BOOTSTRAP_PASSWORD=admin-pass`
+
+Pull request CI installs frontend dependencies from the lockfile, rejects High
+or Critical npm advisories, builds the Docker image, starts it with an isolated
+CI session secret, and verifies that `/ui/login` is reachable.
 
 ## Run with Helm (Kubernetes)
 The repository includes a Helm chart at `helm/ipocket`.
@@ -119,21 +173,83 @@ service on port `8000`, and stores SQLite data at `/data/ipocket.db`
 Docker deployments default to local/static assets (CSS + JS like htmx) so the UI
 renders without downloading from public CDNs. Non-Docker runs will load the
 Inter font from Google Fonts and htmx/Alpine.js from CDNs by default. Library
-Projects, Tags, and Vendors drawers are Alpine-driven in the Jinja templates, and the Tags
-create drawer auto-suggests a random color when not prefilled. In local asset mode
-(`IPOCKET_DOCKER_ASSETS=1`), Library drawer interactivity falls back to local scripts
-(`/static/js/projects.js`, `/static/js/tags.js`, `/static/js/vendors.js`, and
-`/static/js/drawer.js`) so all Library tab drawer actions stay available offline.
+Projects, Vendors, and Tags are served from the locally built React bundle, so
+their table and drawer workflows do not depend on Alpine or a remote JavaScript
+host. The Tags create drawer requests its suggested random color from the
+focused UI API.
 The browser favicon is always served locally from `/static/favicon.png`.
 The `/static/app.css` stylesheet is the stable CSS entrypoint; it loads the
 ordered, focused modules under `/static/css/`. When adding styles, place shared
 rules in the matching module and page-only rules in that page's module, while
 keeping the import order in `app.css` unchanged unless the cascade is intentionally
 being updated.
-The IP Assets page also stays fully local: `/static/js/ip-assets.js` is a native
-ES-module entrypoint whose focused dependencies are served from
-`/static/js/ip-assets/`. No bundler, package install, or external JavaScript host
-is required for these modules.
+The primary migration is complete across the 15 React entries listed above.
+FastAPI/Jinja still renders the application shell and sidebar. Management loads
+dashboard data from `GET /api/management/overview`; `/ui/ranges` uses
+`GET/POST /api/ui/ranges` and `PATCH/DELETE /api/ui/ranges/{id}` for its table
+and drawer workflows. The Ranges implementation preserves CIDR validation,
+duplicate handling, exact-name delete confirmation, `?edit=<id>` and
+`?delete=<id>` entry links, and Used/Free address drill-down links. Production
+bundles are served locally from `/static/react/management/management.js` and
+`/static/react/ranges/ranges.js`. Library uses
+`GET/POST /api/ui/library/{projects|vendors|tags}` plus
+`PATCH/DELETE /api/ui/library/{entity}/{id}`, and its bundle is served from
+`/static/react/library/library.js`. Existing `tab`, `edit`, and `delete` query
+parameters and legacy HTML mutation routes remain compatible.
+The Hosts list uses `GET/POST /api/ui/hosts` and
+`PATCH/DELETE /api/ui/hosts/{id}` from `/static/react/hosts/hosts.js`.
+`GET /api/ui/hosts` is public like the other inventory read routes and returns
+`can_edit=false` for signed-out requests. POST/PATCH/DELETE use the existing UI
+session cookie and allow only Editor and Superuser; Viewer is read-only.
+Legacy `/ui/hosts?edit=<id>` and `/ui/hosts?delete=<id>` links receive a
+server-resolved Drawer bootstrap, so the target remains available when filters
+or pagination hide it, and an unknown Host returns 404. `/ui/hosts/{id}` keeps
+the Jinja shell/sidebar and mounts `/static/react/host-detail/host-detail.js`;
+its display-ready data comes from authenticated `GET /api/ui/hosts/{id}/detail`;
+an expired session is sent through the existing login return flow.
+Legacy Host form/partial routes remain available.
+`/ui/users` keeps the authenticated Jinja shell/sidebar and mounts
+`/static/react/users/users.js`. Its table and drawer workflows use
+`GET/POST /api/ui/users` and `PATCH/DELETE /api/ui/users/{id}`. The page and
+every endpoint remain server-authorized for Superusers only; Viewer and Editor
+requests are forbidden. Password hashing, role protection, last-active-
+Superuser safeguards, exact-username deletion confirmation, and USER audit
+entries remain backend responsibilities. Legacy HTML form mutation routes are
+retained for compatibility.
+`/ui/account/password` keeps the authenticated Jinja shell/sidebar and mounts
+`/static/react/account-password/account-password.js`. Its form submits to
+`POST /api/ui/account/password`; current-password verification, bcrypt hashing,
+self-only mutation, and the single USER audit entry remain server-side. The
+legacy `POST /ui/account/password` form route uses the same validation and
+mutation helper and remains available for compatibility.
+`/ui/ip-assets/{id}` keeps the authenticated Jinja shell/sidebar and mounts
+`/static/react/ip-asset-detail/ip-asset-detail.js`. It reads
+`GET /api/ui/ip-assets/{id}/detail` and uses focused PATCH, DELETE, and
+`POST .../auto-host` endpoints. Viewer can read Detail and Audit Log; mutations
+reuse the existing IP Asset Editor-only dependency. Legacy edit/delete/auto-host
+HTML routes remain available.
+The IP Assets list is built from `frontend/src/ip-assets/` and served from
+`/static/react/ip-assets/ip-assets.js`. Direct create/edit/delete HTML forms
+remain available for compatibility and continue to use the shared Jinja form
+helpers.
+
+## Tests and React page maintenance
+
+Run the complete verification suite from the repository root:
+
+```bash
+.venv/bin/pytest -q
+cd frontend
+npm test
+npm run typecheck
+npm run build
+```
+
+When adding a React page, add its entry to `frontend/vite.config.ts`, add the
+lightweight Jinja mount and focused frontend tests, and add one record to
+`tests/react_ui_manifest.py`. That single manifest drives the parametrized page
+mount/API smoke tests and the Vite bundle-reference checks. Update
+`docs/react-ui-migration.md` with its access policy and any compatibility route.
 To force local assets in any environment, set:
 
 ```
@@ -150,6 +266,10 @@ IPOCKET_DOCKER_ASSETS=0
 ipocket includes build metadata in `/health` and in the sidebar footer in the UI
 (including signed-out pages that render the sidebar).
 The sidebar renders the version value as-is (for example: `ipocket dev (abc1234)`).
+The authenticated `/ui/about` React page obtains its safe display metadata from
+`GET /api/ui/about`; its lightweight Jinja mount does not embed that metadata.
+The `/health` JSON and `/metrics` Prometheus text endpoints remain directly
+available with their existing payloads and authentication behavior.
 
 In Docker, if no version env vars are provided, ipocket attempts to detect commit
 from the embedded `.git` metadata and uses a Docker-friendly fallback version
@@ -176,7 +296,7 @@ services:
 
 Service discovery token (optional):
 - `IPOCKET_SD_TOKEN` (when set, `/sd/node` requires header `X-SD-Token`)
-- `IPOCKET_AUTO_HOST_FOR_BMC` (default: enabled). Set to `0`, `false`, `no`, or `off` to disable auto-creating `server_{ip}` Host records when creating BMC IP assets without `host_id`.
+- `IPOCKET_AUTO_HOST_FOR_BMC` (default: enabled). Set to `0`, `false`, `no`, or `off` to disable auto-creating `server_{ip}` Host records when creating BMC IP assets without `host_id` and to disable the BMC Detail auto-host action.
 - `IPOCKET_LOG_LEVEL` (default: `INFO`). Controls application logging verbosity (e.g., `DEBUG`, `INFO`, `WARNING`).
 
 Session security:
@@ -217,10 +337,14 @@ export ADMIN_BOOTSTRAP_PASSWORD=admin-pass
 Start the app and sign in:
 - Visit http://127.0.0.1:8000/ui/login
 - Login with the bootstrap credentials.
+- The login page is React-powered and uses `POST /api/ui/login`; its Jinja shell intentionally omits the application sidebar/navigation.
+- Authentication policy remains server-side: username normalization, password verification, inactive-user rejection, generic failure messages, approved return URLs, session creation, and signed `ipocket_session` cookie handling are not implemented in the browser.
+- The legacy form-compatible `POST /ui/login` endpoint remains available and uses the same server-side authentication/session helper as the JSON endpoint.
 - Passwords are stored as bcrypt hashes (`passlib`); successful login also upgrades any legacy SHA-256 password hashes.
 - API/UI login sessions are stored in the SQLite `sessions` table, so tokens remain valid across app restarts until logout or token revocation.
 - Editors can add or edit IPs from the UI.
-- Any authenticated user (Viewer/Editor/Superuser) can change their own password at `http://127.0.0.1:8000/ui/account/password` by entering current password + new password (with confirmation).
+- Editors and Superusers can maintain Projects, Vendors, and Tags from the Library page; Viewers see the catalog without mutation controls.
+- Any authenticated user (Viewer/Editor/Superuser) can change their own password on the React-powered page at `http://127.0.0.1:8000/ui/account/password` by entering current password + new password (with confirmation). Password verification, hashing, and USER audit logging remain server-side; the page never receives a password hash.
 
 ## User management
 User management requires the bootstrap superuser env vars.
@@ -232,7 +356,7 @@ After logging in as superuser, open:
 http://127.0.0.1:8000/ui/users
 ```
 
-This page is restricted to superusers and supports:
+This React-powered page is restricted to Superusers and supports:
 - creating users
 - granting/revoking edit access
 - activating/deactivating users
@@ -240,8 +364,19 @@ This page is restricted to superusers and supports:
 - deleting users (with confirmation)
 
 Safety rules:
+- Viewer and Editor accounts cannot open the page or call its management API
+- managed accounts can be Viewer or Editor; User Management cannot grant or remove Superuser access
+- passwords are hashed on the server and are never returned by the management API
+- empty password fields during edit leave the current password unchanged
+- a user cannot delete their own account
+- the last active superuser cannot be deactivated
 - the last active superuser cannot be deleted
 - user-related audit logs are retained when a user is deleted
+- CREATE, changed UPDATE, and DELETE operations write USER audit entries; no-op edits do not
+
+The legacy direct form routes under `/ui/users` remain available for existing
+links and tests, and share the same backend validation and mutation helpers as
+the JSON API.
 
 UI design reference templates live in `/ui_template` for layout and styling guidance.
 
@@ -251,21 +386,25 @@ UI design reference templates live in `/ui_template` for layout and styling guid
 3) Open **Library** from the sidebar and use tabs to create Projects, Tags, and Vendors.
    - The header **New Project / New Tag / New Vendor** button opens the matching create drawer for the active tab.
 4) In **Library → Tags**, the create drawer now suggests a random color by default; you can keep it or pick another color before saving.
-5) Create Hosts from the **Hosts** page and pick a Vendor when needed. Use the Hosts search panel to filter by text, Vendor, Project, Assignment, linked/free Status, or tags from linked active IPs. Text and select filters update the table immediately with HTMX and no full page reload; there is no separate Clear button in this panel. The compact Hosts table is sized to the page width to avoid horizontal scrolling in normal desktop views, with stacked equal-width Edit/Delete controls in the Actions column. The OS IPs and BMC IPs columns link directly to each address detail page, and the **IP tags** column shows deduplicated tags from linked active IP assets (not host-level tags) with compact chip sizing matching IP Assets, only the first 2 shown inline, and the rest available through `+N more`; clicking any shown tag applies it as a Hosts tag filter immediately. Open a Host name from the table to review vendor/status chips and grouped OS, BMC, and other linked IP tables with each IP's project, tags, and notes.
+5) Create Hosts from the **Hosts** page and pick a Vendor when needed. Use the React search panel to filter by text, Vendor, Project, Assignment, linked/free Status, or tags from linked active IPs. Filters and pagination stay in the URL, back/forward navigation restores them, and changes refresh the table without reloading the shell. Pagination controls are integrated into the table footer, which shows the visible row range and total alongside rows-per-page and previous/next controls. The OS IPs and BMC IPs columns link directly to each address detail page, and the **IP tags** column shows deduplicated tags from linked active IP assets (not host-level tags), with only the first 2 shown inline and the rest available through a searchable `+N more` popover anchored to that row; hover, focus, or click opens it. Clicking any shown tag applies it as a Hosts tag filter. Edit remains visible in each row; open the adjacent `⋯` menu to choose Delete. Create/edit/delete runs in the right-side drawer; focus remains in the field being edited while controlled values update. Deleting requires acknowledgement plus the exact Host name and unlinks rather than deletes IP assets. Open a Host name to use the unchanged Host detail page.
 6) Add IPs from the **IP Assets** page. In IP create/edit forms, use the searchable Host combobox to filter large host lists and select the host from the same control before assigning OS/BMC addresses. The IP Assets Tags filter has three chip groups: **OR** matches one or more selected tags (`prod` or `edge`), **AND** requires every selected tag (`prod` and `edge`), and **NOT** hides IPs with selected tags such as `deprecated`. Clicking a tag chip in the table adds it to the active group; older URLs using repeated `tag=...` still behave as OR filters.
 7) When you paginate in **IP Assets**, edits from the drawer return you to the same filtered/paginated list state (current `page` and `per-page` are preserved).
 8) Open **Data Ops** from the sidebar to import or export data using one unified page with tabs. `hosts.csv` exports now include `project_name`, `os_ip`, and `bmc_ip` for round-trip compatibility with CSV import.
    `ip-assets.csv` exports are sorted by numeric IP order (for example `10.0.0.2` appears before `10.0.0.10`), including legacy rows where `ip_int` is null.
    Import upload guardrails: each uploaded file (`bundle.json`, CSV, Nmap XML) is limited to `10 MB`; oversize files are rejected with HTTP `413`.
-9) Open **Connectors** from the sidebar and use **vCenter**, **Prometheus**, **Elasticsearch**, **Cassandra**, **Ceph**, or **Kubernetes** tabs to run connectors directly from UI (`dry-run` or `apply`) as background jobs; while a run is queued/running, the tab auto-refreshes (same `job_id` URL) to show final status and logs without manual refresh.
+   The React page uses the current UI session, allows Viewers to run dry-runs, and enables Apply only for Editors; the backend repeats that authorization check.
+9) Open **Connectors** from the sidebar and use **vCenter**, **Prometheus**, **Elasticsearch**, **Cassandra**, **Ceph**, or **Kubernetes** tabs to run connectors from the React UI (`dry-run` or `apply`) as background jobs. The browser polls about once per second without reloading; the `tab` + `job_id` URL restores polling/results after reload while the in-memory job remains retained. A temporary polling/network error keeps the current URL and can be retried from the job panel. A missing or expired job cannot be resumed: dismiss it to remove the stale `job_id`, then run the connector again. Viewers may dry-run; Apply requires an Editor and explicit confirmation. Passwords, tokens, API keys, and authorization values are cleared after submission/tab changes and excluded from bootstrap, job, log, and error responses. Jobs are process-local and expire after one hour (including after a server restart); legacy `/ui/connectors/{connector}/run` form POST routes remain compatible.
 10) When assigning tags on IP Assets or Range Address drawers, use the chip picker (`Add tags...`) to search and select existing tags only (create new tag names first in **Library → Tags**).
-11) For multi-row assignment changes, select IPs in **IP Assets** and use **Bulk update** to open the right-side drawer for batch Type/Project/Tag updates; shared tags appear under **Common tags** and can be removed for all selected rows in one apply. For notes, use **Notes action**: keep current notes, overwrite with a provided value, or clear notes for all selected rows.
-12) On an IP Asset detail page, use the header **Edit** and **Delete** buttons to open the same right-side drawer workflow used by the IP Assets list; deleting from detail returns to the IP Assets list.
+11) For multi-row assignment changes, select IPs in **IP Assets** and use **Bulk Edit**, **Assign Project**, or **Manage Tags** in the bulk toolbar to open the existing right-side bulk drawer. **Select all on this page** only changes the current page; its checkbox is unchecked, indeterminate, or checked as the page selection changes, while selections made on other pages remain included in the toolbar's cumulative total. Shared tags appear under **Common tags** and can be removed for all selected rows in one apply. For notes, use **Notes action**: keep current notes, overwrite with a provided value, or clear notes for all selected rows.
+12) On an IP Asset detail page, use the React **Edit** and **Delete** drawers without reloading the shell. Edit refreshes Detail and Audit Log after success. Delete requires acknowledgement, plus exact-IP typing for high-risk records, and returns to the IP Assets list. An unassigned BMC also offers **Create host** when `IPOCKET_AUTO_HOST_FOR_BMC` is enabled.
 13) On an OS or BMC IP Asset detail page, use the Details panel to see the paired address from the same host: OS records show BMC addresses, and BMC records show OS addresses. The IP address, Host, and paired OS/BMC address values link directly to their detail pages. Other asset types do not show the paired-address field.
 14) Open **Audit Log** to review run-level `apply` entries for Data Ops and Connectors (`IMPORT_RUN`); dry-run executions are intentionally excluded from run-level audit logging.
-15) On a range details page (`/ui/ranges/<id>/addresses`), use separate filters for **IP address** (live search), **Project**, **Type**, and chip-based **Tags** (same Enter/add/remove flow as IP Assets), plus **Status** (`All/Used/Free`) and table pagination controls (`Rows`, `Previous`, `Next`) to review large ranges efficiently. In the table, tag cells show up to 3 tags inline and collapse the rest into a `+N more` popover; clicking a tag chip (inline or popover) adds that tag directly to the active Tags filter. Example: `/ui/ranges/1/addresses?project_id=unassigned&type=BMC&tag=mgmt&status=used`.
+15) On the React-powered range details page (`/ui/ranges/<id>/addresses`), use separate filters for **IP address** (500 ms live search), **Project**, **Type**, and chip-based **Tags**, plus **Status** (`All/Used/Free`) and table pagination controls (`Rows`, `Previous`, `Next`). Filter state is shareable in the URL and restored by Back/Forward. Legacy `#used`/`#free` drill-down links are immediately replaced with canonical `?status=used`/`?status=free` URLs. Tag cells show up to 3 tags inline and collapse the rest into a searchable `+N more` popover; clicking any tag applies it to the active filter. Editors can allocate a free address or edit a used address in the right-side drawer; Viewers see no mutation controls. Example: `/ui/ranges/1/addresses?project_id=unassigned&type=BMC&tag=mgmt&status=used`.
 
-Assignment workflow note: use **IP Assets → Assignment = Unassigned only** to review and update records that still need a project. You can also use **Project = Unassigned** in the search filters for the same project-missing view. The old dedicated **Needs Assignment** page is removed.
+Assignment workflow note: use **IP Assets → Project Assignment = Unassigned only** to review and update records that still need a project, or `Assigned only` to show records with a project. You can also use **Project = Unassigned** for the same project-missing view. The primary filter row contains Search, Project, Type, and Project Assignment; there is no visible Status filter. Existing `archived-only=true` URLs continue to show archived records. The old dedicated **Needs Assignment** page is removed.
+
+Table row action note: IP Assets, Hosts, Ranges, Library tables, and User Management right-align the Actions header and lightweight ghost controls to the same logical edge. Controls remain hidden until the row is hovered or focused, while the reserved column prevents layout shifts. Active rows reveal matching **Edit** and `⋯` controls, with stronger styling only when an individual control is hovered or keyboard-focused. Touch/coarse-pointer and small-screen layouts keep the controls visible. Delete appears only as the final destructive menu item and always opens the existing confirmation drawer. Keyboard users can focus the row, move to its controls, navigate menu items with arrow/Home/End keys, and close the menu with Escape.
+
 Notification note: IP Assets bulk/update/delete actions clear stale `bulk-error` / `bulk-success` / `delete-error` / `delete-success` URL query values before redirecting, so old toasts do not persist into later actions.
 
 ## Example API calls
@@ -294,6 +433,23 @@ List unassigned IPs:
 curl -s "http://127.0.0.1:8000/ip-assets?unassigned-only=true"
 ```
 
+List Hosts that have an OS side but no active BMC side:
+
+```bash
+curl -s "http://127.0.0.1:8000/api/host-completion/cases?missing=BMC&limit=100"
+```
+
+List complete OS/BMC Host examples for an external pattern-learning Agent:
+
+```bash
+curl -s "http://127.0.0.1:8000/api/host-completion/examples?limit=100"
+```
+
+These Host Completion endpoints are read-only and public like the existing
+inventory read routes. Follow `next_cursor` with a `cursor` query parameter to
+read subsequent pages. They do not run an Agent or persist suggestions. See
+[host-completion-api.md](host-completion-api.md) for the current boundary.
+
 Delete an IP asset (Editor):
 
 ```bash
@@ -313,9 +469,9 @@ Host UI safety flow: deleting a Host from UI requires opening the host delete co
 ## Developer code map (UI routes)
 - Aggregated UI router entrypoint: `app/routes/ui/__init__.py`
 - IP assets routes: `app/routes/ui/ip_assets/` (`listing.py`, `forms.py`, `actions.py`, `helpers.py`)
-- Hosts routes: `app/routes/ui/hosts/` (`listing.py`, `mutations.py`, `detail.py`)
+- Hosts routes: `app/routes/ui/hosts/` (`api.py`, `listing.py`, `mutations.py`, `detail.py`)
 - Ranges routes: `app/routes/ui/ranges/` (`crud.py`, `addresses.py`, `common.py`)
-- Library/settings routes: `app/routes/ui/settings/` (`projects.py`, `tags.py`, `vendors.py`, `audit.py`, `common.py`)
+- Library/settings routes: `app/routes/ui/settings/` (`api.py`, `projects.py`, `tags.py`, `vendors.py`, `audit.py`, `common.py`)
 
 ## Manual vCenter export connector
 
@@ -561,9 +717,10 @@ python -m app.connectors.kubernetes \
 
 See `/docs/kubernetes-connector.md` for full options and mapping details.
 
-## CI (quality + full tests)
-The GitHub Actions workflow runs code quality checks and the full pytest suite
-on each pull request and push to `main`.
+## CI (quality + backend, frontend, and Docker checks)
+The GitHub Actions workflow runs code quality checks, the full pytest suite,
+frontend tests/typechecking/build, and a credential-free Docker smoke build on
+each pull request and push to `main`.
 
 Quality job:
 
@@ -576,6 +733,21 @@ Test job:
 
 ```bash
 pytest tests --cov=app --cov-fail-under=75
+```
+
+Frontend job (from `frontend/`):
+
+```bash
+npm ci
+npm test
+npm run typecheck
+npm run build
+```
+
+Docker smoke-build job:
+
+```bash
+docker build --tag ipocket:ci-smoke .
 ```
 
 ## Docker Hub release automation

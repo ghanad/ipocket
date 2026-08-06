@@ -1,5 +1,9 @@
 # Cassandra connector (node metadata IP import)
 
+## React UI
+
+Open `/ui/connectors?tab=cassandra`. The shared form preserves contact-point, port, authentication, TLS, and insecure-TLS validation. Viewers can dry-run; Editors can Apply after confirmation. Background polling does not reload the page, credentials are not retained, and the legacy form POST remains compatible.
+
 ipocket includes a Cassandra connector that connects through the Python
 `cassandra-driver`, reads cluster metadata, extracts node IPv4 addresses, and
 imports those addresses through the standard bundle import pipeline.
@@ -29,7 +33,7 @@ Optional inputs:
 3. Set optional mapping fields (`type/project/tags/note`).
 4. Optionally check **Add cluster name as tag** to tag every imported node IP
    with the Cassandra metadata `cluster_name`.
-5. Run **dry-run** first and review the execution log. The tab auto-refreshes
+5. Run **dry-run** first and review the execution log. React polls the background job
    while the run is queued/running.
 6. Run **apply** as an editor account.
 

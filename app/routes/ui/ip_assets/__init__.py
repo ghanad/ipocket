@@ -5,6 +5,7 @@ from fastapi import APIRouter
 from app.routes.ui.utils import _parse_optional_int
 
 from .actions import router as actions_router
+from .api import router as api_router
 from .forms import router as forms_router
 from .helpers import (
     _delete_requires_exact_ip,
@@ -17,6 +18,7 @@ router = APIRouter()
 router.include_router(listing_router)
 router.include_router(actions_router)
 router.include_router(forms_router)
+router.include_router(api_router)
 
 __all__ = [
     "router",

@@ -1,17 +1,8 @@
 from pathlib import Path
 
 from app.environment import use_local_assets
+from tests.react_ui_manifest import REACT_PAGES
 
-
-IP_ASSETS_JS_MODULES = (
-    "ip-assets.js",
-    "ip-assets/bulk-edit.js",
-    "ip-assets/drawer.js",
-    "ip-assets/filters.js",
-    "ip-assets/shared.js",
-    "ip-assets/table.js",
-    "ip-assets/tags-popover.js",
-)
 
 CSS_MODULES = (
     "foundation.css",
@@ -22,18 +13,11 @@ CSS_MODULES = (
     "details-actions.css",
     "utility-pages.css",
     "hosts.css",
+    "ip-assets-bulk.css",
     "ip-assets.css",
     "range-addresses.css",
     "audit-log.css",
 )
-
-
-def _read_ip_assets_javascript(repo_root: Path) -> str:
-    static_js = repo_root / "app/static/js"
-    return "\n".join(
-        (static_js / relative_path).read_text(encoding="utf-8")
-        for relative_path in IP_ASSETS_JS_MODULES
-    )
 
 
 def _read_application_css(repo_root: Path) -> str:
@@ -57,7 +41,7 @@ def test_ui_assets_are_local() -> None:
         in base_html
     )
     assert (
-        '<link rel="stylesheet" href="/static/app.css?v=hosts-table-fit" />'
+        '<link rel="stylesheet" href="/static/app.css?v=react-range-addresses-spacing" />'
         in base_html
     )
     assert '<script src="/static/js/tag-picker.js" defer></script>' in base_html
@@ -77,10 +61,22 @@ def test_ui_assets_are_local() -> None:
     assert "overflow-x: hidden;" in css
     assert ".table.table-hosts .host-col-tags {" in css
     assert ".table.table-hosts .host-col-actions {" in css
-    assert "width: 12%;" in css
-    assert "flex-direction: column;" in css
-    assert "width: 54px;" in css
-    assert ".table.table-hosts .btn-danger.btn-small {" in css
+    assert "width: 9%;" in css
+    assert ".row-actions {" in css
+    assert "text-align: end;" in css
+    assert "justify-content: flex-end;" in css
+    assert ".row-with-actions:hover .row-actions" in css
+    assert ".row-with-actions:focus-within .row-actions" in css
+    assert "opacity: 0;" in css
+    assert "transform: translateY(3px);" in css
+    assert "opacity 170ms ease" in css
+    assert ".row-action-control {" in css
+    assert "border: 1px solid transparent;" in css
+    assert ".row-action-control:hover" in css
+    assert "@media (hover: none), (pointer: coarse), (max-width: 700px)" in css
+    assert ".row-actions-trigger {" in css
+    assert "width: 32px;" in css
+    assert ".row-action-item-danger {" in css
     assert ".ip-tags-popover {" in css
     assert "z-index: 120;" in css
     assert ".ip-tags-popover .tag {" in css
@@ -100,6 +96,23 @@ def test_ui_assets_are_local() -> None:
     assert ".bulk-drawer-selection {" in css
     assert ".bulk-common-tags {" in css
     assert ".bulk-common-tag-chip.is-marked {" in css
+    assert ".ranges-root {" in css
+    assert ".library-root {" in css
+    assert (
+        ".range-addresses-root {\n"
+        "  display: flex;\n"
+        "  flex-direction: column;\n"
+        "  gap: 24px;\n"
+        "}"
+    ) in css
+    assert (
+        ".host-detail-root,\n"
+        ".ip-asset-detail-root {\n"
+        "  display: flex;\n"
+        "  flex-direction: column;\n"
+        "  gap: 24px;\n"
+        "}"
+    ) in css
 
 
 def test_application_css_is_split_into_focused_modules(client) -> None:
@@ -141,64 +154,71 @@ def test_refactored_templates_load_external_page_assets() -> None:
     templates = {
         "hosts": repo_root / "app/templates/hosts.html",
         "ip_assets": repo_root / "app/templates/ip_assets_list.html",
-        "ip_assets_table": repo_root / "app/templates/partials/ip_assets_table.html",
-        "ip_assets_rows": repo_root / "app/templates/partials/ip_table_rows.html",
         "range_addresses": repo_root / "app/templates/range_addresses.html",
-        "tags": repo_root / "app/templates/tags.html",
         "audit_log": repo_root / "app/templates/audit_log_list.html",
+        "about": repo_root / "app/templates/about.html",
     }
 
-    assert '<script src="/static/js/drawer.js" defer></script>' in templates[
-        "hosts"
-    ].read_text(encoding="utf-8")
     assert (
-        '<script src="/static/js/hosts.js?v=hosts-ip-tags-more-click" defer></script>'
+        '<script type="module" src="/static/react/hosts/hosts.js"></script>'
         in templates["hosts"].read_text(encoding="utf-8")
     )
     assert "<style>" not in templates["hosts"].read_text(encoding="utf-8")
     assert "<script>" not in templates["hosts"].read_text(encoding="utf-8")
 
-    assert '<script type="module" src="/static/js/ip-assets.js"></script>' in templates[
-        "ip_assets"
-    ].read_text(encoding="utf-8")
-    assert "data-bulk-open disabled>Bulk update</button>" in templates[
-        "ip_assets_table"
-    ].read_text(encoding="utf-8")
-    assert "data-bulk-remove-hidden" in templates["ip_assets_table"].read_text(
-        encoding="utf-8"
+    ip_assets_template = templates["ip_assets"].read_text(encoding="utf-8")
+    assert (
+        '<script type="module" src="/static/react/ip-assets/ip-assets.js"></script>'
+        in ip_assets_template
     )
-    assert "data-bulk-drawer" in templates["ip_assets"].read_text(encoding="utf-8")
-    assert "data-bulk-common-tags-list" in templates["ip_assets"].read_text(
-        encoding="utf-8"
-    )
-    assert 'name="notes_mode"' in templates["ip_assets"].read_text(encoding="utf-8")
-    assert "data-bulk-tags=" in templates["ip_assets_rows"].read_text(encoding="utf-8")
-    assert "<style>" not in templates["ip_assets"].read_text(encoding="utf-8")
-    assert "<script>" not in templates["ip_assets"].read_text(encoding="utf-8")
+    assert 'id="ip-assets-root"' in ip_assets_template
+    assert 'data-endpoint="/api/ui/ip-assets"' in ip_assets_template
+    assert "hx-get=" not in ip_assets_template
+    assert "<style>" not in ip_assets_template
+    assert "<script>" not in ip_assets_template
 
-    assert '<script src="/static/js/range-addresses.js" defer></script>' in templates[
-        "range_addresses"
-    ].read_text(encoding="utf-8")
-    assert 'class="table table-range-addresses"' in (
-        repo_root / "app/templates/partials/range_addresses_table.html"
-    ).read_text(encoding="utf-8")
-    assert "<style>" not in templates["range_addresses"].read_text(encoding="utf-8")
-
-    assert '{% include "partials/tags_tab_content.html" %}' in templates[
-        "tags"
-    ].read_text(encoding="utf-8")
-    assert "@click=\"$dispatch('tag-create-open')\"" in templates["tags"].read_text(
-        encoding="utf-8"
+    range_addresses_template = templates["range_addresses"].read_text(encoding="utf-8")
+    assert 'id="range-addresses-root"' in range_addresses_template
+    assert (
+        'data-endpoint="/api/ui/ranges/{{ ip_range.id }}/addresses"'
+        in range_addresses_template
     )
-    assert "<script>" not in templates["tags"].read_text(encoding="utf-8")
+    assert (
+        '<script type="module" src="/static/react/range-addresses/range-addresses.js"></script>'
+        in range_addresses_template
+    )
+    assert "hx-get=" not in range_addresses_template
+    assert "<style>" not in range_addresses_template
 
     assert "<style>" not in templates["audit_log"].read_text(encoding="utf-8")
+    audit_log_template = templates["audit_log"].read_text(encoding="utf-8")
+    assert 'id="audit-log-root"' in audit_log_template
+    assert 'data-endpoint="/api/ui/audit-log"' in audit_log_template
+    assert (
+        '<script type="module" src="/static/react/audit-log/audit-log.js"></script>'
+        in audit_log_template
+    )
+    assert "<table" not in audit_log_template
+
+    about_template = templates["about"].read_text(encoding="utf-8")
+    assert 'id="about-root"' in about_template
+    assert 'data-endpoint="/api/ui/about"' in about_template
+    assert (
+        '<script type="module" src="/static/react/about/about.js"></script>'
+        in about_template
+    )
+    assert "{{ build_info" not in about_template
+    assert "Version:" not in about_template
+    assert 'class="panel"' not in about_template
 
     assert (repo_root / "app/static/js/drawer.js").exists()
-    assert (repo_root / "app/static/js/ranges.js").exists()
     assert (repo_root / "app/static/js/hosts.js").exists()
-    assert (repo_root / "app/static/js/ip-assets.js").exists()
-    assert (repo_root / "app/static/js/range-addresses.js").exists()
+    assert not (repo_root / "app/static/js/ip-assets.js").exists()
+    vite_config = (repo_root / "frontend/vite.config.ts").read_text(encoding="utf-8")
+    for page in REACT_PAGES:
+        assert (repo_root / f"frontend/src/{page.entry}/main.tsx").exists()
+        assert f'"src/{page.entry}/main.tsx"' in vite_config
+    assert not (repo_root / "app/static/js/range-addresses.js").exists()
     assert (repo_root / "app/static/js/tag-picker.js").exists()
     assert (repo_root / "app/static/js/host-select-search.js").exists()
     host_select_search_js = (
@@ -220,14 +240,15 @@ def test_refactored_templates_load_external_page_assets() -> None:
     )
     assert "window.ipocketApplyTagContrast = applyTagContrast;" in tag_picker_js
     assert "applyTagContrast(root);" in tag_picker_js
-    ip_assets_js = _read_ip_assets_javascript(repo_root)
-    assert "computeCommonBulkTags" in ip_assets_js
-    assert "name = 'remove_tags'" in ip_assets_js
-    assert "const getDeleteReturnUrl = (assetData) => {" in ip_assets_js
-    assert (
-        "window.location.pathname === `/ui/ip-assets/${payload.asset_id}`"
-        in ip_assets_js
+    ip_assets_page = (repo_root / "frontend/src/ip-assets/IPAssetsPage.tsx").read_text(
+        encoding="utf-8"
     )
+    bulk_drawer = (repo_root / "frontend/src/ip-assets/BulkUpdateDrawer.tsx").read_text(
+        encoding="utf-8"
+    )
+    assert "const commonTags = useMemo" in ip_assets_page
+    assert "tags_to_remove" in bulk_drawer
+    assert "deleteAsset(endpoint, asset.id" in ip_assets_page
     hosts_js = (repo_root / "app/static/js/hosts.js").read_text(encoding="utf-8")
     hosts_table = (repo_root / "app/templates/partials/hosts_table.html").read_text(
         encoding="utf-8"
@@ -243,24 +264,25 @@ def test_refactored_templates_load_external_page_assets() -> None:
     assert "dataset.hostPopoverTag" in hosts_js
 
 
-def test_ip_assets_javascript_is_split_into_focused_modules(client) -> None:
+def test_ip_assets_react_source_is_split_into_focused_modules() -> None:
     repo_root = Path(__file__).resolve().parents[1]
-    static_js = repo_root / "app/static/js"
-    entrypoint = (static_js / "ip-assets.js").read_text(encoding="utf-8")
-
-    assert len(entrypoint.splitlines()) < 150
-    for relative_path in IP_ASSETS_JS_MODULES[1:]:
-        module_path = static_js / relative_path
+    source_root = repo_root / "frontend/src/ip-assets"
+    modules = (
+        "main.tsx",
+        "IPAssetsPage.tsx",
+        "IPAssetsFilters.tsx",
+        "IPAssetsTable.tsx",
+        "IPAssetListDrawer.tsx",
+        "BulkUpdateDrawer.tsx",
+        "TagOverflowPopover.tsx",
+        "api.ts",
+        "types.ts",
+    )
+    for relative_path in modules:
+        module_path = source_root / relative_path
         assert module_path.exists()
-        assert len(module_path.read_text(encoding="utf-8").splitlines()) < 450
-        response = client.get(f"/static/js/{relative_path}")
-        assert response.status_code == 200
-        assert response.headers["content-type"].startswith("text/javascript")
-
-    assert "from './ip-assets/drawer.js'" in entrypoint
-    assert "from './ip-assets/bulk-edit.js'" in entrypoint
-    assert "from './ip-assets/filters.js'" in entrypoint
-    assert "from './ip-assets/tags-popover.js'" in entrypoint
+        assert len(module_path.read_text(encoding="utf-8").splitlines()) < 600
+    assert not (repo_root / "app/static/js/ip-assets.js").exists()
 
 
 def test_projects_templates_use_alpine_for_drawer_interactions() -> None:

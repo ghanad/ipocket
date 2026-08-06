@@ -1,3 +1,65 @@
+.management-root {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.about-root {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.about-build-list {
+  margin: 0;
+}
+
+.about-metadata-value {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.ranges-root {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.library-root {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.hosts-root {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.host-detail-root,
+.ip-asset-detail-root {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.account-password-card {
+  width: 100%;
+  max-width: 640px;
+  margin-inline: auto;
+}
+
+.library-tabs {
+  margin-bottom: 0;
+}
+
+.library-success {
+  position: static;
+  max-width: 480px;
+}
+
 .login-page {
   min-height: 100vh;
   display: flex;
@@ -154,4 +216,3 @@
     grid-template-columns: 1fr;
   }
 }
-

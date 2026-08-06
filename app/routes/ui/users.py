@@ -1,13 +1,17 @@
 from __future__ import annotations
 
-import sqlite3
-
-from fastapi import APIRouter, Depends, Request
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.responses import HTMLResponse, Response
 
-from app import auth, repository
+from app import repository
 from app.dependencies import get_connection
-from app.models import UserRole
+from .user_management import (
+    UserMutationError,
+    create_managed_user,
+    delete_managed_user,
+    update_managed_user,
+    user_payload,
+)
 from .utils import (
     _parse_form_data,
     _render_template,
@@ -18,78 +22,61 @@ from .utils import (
 router = APIRouter()
 
 
-def _users_template_context(
-    connection,
+async def _read_json_object(request: Request) -> dict[str, object]:
+    try:
+        payload = await request.json()
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail="Invalid JSON request.") from exc
+    if not isinstance(payload, dict):
+        raise HTTPException(status_code=422, detail="JSON object is required.")
+    return payload
+
+
+def _string_field(payload: dict[str, object], name: str, *, default: str = "") -> str:
+    value = payload.get(name, default)
+    if not isinstance(value, str):
+        raise HTTPException(
+            status_code=422,
+            detail=f"{name.replace('_', ' ').capitalize()} must be text.",
+        )
+    return value
+
+
+def _bool_field(
+    payload: dict[str, object], name: str, *, default: bool | None = None
+) -> bool:
+    value = payload.get(name, default)
+    if not isinstance(value, bool):
+        raise HTTPException(
+            status_code=422,
+            detail=f"{name.replace('_', ' ').capitalize()} must be true or false.",
+        )
+    return value
+
+
+def _legacy_error_status(error: UserMutationError) -> int:
+    return 409 if error.status_code == 409 else 400
+
+
+def _legacy_error_page(
+    request: Request,
+    error: UserMutationError,
     *,
-    create_errors: list[str] | None = None,
-    create_form: dict[str, str] | None = None,
-    edit_errors: list[str] | None = None,
-    edit_form: dict[str, str] | None = None,
-    delete_errors: list[str] | None = None,
-    delete_form: dict[str, str] | None = None,
-):
-    users = list(repository.list_users(connection))
-    return {
-        "title": "ipocket - Users",
-        "users": users,
-        "create_errors": create_errors or [],
-        "create_form": create_form
-        or {
-            "username": "",
-            "password": "",
-            "can_edit": "1",
-            "is_active": "1",
+    mode: str,
+    form: dict[str, str],
+) -> HTMLResponse:
+    return _render_template(
+        request,
+        "users.html",
+        {
+            "title": "ipocket - Users",
+            "legacy_errors": [error.message],
+            "legacy_mode": mode,
+            "legacy_form": form,
         },
-        "edit_errors": edit_errors or [],
-        "edit_form": edit_form
-        or {
-            "id": "",
-            "username": "",
-            "password": "",
-            "can_edit": "",
-            "is_active": "",
-            "role": "",
-        },
-        "delete_errors": delete_errors or [],
-        "delete_form": delete_form
-        or {
-            "id": "",
-            "username": "",
-            "confirm_username": "",
-        },
-    }
-
-
-def _audit_user_change(connection, actor, target, action: str, changes: str) -> None:
-    repository.create_audit_log(
-        connection,
-        user=actor,
-        action=action,
-        target_type="USER",
-        target_id=target.id,
-        target_label=target.username,
-        changes=changes,
+        active_nav="users",
+        status_code=_legacy_error_status(error),
     )
-    connection.commit()
-
-
-def _can_deactivate_superuser(connection, user) -> bool:
-    if user.role != UserRole.SUPERUSER:
-        return True
-    active_superusers = repository.count_active_users_by_role(
-        connection, UserRole.SUPERUSER
-    )
-    return active_superusers > 1
-
-
-def _can_delete_user(connection, actor, target) -> tuple[bool, str]:
-    if target.id == actor.id:
-        return False, "You cannot delete your own account."
-    if target.role == UserRole.SUPERUSER and not _can_deactivate_superuser(
-        connection, target
-    ):
-        return False, "Cannot delete the last active superuser."
-    return True, ""
 
 
 @router.get("/ui/users", response_class=HTMLResponse)
@@ -101,9 +88,99 @@ def ui_users(
     return _render_template(
         request,
         "users.html",
-        _users_template_context(connection),
+        {"title": "ipocket - Users"},
         active_nav="users",
     )
+
+
+@router.get("/api/ui/users")
+def list_users_for_ui(
+    connection=Depends(get_connection),
+    actor=Depends(require_ui_superuser),
+):
+    return {
+        "actor": {
+            "id": actor.id,
+            "username": actor.username,
+            "role": actor.role.value,
+        },
+        "users": [
+            user_payload(connection, actor, user)
+            for user in repository.list_users(connection)
+        ],
+    }
+
+
+@router.post("/api/ui/users", status_code=status.HTTP_201_CREATED)
+async def create_user_for_ui(
+    request: Request,
+    connection=Depends(get_connection),
+    actor=Depends(require_ui_superuser),
+):
+    payload = await _read_json_object(request)
+    try:
+        created = create_managed_user(
+            connection,
+            actor,
+            username=_string_field(payload, "username"),
+            password=_string_field(payload, "password"),
+            can_edit=_bool_field(payload, "can_edit", default=True),
+            is_active=_bool_field(payload, "is_active", default=True),
+        )
+    except UserMutationError as exc:
+        raise HTTPException(status_code=exc.status_code, detail=exc.message) from exc
+    return user_payload(connection, actor, created)
+
+
+@router.patch("/api/ui/users/{user_id}")
+async def update_user_for_ui(
+    user_id: int,
+    request: Request,
+    connection=Depends(get_connection),
+    actor=Depends(require_ui_superuser),
+):
+    target = repository.get_user_by_id(connection, user_id)
+    if target is None:
+        raise HTTPException(status_code=404, detail="User not found.")
+    payload = await _read_json_object(request)
+    try:
+        result = update_managed_user(
+            connection,
+            actor,
+            target,
+            can_edit=_bool_field(payload, "can_edit"),
+            is_active=_bool_field(payload, "is_active"),
+            password=_string_field(payload, "password"),
+        )
+    except UserMutationError as exc:
+        raise HTTPException(status_code=exc.status_code, detail=exc.message) from exc
+    return {
+        "user": user_payload(connection, actor, result.user),
+        "changed": result.changed,
+    }
+
+
+@router.delete("/api/ui/users/{user_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_user_for_ui(
+    user_id: int,
+    request: Request,
+    connection=Depends(get_connection),
+    actor=Depends(require_ui_superuser),
+) -> Response:
+    target = repository.get_user_by_id(connection, user_id)
+    if target is None:
+        raise HTTPException(status_code=404, detail="User not found.")
+    payload = await _read_json_object(request)
+    try:
+        delete_managed_user(
+            connection,
+            actor,
+            target,
+            confirm_username=_string_field(payload, "confirm_username"),
+        )
+    except UserMutationError as exc:
+        raise HTTPException(status_code=exc.status_code, detail=exc.message) from exc
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 @router.post("/ui/users", response_class=HTMLResponse)
@@ -118,64 +195,26 @@ async def ui_create_user(
     can_edit = form_data.get("can_edit") == "1"
     is_active = form_data.get("is_active") == "1"
 
-    errors: list[str] = []
-    if not username:
-        errors.append("Username is required.")
-    if not password:
-        errors.append("Password is required.")
-
-    if errors:
-        return _render_template(
-            request,
-            "users.html",
-            _users_template_context(
-                connection,
-                create_errors=errors,
-                create_form={
-                    "username": username,
-                    "password": "",
-                    "can_edit": "1" if can_edit else "",
-                    "is_active": "1" if is_active else "",
-                },
-            ),
-            active_nav="users",
-            status_code=400,
-        )
-
-    role = UserRole.EDITOR if can_edit else UserRole.VIEWER
     try:
-        created = repository.create_user(
+        create_managed_user(
             connection,
+            actor,
             username=username,
-            hashed_password=auth.hash_password(password),
-            role=role,
+            password=password,
+            can_edit=can_edit,
             is_active=is_active,
         )
-    except sqlite3.IntegrityError:
-        return _render_template(
+    except UserMutationError as error:
+        return _legacy_error_page(
             request,
-            "users.html",
-            _users_template_context(
-                connection,
-                create_errors=["Username already exists."],
-                create_form={
-                    "username": username,
-                    "password": "",
-                    "can_edit": "1" if can_edit else "",
-                    "is_active": "1" if is_active else "",
-                },
-            ),
-            active_nav="users",
-            status_code=409,
+            error,
+            mode="create",
+            form={
+                "username": username,
+                "can_edit": "1" if can_edit else "",
+                "is_active": "1" if is_active else "",
+            },
         )
-
-    _audit_user_change(
-        connection,
-        actor,
-        created,
-        action="CREATE",
-        changes=f"Created user (role={created.role.value}, is_active={int(created.is_active)})",
-    )
     return _redirect_with_flash(
         request,
         "/ui/users",
@@ -201,78 +240,27 @@ async def ui_edit_user(
     if target is None:
         return Response(status_code=404)
 
-    errors: list[str] = []
-    if target.role == UserRole.SUPERUSER and can_edit is False:
-        errors.append("Superuser edit access cannot be changed.")
-    if not is_active and not _can_deactivate_superuser(connection, target):
-        errors.append("Cannot deactivate the last active superuser.")
-
-    if errors:
-        return _render_template(
-            request,
-            "users.html",
-            _users_template_context(
-                connection,
-                edit_errors=errors,
-                edit_form={
-                    "id": str(target.id),
-                    "username": target.username,
-                    "password": "",
-                    "can_edit": "1" if can_edit else "",
-                    "is_active": "1" if is_active else "",
-                    "role": target.role.value,
-                },
-            ),
-            active_nav="users",
-            status_code=400,
-        )
-
-    change_lines: list[str] = []
-
-    updated_user = target
-    if target.role != UserRole.SUPERUSER:
-        desired_role = UserRole.EDITOR if can_edit else UserRole.VIEWER
-        if desired_role != updated_user.role:
-            next_user = repository.update_user_role(
-                connection,
-                user_id=updated_user.id,
-                role=desired_role,
-            )
-            if next_user is not None:
-                change_lines.append(
-                    f"role: {updated_user.role.value} -> {next_user.role.value}"
-                )
-                updated_user = next_user
-
-    if updated_user.is_active != is_active:
-        next_user = repository.set_user_active(
-            connection,
-            user_id=updated_user.id,
-            is_active=is_active,
-        )
-        if next_user is not None:
-            change_lines.append(
-                f"is_active: {int(updated_user.is_active)} -> {int(next_user.is_active)}"
-            )
-            updated_user = next_user
-
-    if password:
-        next_user = repository.update_user_password(
-            connection,
-            user_id=updated_user.id,
-            hashed_password=auth.hash_password(password),
-        )
-        if next_user is not None:
-            change_lines.append("password: rotated")
-            updated_user = next_user
-
-    if change_lines:
-        _audit_user_change(
+    try:
+        update_managed_user(
             connection,
             actor,
-            updated_user,
-            action="UPDATE",
-            changes="; ".join(change_lines),
+            target,
+            can_edit=can_edit,
+            is_active=is_active,
+            password=password,
+        )
+    except UserMutationError as error:
+        return _legacy_error_page(
+            request,
+            error,
+            mode="edit",
+            form={
+                "id": str(target.id),
+                "username": target.username,
+                "can_edit": "1" if can_edit else "",
+                "is_active": "1" if is_active else "",
+                "role": target.role.value,
+            },
         )
 
     return _redirect_with_flash(
@@ -298,38 +286,24 @@ async def ui_delete_user(
     if target is None:
         return Response(status_code=404)
 
-    errors: list[str] = []
-    if confirm_username != target.username:
-        errors.append("Username confirmation does not match.")
-    allowed, message = _can_delete_user(connection, actor, target)
-    if not allowed:
-        errors.append(message)
-
-    if errors:
-        return _render_template(
-            request,
-            "users.html",
-            _users_template_context(
-                connection,
-                delete_errors=errors,
-                delete_form={
-                    "id": str(target.id),
-                    "username": target.username,
-                    "confirm_username": confirm_username,
-                },
-            ),
-            active_nav="users",
-            status_code=400,
+    try:
+        delete_managed_user(
+            connection,
+            actor,
+            target,
+            confirm_username=confirm_username,
         )
-
-    _audit_user_change(
-        connection,
-        actor,
-        target,
-        action="DELETE",
-        changes=f"Deleted user (role={target.role.value}, is_active={int(target.is_active)})",
-    )
-    repository.delete_user(connection, target.id)
+    except UserMutationError as error:
+        return _legacy_error_page(
+            request,
+            error,
+            mode="delete",
+            form={
+                "id": str(target.id),
+                "username": target.username,
+                "confirm_username": confirm_username,
+            },
+        )
 
     return _redirect_with_flash(
         request,

@@ -10,7 +10,6 @@ from app.dependencies import get_connection
 from app.models import IPAssetType
 from app.utils import validate_ip_address
 from app.routes.ui.utils import (
-    _build_asset_view_models,
     _is_auto_host_for_bmc_enabled,
     _normalize_asset_type,
     _parse_optional_int,
@@ -22,10 +21,10 @@ from app.routes.ui.utils import (
 )
 
 from .helpers import (
-    _friendly_audit_changes,
     _ip_asset_form_context,
     _parse_selected_tags,
 )
+from .common import get_active_ip_asset, update_ip_asset_from_ui
 
 router = APIRouter()
 
@@ -185,57 +184,13 @@ def ui_ip_asset_detail(
     connection=Depends(get_connection),
     _user=Depends(get_current_ui_user),
 ):
-    asset = repository.get_ip_asset_by_id(connection, asset_id)
-    if asset is None or asset.archived:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
-    projects = list(repository.list_projects(connection))
-    hosts = list(repository.list_hosts(connection))
-    tags = list(repository.list_tags(connection))
-    project_lookup = {
-        project.id: {"name": project.name, "color": project.color}
-        for project in projects
-    }
-    host_lookup = {host.id: host.name for host in hosts}
-    tag_lookup = repository.list_tag_details_for_ip_assets(connection, [asset.id])
-    host_pair_lookup = repository.list_host_pair_ips_for_hosts(
-        connection,
-        [asset.host_id] if asset.host_id else [],
-    )
-    view_model = _build_asset_view_models(
-        [asset], project_lookup, host_lookup, tag_lookup, host_pair_lookup
-    )[0]
-    view_model["host_pair_assets"] = []
-    if asset.host_id and asset.asset_type in (IPAssetType.OS, IPAssetType.BMC):
-        grouped_host_assets = repository.get_host_linked_assets_grouped(
-            connection, asset.host_id
-        )
-        pair_key = "bmc" if asset.asset_type == IPAssetType.OS else "os"
-        view_model["host_pair_assets"] = [
-            {"id": pair.id, "ip_address": pair.ip_address}
-            for pair in grouped_host_assets[pair_key]
-        ]
-    audit_logs = repository.get_audit_logs_for_ip(connection, asset.id)
-    audit_log_rows = [
-        {
-            "created_at": log.created_at,
-            "user": log.username or "System",
-            "action": log.action,
-            "changes": _friendly_audit_changes(log.changes or ""),
-        }
-        for log in audit_logs
-    ]
+    asset = get_active_ip_asset(connection, asset_id)
     return _render_template(
         request,
         "ip_asset_detail.html",
         {
             "title": "ipocket - IP Detail",
-            "asset": view_model,
-            "audit_logs": audit_log_rows,
-            "projects": projects,
-            "hosts": hosts,
-            "tags": tags,
-            "types": [asset_type.value for asset_type in IPAssetType],
-            "return_to": f"/ui/ip-assets/{asset.id}",
+            "asset": asset,
         },
         active_nav="ip-assets",
     )
@@ -299,19 +254,21 @@ async def ui_edit_ip_submit(
     notes = _parse_optional_str(form_data.get("notes"))
     tags_raw = form_data.getlist("tags")
 
-    errors = []
-    normalized_asset_type = None
+    errors: list[str] = []
+    tags = [str(tag) for tag in tags_raw]
     try:
-        normalized_asset_type = _normalize_asset_type(asset_type)
-    except ValueError:
-        errors.append("Asset type is required.")
-    if normalized_asset_type is None and not errors:
-        errors.append("Asset type is required.")
-    if host_id is not None and repository.get_host_by_id(connection, host_id) is None:
-        errors.append("Selected host does not exist.")
-    tags, tag_errors = _parse_selected_tags(connection, [str(tag) for tag in tags_raw])
-    errors.extend(tag_errors)
-
+        update_ip_asset_from_ui(
+            connection,
+            asset=asset,
+            asset_type=str(asset_type or ""),
+            project_id=project_id,
+            host_id=host_id,
+            notes=notes,
+            raw_tags=[str(tag) for tag in tags_raw],
+            user=user,
+        )
+    except HTTPException as exc:
+        errors = exc.detail if isinstance(exc.detail, list) else [str(exc.detail)]
     if errors:
         projects = list(repository.list_projects(connection))
         hosts = list(repository.list_hosts(connection))
@@ -339,20 +296,6 @@ async def ui_edit_ip_submit(
             status_code=400,
             active_nav="ip-assets",
         )
-
-    repository.update_ip_asset(
-        connection,
-        ip_address=asset.ip_address,
-        asset_type=normalized_asset_type,
-        project_id=project_id,
-        project_id_provided=True,
-        host_id=host_id,
-        host_id_provided=True,
-        notes=notes,
-        tags=tags,
-        current_user=user,
-        notes_provided=True,
-    )
     if return_to.startswith("/"):
         return RedirectResponse(url=return_to, status_code=303)
     return RedirectResponse(url=f"/ui/ip-assets/{asset.id}", status_code=303)

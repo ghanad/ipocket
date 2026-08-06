@@ -9,6 +9,31 @@ from app.utils import DEFAULT_TAG_COLOR
 from . import repository
 
 
+def _library_react_context(
+    tab: str,
+    mode: str,
+    *,
+    entity_id: int | None = None,
+    values: Optional[dict[str, str]] = None,
+    errors: Optional[list[str]] = None,
+    confirm_name: str = "",
+) -> dict:
+    return {
+        "library_react": True,
+        "active_tab": tab,
+        "initial_edit_id": entity_id if mode == "edit" else None,
+        "initial_delete_id": entity_id if mode == "delete" else None,
+        "library_bootstrap": {
+            "tab": tab,
+            "mode": mode,
+            "entity_id": entity_id,
+            "values": values or {},
+            "confirm_name": confirm_name,
+            "errors": errors or [],
+        },
+    }
+
+
 def _tags_template_context(
     connection,
     *,

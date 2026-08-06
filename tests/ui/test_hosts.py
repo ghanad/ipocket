@@ -32,15 +32,13 @@ def test_hosts_page_renders_edit_drawer_and_actions(client) -> None:
     finally:
         connection.close()
 
-    response = client.get("/ui/hosts")
+    response = client.get("/ui/hosts", headers={"HX-Request": "true"})
 
     assert response.status_code == 200
     assert 'data-host-edit="' in response.text
     assert f'data-host-delete="{host.id}"' in response.text
     assert f'href="/ui/ip-assets/{os_asset.id}"' in response.text
     assert f'href="/ui/ip-assets/{bmc_asset.id}"' in response.text
-    assert "Edit Host" in response.text
-    assert "Save changes" in response.text
     assert "host-edit-row-" not in response.text
 
 
@@ -62,7 +60,7 @@ def test_hosts_list_renders_project_color_tag(client) -> None:
     finally:
         connection.close()
 
-    response = client.get("/ui/hosts")
+    response = client.get("/ui/hosts", headers={"HX-Request": "true"})
 
     assert response.status_code == 200
     assert 'class="tag tag-project"' in response.text
@@ -97,7 +95,7 @@ def test_hosts_list_renders_tags_from_linked_ip_assets(client) -> None:
     finally:
         connection.close()
 
-    response = client.get("/ui/hosts")
+    response = client.get("/ui/hosts", headers={"HX-Request": "true"})
 
     assert response.status_code == 200
     assert 'class="table table-hosts"' in response.text
@@ -140,7 +138,7 @@ def test_hosts_list_collapses_ip_tags_after_two(client) -> None:
     finally:
         connection.close()
 
-    response = client.get("/ui/hosts")
+    response = client.get("/ui/hosts", headers={"HX-Request": "true"})
 
     assert response.status_code == 200
     assert '<div class="host-ip-tags-inline ip-tags-inline"' in response.text
@@ -159,100 +157,39 @@ def test_hosts_list_uses_edit_drawer_actions(client) -> None:
     connection = db.connect(os.environ["IPAM_DB_PATH"])
     try:
         db.init_db(connection)
-        host = repository.create_host(connection, name="node-12", notes="rack-1")
+        repository.create_host(connection, name="node-12", notes="rack-1")
     finally:
         connection.close()
 
     response = client.get("/ui/hosts")
 
     assert response.status_code == 200
-    assert f'data-host-edit="{host.id}"' in response.text
-    assert f'data-host-name="{host.name}"' in response.text
-    assert f'data-host-delete="{host.id}"' in response.text
-    assert 'data-host-project-count="0"' in response.text
-    assert 'name="project_id"' in response.text
-    assert "data-host-drawer" in response.text
-    assert "Save changes" in response.text
+    assert 'id="hosts-root"' in response.text
+    assert 'data-endpoint="/api/ui/hosts"' in response.text
+    assert "/static/react/hosts/hosts.js" in response.text
 
 
-def test_host_detail_uses_shared_detail_layout(client) -> None:
+def test_host_detail_uses_react_mount_and_keeps_hosts_sidebar_active(client) -> None:
     import os
 
     connection = db.connect(os.environ["IPAM_DB_PATH"])
     try:
         db.init_db(connection)
-        vendor = repository.create_vendor(connection, name="Supermicro")
-        project = repository.create_project(connection, name="Compute", color="#0f766e")
-        host = repository.create_host(
-            connection, name="compute-08", vendor=vendor.name, notes="rack 4"
-        )
-        os_asset = repository.create_ip_asset(
-            connection,
-            ip_address="10.80.0.8",
-            asset_type=IPAssetType.OS,
-            project_id=project.id,
-            host_id=host.id,
-            notes="primary",
-            tags=["prod", "linux"],
-        )
-        bmc_asset = repository.create_ip_asset(
-            connection,
-            ip_address="10.80.1.8",
-            asset_type=IPAssetType.BMC,
-            project_id=project.id,
-            host_id=host.id,
-            tags=["oob"],
-        )
-        repository.create_ip_asset(
-            connection,
-            ip_address="10.80.2.8",
-            asset_type=IPAssetType.VIP,
-            host_id=host.id,
-        )
+        host = repository.create_host(connection, name="compute-08")
     finally:
         connection.close()
 
     response = client.get(f"/ui/hosts/{host.id}")
 
     assert response.status_code == 200
-    assert 'class="page-header ip-detail-header"' in response.text
-    assert "Vendor: Supermicro" in response.text
-    assert "Status: 3 linked IPs" in response.text
-    assert "<h2>Details</h2>" in response.text
-    assert '<div class="detail-grid">' in response.text
-    assert "rack 4" in response.text
-    assert "Compute" in response.text
-    assert "--project-color: #0f766e" in response.text
-    assert "prod" in response.text
-    assert "linux" in response.text
-    assert "oob" in response.text
-    assert "No tags" in response.text
-    assert "<h2>OS IPs</h2>" in response.text
-    assert f'href="/ui/ip-assets/{os_asset.id}"' in response.text
-    assert "<h2>BMC IPs</h2>" in response.text
-    assert f'href="/ui/ip-assets/{bmc_asset.id}"' in response.text
-    assert "<h2>Other linked IPs</h2>" in response.text
-
-
-def test_host_detail_shows_empty_states_for_unlinked_host(client) -> None:
-    import os
-
-    connection = db.connect(os.environ["IPAM_DB_PATH"])
-    try:
-        db.init_db(connection)
-        host = repository.create_host(connection, name="empty-host")
-    finally:
-        connection.close()
-
-    response = client.get(f"/ui/hosts/{host.id}")
-
-    assert response.status_code == 200
-    assert "Vendor: Unassigned" in response.text
-    assert "Status: No linked IPs" in response.text
-    assert "No notes" in response.text
-    assert "No OS IPs linked." in response.text
-    assert "No BMC IPs linked." in response.text
-    assert "Other linked IPs" not in response.text
+    assert 'id="host-detail-root"' in response.text
+    assert 'class="host-detail-root"' in response.text
+    assert f'data-endpoint="/api/ui/hosts/{host.id}/detail"' in response.text
+    assert 'role="status"' in response.text
+    assert "Loading host details…" in response.text
+    assert "/static/react/host-detail/host-detail.js" in response.text
+    assert 'class="nav-link nav-link-active" href="/ui/hosts"' in response.text
+    assert response.text.count("compute-08") == 0
 
 
 def test_hosts_add_uses_side_panel(client) -> None:
@@ -260,18 +197,8 @@ def test_hosts_add_uses_side_panel(client) -> None:
     response = client.get("/ui/hosts")
 
     assert response.status_code == 200
-    # Should have the "New Host" button in page header
-    assert "data-host-add" in response.text
-    assert "New Host" in response.text
-    # Should have the drawer that can be used for both Add and Edit
-    assert "data-host-drawer" in response.text
-    # Should have "Create Host" button text in the drawer (set by JS)
-    # The drawer title is dynamically set by JS, but the form action should be /ui/hosts for add
-    assert (
-        'formaction="/ui/hosts"' in response.text
-        or 'action="/ui/hosts"' in response.text
-    )
-    # Should NOT have the old inline add form
+    assert 'id="hosts-root"' in response.text
+    assert "/static/react/hosts/hosts.js" in response.text
     assert 'id="add-host-card"' not in response.text
 
 
@@ -286,7 +213,11 @@ def test_hosts_list_search_trims_whitespace(client) -> None:
     finally:
         connection.close()
 
-    response = client.get("/ui/hosts", params={"q": " edge-01 "})
+    response = client.get(
+        "/ui/hosts",
+        params={"q": " edge-01 "},
+        headers={"HX-Request": "true"},
+    )
 
     assert response.status_code == 200
     assert "edge-01" in response.text
@@ -308,24 +239,9 @@ def test_hosts_list_renders_comprehensive_filters(client) -> None:
     response = client.get("/ui/hosts")
 
     assert response.status_code == 200
-    assert 'name="project_id"' in response.text
-    assert 'name="type"' not in response.text
-    assert 'name="unassigned-only"' in response.text
-    assert 'name="status"' in response.text
-    assert 'name="vendor_id"' in response.text
-    assert 'hx-target="#host-table-container"' in response.text
-    assert 'hx-push-url="true"' in response.text
-    assert 'hx-trigger="keyup changed delay:500ms, search"' in response.text
-    assert "Type tag and press Enter" in response.text
-    assert (
-        '<button class="btn btn-primary" type="submit">Apply</button>'
-        not in response.text
-    )
-    assert (
-        '<a class="btn btn-secondary" href="/ui/hosts">Clear</a>' not in response.text
-    )
-    assert '<option value="unassigned"' in response.text
-    assert '<option value="linked"' in response.text
+    assert 'id="hosts-root"' in response.text
+    assert 'data-endpoint="/api/ui/hosts"' in response.text
+    assert "/static/react/hosts/hosts.js" in response.text
 
 
 def test_hosts_list_htmx_filter_returns_table_partial(client) -> None:
@@ -394,6 +310,7 @@ def test_hosts_list_filters_by_project_tag_and_status(client) -> None:
             "tag": "prod",
             "status": "linked",
         },
+        headers={"HX-Request": "true"},
     )
 
     assert response.status_code == 200
@@ -429,12 +346,15 @@ def test_hosts_list_filters_by_project_only(client) -> None:
     finally:
         connection.close()
 
-    response = client.get("/ui/hosts", params={"project_id": str(project.id)})
+    response = client.get(
+        "/ui/hosts",
+        params={"project_id": str(project.id)},
+        headers={"HX-Request": "true"},
+    )
 
     assert response.status_code == 200
     assert "core-project-host" in response.text
     assert "other-project-host" not in response.text
-    assert f'<option value="{project.id}" selected>Core</option>' in response.text
 
 
 def test_hosts_list_filters_by_project_with_default_form_values(client) -> None:
@@ -471,12 +391,12 @@ def test_hosts_list_filters_by_project_with_default_form_values(client) -> None:
             ("status", ""),
             ("vendor_id", ""),
         ],
+        headers={"HX-Request": "true"},
     )
 
     assert response.status_code == 200
     assert "core-form-host" in response.text
     assert "other-form-host" not in response.text
-    assert f'<option value="{project.id}" selected>Core</option>' in response.text
 
 
 def test_hosts_list_filters_by_unassigned_assignment(client) -> None:
@@ -504,7 +424,11 @@ def test_hosts_list_filters_by_unassigned_assignment(client) -> None:
     finally:
         connection.close()
 
-    response = client.get("/ui/hosts", params={"unassigned-only": "true"})
+    response = client.get(
+        "/ui/hosts",
+        params={"unassigned-only": "true"},
+        headers={"HX-Request": "true"},
+    )
 
     assert response.status_code == 200
     assert "missing-project" in response.text
@@ -522,7 +446,7 @@ def test_hosts_list_paginates_with_default_page_size(client) -> None:
     finally:
         connection.close()
 
-    response = client.get("/ui/hosts")
+    response = client.get("/ui/hosts", headers={"HX-Request": "true"})
 
     assert response.status_code == 200
     assert "host-000" in response.text
@@ -543,7 +467,11 @@ def test_hosts_list_paginates_with_custom_page_size(client) -> None:
     finally:
         connection.close()
 
-    response = client.get("/ui/hosts", params={"per-page": "10"})
+    response = client.get(
+        "/ui/hosts",
+        params={"per-page": "10"},
+        headers={"HX-Request": "true"},
+    )
 
     assert response.status_code == 200
     assert "host-000" in response.text
@@ -565,7 +493,11 @@ def test_hosts_list_pagination_with_search(client) -> None:
     finally:
         connection.close()
 
-    response = client.get("/ui/hosts", params={"q": "server", "per-page": "10"})
+    response = client.get(
+        "/ui/hosts",
+        params={"q": "server", "per-page": "10"},
+        headers={"HX-Request": "true"},
+    )
 
     assert response.status_code == 200
     assert "server-000" in response.text
@@ -585,7 +517,11 @@ def test_hosts_list_pagination_navigation(client) -> None:
     finally:
         connection.close()
 
-    response = client.get("/ui/hosts", params={"page": "2", "per-page": "10"})
+    response = client.get(
+        "/ui/hosts",
+        params={"page": "2", "per-page": "10"},
+        headers={"HX-Request": "true"},
+    )
 
     assert response.status_code == 200
     assert "host-000" not in response.text
@@ -1127,11 +1063,9 @@ def test_ui_delete_host_open_delete_redirect_shows_drawer(client) -> None:
     assert response.status_code == 303
     assert response.headers.get("location", "").endswith(f"/ui/hosts?delete={host.id}")
     assert list_response.status_code == 200
-    assert 'data-host-delete-open="true"' in list_response.text
-    assert f'data-host-delete-id="{host.id}"' in list_response.text
-    assert "data-host-delete-linked-value" in list_response.text
-    assert 'data-host-mode-panel="delete"' in list_response.text
-    assert "Delete permanently" in list_response.text
+    assert 'id="hosts-root"' in list_response.text
+    assert f'data-initial-query="delete={host.id}"' in list_response.text
+    assert "/static/react/hosts/hosts.js" in list_response.text
 
 
 def test_ui_delete_host_shows_success_flash_message(client) -> None:

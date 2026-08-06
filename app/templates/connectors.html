@@ -1,45 +1,13 @@
 {% extends "base.html" %}
 
 {% block content %}
-<section class="page-header">
-  <div>
-    <p class="eyebrow">Connectors</p>
-    <h1>Integrations</h1>
-    <p class="subtitle">Manage external inventory connectors and import flow guidance.</p>
-  </div>
-</section>
-
-<div class="tabs" role="tablist" aria-label="Connector sections" style="margin-bottom: 16px;">
-  <a class="tab{% if active_tab == 'overview' %} tab-active{% endif %}" href="/ui/connectors?tab=overview" role="tab" aria-selected="{{ 'true' if active_tab == 'overview' else 'false' }}">Overview</a>
-  <a class="tab{% if active_tab == 'vcenter' %} tab-active{% endif %}" href="/ui/connectors?tab=vcenter" role="tab" aria-selected="{{ 'true' if active_tab == 'vcenter' else 'false' }}">vCenter</a>
-  <a class="tab{% if active_tab == 'prometheus' %} tab-active{% endif %}" href="/ui/connectors?tab=prometheus" role="tab" aria-selected="{{ 'true' if active_tab == 'prometheus' else 'false' }}">Prometheus</a>
-  <a class="tab{% if active_tab == 'elasticsearch' %} tab-active{% endif %}" href="/ui/connectors?tab=elasticsearch" role="tab" aria-selected="{{ 'true' if active_tab == 'elasticsearch' else 'false' }}">Elasticsearch</a>
-  <a class="tab{% if active_tab == 'cassandra' %} tab-active{% endif %}" href="/ui/connectors?tab=cassandra" role="tab" aria-selected="{{ 'true' if active_tab == 'cassandra' else 'false' }}">Cassandra</a>
-  <a class="tab{% if active_tab == 'ceph' %} tab-active{% endif %}" href="/ui/connectors?tab=ceph" role="tab" aria-selected="{{ 'true' if active_tab == 'ceph' else 'false' }}">Ceph</a>
-  <a class="tab{% if active_tab == 'kubernetes' %} tab-active{% endif %}" href="/ui/connectors?tab=kubernetes" role="tab" aria-selected="{{ 'true' if active_tab == 'kubernetes' else 'false' }}">Kubernetes</a>
+<div
+  id="connectors-root"
+  data-endpoint="/api/ui/connectors"
+  data-initial-tab="{{ active_tab }}"
+  data-initial-job-id="{{ job_id }}"
+>
+  <section class="page-header"><div><p class="eyebrow">Connectors</p><h1>Integrations</h1><p class="subtitle">Loading connector configuration…</p></div></section>
 </div>
-
-{% if active_tab == "vcenter" %}
-  {% include "partials/connectors_vcenter_tab_content.html" %}
-{% elif active_tab == "prometheus" %}
-  {% include "partials/connectors_prometheus_tab_content.html" %}
-{% elif active_tab == "elasticsearch" %}
-  {% include "partials/connectors_elasticsearch_tab_content.html" %}
-{% elif active_tab == "cassandra" %}
-  {% include "partials/connectors_cassandra_tab_content.html" %}
-{% elif active_tab == "ceph" %}
-  {% include "partials/connectors_ceph_tab_content.html" %}
-{% elif active_tab == "kubernetes" %}
-  {% include "partials/connectors_kubernetes_tab_content.html" %}
-{% else %}
-  {% include "partials/connectors_overview_tab_content.html" %}
-{% endif %}
-
-{% if connector_job_poll_url %}
-<script>
-  setTimeout(function () {
-    window.location.replace({{ connector_job_poll_url|tojson }});
-  }, 1000);
-</script>
-{% endif %}
+<script type="module" src="/static/react/connectors/connectors.js"></script>
 {% endblock %}

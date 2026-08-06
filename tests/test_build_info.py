@@ -44,3 +44,18 @@ def test_build_info_uses_commit_based_version_in_docker_when_version_unset(
     info = build_info.get_build_info()
 
     assert info["version"] == "sha-1234567"
+
+
+def test_display_build_info_preserves_unknown_fallbacks(monkeypatch) -> None:
+    monkeypatch.setenv("IPOCKET_DOCKER_RUNTIME", "0")
+    monkeypatch.delenv("IPOCKET_VERSION", raising=False)
+    monkeypatch.delenv("IPOCKET_COMMIT", raising=False)
+    monkeypatch.delenv("IPOCKET_BUILD_TIME", raising=False)
+    monkeypatch.delenv("IPOCKET_DOCKER_TAG", raising=False)
+    monkeypatch.setattr(build_info, "_detect_git_commit", lambda: None)
+
+    assert build_info.get_display_build_info() == {
+        "version": "dev",
+        "commit": "unknown",
+        "build_time": "unknown",
+    }

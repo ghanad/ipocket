@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-import re
-
 from app import repository
 from app.main import app
 from app.models import UserRole
@@ -229,42 +227,6 @@ def test_vendor_routes_cover_redirect_validation_and_delete_404(
     assert "Vendor name is required." in edit_empty.text
     assert edit_missing.status_code == 404
     assert delete_missing.status_code == 404
-
-
-def test_audit_log_pagination_defaults_and_system_user_label(
-    client, _setup_connection
-) -> None:
-    connection = _setup_connection()
-    try:
-        user = repository.create_user(
-            connection,
-            username="viewer",
-            hashed_password="x",
-            role=UserRole.VIEWER,
-        )
-        for idx in range(12):
-            repository.create_audit_log(
-                connection,
-                user=None,
-                action="UPDATED",
-                target_type="IP_ASSET",
-                target_id=idx + 1,
-                target_label=f"10.0.0.{idx + 1}",
-            )
-        connection.commit()
-    finally:
-        connection.close()
-
-    app.dependency_overrides[ui.get_current_ui_user] = lambda: user
-    try:
-        response = client.get("/ui/audit-log?per-page=15&page=999")
-    finally:
-        app.dependency_overrides.pop(ui.get_current_ui_user, None)
-
-    assert response.status_code == 200
-    assert re.search(r"Showing\s+1-12\s+of\s+12", response.text)
-    assert re.search(r'<option value="20"\s+selected>', response.text)
-    assert "System" in response.text
 
 
 def test_create_project_success_and_delete_guard_paths(

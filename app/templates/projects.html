@@ -1,6 +1,27 @@
 {% extends "base.html" %}
 
 {% block content %}
+{% if library_react|default(false) %}
+<div
+  id="library-root"
+  class="library-root"
+  data-endpoint="/api/ui/library"
+  data-active-tab="{{ active_tab }}"
+  data-initial-edit-id="{{ initial_edit_id or '' }}"
+  data-initial-delete-id="{{ initial_delete_id or '' }}"
+  aria-live="polite"
+>
+  <section class="page-header">
+    <div>
+      <p class="eyebrow">Library</p>
+      <h1>Catalog Settings</h1>
+      <p class="subtitle">Manage Projects, Tags, and Vendors from a single page.</p>
+    </div>
+  </section>
+</div>
+<script id="library-bootstrap" type="application/json">{{ library_bootstrap|default(none)|tojson }}</script>
+<script type="module" src="/static/react/library/library.js"></script>
+{% else %}
 <div x-data="{}" data-library-page>
 <section class="page-header">
   <div>
@@ -33,4 +54,5 @@
   {% include "partials/projects_tab_content.html" %}
 {% endif %}
 </div>
+{% endif %}
 {% endblock %}

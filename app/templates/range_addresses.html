@@ -1,212 +1,31 @@
 {% extends "base.html" %}
 
 {% block content %}
-<section class="page-header">
-  <div>
-    <h1>{{ ip_range.name }}</h1>
-    <p class="subtitle">CIDR {{ ip_range.cidr }} • {{ used_total }} used • {{ free_total }} free</p>
-  </div>
-  <div class="page-actions">
-    <a class="btn btn-secondary" href="/ui/ranges">Back to ranges</a>
-  </div>
-</section>
-
-{% if errors %}
-<div class="alert alert-error">
-  <p class="alert-title">Fix the following:</p>
-  <ul>
-    {% for error in errors %}
-    <li>{{ error }}</li>
-    {% endfor %}
-  </ul>
-</div>
-{% endif %}
-
-<section class="card">
-  <div class="card-header">
+<div
+  id="range-addresses-root"
+  class="range-addresses-root"
+  data-endpoint="/api/ui/ranges/{{ ip_range.id }}/addresses"
+  data-range-id="{{ ip_range.id }}"
+  data-initial-query="{{ initial_query }}"
+  aria-live="polite"
+>
+  <section class="page-header">
     <div>
-      <h2>Range details</h2>
-      <p class="subtitle">Usable total: {{ total_usable }} (excludes network/broadcast for /30 and larger ranges).</p>
+      <h1>{{ ip_range.name }}</h1>
+      <p class="subtitle">CIDR {{ ip_range.cidr }}</p>
     </div>
-  </div>
-  <div class="card-body">
-    <p class="muted">Click the Used or Free counts on the utilization tables to return here.</p>
-  </div>
-</section>
-
-<section class="card filter-card">
-  <form class="filters-grid" method="get" action="/ui/ranges/{{ ip_range.id }}/addresses">
-    <label class="field">
-      <span>IP address</span>
-      <input
-        class="input"
-        type="text"
-        name="q"
-        value="{{ filters.q }}"
-        placeholder="Search IP"
-        hx-get="/ui/ranges/{{ ip_range.id }}/addresses"
-        hx-trigger="keyup changed delay:500ms, search"
-        hx-target="#range-addresses-table-container"
-        hx-push-url="true"
-        hx-include="closest form"
-      />
-    </label>
-    <label class="field">
-      <span>Project</span>
-      <select
-        class="select"
-        name="project_id"
-        hx-get="/ui/ranges/{{ ip_range.id }}/addresses"
-        hx-trigger="change"
-        hx-target="#range-addresses-table-container"
-        hx-push-url="true"
-        hx-include="closest form"
-      >
-        <option value=""{% if filters.project_filter == "" %} selected{% endif %}>All</option>
-        <option value="unassigned"{% if filters.project_filter == "unassigned" %} selected{% endif %}>Unassigned</option>
-        {% for project in projects %}
-        <option value="{{ project.id }}"{% if filters.project_filter == (project.id ~ "") %} selected{% endif %}>{{ project.name }}</option>
-        {% endfor %}
-      </select>
-    </label>
-    <label class="field">
-      <span>Type</span>
-      <select
-        class="select"
-        name="type"
-        hx-get="/ui/ranges/{{ ip_range.id }}/addresses"
-        hx-trigger="change"
-        hx-target="#range-addresses-table-container"
-        hx-push-url="true"
-        hx-include="closest form"
-      >
-        <option value="">All</option>
-        {% for asset_type in types %}
-        <option value="{{ asset_type }}"{% if filters.type == asset_type %} selected{% endif %}>{{ asset_type }}</option>
-        {% endfor %}
-      </select>
-    </label>
-    <label class="field">
-      <span>Status</span>
-      <select
-        class="select"
-        name="status"
-        hx-get="/ui/ranges/{{ ip_range.id }}/addresses"
-        hx-trigger="change"
-        hx-target="#range-addresses-table-container"
-        hx-push-url="true"
-        hx-include="closest form"
-      >
-        <option value="all"{% if filters.status == "all" %} selected{% endif %}>All</option>
-        <option value="used"{% if filters.status == "used" %} selected{% endif %}>Used</option>
-        <option value="free"{% if filters.status == "free" %} selected{% endif %}>Free</option>
-      </select>
-    </label>
-    <label class="field field-tag-filter">
-      <span>Tags</span>
-      <div class="tag-filter-controls">
-        <input
-          class="input"
-          type="text"
-          placeholder="Type tag and press Enter"
-          list="range-tag-filter-suggestions"
-          data-range-tag-filter-input
-        />
-      </div>
-      <datalist id="range-tag-filter-suggestions" data-range-tag-filter-suggestions>
-        {% for tag in tags %}
-        <option value="{{ tag.name }}" data-tag-color="{{ tag.color }}"></option>
-        {% endfor %}
-      </datalist>
-      <div class="tag-filter-selected" data-range-tag-filter-selected>
-        {% for selected_tag in filters.tag %}
-        {% set selected_tag_obj = (tags | selectattr("name", "equalto", selected_tag) | list | first) %}
-        <span class="tag-filter-entry" data-range-tag-filter-entry="{{ selected_tag }}">
-          <input type="hidden" name="tag" value="{{ selected_tag }}" />
-          <button
-            class="tag tag-color tag-filter-chip"
-            type="button"
-            data-range-remove-tag-filter="{{ selected_tag }}"
-            {% if selected_tag_obj %}
-            style="--tag-color: {{ selected_tag_obj.color }}"
-            {% endif %}
-          >{{ selected_tag }} ×</button>
-        </span>
-        {% endfor %}
-      </div>
-    </label>
-  </form>
-</section>
-
-<div id="range-addresses-table-container">
-  {% include "partials/range_addresses_table.html" %}
+  </section>
 </div>
-
-<div class="ip-drawer-overlay" data-range-drawer-overlay aria-hidden="true"></div>
-<aside class="ip-drawer" data-range-drawer role="dialog" aria-modal="true" aria-label="Manage range address">
-  <div class="ip-drawer-header">
-    <div class="ip-drawer-header-row">
-      <div>
-        <h2 class="ip-drawer-title" data-range-drawer-title>Add IP asset</h2>
-        <p class="ip-drawer-subtitle" data-range-drawer-subtitle>—</p>
-      </div>
-      <button class="ip-drawer-close" type="button" data-range-drawer-close aria-label="Close drawer">✕</button>
-    </div>
+{% if errors %}
+<noscript>
+  <div class="alert alert-error">
+    <ul>
+      {% for error in errors %}
+      <li>{{ error }}</li>
+      {% endfor %}
+    </ul>
   </div>
-  <div class="ip-drawer-body">
-    <form class="ip-drawer-form" method="post" data-range-drawer-form id="range-address-form">
-      <input type="hidden" name="ip_address" data-range-input="ip_address" />
-      <section class="ip-drawer-section">
-        <h3>Assignment</h3>
-        <label class="field">
-          <span>IP address</span>
-          <input class="input" type="text" readonly data-range-input="ip_display" />
-        </label>
-        <div class="ip-drawer-row ip-drawer-row-two">
-          <label class="field">
-            <span>Type</span>
-            <select class="select" name="type" data-range-input="type">
-              {% for asset_type in types %}
-              <option value="{{ asset_type }}">{{ asset_type }}</option>
-              {% endfor %}
-            </select>
-          </label>
-          <label class="field">
-            <span>Project</span>
-            <select class="select" name="project_id" data-range-input="project_id">
-              <option value="">Unassigned</option>
-              {% for project in projects %}
-              <option value="{{ project.id }}">{{ project.name }}</option>
-              {% endfor %}
-            </select>
-          </label>
-        </div>
-      </section>
-      <section class="ip-drawer-section">
-        <h3>Notes & tags</h3>
-        <label class="field">
-          <span>Tags</span>
-          <select class="select" name="tags" data-range-input="tags" multiple size="6" data-tag-picker data-tag-picker-placeholder="Add tags...">
-            {% for tag in tags %}
-            <option value="{{ tag.name }}" data-tag-color="{{ tag.color }}">{{ tag.name }}</option>
-            {% endfor %}
-          </select>
-        </label>
-        <label class="field">
-          <span>Notes</span>
-          <textarea class="textarea" name="notes" rows="3" data-range-input="notes"></textarea>
-        </label>
-      </section>
-    </form>
-  </div>
-  <div class="ip-drawer-footer">
-    <span class="ip-drawer-footer-status" data-range-drawer-status>No changes</span>
-    <div class="ip-drawer-footer-actions">
-      <button class="btn btn-secondary" type="button" data-range-drawer-cancel>Cancel</button>
-      <button class="btn btn-primary" type="submit" form="range-address-form" data-range-drawer-save disabled>Save</button>
-    </div>
-  </div>
-</aside>
-
-<script src="/static/js/range-addresses.js" defer></script>
+</noscript>
+{% endif %}
+<script type="module" src="/static/react/range-addresses/range-addresses.js"></script>
 {% endblock %}

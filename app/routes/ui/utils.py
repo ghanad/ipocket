@@ -48,6 +48,7 @@ from ._utils.session import (
     _store_flash_messages as _store_flash_messages,
     _verify_session_value as _verify_session_value,
     get_current_ui_user as get_current_ui_user,
+    get_optional_current_ui_user as get_optional_current_ui_user,
     require_ui_editor as require_ui_editor,
     require_ui_superuser as require_ui_superuser,
 )
@@ -58,6 +59,7 @@ __all__ = [
     "FLASH_MAX_MESSAGE_LENGTH",
     "FLASH_MAX_MESSAGES",
     "get_current_ui_user",
+    "get_optional_current_ui_user",
     "require_ui_editor",
     "require_ui_superuser",
     "_is_auto_host_for_bmc_enabled",

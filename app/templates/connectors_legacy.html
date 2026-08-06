@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="page-header"><div><p class="eyebrow">Connectors</p><h1>Integrations</h1><p class="subtitle">Manage external inventory connectors and import flow guidance.</p></div></section>
+<div class="tabs" role="tablist" aria-label="Connector sections" style="margin-bottom: 16px;">
+  {% for name, label in [("overview", "Overview"), ("vcenter", "vCenter"), ("prometheus", "Prometheus"), ("elasticsearch", "Elasticsearch"), ("cassandra", "Cassandra"), ("ceph", "Ceph"), ("kubernetes", "Kubernetes")] %}
+  <a class="tab{% if active_tab == name %} tab-active{% endif %}" href="/ui/connectors?tab={{ name }}" role="tab" aria-selected="{{ 'true' if active_tab == name else 'false' }}">{{ label }}</a>
+  {% endfor %}
+</div>
+{% if active_tab == "vcenter" %}{% include "partials/connectors_vcenter_tab_content.html" %}
+{% elif active_tab == "prometheus" %}{% include "partials/connectors_prometheus_tab_content.html" %}
+{% elif active_tab == "elasticsearch" %}{% include "partials/connectors_elasticsearch_tab_content.html" %}
+{% elif active_tab == "cassandra" %}{% include "partials/connectors_cassandra_tab_content.html" %}
+{% elif active_tab == "ceph" %}{% include "partials/connectors_ceph_tab_content.html" %}
+{% elif active_tab == "kubernetes" %}{% include "partials/connectors_kubernetes_tab_content.html" %}
+{% else %}{% include "partials/connectors_overview_tab_content.html" %}{% endif %}
+{% endblock %}

@@ -19,7 +19,7 @@ from app.routes.ui.utils import (
 )
 
 from . import repository
-from .common import _vendors_template_context
+from .common import _library_react_context, _vendors_template_context
 
 router = APIRouter()
 
@@ -124,13 +124,18 @@ async def ui_create_vendor(
         return _render_template(
             request,
             "projects.html",
-            _vendors_template_context(
-                session,
-                errors=errors,
-                form_state={"name": name},
-                edit_vendor=edit_vendor,
-                delete_vendor=delete_vendor,
-            ),
+            {
+                **_vendors_template_context(
+                    session,
+                    errors=errors,
+                    form_state={"name": name},
+                    edit_vendor=edit_vendor,
+                    delete_vendor=delete_vendor,
+                ),
+                **_library_react_context(
+                    "vendors", "create", values={"name": name}, errors=errors
+                ),
+            },
             status_code=400,
             active_nav="library",
         )
@@ -142,13 +147,21 @@ async def ui_create_vendor(
         return _render_template(
             request,
             "projects.html",
-            _vendors_template_context(
-                session,
-                errors=["Vendor name already exists."],
-                form_state={"name": name},
-                edit_vendor=edit_vendor,
-                delete_vendor=delete_vendor,
-            ),
+            {
+                **_vendors_template_context(
+                    session,
+                    errors=["Vendor name already exists."],
+                    form_state={"name": name},
+                    edit_vendor=edit_vendor,
+                    delete_vendor=delete_vendor,
+                ),
+                **_library_react_context(
+                    "vendors",
+                    "create",
+                    values={"name": name},
+                    errors=["Vendor name already exists."],
+                ),
+            },
             status_code=409,
             active_nav="library",
         )
@@ -185,12 +198,21 @@ async def ui_edit_vendor(
         return _render_template(
             request,
             "projects.html",
-            _vendors_template_context(
-                session,
-                edit_errors=errors,
-                edit_vendor=edit_vendor,
-                edit_form_state={"name": name},
-            ),
+            {
+                **_vendors_template_context(
+                    session,
+                    edit_errors=errors,
+                    edit_vendor=edit_vendor,
+                    edit_form_state={"name": name},
+                ),
+                **_library_react_context(
+                    "vendors",
+                    "edit",
+                    entity_id=vendor_id,
+                    values={"name": name},
+                    errors=errors,
+                ),
+            },
             status_code=400,
             active_nav="library",
         )
@@ -205,12 +227,21 @@ async def ui_edit_vendor(
         return _render_template(
             request,
             "projects.html",
-            _vendors_template_context(
-                session,
-                edit_errors=["Vendor name already exists."],
-                edit_vendor=edit_vendor,
-                edit_form_state={"name": name},
-            ),
+            {
+                **_vendors_template_context(
+                    session,
+                    edit_errors=["Vendor name already exists."],
+                    edit_vendor=edit_vendor,
+                    edit_form_state={"name": name},
+                ),
+                **_library_react_context(
+                    "vendors",
+                    "edit",
+                    entity_id=vendor_id,
+                    values={"name": name},
+                    errors=["Vendor name already exists."],
+                ),
+            },
             status_code=409,
             active_nav="library",
         )
@@ -242,12 +273,21 @@ async def ui_delete_vendor(
         return _render_template(
             request,
             "projects.html",
-            _vendors_template_context(
-                session,
-                delete_errors=["Vendor name confirmation does not match."],
-                delete_vendor=vendor,
-                delete_confirm_value=confirm_name,
-            ),
+            {
+                **_vendors_template_context(
+                    session,
+                    delete_errors=["Vendor name confirmation does not match."],
+                    delete_vendor=vendor,
+                    delete_confirm_value=confirm_name,
+                ),
+                **_library_react_context(
+                    "vendors",
+                    "delete",
+                    entity_id=vendor_id,
+                    errors=["Vendor name confirmation does not match."],
+                    confirm_name=confirm_name,
+                ),
+            },
             status_code=400,
             active_nav="library",
         )

@@ -9,7 +9,7 @@
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" />
   {% endif %}
   <link rel="icon" type="image/png" sizes="32x32" href="/static/favicon.png" />
-  <link rel="stylesheet" href="/static/app.css?v=hosts-table-fit" />
+  <link rel="stylesheet" href="/static/app.css?v=react-range-addresses-spacing" />
   {% if use_local_assets %}
   <script src="/static/vendor/htmx.min.js" defer></script>
   {% else %}
@@ -71,9 +71,7 @@
         <a class="nav-link sidebar-login-link" href="/ui/login">Login</a>
         {% endif %}
       </div>
-      {% if build_info %}
-      <p class="sidebar-note">ipocket {{ build_info.version }} ({{ build_info.commit }}) • built {{ build_info.build_time }} · <a href="/ui/about">About</a></p>
-      {% endif %}
+      <p class="sidebar-note">{% if build_info %}ipocket {{ build_info.version }} ({{ build_info.commit }}) • built {{ build_info.build_time }} · {% endif %}<a href="/ui/about">About</a></p>
     </div>
   </aside>
   <div class="app-main">

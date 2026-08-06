@@ -21,7 +21,7 @@ from app.routes.ui.utils import (
 )
 
 from . import repository
-from .common import _tags_template_context, _vendors_template_context
+from .common import _library_react_context
 
 router = APIRouter()
 
@@ -50,80 +50,28 @@ def ui_list_projects(
     delete: Optional[int] = Query(default=None),
     session=Depends(get_session),
 ) -> HTMLResponse:
-    if tab == "tags":
-        edit_tag = repository.get_tag_by_id(session, edit) if edit is not None else None
-        delete_tag = (
-            repository.get_tag_by_id(session, delete) if delete is not None else None
-        )
-        if edit is not None and edit_tag is None:
-            raise HTTPException(status_code=404, detail="Tag not found")
-        if delete is not None and delete_tag is None:
-            raise HTTPException(status_code=404, detail="Tag not found")
-        return _render_template(
-            request,
-            "projects.html",
-            _tags_template_context(session, edit_tag=edit_tag, delete_tag=delete_tag),
-            active_nav="library",
-        )
-
-    if tab == "vendors":
-        edit_vendor = (
-            repository.get_vendor_by_id(session, edit) if edit is not None else None
-        )
-        delete_vendor = (
-            repository.get_vendor_by_id(session, delete) if delete is not None else None
-        )
-        if edit is not None and edit_vendor is None:
-            raise HTTPException(status_code=404, detail="Vendor not found")
-        if delete is not None and delete_vendor is None:
-            raise HTTPException(status_code=404, detail="Vendor not found")
-        return _render_template(
-            request,
-            "projects.html",
-            _vendors_template_context(
-                session, edit_vendor=edit_vendor, delete_vendor=delete_vendor
-            ),
-            active_nav="library",
-        )
-
-    projects = list(repository.list_projects(session))
-    edit_project = None
-    delete_project = None
-    if edit is not None:
-        edit_project = repository.get_project_by_id(session, edit)
-        if edit_project is None:
-            raise HTTPException(status_code=404, detail="Project not found")
-    if delete is not None:
-        delete_project = repository.get_project_by_id(session, delete)
-        if delete_project is None:
-            raise HTTPException(status_code=404, detail="Project not found")
+    active_tab = tab if tab in {"projects", "vendors", "tags"} else "projects"
+    getters = {
+        "projects": (repository.get_project_by_id, "Project not found"),
+        "vendors": (repository.get_vendor_by_id, "Vendor not found"),
+        "tags": (repository.get_tag_by_id, "Tag not found"),
+    }
+    getter, not_found_message = getters[active_tab]
+    if edit is not None and getter(session, edit) is None:
+        raise HTTPException(status_code=404, detail=not_found_message)
+    if delete is not None and getter(session, delete) is None:
+        raise HTTPException(status_code=404, detail=not_found_message)
 
     return _render_template(
         request,
         "projects.html",
         {
-            "title": "ipocket - Projects",
-            "projects": projects,
-            "project_ip_counts": repository.list_project_ip_counts(session),
-            "errors": [],
-            "form_state": {
-                "name": "",
-                "description": "",
-                "color": DEFAULT_PROJECT_COLOR,
-            },
-            "edit_errors": [],
-            "edit_project": edit_project,
-            "edit_form_state": {
-                "name": edit_project.name if edit_project else "",
-                "description": edit_project.description
-                if edit_project and edit_project.description
-                else "",
-                "color": edit_project.color if edit_project else DEFAULT_PROJECT_COLOR,
-            },
-            "delete_errors": [],
-            "delete_project": delete_project,
-            "delete_confirm_value": "",
-            "active_tab": "projects",
+            "title": "ipocket - Library",
+            "library_react": True,
+            "active_tab": active_tab,
+            "initial_edit_id": edit,
+            "initial_delete_id": delete,
+            "library_bootstrap": None,
         },
         active_nav="library",
     )
@@ -210,6 +158,17 @@ async def ui_update_project(
                 "delete_errors": [],
                 "delete_project": None,
                 "delete_confirm_value": "",
+                **_library_react_context(
+                    "projects",
+                    "edit",
+                    entity_id=project_id,
+                    values={
+                        "name": name,
+                        "description": description or "",
+                        "color": color or DEFAULT_PROJECT_COLOR,
+                    },
+                    errors=errors,
+                ),
             },
             status_code=400,
             active_nav="library",
@@ -255,6 +214,17 @@ async def ui_update_project(
                 "delete_errors": [],
                 "delete_project": None,
                 "delete_confirm_value": "",
+                **_library_react_context(
+                    "projects",
+                    "edit",
+                    entity_id=project_id,
+                    values={
+                        "name": name,
+                        "description": description or "",
+                        "color": color or DEFAULT_PROJECT_COLOR,
+                    },
+                    errors=["Project name already exists."],
+                ),
             },
             status_code=409,
             active_nav="library",
@@ -311,6 +281,13 @@ async def ui_delete_project(
                 "delete_errors": ["Project name confirmation does not match."],
                 "delete_project": project,
                 "delete_confirm_value": confirm_name,
+                **_library_react_context(
+                    "projects",
+                    "delete",
+                    entity_id=project_id,
+                    errors=["Project name confirmation does not match."],
+                    confirm_name=confirm_name,
+                ),
             },
             status_code=400,
             active_nav="library",
@@ -378,6 +355,16 @@ async def ui_create_project(
                 "delete_errors": [],
                 "delete_project": None,
                 "delete_confirm_value": "",
+                **_library_react_context(
+                    "projects",
+                    "create",
+                    values={
+                        "name": name,
+                        "description": description or "",
+                        "color": color or DEFAULT_PROJECT_COLOR,
+                    },
+                    errors=errors,
+                ),
             },
             status_code=400,
             active_nav="library",
@@ -420,6 +407,16 @@ async def ui_create_project(
                 "delete_errors": [],
                 "delete_project": None,
                 "delete_confirm_value": "",
+                **_library_react_context(
+                    "projects",
+                    "create",
+                    values={
+                        "name": name,
+                        "description": description or "",
+                        "color": color or DEFAULT_PROJECT_COLOR,
+                    },
+                    errors=errors,
+                ),
             },
             status_code=409,
             active_nav="library",

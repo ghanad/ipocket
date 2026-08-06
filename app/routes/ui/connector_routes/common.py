@@ -1,6 +1,14 @@
 from __future__ import annotations
 
 
+def _redact_connector_logs(logs: list[str], *secrets: str | None) -> list[str]:
+    """Remove run-scoped credentials before any log line reaches job storage."""
+    redacted = list(logs)
+    for secret in (value for value in secrets if value):
+        redacted = [line.replace(secret, "[REDACTED]") for line in redacted]
+    return redacted
+
+
 def _finalize_job_logs(
     *,
     logs: list[str],

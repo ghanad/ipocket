@@ -1,5 +1,9 @@
 # Ceph connector (Dashboard host IP import)
 
+## React UI
+
+Open `/ui/connectors?tab=ceph`. Viewers can dry-run; Editors can Apply after confirmation. Runs remain background jobs with API polling and reload recovery while retained. Dashboard credentials are cleared after submission/tab changes and never returned. The legacy form POST remains compatible.
+
 ipocket includes a Ceph connector that uses the Ceph Dashboard REST API to read
 host inventory, create/update matching ipocket Hosts, and link imported host
 IPv4 addresses to those Hosts.
@@ -33,7 +37,7 @@ Optional inputs:
 2. Fill the Ceph Dashboard URL, username, and password.
 3. Set optional mapping fields (`type/project/tags/note`).
 4. Optionally add normalized cluster name or Ceph host labels as tags.
-5. Run **dry-run** first and review the execution log. The tab auto-refreshes
+5. Run **dry-run** first and review the execution log. React polls the background job
    while the run is queued/running.
 6. Run **apply** as an editor account.
 

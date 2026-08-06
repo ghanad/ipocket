@@ -257,6 +257,17 @@ def _list_hosts_with_counts_query(
         .limit(1)
         .scalar_subquery()
     )
+    project_id_subquery = (
+        select(db_schema.IPAsset.project_id)
+        .where(
+            db_schema.IPAsset.host_id == db_schema.Host.id,
+            db_schema.IPAsset.archived == 0,
+            db_schema.IPAsset.project_id.is_not(None),
+        )
+        .order_by(db_schema.IPAsset.project_id)
+        .limit(1)
+        .scalar_subquery()
+    )
     project_color_subquery = (
         select(db_schema.Project.color)
         .join(db_schema.IPAsset, db_schema.Project.id == db_schema.IPAsset.project_id)
@@ -305,6 +316,7 @@ def _list_hosts_with_counts_query(
             db_schema.Host.notes.label("notes"),
             db_schema.Vendor.name.label("vendor"),
             project_count_subquery.label("project_count"),
+            project_id_subquery.label("project_id"),
             project_name_subquery.label("project_name"),
             project_color_subquery.label("project_color"),
             ip_count_subquery.label("ip_count"),
@@ -437,6 +449,11 @@ def _host_count_row_payloads(
             "notes": row["notes"],
             "vendor": row["vendor"],
             "project_count": int(row["project_count"] or 0),
+            "project_id": (
+                int(row["project_id"])
+                if int(row["project_count"] or 0) == 1 and row["project_id"] is not None
+                else None
+            ),
             "project_name": row["project_name"] or "",
             "project_color": row["project_color"] or "",
             "ip_count": int(row["ip_count"] or 0),
@@ -483,6 +500,24 @@ def list_hosts_with_ip_counts(
         links_by_host = _host_os_bmc_ip_links(session, host_ids)
         tags_by_host = _host_ip_tag_details(session, host_ids)
     return _host_count_row_payloads(rows, links_by_host, tags_by_host)
+
+
+def get_host_with_ip_counts(
+    connection_or_session: sqlite3.Connection | Session, host_id: int
+) -> Optional[dict[str, object]]:
+    with session_scope(connection_or_session) as session:
+        row = (
+            session.execute(
+                _list_hosts_with_counts_query().where(db_schema.Host.id == host_id)
+            )
+            .mappings()
+            .one_or_none()
+        )
+        if row is None:
+            return None
+        links_by_host = _host_os_bmc_ip_links(session, [host_id])
+        tags_by_host = _host_ip_tag_details(session, [host_id])
+    return _host_count_row_payloads([row], links_by_host, tags_by_host)[0]
 
 
 def count_hosts(
@@ -636,16 +671,18 @@ def update_host(
     host_id: int,
     name: Optional[str] = None,
     notes: Optional[str] = None,
+    notes_provided: bool = False,
     vendor: Optional[str] = None,
+    vendor_provided: bool = False,
 ) -> Optional[Host]:
     vendor_id = _resolve_vendor_id(connection_or_session, vendor)
     with write_session_scope(connection_or_session) as session:
         values: dict[str, object] = {"updated_at": func.current_timestamp()}
         if name is not None:
             values["name"] = name
-        if notes is not None:
+        if notes_provided or notes is not None:
             values["notes"] = notes
-        if vendor is not None:
+        if vendor_provided or vendor is not None:
             values["vendor_id"] = vendor_id
         try:
             session.execute(

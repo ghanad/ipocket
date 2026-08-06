@@ -1,10 +1,10 @@
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, Request
+from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import HTMLResponse, Response
 
-from app import auth, repository
 from app.dependencies import get_connection
+from .account_password import AccountPasswordError, change_account_password
 from .utils import (
     _parse_form_data,
     _redirect_with_flash,
@@ -38,6 +38,43 @@ def ui_account_password_form(
     )
 
 
+async def _read_password_json(request: Request) -> dict[str, str]:
+    try:
+        payload = await request.json()
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail="Invalid JSON request.") from exc
+    if not isinstance(payload, dict):
+        raise HTTPException(status_code=422, detail="JSON object is required.")
+
+    values: dict[str, str] = {}
+    for field in (
+        "current_password",
+        "new_password",
+        "confirm_new_password",
+    ):
+        value = payload.get(field, "")
+        if not isinstance(value, str):
+            raise HTTPException(status_code=422, detail="Password fields must be text.")
+        values[field] = value
+    return values
+
+
+@router.post("/api/ui/account/password")
+async def change_account_password_for_ui(
+    request: Request,
+    connection=Depends(get_connection),
+    user=Depends(get_current_ui_user),
+) -> dict[str, str]:
+    values = await _read_password_json(request)
+    try:
+        change_account_password(connection, user, **values)
+    except AccountPasswordError as exc:
+        detail: str | list[str]
+        detail = exc.messages[0] if len(exc.messages) == 1 else list(exc.messages)
+        raise HTTPException(status_code=exc.status_code, detail=detail) from exc
+    return {"message": "Password changed successfully."}
+
+
 @router.post("/ui/account/password", response_class=HTMLResponse)
 async def ui_account_password_submit(
     request: Request,
@@ -49,49 +86,24 @@ async def ui_account_password_submit(
     new_password = form_data.get("new_password") or ""
     confirm_new_password = form_data.get("confirm_new_password") or ""
 
-    errors: list[str] = []
-    if not current_password:
-        errors.append("Current password is required.")
-    if not new_password:
-        errors.append("New password is required.")
-    if not confirm_new_password:
-        errors.append("Confirm new password is required.")
-    if new_password and confirm_new_password and new_password != confirm_new_password:
-        errors.append("New password and confirmation do not match.")
-    if current_password and new_password and current_password == new_password:
-        errors.append("New password must be different from current password.")
-    if current_password and not auth.verify_password(
-        current_password, user.hashed_password
-    ):
-        errors.append("Current password is incorrect.")
-
-    if errors:
+    try:
+        change_account_password(
+            connection,
+            user,
+            current_password=current_password,
+            new_password=new_password,
+            confirm_new_password=confirm_new_password,
+        )
+    except AccountPasswordError as exc:
+        if exc.status_code == 404:
+            return Response(status_code=404)
         return _render_template(
             request,
             "account_password.html",
-            _account_password_context(errors=errors),
+            _account_password_context(errors=list(exc.messages)),
             active_nav="",
             status_code=400,
         )
-
-    updated_user = repository.update_user_password(
-        connection,
-        user_id=user.id,
-        hashed_password=auth.hash_password(new_password),
-    )
-    if updated_user is None:
-        return Response(status_code=404)
-
-    repository.create_audit_log(
-        connection,
-        user=updated_user,
-        action="UPDATE",
-        target_type="USER",
-        target_id=updated_user.id,
-        target_label=updated_user.username,
-        changes="password: self-service rotated",
-    )
-    connection.commit()
 
     return _redirect_with_flash(
         request,

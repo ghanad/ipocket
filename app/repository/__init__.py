@@ -32,12 +32,14 @@ from .hosts import (
     get_host_by_id,
     get_host_by_name,
     get_host_linked_assets_grouped,
+    get_host_with_ip_counts,
     list_host_pair_ips_for_hosts,
     list_hosts,
     list_hosts_with_ip_counts,
     list_hosts_with_ip_counts_paginated,
     update_host,
 )
+from .host_completion import list_host_completion_records
 from .metadata import (
     create_project,
     create_tag,
@@ -119,11 +121,13 @@ __all__ = [
     "get_host_by_id",
     "get_host_by_name",
     "get_host_linked_assets_grouped",
+    "get_host_with_ip_counts",
     "list_host_pair_ips_for_hosts",
     "list_hosts",
     "list_hosts_with_ip_counts",
     "list_hosts_with_ip_counts_paginated",
     "update_host",
+    "list_host_completion_records",
     "create_project",
     "create_tag",
     "create_vendor",
