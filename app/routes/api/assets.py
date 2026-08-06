@@ -159,5 +159,5 @@ def archive_ip_asset(
     asset = repository.get_ip_asset_by_ip(connection, ip_address)
     if asset is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
-    repository.archive_ip_asset(connection, ip_address)
+    repository.archive_ip_asset(connection, ip_address, current_user=_user)
     return Response(status_code=status.HTTP_204_NO_CONTENT)

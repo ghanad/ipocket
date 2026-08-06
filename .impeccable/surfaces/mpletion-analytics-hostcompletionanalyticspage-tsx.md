@@ -11,10 +11,10 @@ Audience and job: infrastructure operators quickly assess OS/BMC Host coverage,
 identify the dominant incomplete state, and judge whether discovered `/16`
 address mappings have enough evidence to trust.
 
-Content and constraints: consume the read-only analytics endpoint, refresh every
-60 seconds, preserve the most recent data on background-refresh failure, and
-provide loading, error, empty, responsive, reduced-motion, and non-visual chart
-states. Inherit the established ipocket shell, tokens, cards, and typography.
+Content and constraints: consume the read-only analytics endpoint, preserve the
+most recent data when a manual reload fails, and provide loading, error, empty,
+responsive, reduced-motion, and non-visual chart states. Inherit the established
+ipocket shell, tokens, cards, and typography.
 
 Direction: one dominant stacked completion bar establishes inventory state;
 incomplete-host and IP-type distributions provide composition; compact pattern

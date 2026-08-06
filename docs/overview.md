@@ -32,6 +32,10 @@ Back/Forward and shareable links preserve state.
   for higher-risk records, exact-value confirmation.
 - OS and BMC assets are paired through a shared Host. An unassigned BMC can
   create/reuse `server_<ip>` when `IPOCKET_AUTO_HOST_FOR_BMC` is enabled.
+- The deterministic Host Completion review queue infers `/16`, `/24`, and
+  single-octet OS-to-BMC mappings from confirmed pairs. Editor decisions can
+  accept, correct, reject, defer, or permanently mark a Host as having no BMC;
+  accepted changes use normal IP Asset validation and audit logging.
 
 ## Supporting catalogs
 
@@ -73,8 +77,14 @@ details live in their focused documents under `docs/`.
 - `GET /api/host-completion/analytics` summarizes active Host completeness,
   confirmed OS/BMC pairs, address-prefix patterns, and IP type counts without
   changing inventory.
-- `/host-completion/analytics` presents those counts as an auto-refreshing,
-  read-only dashboard with completion, incomplete-host, pattern-confidence, and
-  IP-type charts.
+- `GET /api/host-completion/review-queue` recomputes deterministic pairing,
+  unlinked-asset, and missing-side cases; `POST /api/host-completion/decisions`
+  records Editor feedback and applies audited Host/IP-asset changes.
+- `/host-completion/analytics` presents those counts as a read-only dashboard
+  with completion, incomplete-host, pattern-confidence, and IP-type charts.
+- Editors use `/host-completion/review` to process one eligible Host at a time.
+  ASK cases accept a BMC address, no-BMC decision, or deferral; SUGGEST cases
+  additionally expose the inferred candidate, confidence, reason, rejection,
+  acceptance, and inline correction actions.
 - Docker, Docker Compose, Helm, local development, CI, and frontend build
   instructions are in [How to run](how-to-run.md).

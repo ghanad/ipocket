@@ -70,7 +70,7 @@ class User:
 class IPAsset:
     id: int
     ip_address: str
-    asset_type: IPAssetType
+    asset_type: Optional[IPAssetType]
     project_id: Optional[int]
     host_id: Optional[int]
     notes: Optional[str]

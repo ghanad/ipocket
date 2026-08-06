@@ -54,7 +54,7 @@ def _row_to_ip_asset(row: Mapping[str, Any]) -> IPAsset:
     return IPAsset(
         id=row["id"],
         ip_address=row["ip_address"],
-        asset_type=IPAssetType(row["type"]),
+        asset_type=IPAssetType(row["type"]) if row["type"] is not None else None,
         project_id=row["project_id"],
         host_id=row["host_id"],
         notes=row["notes"],

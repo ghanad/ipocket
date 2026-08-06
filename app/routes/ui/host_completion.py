@@ -1,9 +1,9 @@
 from __future__ import annotations
 
-from fastapi import APIRouter, Request
+from fastapi import APIRouter, Depends, Request
 from fastapi.responses import HTMLResponse
 
-from .utils import _render_template
+from .utils import _render_template, require_ui_editor
 
 router = APIRouter()
 
@@ -14,5 +14,17 @@ def host_completion_analytics_page(request: Request) -> HTMLResponse:
         request,
         "host_completion_analytics.html",
         {"title": "ipocket - Host Completion Analytics"},
+        active_nav="host-completion",
+    )
+
+
+@router.get("/host-completion/review", response_class=HTMLResponse)
+def host_completion_review_page(
+    request: Request, _user=Depends(require_ui_editor)
+) -> HTMLResponse:
+    return _render_template(
+        request,
+        "host_completion_review.html",
+        {"title": "ipocket - Host Completion Review"},
         active_nav="host-completion",
     )

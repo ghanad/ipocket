@@ -39,6 +39,7 @@ def create_host(
         name=payload.name,
         notes=payload.notes,
         vendor=vendor.name if vendor else None,
+        current_user=_user,
     )
     return host_payload(host)
 

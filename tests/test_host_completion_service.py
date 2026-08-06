@@ -30,6 +30,12 @@ def test_analytics_handles_null_types_missing_hosts_and_invalid_addresses(
         "confirmed_pairs": 1,
         "patterns": [],
         "ip_type_counts": {"BMC": 1, "OS": 1, "VM": 1, "unknown": 1},
+        "untyped_active": 1,
+        "unlinked_os": 0,
+        "unlinked_bmc": 0,
+        "hosts_missing_bmc": 0,
+        "hosts_missing_os": 0,
+        "inventory_health_percent": 75.0,
     }
 
 

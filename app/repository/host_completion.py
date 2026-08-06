@@ -14,6 +14,118 @@ from ._db import session_scope
 CompletionKind = Literal["incomplete", "complete"]
 
 
+def get_host_completion_engine_source(
+    connection_or_session: sqlite3.Connection | Session,
+) -> dict[str, object]:
+    """Return one consistent inventory snapshot for deterministic completion."""
+
+    with session_scope(connection_or_session) as session:
+        hosts = [
+            {"id": int(row["id"]), "name": str(row["name"])}
+            for row in session.execute(
+                select(db_schema.Host.id, db_schema.Host.name).order_by(
+                    db_schema.Host.id
+                )
+            )
+            .mappings()
+            .all()
+        ]
+        assets = [
+            {
+                "id": int(row["id"]),
+                "host_id": int(row["host_id"]) if row["host_id"] is not None else None,
+                "ip_address": str(row["ip_address"]),
+                "type": str(row["type"]) if row["type"] is not None else None,
+            }
+            for row in session.execute(
+                select(
+                    db_schema.IPAsset.id,
+                    db_schema.IPAsset.host_id,
+                    db_schema.IPAsset.ip_address,
+                    db_schema.IPAsset.type,
+                )
+                .where(db_schema.IPAsset.archived == 0)
+                .order_by(db_schema.IPAsset.id)
+            )
+            .mappings()
+            .all()
+        ]
+        decisions = [
+            {
+                "id": int(row["id"]),
+                "case_type": str(row["case_type"]),
+                "host_id": int(row["host_id"]) if row["host_id"] is not None else None,
+                "mode": str(row["mode"]),
+                "os_address": row["os_address"],
+                "bmc_address": row["bmc_address"],
+                "candidate_ip": row["candidate_ip"],
+                "corrected_ip": row["corrected_ip"],
+                "decision": str(row["decision"]),
+                "target_host_id": (
+                    int(row["target_host_id"])
+                    if row["target_host_id"] is not None
+                    else None
+                ),
+                "host_name": row["host_name"],
+            }
+            for row in session.execute(
+                select(
+                    db_schema.HostCompletionDecision.id,
+                    db_schema.HostCompletionDecision.case_type,
+                    db_schema.HostCompletionDecision.host_id,
+                    db_schema.HostCompletionDecision.mode,
+                    db_schema.HostCompletionDecision.os_address,
+                    db_schema.HostCompletionDecision.bmc_address,
+                    db_schema.HostCompletionDecision.candidate_ip,
+                    db_schema.HostCompletionDecision.corrected_ip,
+                    db_schema.HostCompletionDecision.decision,
+                    db_schema.HostCompletionDecision.target_host_id,
+                    db_schema.HostCompletionDecision.host_name,
+                ).order_by(db_schema.HostCompletionDecision.id)
+            )
+            .mappings()
+            .all()
+        ]
+    return {"hosts": hosts, "assets": assets, "decisions": decisions}
+
+
+def create_host_completion_decision(
+    connection_or_session: sqlite3.Connection | Session,
+    *,
+    case_type: str,
+    host_id: int | None,
+    mode: str,
+    os_address: str | None,
+    bmc_address: str | None,
+    candidate_ip: str | None,
+    corrected_ip: str | None,
+    decision: str,
+    target_host_id: int | None,
+    host_name: str | None,
+    decided_by: int,
+) -> int:
+    from ._db import write_session_scope
+
+    with write_session_scope(connection_or_session) as session:
+        model = db_schema.HostCompletionDecision(
+            case_type=case_type,
+            host_id=host_id,
+            mode=mode,
+            os_address=os_address,
+            bmc_address=bmc_address,
+            candidate_ip=candidate_ip,
+            corrected_ip=corrected_ip,
+            decision=decision,
+            target_host_id=target_host_id,
+            host_name=host_name,
+            decided_by=decided_by,
+        )
+        session.add(model)
+        session.commit()
+        session.refresh(model)
+        return int(model.id)
+
+
 def get_host_completion_analytics_source(
     connection_or_session: sqlite3.Connection | Session,
 ) -> dict[str, object]:

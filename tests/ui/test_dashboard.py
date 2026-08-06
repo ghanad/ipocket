@@ -103,6 +103,35 @@ def test_host_completion_analytics_page_mounts_react_entry(client) -> None:
     ) in response.text
 
 
+def test_host_completion_review_page_mounts_editor_react_entry(client) -> None:
+    app.dependency_overrides[ui.require_ui_editor] = lambda: User(
+        1, "editor", "x", UserRole.EDITOR, True
+    )
+    try:
+        response = client.get("/host-completion/review")
+    finally:
+        app.dependency_overrides.pop(ui.require_ui_editor, None)
+
+    assert response.status_code == 200
+    assert 'id="host-completion-review-root"' in response.text
+    assert 'data-endpoint="/api/host-completion/review-queue"' in response.text
+    assert 'data-decisions-endpoint="/api/host-completion/decisions"' in response.text
+    assert (
+        '<script type="module" '
+        'src="/static/react/host-completion-review/'
+        'host-completion-review.js"></script>'
+    ) in response.text
+
+
+def test_host_completion_review_page_requires_editor(client) -> None:
+    response = client.get("/host-completion/review", follow_redirects=False)
+
+    assert response.status_code == 303
+    assert response.headers["Location"] == (
+        "/ui/login?return_to=/host-completion/review"
+    )
+
+
 def test_flash_messages_render_once(client) -> None:
     payload = [{"type": "success", "message": "Saved successfully."}]
     encoded = ui._encode_flash_payload(payload)

@@ -4,7 +4,7 @@ OWN-WORLD: Inherit ipocket's white operational surfaces, blue primary signal,
 and compact data rows; reserve green, amber, and violet for chart meaning.
 STORY: See overall completion, isolate the missing side, then judge discovered
 address mappings by evidence and coverage.
-FIRST VIEWPORT: Header and refresh status lead into one wide stacked completion
+FIRST VIEWPORT: Header leads into one wide stacked completion
 bar, followed by incomplete and IP-type distributions.
 FORM: A scan-first operations dashboard using incumbent cards and table rhythm;
 the precisely specified route does not require concept staging or a seed.
@@ -23,7 +23,6 @@ interface HostCompletionAnalyticsPageProps {
   endpoint: string;
 }
 
-const REFRESH_INTERVAL_MS = 60_000;
 const numberFormatter = new Intl.NumberFormat();
 
 const breakdownItems = [
@@ -58,26 +57,22 @@ export function HostCompletionAnalyticsPage({
   const [loading, setLoading] = useState(true);
 
   const loadAnalytics = useCallback(
-    async (showLoading = false) => {
-      if (showLoading) setLoading(true);
+    async () => {
+      setLoading(true);
       setError(null);
       try {
         setAnalytics(await fetchHostCompletionAnalytics(endpoint));
       } catch {
         setError("Host Completion analytics could not be loaded. Please try again.");
       } finally {
-        if (showLoading) setLoading(false);
+        setLoading(false);
       }
     },
     [endpoint],
   );
 
   useEffect(() => {
-    void loadAnalytics(true);
-    const refreshTimer = window.setInterval(() => {
-      void loadAnalytics();
-    }, REFRESH_INTERVAL_MS);
-    return () => window.clearInterval(refreshTimer);
+    void loadAnalytics();
   }, [loadAnalytics]);
 
   if (loading && !analytics) {
@@ -98,7 +93,7 @@ export function HostCompletionAnalyticsPage({
           <button
             className="btn btn-primary"
             type="button"
-            onClick={() => void loadAnalytics(true)}
+            onClick={() => void loadAnalytics()}
           >
             Try again
           </button>
@@ -112,7 +107,7 @@ export function HostCompletionAnalyticsPage({
       <PageHeader />
       {error ? (
         <p className="hc-refresh-warning" role="alert">
-          Refresh failed. Displaying the most recently loaded analytics.
+          Reload failed. Displaying the most recently loaded analytics.
         </p>
       ) : null}
 
@@ -141,9 +136,10 @@ function PageHeader() {
           Measure OS/BMC coverage and evaluate recurring address mappings.
         </p>
       </div>
-      <div className="hc-refresh-status" role="status">
-        <span className="hc-refresh-dot" aria-hidden="true" />
-        Auto-refreshes every 60 seconds
+      <div className="hc-header-actions">
+        <a className="btn btn-primary" href="/host-completion/review">
+          Review hosts
+        </a>
       </div>
     </section>
   );

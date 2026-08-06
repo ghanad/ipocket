@@ -1,15 +1,19 @@
 # Host Completion Agents (Future Design Proposal)
 
-Status: proposed for a future phase. Nothing described in this document is
-implemented or exposed by the current product unless explicitly identified as
-an existing capability.
+Status: broader multi-Agent design proposal. Only capabilities explicitly
+identified as current below are implemented.
 
-Implementation note: the initial read-only boundary is now available through
+Implementation note: the inventory reads are available through
 `GET /api/host-completion/cases`,
 `GET /api/host-completion/examples`, and
 `GET /api/host-completion/analytics`. See
-[Host Completion API](host-completion-api.md). Agent execution, template
-learning, suggestions, feedback persistence, and application remain proposed.
+[Host Completion API](host-completion-api.md). A deterministic, no-LLM review
+slice is also implemented through `GET /api/host-completion/review-queue` and
+`POST /api/host-completion/decisions`: it infers rules on demand, persists
+operator decisions, and applies accepted/corrected BMC links through existing
+asset validation and audit paths. External Agent execution, verifier plugins,
+stored/versioned templates, bulk review, and model-assisted behavior remain
+proposed.
 
 ## Purpose
 
@@ -47,13 +51,18 @@ types. The existing REST API can provide enough raw data for a proof of concept:
 - `GET /api/host-completion/examples` returns complete OS/BMC Host examples.
 - `GET /api/host-completion/analytics` returns read-only completion totals,
   confirmed-pair patterns, and active IP type counts.
-- `/host-completion/analytics` visualizes that response for operators and
-  refreshes it every 60 seconds without persisting Agent state.
+- `GET /api/host-completion/review-queue` returns one deterministic suggestion
+  or question, prioritized by incomplete source `/16` population.
+- `POST /api/host-completion/decisions` stores Editor feedback and applies
+  accepted or corrected BMC assets through normal inventory services.
+- `/host-completion/analytics` visualizes analytics for operators without
+  persisting Agent state; operators can reload it manually when needed.
+- `/host-completion/review` gives Editors a one-at-a-time decision workflow.
 
-A prototype could read `GET /ip-assets`, group assets by `host_id`, use complete
-OS/BMC pairs as examples, and identify incomplete Hosts. The current API is not,
-however, an ideal long-term Agent contract: it would make every Agent duplicate
-Host-completeness rules, grouping, conflict handling, and orchestration.
+The implemented deterministic slice centralizes basic completeness rules,
+mapping inference, safety checks, and one-at-a-time orchestration. The broader
+Agent design below remains useful for optional verification, richer scoping,
+run visibility, and ambiguous cases.
 
 ## Design principles
 

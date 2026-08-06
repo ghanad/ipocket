@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% block content %}
+<div
+  id="host-completion-review-root"
+  class="host-completion-review-root"
+  data-endpoint="/api/host-completion/review-queue"
+  data-decisions-endpoint="/api/host-completion/decisions"
+>
+  <section class="page-header">
+    <div>
+      <h1>Review Hosts</h1>
+      <p class="subtitle">Loading Host Completion review…</p>
+    </div>
+  </section>
+</div>
+<script type="module" src="/static/react/host-completion-review/host-completion-review.js"></script>
+{% endblock %}

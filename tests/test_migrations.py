@@ -1,5 +1,7 @@
 import sqlite3
 
+from alembic import command
+
 from app import db
 
 
@@ -23,6 +25,7 @@ def test_init_db_runs_alembic_migrations(tmp_path) -> None:
         assert "tags" in tables
         assert "ip_asset_tags" in tables
         assert "sessions" in tables
+        assert "host_completion_decisions" in tables
 
         tag_columns = {
             row["name"]
@@ -35,6 +38,33 @@ def test_init_db_runs_alembic_migrations(tmp_path) -> None:
             for row in connection.execute("PRAGMA table_info(sessions)").fetchall()
         }
         assert {"id", "token", "user_id", "created_at"} <= session_columns
+        decision_columns = {
+            row["name"]
+            for row in connection.execute(
+                "PRAGMA table_info(host_completion_decisions)"
+            ).fetchall()
+        }
+        assert {
+            "case_type",
+            "host_id",
+            "mode",
+            "os_address",
+            "bmc_address",
+            "candidate_ip",
+            "corrected_ip",
+            "decision",
+            "target_host_id",
+            "host_name",
+            "decided_by",
+            "created_at",
+        } <= decision_columns
+        decision_indexes = {
+            row["name"]
+            for row in connection.execute(
+                "PRAGMA index_list('host_completion_decisions')"
+            ).fetchall()
+        }
+        assert "ix_host_completion_decisions_host_decision" in decision_indexes
         ip_asset_columns = {
             row["name"]
             for row in connection.execute("PRAGMA table_info(ip_assets)").fetchall()
@@ -56,6 +86,39 @@ def test_ip_assets_table_excludes_subnet_and_gateway(tmp_path) -> None:
         }
         assert "subnet" not in columns
         assert "gateway" not in columns
+    finally:
+        connection.close()
+
+
+def test_existing_0010_database_is_upgraded_to_the_extended_review_schema(tmp_path) -> None:
+    db_path = tmp_path / "existing-0010.db"
+    config = db._alembic_config(str(db_path))
+    command.upgrade(config, "0010_host_completion_decisions")
+
+    connection = sqlite3.connect(db_path)
+    connection.row_factory = sqlite3.Row
+    try:
+        old_columns = {
+            row["name"]
+            for row in connection.execute(
+                "PRAGMA table_info(host_completion_decisions)"
+            ).fetchall()
+        }
+        assert "case_type" not in old_columns
+    finally:
+        connection.close()
+
+    db.run_migrations(db_path=str(db_path))
+    connection = sqlite3.connect(db_path)
+    connection.row_factory = sqlite3.Row
+    try:
+        columns = {
+            row["name"]
+            for row in connection.execute(
+                "PRAGMA table_info(host_completion_decisions)"
+            ).fetchall()
+        }
+        assert {"case_type", "os_address", "bmc_address", "target_host_id"} <= columns
     finally:
         connection.close()
 

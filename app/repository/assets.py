@@ -488,14 +488,27 @@ def get_ip_asset_metrics(
 
 
 def archive_ip_asset(
-    connection_or_session: sqlite3.Connection | Session, ip_address: str
+    connection_or_session: sqlite3.Connection | Session,
+    ip_address: str,
+    current_user: Optional[User] = None,
 ) -> None:
+    existing = get_ip_asset_by_ip(connection_or_session, ip_address)
     with write_session_scope(connection_or_session) as session:
-        session.execute(
+        result = session.execute(
             update(db_schema.IPAsset)
             .where(db_schema.IPAsset.ip_address == ip_address)
             .values(archived=1, updated_at=func.current_timestamp())
         )
+        if existing is not None and result.rowcount and not existing.archived:
+            create_audit_log(
+                session,
+                user=current_user,
+                action="ARCHIVE",
+                target_type="IP_ASSET",
+                target_id=existing.id,
+                target_label=existing.ip_address,
+                changes="Archived IP asset.",
+            )
         session.commit()
 
 

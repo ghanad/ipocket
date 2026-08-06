@@ -1,0 +1,281 @@
+.host-completion-review-root {
+  --hcr-confidence: #16a34a;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.hcr-page-header {
+  align-items: center;
+}
+
+.hcr-workbench {
+  display: grid;
+  place-items: start center;
+  min-height: 480px;
+}
+
+.hcr-review-card,
+.hcr-state-card,
+.hcr-empty-state {
+  width: min(100%, 760px);
+}
+
+.hcr-review-card {
+  padding: 32px;
+}
+
+.hcr-card-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 24px;
+}
+
+.hcr-card-header h2 {
+  margin: 3px 0 10px;
+  font-size: 28px;
+  letter-spacing: -0.02em;
+}
+
+.hcr-host-label,
+.hcr-mode-label {
+  color: var(--color-muted-light);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+}
+
+.hcr-os-ip {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  color: var(--color-text);
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.hcr-os-ip span {
+  color: var(--color-muted);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.hcr-remaining {
+  flex: 0 0 auto;
+  padding: 7px 11px;
+  border-radius: 999px;
+  background: #eef2ff;
+  color: #3730a3;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.hcr-divider {
+  height: 1px;
+  margin: 28px 0;
+  background: var(--color-border);
+}
+
+.hcr-host-name-field {
+  display: block;
+  max-width: 420px;
+  margin-bottom: 24px;
+}
+
+.hcr-decision-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.hcr-decision-panel h3 {
+  max-width: 28ch;
+  margin: -10px 0 0;
+  font-size: 21px;
+  line-height: 1.35;
+}
+
+.hcr-ip-form,
+.hcr-correct-form {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: end;
+  gap: 12px;
+}
+
+.hcr-ip-form .input,
+.hcr-correct-form .input {
+  min-height: 42px;
+  font-variant-numeric: tabular-nums;
+}
+
+.hcr-secondary-actions,
+.hcr-suggestion-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.hcr-secondary-actions {
+  padding-top: 4px;
+}
+
+.hcr-later-button {
+  background: transparent;
+  color: var(--color-muted);
+}
+
+.hcr-later-button:hover {
+  background: #f1f5f9;
+  color: var(--color-text);
+}
+
+.hcr-candidate-block {
+  padding: 20px;
+  border-radius: 10px;
+  background: #f8fafc;
+}
+
+.hcr-candidate-block code {
+  display: block;
+  margin-bottom: 18px;
+  color: var(--color-text);
+  font-size: 24px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
+}
+
+.hcr-confidence-copy {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 7px;
+  color: var(--color-muted);
+  font-size: 12px;
+}
+
+.hcr-confidence-copy strong {
+  color: var(--color-text);
+}
+
+.hcr-confidence-bar {
+  height: 8px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: #e2e8f0;
+}
+
+.hcr-confidence-bar span {
+  display: block;
+  width: var(--confidence-width);
+  height: 100%;
+  border-radius: inherit;
+  background: var(--hcr-confidence);
+}
+
+.hcr-reason {
+  max-width: 68ch;
+  margin-top: 14px;
+  color: var(--color-muted);
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+.hcr-correct-form {
+  padding-top: 16px;
+  border-top: 1px solid var(--color-border);
+}
+
+.hcr-review-card button:disabled,
+.hcr-review-card input:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.hcr-state-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+}
+
+.hcr-empty-state {
+  display: flex;
+  min-height: 300px;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+}
+
+.hcr-empty-mark {
+  display: grid;
+  width: 48px;
+  height: 48px;
+  margin-bottom: 18px;
+  place-items: center;
+  border-radius: 50%;
+  background: #dcfce7;
+  color: #15803d;
+  font-size: 24px;
+  font-weight: 800;
+}
+
+.hcr-loading {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.hcr-loading > p {
+  color: var(--color-muted);
+  font-size: 13px;
+}
+
+.hcr-skeleton {
+  border-radius: 7px;
+  background: #e9eef5;
+  animation: hcr-pulse 1.4s ease-in-out infinite;
+}
+
+.hcr-skeleton-title {
+  width: 38%;
+  height: 32px;
+}
+
+.hcr-skeleton-meta {
+  width: 24%;
+  height: 16px;
+}
+
+.hcr-skeleton-question {
+  width: 58%;
+  height: 24px;
+  margin-top: 30px;
+}
+
+.hcr-skeleton-control {
+  width: 100%;
+  height: 78px;
+}
+
+@keyframes hcr-pulse {
+  0%,
+  100% {
+    opacity: 0.55;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hcr-skeleton {
+    animation: none;
+  }
+}

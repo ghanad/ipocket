@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Optional
 
-from fastapi import Depends, Header, HTTPException, status
+from fastapi import Depends, Header, HTTPException, Request, status
 
 from app import auth, repository
 from app.dependencies import get_connection
@@ -28,6 +28,36 @@ def get_current_user(
 
 
 def require_editor(user=Depends(get_current_user)):
+    if user.role != UserRole.EDITOR:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN)
+    return user
+
+
+def require_editor_api_or_ui_session(
+    request: Request,
+    authorization: Optional[str] = Header(default=None),
+    connection=Depends(get_connection),
+):
+    """Allow the Editor API token or its signed browser-session representation."""
+
+    if authorization:
+        user = get_current_user(authorization=authorization, connection=connection)
+    else:
+        # The UI session wraps the same revocable API token in an HttpOnly,
+        # signed cookie. Import lazily to keep the API dependency module small.
+        from app.routes.ui._utils.session import (  # pylint: disable=import-outside-toplevel
+            SESSION_COOKIE,
+            _verify_session_value,
+        )
+
+        session_token = _verify_session_value(request.cookies.get(SESSION_COOKIE))
+        if not session_token:
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED)
+        user_id = auth.get_user_id_for_token(connection, session_token)
+        user = repository.get_user_by_id(connection, user_id) if user_id else None
+        if user is None or not user.is_active:
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED)
+
     if user.role != UserRole.EDITOR:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN)
     return user

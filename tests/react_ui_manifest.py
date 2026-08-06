@@ -93,6 +93,15 @@ REACT_PAGES = (
         "/api/host-completion/analytics",
     ),
     ReactPage(
+        "Host Completion Review",
+        "/host-completion/review",
+        "host-completion-review-root",
+        "/api/host-completion/review-queue",
+        "host-completion-review",
+        'class="hcr-review-card"',
+        "/api/host-completion/review-queue",
+    ),
+    ReactPage(
         "IP Asset Detail",
         "/ui/ip-assets/{asset_id}",
         "ip-asset-detail-root",

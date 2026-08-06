@@ -8,7 +8,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app import schema as db_schema
-from app.models import Host, IPAsset, IPAssetType
+from app.models import Host, IPAsset, IPAssetType, User
 
 from ._db import (
     reraise_as_sqlite_integrity_error,
@@ -16,6 +16,7 @@ from ._db import (
     write_session_scope,
 )
 from .mappers import _row_to_host, _row_to_ip_asset
+from .audit import create_audit_log
 
 
 def _resolve_vendor_id(
@@ -37,12 +38,23 @@ def create_host(
     name: str,
     notes: Optional[str] = None,
     vendor: Optional[str] = None,
+    current_user: Optional[User] = None,
 ) -> Host:
     vendor_id = _resolve_vendor_id(connection_or_session, vendor)
     with write_session_scope(connection_or_session) as session:
         model = db_schema.Host(name=name, notes=notes, vendor_id=vendor_id)
         try:
             session.add(model)
+            session.flush()
+            create_audit_log(
+                session,
+                user=current_user,
+                action="CREATE",
+                target_type="HOST",
+                target_id=int(model.id),
+                target_label=name,
+                changes="Created Host.",
+            )
             session.commit()
         except IntegrityError as exc:
             reraise_as_sqlite_integrity_error(exc)

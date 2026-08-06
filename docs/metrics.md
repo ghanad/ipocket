@@ -27,9 +27,15 @@ not add exporter-side metric names. Applied imports and connectors affect these
 counters only through their normal IP asset creates, updates, restores, and
 archives.
 
-Host completion statistics are JSON analytics, not Prometheus series. Read them
-from `GET /api/host-completion/analytics`; doing so does not mutate inventory or
-change the counters above.
+Host completion statistics and deterministic review data are JSON, not
+Prometheus series. Reading analytics or the review queue does not mutate
+inventory or change the counters above. `ACCEPT`, `CORRECTED`,
+`ATTACH_EXISTING`, and `DEACTIVATE` decisions can create, restore, update,
+link, or archive an IP asset through the normal audited mutation path,
+so the existing inventory counters reflect those changes without adding new
+metric names.
 
-The `/host-completion/analytics` page visualizes the same JSON and refreshes it
-every 60 seconds. Page views and refreshes do not create exporter-side metrics.
+The `/host-completion/analytics` page visualizes the same JSON. Page views and
+manual reloads do not create exporter-side metrics.
+The `/host-completion/review` page also adds no metrics of its own; accepted or
+corrected BMC links affect only the existing inventory counters.

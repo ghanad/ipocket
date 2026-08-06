@@ -173,4 +173,10 @@ def test_host_completion_analytics_returns_counts_pairs_and_patterns(
             }
         ],
         "ip_type_counts": {"BMC": 4, "OS": 5, "VM": 1, "unknown": 1},
+        "untyped_active": 0,
+        "unlinked_os": 1,
+        "unlinked_bmc": 0,
+        "hosts_missing_bmc": 1,
+        "hosts_missing_os": 1,
+        "inventory_health_percent": 90.91,
     }

@@ -54,6 +54,11 @@ describe("HostCompletionAnalyticsPage", () => {
     );
 
     expect(screen.getByText("Loading Host Completion analytics…")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Review hosts" })).toHaveAttribute(
+      "href",
+      "/host-completion/review",
+    );
+    expect(screen.queryByText("Auto-refreshes every 60 seconds")).not.toBeInTheDocument();
     expect(await screen.findByText("450 total hosts in inventory")).toBeInTheDocument();
     expect(
       screen.getByRole("img", {
@@ -80,7 +85,7 @@ describe("HostCompletionAnalyticsPage", () => {
     );
   });
 
-  it("refreshes analytics every 60 seconds", async () => {
+  it("does not refresh analytics automatically", async () => {
     vi.useFakeTimers();
     const fetchMock = vi.fn().mockResolvedValue(jsonResponse());
     vi.stubGlobal("fetch", fetchMock);
@@ -99,11 +104,7 @@ describe("HostCompletionAnalyticsPage", () => {
       await vi.advanceTimersByTimeAsync(60_000);
     });
 
-    expect(fetchMock).toHaveBeenCalledTimes(2);
-    expect(fetchMock).toHaveBeenLastCalledWith(
-      "/api/host-completion/analytics",
-      expect.any(Object),
-    );
+    expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 
   it("shows an empty pattern state", async () => {

@@ -38,6 +38,7 @@ def authenticated_react_pages():
     dependencies = (
         ui.get_current_ui_user,
         ui.get_optional_current_ui_user,
+        ui.require_ui_editor,
         ui.require_ui_superuser,
     )
     for dependency in dependencies:

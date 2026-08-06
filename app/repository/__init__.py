@@ -40,6 +40,8 @@ from .hosts import (
     update_host,
 )
 from .host_completion import (
+    create_host_completion_decision,
+    get_host_completion_engine_source,
     get_host_completion_analytics_source,
     list_host_completion_records,
 )
@@ -131,6 +133,8 @@ __all__ = [
     "list_hosts_with_ip_counts_paginated",
     "update_host",
     "get_host_completion_analytics_source",
+    "get_host_completion_engine_source",
+    "create_host_completion_decision",
     "list_host_completion_records",
     "create_project",
     "create_tag",

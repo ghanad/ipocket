@@ -109,6 +109,27 @@ Deleting a User sets historical logs' `user_id` to null while preserving the
 username snapshot. Successful import/connector Apply runs create an `IMPORT_RUN`
 record with `target_id=0` and a compact result summary; dry-runs do not.
 
+## HostCompletionDecision
+
+- `case_type` identifies a pairing, unlinked asset, or missing-side case
+- `host_id` (nullable foreign key to Host, cascade delete)
+- `mode` (`SUGGEST` or `ASK`)
+- `os_address` and `bmc_address` (nullable case identity fields)
+- `candidate_ip` (nullable)
+- `corrected_ip` (nullable)
+- `decision` (`ACCEPT`, `REJECT`, `CORRECTED`, `UNSURE`, `NO_BMC`, `NO_OS`,
+  `CREATE_HOST_ONLY`, `ATTACH_EXISTING`, or `DEACTIVATE`)
+- `target_host_id` and `host_name` (nullable decision context)
+- `decided_by` (nullable foreign key to User; set null when the User is deleted)
+- `created_at`
+
+Decisions are immutable feedback events. Rules and their support,
+contradictions, rejection counts, and confidence are recomputed from current
+Host/IPAsset relationships plus these events; inferred rules are not stored.
+`NO_BMC` and `NO_OS` exclude a Host from the matching missing-side queue.
+Rejections remain Host/asset/candidate-specific and contribute contradictions
+to derived rules. `UNSURE` is retained as feedback but can return later.
+
 ## Assignment workflow
 
 Project assignment is managed from the main IP Assets list. **Project
@@ -134,12 +155,16 @@ Connector output controls update semantics:
 - Ceph and Kubernetes additionally create/update Hosts and may update Host links,
   Type, and Project; optional cluster/label values become normalized Tags.
 
-Host Completion cases, examples, and analytics are read-only projections of
-active Host/IPAsset relationships and add no completion-state tables. Analytics
+Host Completion cases, examples, analytics, and review candidates are
+projections of active Host/IPAsset relationships. Analytics
 classifies Hosts from their linked active OS/BMC assets; an `unlinked` Host has
 neither type linked. Active assets without a Host still contribute to IP type
 counts but cannot form confirmed pairs.
 
 The Host Completion analytics UI at `/host-completion/analytics` reads this
-projection every 60 seconds. It does not add UI state tables or persist inferred
-patterns.
+projection on page load and when the operator retries a failed request. The
+deterministic review engine persists decisions only; it does not persist
+inferred patterns. The Editor-only
+`/host-completion/review` UI submits `ACCEPT`, `REJECT`, `CORRECTED`, `UNSURE`,
+and `NO_BMC` decisions against one queue item at a time, then reloads the
+projection to select the next eligible Host.

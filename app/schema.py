@@ -101,7 +101,8 @@ class IPAsset(Base):
     id = Column(Integer, primary_key=True, autoincrement=True)
     ip_address = Column(Text, nullable=False, unique=True)
     ip_int = Column(Integer, nullable=True)
-    type = Column(Text, nullable=False)
+    # Older imports may not have classified the address yet.
+    type = Column(Text, nullable=True)
     project_id = Column(Integer, ForeignKey("projects.id"))
     host_id = Column(Integer, ForeignKey("hosts.id"))
     notes = Column(Text)
@@ -139,3 +140,32 @@ class AuditLog(Base):
     action = Column(Text, nullable=False)
     changes = Column(Text)
     created_at = Column(Text, nullable=False, server_default=text("CURRENT_TIMESTAMP"))
+
+
+class HostCompletionDecision(Base):
+    __tablename__ = "host_completion_decisions"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    case_type = Column(Text, nullable=False)
+    host_id = Column(Integer, ForeignKey("hosts.id", ondelete="CASCADE"))
+    mode = Column(Text, nullable=False)
+    os_address = Column(Text)
+    bmc_address = Column(Text)
+    candidate_ip = Column(Text)
+    corrected_ip = Column(Text)
+    decision = Column(Text, nullable=False)
+    target_host_id = Column(Integer, ForeignKey("hosts.id", ondelete="SET NULL"))
+    host_name = Column(Text)
+    decided_by = Column(
+        Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True
+    )
+    created_at = Column(Text, nullable=False, server_default=text("CURRENT_TIMESTAMP"))
+
+    __table_args__ = (
+        CheckConstraint("mode IN ('SUGGEST', 'ASK')", name="ck_host_completion_mode"),
+        CheckConstraint(
+            "decision IN ('ACCEPT', 'REJECT', 'CORRECTED', 'UNSURE', "
+            "'NO_BMC', 'NO_OS', 'CREATE_HOST_ONLY', 'ATTACH_EXISTING', 'DEACTIVATE')",
+            name="ck_host_completion_decision",
+        ),
+    )

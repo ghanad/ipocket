@@ -2,11 +2,13 @@ from __future__ import annotations
 
 from typing import Literal, Optional
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
 
 from app.dependencies import get_connection
 from app.services import host_completion
+
+from .dependencies import require_editor_api_or_ui_session
 
 router = APIRouter(prefix="/api/host-completion", tags=["host-completion"])
 
@@ -69,6 +71,79 @@ class HostCompletionAnalytics(BaseModel):
     confirmed_pairs: int
     patterns: list[HostCompletionPattern]
     ip_type_counts: HostCompletionIPTypeCounts
+    untyped_active: int
+    unlinked_os: int
+    unlinked_bmc: int
+    hosts_missing_bmc: int
+    hosts_missing_os: int
+    inventory_health_percent: float
+
+
+class HostCompletionQueueAsset(BaseModel):
+    address: str
+    hostname: Optional[str] = None
+
+
+class HostCompletionReviewItem(BaseModel):
+    case_type: Literal[
+        "UNLINKED_OS_PAIR",
+        "UNLINKED_BMC_PAIR",
+        "UNLINKED_OS",
+        "UNLINKED_BMC",
+        "HOST_MISSING_BMC",
+        "HOST_MISSING_OS",
+    ]
+    mode: Literal["SUGGEST", "ASK"]
+    host_id: Optional[int] = None
+    os_asset: Optional[HostCompletionQueueAsset] = None
+    bmc_asset: Optional[HostCompletionQueueAsset] = None
+    would_create_host: bool
+    candidate_ip: Optional[str] = None
+    confidence: Optional[float] = None
+    evidence: list[str]
+    reason_text: str
+
+
+class HostCompletionReviewQueue(BaseModel):
+    item: Optional[HostCompletionReviewItem]
+    remaining: int
+
+
+class HostCompletionDecisionRequest(BaseModel):
+    case_type: Literal[
+        "UNLINKED_OS_PAIR",
+        "UNLINKED_BMC_PAIR",
+        "UNLINKED_OS",
+        "UNLINKED_BMC",
+        "HOST_MISSING_BMC",
+        "HOST_MISSING_OS",
+    ] = "HOST_MISSING_BMC"
+    mode: Literal["SUGGEST", "ASK"]
+    host_id: Optional[int] = None
+    os_address: Optional[str] = None
+    bmc_address: Optional[str] = None
+    decision: Literal[
+        "ACCEPT",
+        "REJECT",
+        "CORRECTED",
+        "UNSURE",
+        "NO_BMC",
+        "NO_OS",
+        "CREATE_HOST_ONLY",
+        "ATTACH_EXISTING",
+        "DEACTIVATE",
+    ]
+    candidate_ip: Optional[str] = None
+    corrected_ip: Optional[str] = None
+    target_host_id: Optional[int] = None
+    host_name: Optional[str] = None
+
+
+class HostCompletionDecisionResponse(BaseModel):
+    id: int
+    decision: str
+    applied_ip: Optional[str]
+    host_id: Optional[int]
 
 
 @router.get("/analytics", response_model=HostCompletionAnalytics)
@@ -108,3 +183,37 @@ def list_host_completion_examples(
         limit=limit,
         cursor=cursor,
     )
+
+
+@router.get("/review-queue", response_model=HostCompletionReviewQueue)
+def get_host_completion_review_queue(connection=Depends(get_connection)):
+    """Return the next deterministic Host-completion review item."""
+
+    return host_completion.build_review_queue(connection)
+
+
+@router.post("/decisions", response_model=HostCompletionDecisionResponse)
+def create_host_completion_decision(
+    payload: HostCompletionDecisionRequest,
+    connection=Depends(get_connection),
+    user=Depends(require_editor_api_or_ui_session),
+):
+    """Record operator feedback and apply accepted BMC links through asset services."""
+
+    try:
+        return host_completion.record_decision(
+            connection,
+            case_type=payload.case_type,
+            mode=payload.mode,
+            host_id=payload.host_id,
+            os_address=payload.os_address,
+            bmc_address=payload.bmc_address,
+            decision=payload.decision,
+            candidate_ip=payload.candidate_ip,
+            corrected_ip=payload.corrected_ip,
+            target_host_id=payload.target_host_id,
+            host_name=payload.host_name,
+            user=user,
+        )
+    except host_completion.HostCompletionError as exc:
+        raise HTTPException(status_code=exc.status_code, detail=exc.detail) from exc

@@ -18,6 +18,7 @@ CSS_MODULES = (
     "range-addresses.css",
     "audit-log.css",
     "host-completion-analytics.css",
+    "host-completion-review.css",
 )
 
 
@@ -42,7 +43,7 @@ def test_ui_assets_are_local() -> None:
         in base_html
     )
     assert (
-        '<link rel="stylesheet" href="/static/app.css?v=react-range-addresses-spacing" />'
+        '<link rel="stylesheet" href="/static/app.css?v=host-completion-review" />'
         in base_html
     )
     assert '<script src="/static/js/tag-picker.js" defer></script>' in base_html

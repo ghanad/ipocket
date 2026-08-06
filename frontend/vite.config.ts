@@ -17,6 +17,10 @@ export default defineConfig(({ mode }) => ({
           __dirname,
           "src/host-completion-analytics/main.tsx",
         ),
+        "host-completion-review": resolve(
+          __dirname,
+          "src/host-completion-review/main.tsx",
+        ),
         ranges: resolve(__dirname, "src/ranges/main.tsx"),
         "range-addresses": resolve(
           __dirname,

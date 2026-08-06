@@ -250,6 +250,9 @@ services:
 Service discovery token (optional):
 - `IPOCKET_SD_TOKEN` (when set, `/sd/node` requires header `X-SD-Token`)
 - `IPOCKET_AUTO_HOST_FOR_BMC` (default: enabled). Set to `0`, `false`, `no`, or `off` to disable auto-creating `server_{ip}` Host records when creating BMC IP assets without `host_id` and to disable the BMC Detail auto-host action.
+- `IPOCKET_HOST_COMPLETION_MIN_SUPPORT` (default: `3`, minimum effective value
+  `1`). Number of matching confirmed OS/BMC pairs required to activate a
+  deterministic Host Completion rule. Invalid values fall back to `3`.
 - `IPOCKET_LOG_LEVEL` (default: `INFO`). Controls application logging verbosity (e.g., `DEBUG`, `INFO`, `WARNING`).
 
 Session security:
@@ -270,6 +273,11 @@ Endpoints:
 - Health check: http://127.0.0.1:8000/health
 - Metrics: http://127.0.0.1:8000/metrics
 - Service discovery: http://127.0.0.1:8000/sd/node
+- Host Completion review queue: http://127.0.0.1:8000/api/host-completion/review-queue
+- Host Completion one-at-a-time review UI (Editor login required): http://127.0.0.1:8000/host-completion/review
+
+The review queue includes active unlinked OS/BMC assets and Hosts missing one
+side. Creating a Host from the review screen requires a non-empty Host name.
 
 Connector CLI examples:
 - Cassandra node import: `python -m app.connectors.cassandra --contact-points 10.0.0.10,10.0.0.11 --mode dry-run --db-path ./ipocket.db`
@@ -404,8 +412,8 @@ curl -s "http://127.0.0.1:8000/api/host-completion/analytics"
 
 Open the read-only analytics dashboard at
 `http://127.0.0.1:8000/host-completion/analytics`. It charts completion and IP
-type counts, shows discovered pattern confidence, and refreshes from the API
-every 60 seconds.
+type counts, and shows discovered pattern confidence. Reload the page or use
+the retry action after a failed request to fetch current data.
 
 These Host Completion endpoints are read-only and public like the existing
 inventory read routes. Follow `next_cursor` with a `cursor` query parameter to
