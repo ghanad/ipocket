@@ -132,6 +132,21 @@ Pull request CI installs frontend dependencies from the lockfile, rejects High
 or Critical npm advisories, builds the Docker image, starts it with an isolated
 CI session secret, and verifies that `/ui/login` is reachable.
 
+### Build and push a Docker image from GitHub Actions
+
+The `ci` workflow can build and push an image either when a `v*` tag is pushed
+or manually from GitHub. For a manual run, open **Actions → ci → Run workflow**,
+select the branch containing the workflow, and enter an image tag such as
+`v1.3.4`. The workflow publishes both
+`DOCKERHUB_USERNAME/ipocket:<tag>` and
+`DOCKERHUB_USERNAME/ipocket:latest`.
+
+The repository must define these GitHub Actions secrets before running the
+release job:
+
+- `DOCKERHUB_USERNAME`: Docker Hub username.
+- `DOCKERHUB_TOKEN`: Docker Hub access token with permission to push images.
+
 ## Run with Helm (Kubernetes)
 The repository includes a Helm chart at `helm/ipocket`.
 

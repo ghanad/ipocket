@@ -114,7 +114,8 @@ def test_docker_smoke_build_is_separate_from_tag_release() -> None:
     assert "push: true" not in smoke
 
     assert "startsWith(github.ref, 'refs/tags/')" in release
+    assert "github.event_name == 'workflow_dispatch'" in release
     assert "docker/login-action@v3" in release
     assert "push: true" in release
-    assert "${{ github.ref_name }}" in release
+    assert "${{ inputs.image_tag || github.ref_name }}" in release
     assert "/ipocket:latest" in release
