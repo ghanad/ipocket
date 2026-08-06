@@ -39,3 +39,5 @@ The `/host-completion/analytics` page visualizes the same JSON. Page views and
 manual reloads do not create exporter-side metrics.
 The `/host-completion/review` page also adds no metrics of its own; accepted or
 corrected BMC links affect only the existing inventory counters.
+Its Host-name template and autocomplete are UI/API workflow metadata only and
+do not create Prometheus series.

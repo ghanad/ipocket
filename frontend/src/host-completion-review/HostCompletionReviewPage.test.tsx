@@ -75,6 +75,18 @@ describe("HostCompletionReviewPage", () => {
     expect(screen.getAllByRole("article")).toHaveLength(1);
   });
 
+  it("uses the opposite side for direction-aware BMC and OS labels", async () => {
+    const osQueue = {
+      item: { ...askQueue.item, case_type: "HOST_MISSING_OS", os_asset: null, bmc_asset: { address: "10.30.7.7", hostname: null } },
+      remaining: 0,
+    };
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(jsonResponse(osQueue)));
+    renderPage();
+
+    expect(await screen.findByText("What is the OS IP for this case?")).toBeInTheDocument();
+    expect(screen.getByLabelText("OS IP address")).toBeInTheDocument();
+  });
+
   it("saves an entered ASK address and refetches the queue", async () => {
     const fetchMock = vi
       .fn()
@@ -210,5 +222,56 @@ describe("HostCompletionReviewPage", () => {
 
     expect(await screen.findByText("Candidate is no longer available.")).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Host #8" })).toBeInTheDocument();
+  });
+
+  it("prefills the configured host template from a known or entered BMC and preserves manual edits", async () => {
+    const queue = {
+      item: {
+        ...askQueue.item,
+        case_type: "UNLINKED_OS",
+        host_id: null,
+        would_create_host: true,
+        host_name_template: "server_{bmc}",
+        host_options: [],
+      },
+      remaining: 0,
+    };
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(jsonResponse(queue)));
+    renderPage();
+
+    const name = await screen.findByLabelText("Host name");
+    expect(name).toHaveValue("");
+    fireEvent.change(screen.getByLabelText("BMC IP address"), { target: { value: "10.30.1.1" } });
+    expect(name).toHaveValue("server_10.30.1.1");
+    fireEvent.change(name, { target: { value: "manual-name" } });
+    fireEvent.change(screen.getByLabelText("BMC IP address"), { target: { value: "10.30.1.2" } });
+    expect(name).toHaveValue("manual-name");
+  });
+
+  it("uses an attach confirmation when an autocomplete host already has the missing side", async () => {
+    const queue = {
+      item: {
+        ...askQueue.item,
+        case_type: "UNLINKED_OS",
+        host_id: null,
+        would_create_host: true,
+        host_name_template: "server_{bmc}",
+        host_options: [{ id: 42, name: "server_10.30.1.1", has_os: true, has_bmc: true }],
+      },
+      remaining: 0,
+    };
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(jsonResponse(queue))
+      .mockResolvedValueOnce(jsonResponse({ id: 9, decision: "ATTACH_EXISTING", applied_ip: null, host_id: 42, message: "Assets attached." }))
+      .mockResolvedValueOnce(jsonResponse({ item: null, remaining: 0 }));
+    vi.stubGlobal("fetch", fetchMock);
+    renderPage();
+
+    fireEvent.change(await screen.findByLabelText("Host name"), { target: { value: "server_10.30.1.1" } });
+    expect(screen.getByRole("heading", { name: "Attach this case to server_10.30.1.1?" })).toBeInTheDocument();
+    expect(screen.queryByLabelText("BMC IP address")).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Attach to host" }));
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(3));
+    expect(JSON.parse(fetchMock.mock.calls[1][1].body)).toMatchObject({ decision: "ATTACH_EXISTING", target_host_id: 42 });
   });
 });

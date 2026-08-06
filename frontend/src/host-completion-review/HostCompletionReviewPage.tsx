@@ -20,6 +20,7 @@ import type {
   HostCompletionDecisionPayload,
   HostCompletionReviewItem,
   HostCompletionReviewQueue,
+  HostCompletionHostOption,
 } from "./types";
 
 interface HostCompletionReviewPageProps {
@@ -79,6 +80,8 @@ export function HostCompletionReviewPage({
   const [correctIp, setCorrectIp] = useState("");
   const [correcting, setCorrecting] = useState(false);
   const [hostName, setHostName] = useState("");
+  const [hostNameManual, setHostNameManual] = useState(false);
+  const [selectedHost, setSelectedHost] = useState<HostCompletionHostOption | null>(null);
 
   const loadQueue = useCallback(async () => {
     setLoading(true);
@@ -89,6 +92,8 @@ export function HostCompletionReviewPage({
       setAskIp("");
       setCorrectIp("");
       setHostName("");
+      setHostNameManual(false);
+      setSelectedHost(null);
       setCorrecting(false);
     } catch {
       setQueue(null);
@@ -108,16 +113,26 @@ export function HostCompletionReviewPage({
     return () => window.clearTimeout(timeout);
   }, [toast]);
 
+  const item = queue?.item ?? null;
+  const templateBmc = item?.bmc_asset?.address
+    ?? (item?.case_type === "HOST_MISSING_BMC" ? item.candidate_ip : null)
+    ?? (item?.case_type === "UNLINKED_OS" ? askIp.trim() : null);
+
+  useEffect(() => {
+    if (!item || !templateBmc || hostNameManual || selectedHost) return;
+    setHostName((item.host_name_template ?? "server_{bmc}").replace("{bmc}", templateBmc));
+  }, [hostNameManual, item, selectedHost, templateBmc]);
+
   const submitDecision = useCallback(
     async (payload: HostCompletionDecisionPayload) => {
       if (saving) return;
       setSaving(true);
       setToast(null);
       try {
-        await submitHostCompletionDecision(decisionsEndpoint, payload);
+        const response = await submitHostCompletionDecision(decisionsEndpoint, payload);
         setToast({
           type: "success",
-          message: decisionSuccessMessage(payload.decision),
+          message: response.message ?? decisionSuccessMessage(payload.decision),
         });
         await loadQueue();
       } catch (error) {
@@ -157,8 +172,6 @@ export function HostCompletionReviewPage({
       corrected_ip: correctedIp,
     });
   }
-
-  const item = queue?.item ?? null;
 
   return (
     <>
@@ -228,11 +241,26 @@ export function HostCompletionReviewPage({
             correcting={correcting}
             setCorrecting={setCorrecting}
             hostName={hostName}
-            setHostName={setHostName}
+            onHostNameChange={(value) => {
+              setHostName(value);
+              setHostNameManual(true);
+              setSelectedHost(null);
+            }}
+            selectedHost={selectedHost}
+            onHostOptionSelect={(option) => {
+              setHostName(option.name);
+              setSelectedHost(option);
+              setHostNameManual(true);
+            }}
             onSubmitIp={submitIp}
             onDecision={(decision) =>
               void submitDecision({ ...sharedPayload(item), decision })
             }
+            onAttachExisting={(option) => void submitDecision({
+              ...sharedPayload(item),
+              decision: "ATTACH_EXISTING",
+              target_host_id: option.id,
+            })}
           />
         ) : null}
       </section>
@@ -251,13 +279,16 @@ interface ReviewCardProps {
   correcting: boolean;
   setCorrecting: (value: boolean) => void;
   hostName: string;
-  setHostName: (value: string) => void;
+  onHostNameChange: (value: string) => void;
+  selectedHost: HostCompletionHostOption | null;
+  onHostOptionSelect: (option: HostCompletionHostOption) => void;
   onSubmitIp: (
     event: FormEvent<HTMLFormElement>,
     item: HostCompletionReviewItem,
     value: string,
   ) => void;
   onDecision: (decision: Exclude<HostCompletionDecision, "CORRECTED">) => void;
+  onAttachExisting: (option: HostCompletionHostOption) => void;
 }
 
 function ReviewCard({
@@ -271,9 +302,12 @@ function ReviewCard({
   correcting,
   setCorrecting,
   hostName,
-  setHostName,
+  onHostNameChange,
+  selectedHost,
+  onHostOptionSelect,
   onSubmitIp,
   onDecision,
+  onAttachExisting,
 }: ReviewCardProps) {
   const confidence = confidencePercent(item.confidence);
   const knownAsset = item.os_asset ?? item.bmc_asset;
@@ -282,6 +316,12 @@ function ReviewCard({
     : "OS";
   const noSideDecision = missingLabel === "BMC" ? "NO_BMC" : "NO_OS";
   const needsHostName = item.would_create_host;
+  const hostTemplate = item.host_name_template ?? "server_{bmc}";
+  const hostOptions = item.host_options ?? [];
+  const missingSideAlreadyPresent = selectedHost && (
+    missingLabel === "BMC" ? selectedHost.has_bmc : selectedHost.has_os
+  );
+  const hasPair = Boolean(item.os_asset && item.bmc_asset);
 
   return (
     <article className="card hcr-review-card" aria-busy={saving}>
@@ -303,16 +343,37 @@ function ReviewCard({
             className="input"
             type="text"
             autoComplete="off"
-            placeholder="e.g. compute-07"
+            placeholder={`e.g. ${hostTemplate.replace("{bmc}", "10.30.1.1")}`}
             value={hostName}
-            onChange={(event) => setHostName(event.target.value)}
+            onChange={(event) => {
+              const value = event.target.value;
+              onHostNameChange(value);
+              const option = hostOptions.find((candidate) => candidate.name.toLowerCase() === value.trim().toLowerCase());
+              if (option) onHostOptionSelect(option);
+            }}
+            list="host-completion-host-options"
             disabled={saving}
             required
           />
+          <datalist id="host-completion-host-options">
+            {hostOptions.map((option) => <option key={option.id} value={option.name} />)}
+          </datalist>
         </label>
       ) : null}
 
-      {item.mode === "ASK" ? (
+      {hasPair ? <p className="hcr-pair-summary">Pair ready: OS {item.os_asset?.address} and BMC {item.bmc_asset?.address}.</p> : null}
+
+      {missingSideAlreadyPresent ? (
+        <section className="hcr-decision-panel" aria-labelledby="attach-question">
+          <p className="hcr-mode-label">Existing host selected</p>
+          <h3 id="attach-question">Attach this case to {selectedHost.name}?</h3>
+          <p className="hcr-reason">That host already has the {missingLabel} side, so no address is needed.</p>
+          <div className="hcr-suggestion-actions">
+            <button className="btn btn-primary" type="button" disabled={saving} onClick={() => onAttachExisting(selectedHost)}>Attach to host</button>
+            <button className="btn hcr-later-button" type="button" disabled={saving} onClick={() => onDecision("UNSURE")}>Later</button>
+          </div>
+        </section>
+      ) : item.mode === "ASK" ? (
         <section className="hcr-decision-panel" aria-labelledby="ask-question">
           <p className="hcr-mode-label">Address needed</p>
           <h3 id="ask-question">What is the {missingLabel} IP for this case?</h3>

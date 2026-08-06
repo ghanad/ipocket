@@ -24,6 +24,15 @@ export interface HostCompletionReviewItem {
   confidence: number | null;
   evidence: string[];
   reason_text: string;
+  host_name_template: string;
+  host_options: HostCompletionHostOption[];
+}
+
+export interface HostCompletionHostOption {
+  id: number;
+  name: string;
+  has_os: boolean;
+  has_bmc: boolean;
 }
 
 export interface HostCompletionReviewQueue {
@@ -52,6 +61,7 @@ export interface HostCompletionDecisionPayload {
   candidate_ip?: string;
   corrected_ip?: string;
   host_name?: string;
+  target_host_id?: number;
 }
 
 export interface HostCompletionDecisionResponse {
@@ -59,4 +69,5 @@ export interface HostCompletionDecisionResponse {
   decision: HostCompletionDecision;
   applied_ip: string | null;
   host_id: number | null;
+  message: string | null;
 }

@@ -59,6 +59,14 @@ After pulling updates, rerun `alembic upgrade head` to apply the latest schema/i
 The migration runner reads `IPAM_DB_PATH` (defaults to `ipocket.db`) to locate the
 SQLite file.
 
+### Host Completion naming
+
+`HOST_NAME_TEMPLATE` controls the review card's BMC-based Host-name prefill and
+name-derived BMC suggestions. It defaults to `server_{bmc}`; `{bmc}` is replaced
+with a dotted-quad BMC address. For example, set
+`HOST_NAME_TEMPLATE='rack-server-{bmc}'` before starting the app to use names
+such as `rack-server-10.30.1.1`.
+
 At runtime, each new SQLite connection enables WAL mode and applies
 `synchronous=NORMAL` with a `busy_timeout` of 5000ms to reduce
 `database is locked` errors under concurrent requests.

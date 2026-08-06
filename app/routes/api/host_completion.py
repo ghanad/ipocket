@@ -102,6 +102,15 @@ class HostCompletionReviewItem(BaseModel):
     confidence: Optional[float] = None
     evidence: list[str]
     reason_text: str
+    host_name_template: str
+    host_options: list["HostCompletionHostOption"]
+
+
+class HostCompletionHostOption(BaseModel):
+    id: int
+    name: str
+    has_os: bool
+    has_bmc: bool
 
 
 class HostCompletionReviewQueue(BaseModel):
@@ -144,6 +153,7 @@ class HostCompletionDecisionResponse(BaseModel):
     decision: str
     applied_ip: Optional[str]
     host_id: Optional[int]
+    message: Optional[str] = None
 
 
 @router.get("/analytics", response_model=HostCompletionAnalytics)

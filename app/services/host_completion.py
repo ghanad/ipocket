@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import ipaddress
 import os
+import re
 import sqlite3
 from collections import defaultdict
 from dataclasses import dataclass
@@ -36,6 +37,31 @@ def get_min_support() -> int:
         return max(1, int(os.getenv("IPOCKET_HOST_COMPLETION_MIN_SUPPORT", "3")))
     except ValueError:
         return 3
+
+
+def get_host_name_template() -> str:
+    """Return the configurable name template used for BMC-backed Hosts."""
+
+    return os.getenv("HOST_NAME_TEMPLATE", "server_{bmc}").strip() or "server_{bmc}"
+
+
+def _template_bmc_address(name: str, template: str) -> str | None:
+    """Extract an IPv4 BMC address only when a Host name exactly matches template."""
+
+    if template.count("{bmc}") != 1:
+        return None
+    prefix, suffix = template.split("{bmc}")
+    match = re.fullmatch(
+        re.escape(prefix) + r"(?P<bmc>\d{1,3}(?:\.\d{1,3}){3})" + re.escape(suffix),
+        name,
+    )
+    if not match:
+        return None
+    try:
+        address = ipaddress.ip_address(match.group("bmc"))
+    except ValueError:
+        return None
+    return str(address) if address.version == 4 else None
 
 
 def _ip_sort_key(address: str) -> tuple[int, int, str]:
@@ -436,6 +462,7 @@ def _review_item(
     bmc_address: str | None,
     would_create_host: bool,
     suggestion: dict[str, object],
+    host_options: list[dict[str, object]],
 ) -> dict[str, object]:
     item: dict[str, object] = {
         "case_type": case_type,
@@ -447,10 +474,40 @@ def _review_item(
         "confidence": suggestion["confidence"],
         "evidence": suggestion["evidence"],
         "reason_text": suggestion["reason_text"],
+        "host_name_template": get_host_name_template(),
+        "host_options": host_options,
     }
     if bmc_address:
         item["bmc_asset"] = _asset_view(str(bmc_address), None)
     return item
+
+
+def _host_options(
+    hosts: list[object], by_host: dict[int, dict[str, list[str]]]
+) -> list[dict[str, object]]:
+    """Rank Host-name autocomplete choices without exposing a separate lookup API."""
+
+    options: list[dict[str, object]] = []
+    for raw_host in hosts:
+        assert isinstance(raw_host, dict)
+        host_id = int(raw_host["id"])
+        sides = by_host.get(host_id, {"OS": [], "BMC": []})
+        options.append({
+            "id": host_id,
+            "name": str(raw_host["name"]),
+            "has_os": bool(sides["OS"]),
+            "has_bmc": bool(sides["BMC"]),
+        })
+    recent_host_ids = {int(host["id"]) for host in hosts[-20:] if isinstance(host, dict)}
+    # A Host missing either complement is the most useful attachment target,
+    # followed by recently created Hosts, then a stable name ordering.
+    options.sort(key=lambda option: (
+        0 if not (bool(option["has_os"]) and bool(option["has_bmc"])) else 1,
+        0 if int(option["id"]) in recent_host_ids else 1,
+        -int(option["id"]) if int(option["id"]) in recent_host_ids else 0,
+        str(option["name"]).lower(),
+    ))
+    return options[:20]
 
 
 def build_review_queue(connection_or_session) -> dict[str, object]:
@@ -468,6 +525,7 @@ def build_review_queue(connection_or_session) -> dict[str, object]:
     decisions = source["decisions"]
     hosts = source["hosts"]
     assert isinstance(decisions, list) and isinstance(hosts, list)
+    host_options = _host_options(hosts, by_host)
     unlinked_os = {
         address
         for address, asset in active_assets.items()
@@ -479,6 +537,36 @@ def build_review_queue(connection_or_session) -> dict[str, object]:
         if asset.get("type") == "BMC" and asset.get("host_id") is None
     }
     queued: list[tuple[int, str, str, dict[str, object]]] = []
+
+    # Names that encode a BMC provide deterministic, high-confidence suggestions.
+    template = get_host_name_template()
+    name_claims: list[tuple[int, str, str]] = []
+    for host in hosts:
+        assert isinstance(host, dict)
+        host_id = int(host["id"])
+        bmc_address = _template_bmc_address(str(host["name"]), template)
+        if (
+            bmc_address
+            and not by_host.get(host_id, {"BMC": []})["BMC"]
+            and bmc_address in unlinked_bmc
+        ):
+            name_claims.append((host_id, str(host["name"]), bmc_address))
+    named_host_ids = {host_id for host_id, _, _ in name_claims}
+    for host_id, host_name, bmc_address in sorted(name_claims, key=lambda row: _ip_sort_key(row[2])):
+        queued.append((
+            1,
+            _source_16(bmc_address),
+            bmc_address,
+            _review_item(
+                case_type="HOST_MISSING_BMC", host_id=host_id,
+                os_address=None, bmc_address=None, would_create_host=False,
+                suggestion={"mode": "SUGGEST", "candidate_ip": bmc_address,
+                            "confidence": 0.95,
+                            "evidence": ["host name encodes the BMC address"],
+                            "reason_text": f"Host '{host_name}' matches the configured BMC name template."},
+                host_options=host_options,
+            ),
+        ))
 
     # Pass one records all possible claims before consuming so the strongest rule wins.
     claims: list[tuple[float, str, str, CompletionRule]] = []
@@ -529,6 +617,7 @@ def build_review_queue(connection_or_session) -> dict[str, object]:
                     bmc_address=bmc_address,
                     would_create_host=True,
                     suggestion=suggestion,
+                    host_options=host_options,
                 ),
             )
         )
@@ -575,6 +664,7 @@ def build_review_queue(connection_or_session) -> dict[str, object]:
                     bmc_address=bmc_address,
                     would_create_host=True,
                     suggestion=suggestion,
+                    host_options=host_options,
                 ),
             )
         )
@@ -589,7 +679,7 @@ def build_review_queue(connection_or_session) -> dict[str, object]:
         assert isinstance(host, dict)
         host_id = int(host["id"])
         grouped = by_host.get(host_id, {"OS": [], "BMC": []})
-        if grouped["OS"] and not grouped["BMC"] and (host_id, "NO_BMC") not in flags:
+        if grouped["OS"] and not grouped["BMC"] and (host_id, "NO_BMC") not in flags and host_id not in named_host_ids:
             host_items.append(
                 (host, "HOST_MISSING_BMC", min(grouped["OS"], key=_ip_sort_key), True)
             )
@@ -619,6 +709,7 @@ def build_review_queue(connection_or_session) -> dict[str, object]:
                     bmc_address=known if not known_is_os else None,
                     would_create_host=False,
                     suggestion=suggestion,
+                    host_options=host_options,
                 ),
             )
         )
@@ -644,6 +735,7 @@ def build_review_queue(connection_or_session) -> dict[str, object]:
                     bmc_address=None,
                     would_create_host=True,
                     suggestion=suggestion,
+                    host_options=host_options,
                 ),
             )
         )
@@ -669,6 +761,7 @@ def build_review_queue(connection_or_session) -> dict[str, object]:
                     bmc_address=bmc_address,
                     would_create_host=True,
                     suggestion=suggestion,
+                    host_options=host_options,
                 ),
             )
         )
@@ -715,6 +808,49 @@ def _create_host(connection_or_session, name: str, user) -> int:
         ).id
     except sqlite3.IntegrityError as exc:
         raise HostCompletionError(409, "Host name already exists.") from exc
+
+
+def _resolve_or_create_host(connection_or_session, name: str, user) -> tuple[int, bool]:
+    """Resolve a trimmed, case-insensitive Host name before creating one."""
+
+    existing = repository.get_host_by_name(connection_or_session, name)
+    if existing is not None:
+        return existing.id, True
+    return _create_host(connection_or_session, name, user), False
+
+
+def _validate_bmc_attachment(connection_or_session, host_id: int, bmc_address: str | None) -> None:
+    """A Host has one active BMC identity; repeating it is safely idempotent."""
+
+    if not bmc_address:
+        return
+    state = _engine_state(connection_or_session)
+    by_host = state["by_host"]
+    assert isinstance(by_host, dict)
+    existing_bmcs = by_host.get(host_id, {"BMC": []})["BMC"]
+    if existing_bmcs and bmc_address not in existing_bmcs:
+        host = repository.get_host_by_id(connection_or_session, host_id)
+        label = host.name if host else str(host_id)
+        raise HostCompletionError(
+            409,
+            f"Host '{label}' already has active BMC IP {existing_bmcs[0]}; cannot attach different BMC IP {bmc_address}.",
+        )
+
+
+def _host_completion_message(connection_or_session, host_id: int, *, existing: bool, address: str | None, asset_type: str | None) -> str | None:
+    if not existing:
+        return None
+    host = repository.get_host_by_id(connection_or_session, host_id)
+    if host is None:
+        return None
+    state = _engine_state(connection_or_session)
+    by_host = state["by_host"]
+    assert isinstance(by_host, dict)
+    sides = by_host.get(host_id, {"OS": [], "BMC": []})
+    suffix = " Host is now complete." if sides["OS"] and sides["BMC"] else ""
+    if address and asset_type:
+        return f"{asset_type} {address} attached to existing host '{host.name}'.{suffix}"
+    return f"Assets attached to existing host '{host.name}'.{suffix}"
 
 
 def _link_asset(
@@ -840,6 +976,7 @@ def record_decision(
             "decision": decision,
             "applied_ip": corrected_ip or candidate_ip,
             "host_id": duplicate.get("target_host_id") or host_id,
+            "message": None,
         }
 
     creates_host = (
@@ -854,6 +991,7 @@ def record_decision(
     if creates_host:
         host_name = _require_host_name(host_name)
     resolved_host_id = host_id
+    resolved_existing_host = False
     applied_ip: str | None = None
     chosen_ip = corrected_ip if decision == "CORRECTED" else candidate_ip
 
@@ -863,9 +1001,11 @@ def record_decision(
                 raise HostCompletionError(
                     422, "os_address and bmc_address are required for a pair."
                 )
-            resolved_host_id = _create_host(
+            resolved_host_id, resolved_existing_host = _resolve_or_create_host(
                 connection_or_session, _require_host_name(host_name), user
             )
+            if resolved_existing_host:
+                _validate_bmc_attachment(connection_or_session, resolved_host_id, chosen_ip or bmc_address)
             _link_asset(
                 connection_or_session,
                 address=os_address,
@@ -887,9 +1027,14 @@ def record_decision(
                 raise HostCompletionError(422, "Known asset address is required.")
             if not chosen_ip:
                 raise HostCompletionError(422, "candidate_ip is required.")
-            resolved_host_id = _create_host(
+            resolved_host_id, resolved_existing_host = _resolve_or_create_host(
                 connection_or_session, _require_host_name(host_name), user
             )
+            if resolved_existing_host:
+                _validate_bmc_attachment(
+                    connection_or_session, resolved_host_id,
+                    chosen_ip if case_type == "UNLINKED_OS" else bmc_address,
+                )
             _link_asset(
                 connection_or_session,
                 address=known,
@@ -929,7 +1074,7 @@ def record_decision(
         asset = _existing_active(connection_or_session, address, "Known")
         if asset.asset_type not in {IPAssetType.OS, IPAssetType.BMC}:
             raise HostCompletionError(422, "Known asset must be typed OS or BMC.")
-        resolved_host_id = _create_host(
+        resolved_host_id, resolved_existing_host = _resolve_or_create_host(
             connection_or_session, _require_host_name(host_name), user
         )
         _link_asset(
@@ -947,7 +1092,7 @@ def record_decision(
             asset = _existing_active(connection_or_session, address, "Known")
             if asset.asset_type not in {IPAssetType.OS, IPAssetType.BMC}:
                 raise HostCompletionError(422, "Known asset must be typed OS or BMC.")
-            resolved_host_id = _create_host(
+            resolved_host_id, resolved_existing_host = _resolve_or_create_host(
                 connection_or_session, _require_host_name(host_name), user
             )
             _link_asset(
@@ -963,6 +1108,7 @@ def record_decision(
         addresses = [(os_address, "OS"), (bmc_address, "BMC")]
         if not any(address for address, _ in addresses):
             raise HostCompletionError(422, "os_address or bmc_address is required.")
+        _validate_bmc_attachment(connection_or_session, target_host_id, bmc_address)
         for address, asset_type in addresses:
             if address:
                 _existing_active(connection_or_session, address, asset_type)
@@ -1003,4 +1149,11 @@ def record_decision(
         "decision": decision,
         "applied_ip": applied_ip,
         "host_id": resolved_host_id,
+        "message": _host_completion_message(
+            connection_or_session,
+            resolved_host_id,
+            existing=resolved_existing_host or decision == "ATTACH_EXISTING",
+            address=os_address or bmc_address or chosen_ip,
+            asset_type="OS" if os_address else "BMC" if bmc_address or chosen_ip else None,
+        ) if resolved_host_id is not None else None,
     }

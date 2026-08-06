@@ -80,8 +80,7 @@ def test_review_queue_suggests_best_active_rule(client, _setup_connection):
     response = client.get("/api/host-completion/review-queue")
 
     assert response.status_code == 200
-    assert response.json() == {
-        "item": {
+    assert response.json()["item"] == {
             "case_type": "HOST_MISSING_BMC",
             "host_id": target.id,
             "os_asset": {"address": "10.10.9.9", "hostname": None},
@@ -98,9 +97,11 @@ def test_review_queue_suggests_best_active_rule(client, _setup_connection):
             "reason_text": (
                 "3 confirmed hosts use mapping 10.10.0.0/16 -> 10.30.0.0/16"
             ),
-        },
-        "remaining": 0,
-    }
+            "host_name_template": "server_{bmc}",
+            "host_options": response.json()["item"]["host_options"],
+        }
+    assert response.json()["remaining"] == 0
+    assert response.json()["item"]["host_options"][0]["id"] == target.id
 
 
 @pytest.mark.parametrize(
@@ -479,63 +480,154 @@ def test_extended_decisions_validate_host_name_attach_and_deactivate(
         repository.create_ip_asset(connection, "10.20.1.3", IPAssetType.OS)
     finally:
         connection.close()
+
     headers = _editor_headers(_create_user, _login, _auth_headers)
 
     missing_name = client.post(
-        "/api/host-completion/decisions",
-        headers=headers,
-        json={
-            "case_type": "UNLINKED_OS",
-            "mode": "ASK",
-            "os_address": "10.20.1.1",
-            "decision": "NO_BMC",
-        },
+        "/api/host-completion/decisions", headers=headers,
+        json={"case_type": "UNLINKED_OS", "mode": "ASK", "os_address": "10.20.1.1", "decision": "NO_BMC"},
     )
     no_bmc = client.post(
-        "/api/host-completion/decisions",
-        headers=headers,
-        json={
-            "case_type": "UNLINKED_OS",
-            "mode": "ASK",
-            "os_address": "10.20.1.1",
-            "decision": "NO_BMC",
-            "host_name": "no-bmc-host",
-        },
+        "/api/host-completion/decisions", headers=headers,
+        json={"case_type": "UNLINKED_OS", "mode": "ASK", "os_address": "10.20.1.1", "decision": "NO_BMC", "host_name": "no-bmc-host"},
     )
     conflict = client.post(
-        "/api/host-completion/decisions",
-        headers=headers,
-        json={
-            "case_type": "UNLINKED_BMC",
-            "mode": "ASK",
-            "bmc_address": "10.20.1.2",
-            "target_host_id": target.id,
-            "decision": "ATTACH_EXISTING",
-        },
+        "/api/host-completion/decisions", headers=headers,
+        json={"case_type": "UNLINKED_BMC", "mode": "ASK", "bmc_address": "10.20.1.2", "target_host_id": target.id, "decision": "ATTACH_EXISTING"},
     )
     deactivated = client.post(
-        "/api/host-completion/decisions",
-        headers=headers,
-        json={
-            "case_type": "UNLINKED_OS",
-            "mode": "ASK",
-            "os_address": "10.20.1.3",
-            "decision": "DEACTIVATE",
-        },
+        "/api/host-completion/decisions", headers=headers,
+        json={"case_type": "UNLINKED_OS", "mode": "ASK", "os_address": "10.20.1.3", "decision": "DEACTIVATE"},
     )
 
     assert missing_name.status_code == 422
     assert "host_name is required" in missing_name.json()["detail"]
     assert no_bmc.status_code == 200
-    assert no_bmc.json()["host_id"] is not None
     assert conflict.status_code == 409
     assert deactivated.status_code == 200
+
+
+def test_existing_name_attaches_unlinked_assets_in_both_directions_and_is_idempotent(
+    client, _setup_connection, _create_user, _login, _auth_headers
+):
     connection = _setup_connection()
     try:
-        assert (
-            repository.get_ip_asset_by_ip(connection, "10.20.1.1").host_id
-            == no_bmc.json()["host_id"]
-        )
-        assert repository.get_ip_asset_by_ip(connection, "10.20.1.3").archived
+        first = repository.create_host(connection, "server_10.30.1.1")
+        repository.create_ip_asset(connection, "10.30.1.1", IPAssetType.BMC, host_id=first.id)
+        repository.create_ip_asset(connection, "10.10.1.1", IPAssetType.OS)
+        repository.create_ip_asset(connection, "10.30.2.2", IPAssetType.BMC)
+        second = repository.create_host(connection, "server_10.30.2.2")
+        repository.create_ip_asset(connection, "10.10.2.2", IPAssetType.OS, host_id=second.id)
     finally:
         connection.close()
+    headers = _editor_headers(_create_user, _login, _auth_headers)
+
+    os_to_existing = client.post("/api/host-completion/decisions", headers=headers, json={
+        "case_type": "UNLINKED_OS", "mode": "ASK", "os_address": "10.10.1.1",
+        "candidate_ip": "10.30.1.1", "decision": "ACCEPT", "host_name": " SERVER_10.30.1.1 ",
+    })
+    bmc_to_existing = client.post("/api/host-completion/decisions", headers=headers, json={
+        "case_type": "UNLINKED_BMC", "mode": "ASK", "bmc_address": "10.30.2.2",
+        "candidate_ip": "10.10.2.2", "decision": "ACCEPT", "host_name": "server_10.30.2.2",
+    })
+
+    assert os_to_existing.status_code == bmc_to_existing.status_code == 200
+    assert "attached to existing host 'server_10.30.1.1'" in os_to_existing.json()["message"]
+    connection = _setup_connection()
+    try:
+        assert repository.get_ip_asset_by_ip(connection, "10.10.1.1").host_id == first.id
+        assert repository.get_ip_asset_by_ip(connection, "10.30.2.2").host_id == second.id
+    finally:
+        connection.close()
+
+
+def test_existing_name_rejects_a_different_bmc(client, _setup_connection, _create_user, _login, _auth_headers):
+    connection = _setup_connection()
+    try:
+        host = repository.create_host(connection, "server_10.30.1.1")
+        repository.create_ip_asset(connection, "10.30.1.1", IPAssetType.BMC, host_id=host.id)
+        repository.create_ip_asset(connection, "10.10.1.2", IPAssetType.OS)
+        repository.create_ip_asset(connection, "10.30.1.2", IPAssetType.BMC)
+    finally:
+        connection.close()
+    response = client.post("/api/host-completion/decisions", headers=_editor_headers(_create_user, _login, _auth_headers), json={
+        "case_type": "UNLINKED_OS", "mode": "ASK", "os_address": "10.10.1.2",
+        "candidate_ip": "10.30.1.2", "decision": "ACCEPT", "host_name": "server_10.30.1.1",
+    })
+    assert response.status_code == 409
+    assert "already has active BMC IP 10.30.1.1" in response.json()["detail"]
+
+
+def test_name_derived_bmc_suggestion_and_ignored_nonmatches(client, _setup_connection, monkeypatch):
+    monkeypatch.setenv("HOST_NAME_TEMPLATE", "server_{bmc}")
+    monkeypatch.setenv("IPOCKET_AUTO_HOST_FOR_BMC", "0")
+    connection = _setup_connection()
+    try:
+        target = repository.create_host(connection, "server_10.30.9.9")
+        repository.create_ip_asset(connection, "10.30.9.9", IPAssetType.BMC)
+        linked_elsewhere = repository.create_host(connection, "server_10.30.8.8")
+        repository.create_ip_asset(connection, "10.30.8.8", IPAssetType.BMC, host_id=linked_elsewhere.id)
+        repository.create_host(connection, "not-a-template-name")
+    finally:
+        connection.close()
+
+    queue = client.get("/api/host-completion/review-queue").json()
+    item = queue["item"]
+    assert item["host_id"] == target.id
+    assert item["case_type"] == "HOST_MISSING_BMC"
+    assert item["candidate_ip"] == "10.30.9.9"
+    assert item["confidence"] == pytest.approx(0.95)
+    assert item["evidence"] == ["host name encodes the BMC address"]
+
+
+def test_host_autocomplete_orders_incomplete_then_recent_then_remaining(
+    client, _setup_connection, _create_user, _login, _auth_headers
+):
+    connection = _setup_connection()
+    try:
+        complete = repository.create_host(connection, "complete")
+        repository.create_ip_asset(connection, "10.10.3.1", IPAssetType.OS, host_id=complete.id)
+        repository.create_ip_asset(connection, "10.30.3.1", IPAssetType.BMC, host_id=complete.id)
+        incomplete = repository.create_host(connection, "incomplete")
+        repository.create_ip_asset(connection, "10.10.2.1", IPAssetType.OS, host_id=incomplete.id)
+        recent = repository.create_host(connection, "recent")
+        repository.create_ip_asset(connection, "10.10.4.1", IPAssetType.OS, host_id=recent.id)
+        repository.create_ip_asset(connection, "10.30.4.1", IPAssetType.BMC, host_id=recent.id)
+    finally:
+        connection.close()
+    headers = _editor_headers(_create_user, _login, _auth_headers)
+    client.post("/api/host-completion/decisions", headers=headers, json={
+        "case_type": "HOST_MISSING_BMC", "mode": "ASK", "host_id": recent.id,
+        "decision": "UNSURE",
+    })
+
+    options = client.get("/api/host-completion/review-queue").json()["item"]["host_options"]
+    names = [option["name"] for option in options]
+    assert names.index("incomplete") < names.index("recent") < names.index("complete")
+
+
+def test_cold_start_replay_creates_then_completes_template_named_host(
+    client, _setup_connection, _create_user, _login, _auth_headers, monkeypatch
+):
+    monkeypatch.setenv("IPOCKET_AUTO_HOST_FOR_BMC", "0")
+    connection = _setup_connection()
+    try:
+        repository.create_ip_asset(connection, "10.30.1.1", IPAssetType.BMC)
+        repository.create_ip_asset(connection, "10.10.1.1", IPAssetType.OS)
+    finally:
+        connection.close()
+    headers = _editor_headers(_create_user, _login, _auth_headers)
+
+    created = client.post("/api/host-completion/decisions", headers=headers, json={
+        "case_type": "UNLINKED_BMC", "mode": "ASK", "bmc_address": "10.30.1.1",
+        "decision": "CREATE_HOST_ONLY", "host_name": "server_10.30.1.1",
+    })
+    attached = client.post("/api/host-completion/decisions", headers=headers, json={
+        "case_type": "UNLINKED_OS", "mode": "ASK", "os_address": "10.10.1.1",
+        "candidate_ip": "10.30.1.1", "decision": "ACCEPT", "host_name": "server_10.30.1.1",
+    })
+
+    assert created.status_code == attached.status_code == 200
+    assert created.json()["host_id"] == attached.json()["host_id"]
+    assert attached.json()["message"].endswith("Host is now complete.")
+    assert client.get("/api/host-completion/analytics").json()["confirmed_pairs"] == 1

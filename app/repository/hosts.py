@@ -130,7 +130,7 @@ def get_host_by_name(
                     db_schema.Vendor.id == db_schema.Host.vendor_id,
                     isouter=True,
                 )
-                .where(db_schema.Host.name == name)
+                .where(func.lower(db_schema.Host.name) == name.strip().lower())
             )
             .mappings()
             .first()

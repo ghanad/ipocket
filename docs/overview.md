@@ -36,6 +36,9 @@ Back/Forward and shareable links preserve state.
   single-octet OS-to-BMC mappings from confirmed pairs. Editor decisions can
   accept, correct, reject, defer, or permanently mark a Host as having no BMC;
   accepted changes use normal IP Asset validation and audit logging.
+  Unlinked assets can be attached by re-entering or selecting an existing Host
+  name (case-insensitively), and the review card pre-fills names from
+  `HOST_NAME_TEMPLATE` when its BMC address is known.
 
 ## Supporting catalogs
 

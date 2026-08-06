@@ -153,6 +153,14 @@ The response includes the candidate, confidence, confirmed-pair evidence, and a
 deterministic reason. If no safe active rule remains, the item uses `mode: ASK`.
 An empty queue returns `{"item": null, "remaining": 0}`.
 
+Each queue item also carries the active `host_name_template` and up to 20 ranked
+`host_options` for autocomplete. Hosts missing an OS or BMC appear first, then
+Hosts referenced by recent decisions, then remaining names. The default
+template is `server_{bmc}` and can be changed through `HOST_NAME_TEMPLATE`.
+When an active Host name exactly matches that template and encodes an active
+unlinked BMC address, the queue emits a `HOST_MISSING_BMC` suggestion at 0.95
+confidence with evidence `host name encodes the BMC address`.
+
 ### Record a decision
 
 ```http
@@ -183,7 +191,11 @@ Supported decisions are:
   a Host with the selected asset, attach selected assets to `target_host_id`, or
   archive a selected active asset.
 
-Any decision that creates a Host must include a non-empty `host_name`.
+Any decision that creates a Host must include a non-empty `host_name`. Before a
+Host is created, the name is trimmed and resolved case-insensitively. A match
+attaches the supplied assets to that Host instead and returns an explanatory
+message. Re-attaching the same side is idempotent; supplying a different BMC to
+a Host that already has an active BMC returns a conflict.
 
 Every decision stores the Host, presented mode, candidate/correction values,
 decision, deciding User ID, and creation timestamp. `ACCEPT` and `CORRECTED`

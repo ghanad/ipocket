@@ -45,6 +45,11 @@ When enabled, creating a BMC asset without a Host creates or reuses a Host named
 precedence. Set `IPOCKET_AUTO_HOST_FOR_BMC=0|false|no|off` to disable this
 behavior and the matching detail-page action.
 
+Host Completion uses the runtime `HOST_NAME_TEMPLATE` setting (default
+`server_{bmc}`) as a naming aid; it does not add a stored Host column. A name
+matching the template can deterministically identify an active, unlinked BMC
+address for review.
+
 ## Vendor
 
 - `name` (unique)
