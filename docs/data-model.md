@@ -77,6 +77,10 @@ Tag. Library usage counts include active IP assets only.
 - OS and BMC IP assets are paired through their shared `host_id`.
 - On an IP Asset detail page, OS records show linked BMC addresses for the same host, and BMC records show linked OS addresses for the same host. The IP address, Host, and paired OS/BMC address values are navigation links to the corresponding detail pages.
 - Pair addresses are not shown for `VM`, `VIP`, or `OTHER` asset types.
+- Host Completion API cases and examples are derived read-only from the existing
+  `Host` and active `IPAsset` relationships. They add no tables or stored
+  completion state: a case has exactly one active OS/BMC side, and an example
+  has at least one active asset of each type for the same `host_id`.
 
 
 ## Host

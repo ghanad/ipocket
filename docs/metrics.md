@@ -14,6 +14,10 @@ records as the legacy HTML form routes.
 The React migration of `/ui/projects` (Projects/Vendors/Tags) is also
 presentation/transport-only and does not change metric names or calculations.
 
+The read-only Host Completion `cases` and `examples` endpoints derive their
+responses from existing active Host/IP relationships and do not add or alter
+Prometheus metric names or calculations.
+
 Archived restore note:
 - Re-creating an IP that currently exists only as archived restores that row (sets `archived=0`) rather than creating a duplicate row, so totals reflect a single record transitioning between archived/active states.
 

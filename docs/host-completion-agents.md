@@ -4,6 +4,12 @@ Status: proposed for a future phase. Nothing described in this document is
 implemented or exposed by the current product unless explicitly identified as
 an existing capability.
 
+Implementation note: the initial read-only boundary is now available through
+`GET /api/host-completion/cases` and
+`GET /api/host-completion/examples`. See
+[Host Completion API](host-completion-api.md). Agent execution, template
+learning, suggestions, feedback persistence, and application remain proposed.
+
 ## Purpose
 
 ipocket should eventually help operators complete and maintain a physical
@@ -36,6 +42,8 @@ types. The existing REST API can provide enough raw data for a proof of concept:
 - `GET /ip-assets` returns active IP assets, including `type` and `host_id`.
 - `POST /ip-assets` can create an IP asset.
 - `PATCH /ip-assets/{ip_address}` can update its type and Host assignment.
+- `GET /api/host-completion/cases` returns one-sided OS/BMC Hosts.
+- `GET /api/host-completion/examples` returns complete OS/BMC Host examples.
 
 A prototype could read `GET /ip-assets`, group assets by `host_id`, use complete
 OS/BMC pairs as examples, and identify incomplete Hosts. The current API is not,
@@ -235,7 +243,7 @@ The API should use domain-oriented paths such as `/api/host-completion`, not
 `/api/ai-agent`, so it remains useful to the UI, CLI, scheduled jobs, and future
 non-AI implementations.
 
-## Proposed future API contract
+## API contract and proposed extensions
 
 Exact schemas remain subject to implementation design and tests.
 
@@ -246,7 +254,9 @@ GET /api/host-completion/cases?status=pending&limit=100
 ```
 
 The response should contain the Host, known OS/BMC assets, the missing side,
-relevant scope metadata, and cursor-based pagination.
+relevant scope metadata, and cursor-based pagination. The read-only endpoint is
+implemented; its current contract is documented in
+[Host Completion API](host-completion-api.md).
 
 ### List confirmed examples
 
@@ -255,9 +265,12 @@ GET /api/host-completion/examples
 ```
 
 This returns only the fields needed to infer patterns from confirmed pairs. It
-must not expose secrets or unrelated sensitive notes.
+must not expose secrets or unrelated sensitive notes. The read-only endpoint is
+implemented.
 
 ### Submit a suggestion
+
+Status: proposed, not implemented.
 
 ```http
 POST /api/host-completion/suggestions
@@ -288,6 +301,8 @@ and confidence range before storing it.
 
 ### Record an operator decision
 
+Status: proposed, not implemented.
+
 ```http
 POST /api/host-completion/suggestions/{suggestion_id}/decision
 ```
@@ -302,6 +317,8 @@ Example correction:
 ```
 
 ### Apply an accepted suggestion
+
+Status: proposed, not implemented.
 
 ```http
 POST /api/host-completion/suggestions/{suggestion_id}/apply

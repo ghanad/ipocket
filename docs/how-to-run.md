@@ -429,6 +429,23 @@ List unassigned IPs:
 curl -s "http://127.0.0.1:8000/ip-assets?unassigned-only=true"
 ```
 
+List Hosts that have an OS side but no active BMC side:
+
+```bash
+curl -s "http://127.0.0.1:8000/api/host-completion/cases?missing=BMC&limit=100"
+```
+
+List complete OS/BMC Host examples for an external pattern-learning Agent:
+
+```bash
+curl -s "http://127.0.0.1:8000/api/host-completion/examples?limit=100"
+```
+
+These Host Completion endpoints are read-only and public like the existing
+inventory read routes. Follow `next_cursor` with a `cursor` query parameter to
+read subsequent pages. They do not run an Agent or persist suggestions. See
+[host-completion-api.md](host-completion-api.md) for the current boundary.
+
 Delete an IP asset (Editor):
 
 ```bash
