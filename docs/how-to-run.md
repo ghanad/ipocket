@@ -38,6 +38,10 @@ and CI builds it from `frontend/` sources for verification and Docker packaging.
 The Docker image builds all React entrypoints automatically in a separate Node
 stage; Node.js is not included in the final runtime image.
 
+The frontend declares Rollup's Linux x64 binary as an optional dependency so a
+lockfile generated on macOS remains usable by Linux CI and Docker builds. Keep
+optional dependencies enabled when refreshing `frontend/package-lock.json`.
+
 Frontend API foundation: all React page-domain adapters, including Connectors
 and Login, use `frontend/src/shared/apiClient.ts` for same-origin session
 requests, typed FastAPI errors, login-return redirects, empty responses, and

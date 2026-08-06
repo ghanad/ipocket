@@ -83,7 +83,7 @@ def _run_cassandra_connector_job(
             logs=_redact_connector_logs(final_logs, password),
             toast_messages=toast_messages,
         )
-    except CassandraConnectorError as exc:
+    except CassandraConnectorError:
         _update_connector_job(
             job_id,
             status="failed",

@@ -84,6 +84,19 @@ def test_frontend_lockfile_uses_patched_postcss() -> None:
     assert tuple(int(part) for part in version.split(".")) >= (8, 5, 23)
 
 
+def test_frontend_lockfile_includes_linux_rollup_binary() -> None:
+    package = json.loads(
+        (REPO_ROOT / "frontend" / "package.json").read_text(encoding="utf-8")
+    )
+    lockfile = json.loads(
+        (REPO_ROOT / "frontend" / "package-lock.json").read_text(encoding="utf-8")
+    )
+    dependency = "@rollup/rollup-linux-x64-gnu"
+
+    assert dependency in package["optionalDependencies"]
+    assert f"node_modules/{dependency}" in lockfile["packages"]
+
+
 def test_docker_smoke_build_is_separate_from_tag_release() -> None:
     workflow = (REPO_ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8")
     smoke = _workflow_job(workflow, "docker-smoke")

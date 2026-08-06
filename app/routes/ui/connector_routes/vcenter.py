@@ -64,7 +64,7 @@ def _run_vcenter_connector_job(
             logs=_redact_connector_logs(final_logs, password),
             toast_messages=toast_messages,
         )
-    except VCenterConnectorError as exc:
+    except VCenterConnectorError:
         _update_connector_job(
             job_id,
             status="failed",

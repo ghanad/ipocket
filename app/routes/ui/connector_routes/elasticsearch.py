@@ -78,7 +78,7 @@ def _run_elasticsearch_connector_job(
             logs=_redact_connector_logs(final_logs, password, api_key),
             toast_messages=toast_messages,
         )
-    except ElasticsearchConnectorError as exc:
+    except ElasticsearchConnectorError:
         _update_connector_job(
             job_id,
             status="failed",

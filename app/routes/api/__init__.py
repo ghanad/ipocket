@@ -2,7 +2,16 @@ from __future__ import annotations
 
 from fastapi import APIRouter
 
-from . import assets, auth, host_completion, hosts, imports, management, metadata, system
+from . import (
+    assets,
+    auth,
+    host_completion,
+    hosts,
+    imports,
+    management,
+    metadata,
+    system,
+)
 from .dependencies import get_current_user, require_editor
 from .utils import (
     asset_payload,

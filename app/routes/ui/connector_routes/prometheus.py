@@ -77,7 +77,7 @@ def _run_prometheus_connector_job(
             logs=_redact_connector_logs(final_logs, token),
             toast_messages=toast_messages,
         )
-    except PrometheusConnectorError as exc:
+    except PrometheusConnectorError:
         _update_connector_job(
             job_id,
             status="failed",

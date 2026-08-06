@@ -78,7 +78,7 @@ def _run_ceph_connector_job(
             logs=_redact_connector_logs(final_logs, password),
             toast_messages=toast_messages,
         )
-    except CephConnectorError as exc:
+    except CephConnectorError:
         _update_connector_job(
             job_id,
             status="failed",

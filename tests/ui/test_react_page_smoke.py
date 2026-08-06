@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import pytest
 
-from app import db, repository
+from app import repository
 from app.main import app
 from app.models import IPAssetType, User, UserRole
 from app.routes import ui
