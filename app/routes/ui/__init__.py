@@ -11,6 +11,7 @@ from . import (
     dashboard,
     data_ops,
     hosts,
+    host_completion,
     ip_assets,
     ranges,
     settings,
@@ -36,6 +37,7 @@ router.include_router(account.router)
 router.include_router(connectors.router)
 router.include_router(ip_assets.router)
 router.include_router(hosts.router)
+router.include_router(host_completion.router)
 router.include_router(ranges.router)
 router.include_router(settings.router)
 router.include_router(users.router)

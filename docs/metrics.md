@@ -30,3 +30,6 @@ archives.
 Host completion statistics are JSON analytics, not Prometheus series. Read them
 from `GET /api/host-completion/analytics`; doing so does not mutate inventory or
 change the counters above.
+
+The `/host-completion/analytics` page visualizes the same JSON and refreshes it
+every 60 seconds. Page views and refreshes do not create exporter-side metrics.

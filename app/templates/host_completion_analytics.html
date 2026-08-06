@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block content %}
+<div
+  id="host-completion-analytics-root"
+  class="host-completion-analytics-root"
+  data-endpoint="/api/host-completion/analytics"
+>
+  <section class="page-header">
+    <div>
+      <h1>Host Completion Analytics</h1>
+      <p class="subtitle">Loading Host Completion analytics…</p>
+    </div>
+  </section>
+</div>
+<script type="module" src="/static/react/host-completion-analytics/host-completion-analytics.js"></script>
+{% endblock %}

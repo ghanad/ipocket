@@ -13,6 +13,10 @@ export default defineConfig(({ mode }) => ({
         about: resolve(__dirname, "src/about/main.tsx"),
         login: resolve(__dirname, "src/login/main.tsx"),
         management: resolve(__dirname, "src/management/main.tsx"),
+        "host-completion-analytics": resolve(
+          __dirname,
+          "src/host-completion-analytics/main.tsx",
+        ),
         ranges: resolve(__dirname, "src/ranges/main.tsx"),
         "range-addresses": resolve(
           __dirname,

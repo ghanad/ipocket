@@ -47,6 +47,8 @@ types. The existing REST API can provide enough raw data for a proof of concept:
 - `GET /api/host-completion/examples` returns complete OS/BMC Host examples.
 - `GET /api/host-completion/analytics` returns read-only completion totals,
   confirmed-pair patterns, and active IP type counts.
+- `/host-completion/analytics` visualizes that response for operators and
+  refreshes it every 60 seconds without persisting Agent state.
 
 A prototype could read `GET /ip-assets`, group assets by `host_id`, use complete
 OS/BMC pairs as examples, and identify incomplete Hosts. The current API is not,

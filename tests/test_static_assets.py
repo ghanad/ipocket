@@ -17,6 +17,7 @@ CSS_MODULES = (
     "ip-assets.css",
     "range-addresses.css",
     "audit-log.css",
+    "host-completion-analytics.css",
 )
 
 

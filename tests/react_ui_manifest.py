@@ -84,6 +84,15 @@ REACT_PAGES = (
         "/api/ui/hosts",
     ),
     ReactPage(
+        "Host Completion Analytics",
+        "/host-completion/analytics",
+        "host-completion-analytics-root",
+        "/api/host-completion/analytics",
+        "host-completion-analytics",
+        'class="hc-stacked-bar"',
+        "/api/host-completion/analytics",
+    ),
+    ReactPage(
         "IP Asset Detail",
         "/ui/ip-assets/{asset_id}",
         "ip-asset-detail-root",

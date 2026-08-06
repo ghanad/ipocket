@@ -51,6 +51,8 @@ Keep `/metrics` exposing at least:
 - `ipam_ip_unassigned_both_total`
 
 ## UI Behavior (Current)
+- **Desktop only:** Design, implement, and test the UI exclusively for desktop viewports.
+- Mobile and responsive layouts are out of scope; do not spend effort making the application usable on phones or other small-screen devices.
 - IP Assets list is the primary assignment workflow.
 - Use `Assignment = Unassigned only` and `Project = Unassigned` filters for project-missing review.
 - There is **no dedicated "Needs Assignment" page** in the current UI.

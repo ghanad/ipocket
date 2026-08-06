@@ -73,5 +73,8 @@ details live in their focused documents under `docs/`.
 - `GET /api/host-completion/analytics` summarizes active Host completeness,
   confirmed OS/BMC pairs, address-prefix patterns, and IP type counts without
   changing inventory.
+- `/host-completion/analytics` presents those counts as an auto-refreshing,
+  read-only dashboard with completion, incomplete-host, pattern-confidence, and
+  IP-type charts.
 - Docker, Docker Compose, Helm, local development, CI, and frontend build
   instructions are in [How to run](how-to-run.md).

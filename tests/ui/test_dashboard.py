@@ -83,6 +83,26 @@ def test_management_react_root_preserves_page_section_spacing() -> None:
     assert "gap: 24px;" in css
 
 
+def test_host_completion_analytics_page_mounts_react_entry(client) -> None:
+    response = client.get("/host-completion/analytics")
+
+    assert response.status_code == 200
+    assert "Host Completion Analytics" in response.text
+    assert 'id="host-completion-analytics-root"' in response.text
+    assert 'data-endpoint="/api/host-completion/analytics"' in response.text
+    root_attributes = response.text.split('id="host-completion-analytics-root"', 1)[
+        1
+    ].split(">", 1)[0]
+    assert "aria-live" not in root_attributes
+    assert 'href="/host-completion/analytics">Host Completion</a>' in response.text
+    assert 'class="nav-link nav-link-active"' in response.text
+    assert (
+        '<script type="module" '
+        'src="/static/react/host-completion-analytics/'
+        'host-completion-analytics.js"></script>'
+    ) in response.text
+
+
 def test_flash_messages_render_once(client) -> None:
     payload = [{"type": "success", "message": "Saved successfully."}]
     encoded = ui._encode_flash_payload(payload)

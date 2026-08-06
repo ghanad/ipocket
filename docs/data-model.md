@@ -139,3 +139,7 @@ active Host/IPAsset relationships and add no completion-state tables. Analytics
 classifies Hosts from their linked active OS/BMC assets; an `unlinked` Host has
 neither type linked. Active assets without a Host still contribute to IP type
 counts but cannot form confirmed pairs.
+
+The Host Completion analytics UI at `/host-completion/analytics` reads this
+projection every 60 seconds. It does not add UI state tables or persist inferred
+patterns.

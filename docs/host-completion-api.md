@@ -44,6 +44,10 @@ Patterns with zero support are omitted and results are ordered by descending
 support. Invalid or mixed-family addresses still count as confirmed pairs but
 are safely omitted from pattern inference.
 
+The React dashboard at `/host-completion/analytics` consumes this endpoint. It
+shows completion and incomplete-host charts, IP type distribution, and pattern
+confidence, and automatically refreshes the read-only response every 60 seconds.
+
 Example response:
 
 ```json

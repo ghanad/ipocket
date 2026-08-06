@@ -402,6 +402,11 @@ Read Host completion counts and inferred `/16` address mappings:
 curl -s "http://127.0.0.1:8000/api/host-completion/analytics"
 ```
 
+Open the read-only analytics dashboard at
+`http://127.0.0.1:8000/host-completion/analytics`. It charts completion and IP
+type counts, shows discovered pattern confidence, and refreshes from the API
+every 60 seconds.
+
 These Host Completion endpoints are read-only and public like the existing
 inventory read routes. Follow `next_cursor` with a `cursor` query parameter to
 read subsequent pages. They do not run an Agent or persist suggestions. See
