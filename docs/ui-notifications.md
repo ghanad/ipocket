@@ -1,38 +1,27 @@
-# UI Notifications (Toasts)
+# UI notifications
 
-ipocket includes a lightweight toast system for global feedback (success/error/info). Toasts appear in the top-right corner and auto-dismiss after a few seconds. Use them for actions like create/update/import/export; keep inline form errors for field-level validation.
+ipocket uses compact success, information, warning, and error toasts for
+page-level feedback. Field validation remains inline beside the affected form.
 
-## What it is
-- A small toast container is rendered in `base.html` so it works across all UI pages.
-- Toasts auto-dismiss after ~4 seconds and can be closed manually.
-- Supported types: `success`, `info`, `error`, `warning` (optional).
+## Shell flash messages
 
-## Triggering from the backend (flash messages)
-Use the session-backed flash helper in `app/routes/ui.py`. These messages are one-time and cleared after they are rendered.
-Flash payloads are stored in a signed cookie, so each message is truncated to a safe maximum length (`400` chars) before encoding.
+Server redirects use `_redirect_with_flash` from
+`app/routes/ui/_utils/session.py` (re-exported by `app/routes/ui/utils.py`). The
+signed flash cookie is consumed by `app/routes/ui/_utils/rendering.py`, rendered
+by `app/templates/base.html`, and dismissed by `app/static/toast.js`. Messages
+are truncated to the safe cookie payload limit before storage.
 
-**Example: success after a POST redirect**
-```python
-return _redirect_with_flash(
-    request,
-    "/ui/projects",
-    "Project created.",
-    message_type="success",
-)
-```
-
-**Example: unexpected error redirect**
 ```python
 return _redirect_with_flash(
     request,
     "/ui/ip-assets",
-    "Something went wrong while saving the asset.",
-    message_type="error",
+    "IP asset updated.",
+    message_type="success",
 )
 ```
 
-## Client-side triggers (minimal)
-To trigger a toast on the client (for example, when starting an export), add `data-toast-message` and optional `data-toast-type` attributes to a link or button:
+For a native download link, `data-toast-message` and `data-toast-type` can show
+non-blocking feedback without intercepting the download:
 
 ```html
 <a
@@ -44,13 +33,20 @@ To trigger a toast on the client (for example, when starting an export), add `da
 </a>
 ```
 
-## Guidelines
-- **Use toasts for global feedback** (created/updated/imported/exported, unexpected errors).
-- **Keep inline validation errors** inside forms; do not replace field-level errors with toasts.
-- Prefer `success`/`info` for positive feedback and `error` for failures.
-- Bulk edits on the IP Assets page surface success/error results as toast messages after redirecting back to the list.
-- Connectors UI (`/ui/connectors?tab=vcenter`) uses toasts for run outcomes (`success` / `warning` / `error`) while keeping field-level validation inline.
+## React pages
+
+React pages own transient feedback produced without a full redirect. Keep the
+message in page/component state and render it with the shared `.toast-*` classes
+from `app/static/css/utility-pages.css`. Clear or replace it after the next
+relevant action and provide an accessible dismiss button when it persists.
+
+Connector job toasts are returned as structured job result data; field-level
+connector validation stays in the form.
 
 ## Defaults
-- Auto-dismiss: ~4 seconds
-- Location: top-right
+
+- Shell auto-dismiss: approximately four seconds.
+- Shell location: top-right.
+- Use success/info for completed actions, warning for recoverable partial
+  outcomes, and error for page-level failures.
+- Never replace field-specific validation with a toast.

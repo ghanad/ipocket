@@ -1,22 +1,16 @@
 # Roadmap
 
-## Phase 1 (MVP)
-- CRUD IP inventory + roles
-- Assignment workflow integrated into IP Assets list filters and quick edit actions
-- Prometheus /metrics
+The current product already includes IP inventory CRUD, project assignment,
+Hosts/Vendors/Tags/Ranges, import/export, audit logs, service discovery,
+Prometheus metrics, React UI, and connector-driven ingestion.
 
-## Phase 2
-- CSV import
-- audit log (lightweight)
+## Candidate next work
 
-## Phase 3
-- health checks (ping/80/443)
+- Scheduled or operator-triggered health checks for selected addresses/services.
+- Range discovery with explicit NEW/GONE review instead of automatic mutation.
+- Host Completion suggestions and human feedback, building on the existing
+  read-only cases/examples API.
 
-## Phase 4
-- discovery/scanner (ranges + NEW/GONE detection)
-
-## Future design proposals
-
-- [Host Completion Agents](host-completion-agents.md): a human-in-the-loop,
-  self-improving workflow for completing OS/BMC Host pairs without requiring
-  DNS, network reachability, or direct Agent access to the database.
+Host Completion is a design proposal rather than a committed release plan. See
+[Host Completion Agents](host-completion-agents.md) and the implemented read-only
+[Host Completion API](host-completion-api.md).

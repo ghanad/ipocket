@@ -42,15 +42,11 @@ The frontend declares Rollup's Linux x64 binary as an optional dependency so a
 lockfile generated on macOS remains usable by Linux CI and Docker builds. Keep
 optional dependencies enabled when refreshing `frontend/package-lock.json`.
 
-Frontend API foundation: all React page-domain adapters, including Connectors
-and Login, use `frontend/src/shared/apiClient.ts` for same-origin session
-requests, typed FastAPI errors, login-return redirects, empty responses, and
-request cancellation. Its JSON, FormData, and Blob/raw-response behavior is
-covered by unit tests. Connectors keeps polling, retry, cancellation, and
-credential clearing in its page domain; Login keeps its non-navigating
-authentication handling, sanitized error mapping, and redirect validation in
-its page-domain adapter; native download links remain ordinary browser
-downloads. Shared-client consolidation is complete across the React modules.
+React page adapters use `frontend/src/shared/apiClient.ts` for same-origin
+session requests, typed errors, login-return redirects, request cancellation,
+and JSON/FormData/raw responses. Native download links remain normal browser
+downloads. See [Frontend architecture](frontend-architecture.md) for entry,
+mount, compatibility-route, and authorization conventions.
 
 Initialize the database (runs migrations):
 
@@ -183,55 +179,12 @@ ordered, focused modules under `/static/css/`. When adding styles, place shared
 rules in the matching module and page-only rules in that page's module, while
 keeping the import order in `app.css` unchanged unless the cascade is intentionally
 being updated.
-The primary migration is complete across the 15 React entries listed above.
-FastAPI/Jinja still renders the application shell and sidebar. Management loads
-dashboard data from `GET /api/management/overview`; `/ui/ranges` uses
-`GET/POST /api/ui/ranges` and `PATCH/DELETE /api/ui/ranges/{id}` for its table
-and drawer workflows. The Ranges implementation preserves CIDR validation,
-duplicate handling, exact-name delete confirmation, `?edit=<id>` and
-`?delete=<id>` entry links, and Used/Free address drill-down links. Production
-bundles are served locally from `/static/react/management/management.js` and
-`/static/react/ranges/ranges.js`. Library uses
-`GET/POST /api/ui/library/{projects|vendors|tags}` plus
-`PATCH/DELETE /api/ui/library/{entity}/{id}`, and its bundle is served from
-`/static/react/library/library.js`. Existing `tab`, `edit`, and `delete` query
-parameters and legacy HTML mutation routes remain compatible.
-The Hosts list uses `GET/POST /api/ui/hosts` and
-`PATCH/DELETE /api/ui/hosts/{id}` from `/static/react/hosts/hosts.js`.
-`GET /api/ui/hosts` is public like the other inventory read routes and returns
-`can_edit=false` for signed-out requests. POST/PATCH/DELETE use the existing UI
-session cookie and allow only Editor and Superuser; Viewer is read-only.
-Legacy `/ui/hosts?edit=<id>` and `/ui/hosts?delete=<id>` links receive a
-server-resolved Drawer bootstrap, so the target remains available when filters
-or pagination hide it, and an unknown Host returns 404. `/ui/hosts/{id}` keeps
-the Jinja shell/sidebar and mounts `/static/react/host-detail/host-detail.js`;
-its display-ready data comes from authenticated `GET /api/ui/hosts/{id}/detail`;
-an expired session is sent through the existing login return flow.
-Legacy Host form/partial routes remain available.
-`/ui/users` keeps the authenticated Jinja shell/sidebar and mounts
-`/static/react/users/users.js`. Its table and drawer workflows use
-`GET/POST /api/ui/users` and `PATCH/DELETE /api/ui/users/{id}`. The page and
-every endpoint remain server-authorized for Superusers only; Viewer and Editor
-requests are forbidden. Password hashing, role protection, last-active-
-Superuser safeguards, exact-username deletion confirmation, and USER audit
-entries remain backend responsibilities. Legacy HTML form mutation routes are
-retained for compatibility.
-`/ui/account/password` keeps the authenticated Jinja shell/sidebar and mounts
-`/static/react/account-password/account-password.js`. Its form submits to
-`POST /api/ui/account/password`; current-password verification, bcrypt hashing,
-self-only mutation, and the single USER audit entry remain server-side. The
-legacy `POST /ui/account/password` form route uses the same validation and
-mutation helper and remains available for compatibility.
-`/ui/ip-assets/{id}` keeps the authenticated Jinja shell/sidebar and mounts
-`/static/react/ip-asset-detail/ip-asset-detail.js`. It reads
-`GET /api/ui/ip-assets/{id}/detail` and uses focused PATCH, DELETE, and
-`POST .../auto-host` endpoints. Viewer can read Detail and Audit Log; mutations
-reuse the existing IP Asset Editor-only dependency. Legacy edit/delete/auto-host
-HTML routes remain available.
-The IP Assets list is built from `frontend/src/ip-assets/` and served from
-`/static/react/ip-assets/ip-assets.js`. Direct create/edit/delete HTML forms
-remain available for compatibility and continue to use the shared Jinja form
-helpers.
+The normal browser pages use the locally built React entries. FastAPI/Jinja
+still renders the application shell and lightweight mount templates. A small
+set of direct form/error routes remains for compatibility; it is documented in
+[Frontend architecture](frontend-architecture.md). Do not remove templates or
+shared static assets without checking route render calls, Jinja includes,
+`tests/react_ui_manifest.py`, and compatibility POST tests.
 
 ## Tests and React page maintenance
 
@@ -249,7 +202,7 @@ When adding a React page, add its entry to `frontend/vite.config.ts`, add the
 lightweight Jinja mount and focused frontend tests, and add one record to
 `tests/react_ui_manifest.py`. That single manifest drives the parametrized page
 mount/API smoke tests and the Vite bundle-reference checks. Update
-`docs/react-ui-migration.md` with its access policy and any compatibility route.
+`docs/frontend-architecture.md` when adding or removing a compatibility route.
 To force local assets in any environment, set:
 
 ```
@@ -377,8 +330,6 @@ Safety rules:
 The legacy direct form routes under `/ui/users` remain available for existing
 links and tests, and share the same backend validation and mutation helpers as
 the JSON API.
-
-UI design reference templates live in `/ui_template` for layout and styling guidance.
 
 ## First-time setup checklist
 1) Bootstrap a superuser (env vars above).

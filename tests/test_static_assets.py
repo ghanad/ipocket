@@ -212,7 +212,7 @@ def test_refactored_templates_load_external_page_assets() -> None:
     assert 'class="panel"' not in about_template
 
     assert (repo_root / "app/static/js/drawer.js").exists()
-    assert (repo_root / "app/static/js/hosts.js").exists()
+    assert not (repo_root / "app/static/js/hosts.js").exists()
     assert not (repo_root / "app/static/js/ip-assets.js").exists()
     vite_config = (repo_root / "frontend/vite.config.ts").read_text(encoding="utf-8")
     for page in REACT_PAGES:
@@ -249,19 +249,12 @@ def test_refactored_templates_load_external_page_assets() -> None:
     assert "const commonTags = useMemo" in ip_assets_page
     assert "tags_to_remove" in bulk_drawer
     assert "deleteAsset(endpoint, asset.id" in ip_assets_page
-    hosts_js = (repo_root / "app/static/js/hosts.js").read_text(encoding="utf-8")
     hosts_table = (repo_root / "app/templates/partials/hosts_table.html").read_text(
         encoding="utf-8"
     )
     assert 'class="table-wrapper table-wrapper-hosts"' in hosts_table
     assert 'style="min-width: 1240px; table-layout: fixed;"' not in hosts_table
     assert '<col class="host-col-tags" />' in hosts_table
-    assert 'window.htmx.ajax("GET", url.toString(), {' in hosts_js
-    assert 'target: "#host-table-container"' in hosts_js
-    assert "if (filterForm && !window.htmx)" in hosts_js
-    assert 'select.addEventListener("change", submitHostFilters);' in hosts_js
-    assert "data-tags-more-toggle" in hosts_js
-    assert "dataset.hostPopoverTag" in hosts_js
 
 
 def test_ip_assets_react_source_is_split_into_focused_modules() -> None:
