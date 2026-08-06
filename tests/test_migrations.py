@@ -90,7 +90,9 @@ def test_ip_assets_table_excludes_subnet_and_gateway(tmp_path) -> None:
         connection.close()
 
 
-def test_existing_0010_database_is_upgraded_to_the_extended_review_schema(tmp_path) -> None:
+def test_existing_0010_database_is_upgraded_to_the_extended_review_schema(
+    tmp_path,
+) -> None:
     db_path = tmp_path / "existing-0010.db"
     config = db._alembic_config(str(db_path))
     command.upgrade(config, "0010_host_completion_decisions")

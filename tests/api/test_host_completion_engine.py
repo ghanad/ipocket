@@ -411,7 +411,9 @@ def test_unlinked_pair_is_consumed_once_and_accept_is_idempotent(
         for source_second in (10, 11):
             for index in range(1, 4):
                 host_bits = index if source_second == 10 else index + 10
-                host = repository.create_host(connection, f"pair-{source_second}-{index}")
+                host = repository.create_host(
+                    connection, f"pair-{source_second}-{index}"
+                )
                 repository.create_ip_asset(
                     connection,
                     f"10.{source_second}.{host_bits}.{host_bits}",
@@ -445,14 +447,20 @@ def test_unlinked_pair_is_consumed_once_and_accept_is_idempotent(
         "decision": "ACCEPT",
         "host_name": "paired-unlinked",
     }
-    first = client.post("/api/host-completion/decisions", headers=headers, json=decision)
-    second = client.post("/api/host-completion/decisions", headers=headers, json=decision)
+    first = client.post(
+        "/api/host-completion/decisions", headers=headers, json=decision
+    )
+    second = client.post(
+        "/api/host-completion/decisions", headers=headers, json=decision
+    )
 
     assert first.status_code == second.status_code == 200
     assert first.json()["host_id"] == second.json()["host_id"]
     connection = _setup_connection()
     try:
-        assert [host.name for host in repository.list_hosts(connection)].count("paired-unlinked") == 1
+        assert [host.name for host in repository.list_hosts(connection)].count(
+            "paired-unlinked"
+        ) == 1
     finally:
         connection.close()
 
@@ -524,7 +532,10 @@ def test_extended_decisions_validate_host_name_attach_and_deactivate(
     assert deactivated.status_code == 200
     connection = _setup_connection()
     try:
-        assert repository.get_ip_asset_by_ip(connection, "10.20.1.1").host_id == no_bmc.json()["host_id"]
+        assert (
+            repository.get_ip_asset_by_ip(connection, "10.20.1.1").host_id
+            == no_bmc.json()["host_id"]
+        )
         assert repository.get_ip_asset_by_ip(connection, "10.20.1.3").archived
     finally:
         connection.close()
