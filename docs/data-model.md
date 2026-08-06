@@ -134,5 +134,8 @@ Connector output controls update semantics:
 - Ceph and Kubernetes additionally create/update Hosts and may update Host links,
   Type, and Project; optional cluster/label values become normalized Tags.
 
-Host Completion cases/examples are read-only projections of active Host/IPAsset
-relationships and add no completion-state tables.
+Host Completion cases, examples, and analytics are read-only projections of
+active Host/IPAsset relationships and add no completion-state tables. Analytics
+classifies Hosts from their linked active OS/BMC assets; an `unlinked` Host has
+neither type linked. Active assets without a Host still contribute to IP type
+counts but cannot form confirmed pairs.

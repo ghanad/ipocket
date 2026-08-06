@@ -39,7 +39,10 @@ from .hosts import (
     list_hosts_with_ip_counts_paginated,
     update_host,
 )
-from .host_completion import list_host_completion_records
+from .host_completion import (
+    get_host_completion_analytics_source,
+    list_host_completion_records,
+)
 from .metadata import (
     create_project,
     create_tag,
@@ -127,6 +130,7 @@ __all__ = [
     "list_hosts_with_ip_counts",
     "list_hosts_with_ip_counts_paginated",
     "update_host",
+    "get_host_completion_analytics_source",
     "list_host_completion_records",
     "create_project",
     "create_tag",

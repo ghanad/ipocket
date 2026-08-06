@@ -14,6 +14,42 @@ from ._db import session_scope
 CompletionKind = Literal["incomplete", "complete"]
 
 
+def get_host_completion_analytics_source(
+    connection_or_session: sqlite3.Connection | Session,
+) -> dict[str, object]:
+    """Return the active inventory fields needed for completion analytics."""
+
+    with session_scope(connection_or_session) as session:
+        host_ids = [
+            int(value)
+            for value in session.scalars(
+                select(db_schema.Host.id).order_by(db_schema.Host.id)
+            ).all()
+        ]
+        assets = [
+            {
+                "host_id": (
+                    int(row["host_id"]) if row["host_id"] is not None else None
+                ),
+                "ip_address": str(row["ip_address"]),
+                "type": row["type"],
+            }
+            for row in session.execute(
+                select(
+                    db_schema.IPAsset.host_id,
+                    db_schema.IPAsset.ip_address,
+                    db_schema.IPAsset.type,
+                )
+                .where(db_schema.IPAsset.archived == 0)
+                .order_by(db_schema.IPAsset.id)
+            )
+            .mappings()
+            .all()
+        ]
+
+    return {"host_ids": host_ids, "assets": assets}
+
+
 def _has_active_asset(asset_type: IPAssetType):
     return (
         select(db_schema.IPAsset.id)

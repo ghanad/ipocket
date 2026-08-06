@@ -40,6 +40,44 @@ class HostCompletionExamplesPage(BaseModel):
     next_cursor: Optional[int]
 
 
+class HostCompletionBreakdown(BaseModel):
+    os_only: int
+    bmc_only: int
+    unlinked: int
+
+
+class HostCompletionPattern(BaseModel):
+    source_prefix: str
+    target_prefix: str
+    support: int
+    contradictions: int
+    coverage_percent: float
+
+
+class HostCompletionIPTypeCounts(BaseModel):
+    BMC: int
+    OS: int
+    VM: int
+    unknown: int
+
+
+class HostCompletionAnalytics(BaseModel):
+    total_hosts: int
+    complete_hosts: int
+    incomplete_hosts: int
+    breakdown: HostCompletionBreakdown
+    confirmed_pairs: int
+    patterns: list[HostCompletionPattern]
+    ip_type_counts: HostCompletionIPTypeCounts
+
+
+@router.get("/analytics", response_model=HostCompletionAnalytics)
+def get_host_completion_analytics(connection=Depends(get_connection)):
+    """Return read-only completion counts and confirmed address patterns."""
+
+    return host_completion.get_analytics(connection)
+
+
 @router.get("/cases", response_model=HostCompletionCasesPage)
 def list_host_completion_cases(
     missing: Literal["OS", "BMC", "any"] = "any",

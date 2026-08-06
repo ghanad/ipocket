@@ -113,3 +113,64 @@ def test_host_completion_query_validation(client):
         client.get("/api/host-completion/examples", params={"limit": 501}).status_code
         == 422
     )
+
+
+def test_host_completion_analytics_returns_counts_pairs_and_patterns(
+    client, _setup_connection
+):
+    connection = _setup_connection()
+    try:
+        for index, (os_ip, bmc_ip) in enumerate(
+            [
+                ("10.10.1.1", "10.30.1.1"),
+                ("10.10.2.2", "10.30.2.2"),
+                ("10.10.3.3", "10.30.9.9"),
+            ],
+            start=1,
+        ):
+            host = repository.create_host(connection, f"complete-{index}")
+            repository.create_ip_asset(
+                connection, os_ip, IPAssetType.OS, host_id=host.id
+            )
+            repository.create_ip_asset(
+                connection, bmc_ip, IPAssetType.BMC, host_id=host.id
+            )
+
+        os_only = repository.create_host(connection, "os-only-analytics")
+        repository.create_ip_asset(
+            connection, "10.11.0.1", IPAssetType.OS, host_id=os_only.id
+        )
+        bmc_only = repository.create_host(connection, "bmc-only-analytics")
+        repository.create_ip_asset(
+            connection, "10.31.0.1", IPAssetType.BMC, host_id=bmc_only.id
+        )
+        repository.create_host(connection, "unlinked-analytics")
+
+        repository.create_ip_asset(connection, "10.99.0.1", IPAssetType.OS)
+        repository.create_ip_asset(connection, "10.99.0.2", IPAssetType.VM)
+        repository.create_ip_asset(connection, "10.99.0.3", IPAssetType.OTHER)
+        archived = repository.create_ip_asset(connection, "10.99.0.4", IPAssetType.BMC)
+        repository.set_ip_asset_archived(connection, archived.ip_address, True)
+    finally:
+        connection.close()
+
+    response = client.get("/api/host-completion/analytics")
+
+    assert response.status_code == 200
+    assert response.json() == {
+        "total_hosts": 6,
+        "complete_hosts": 3,
+        "incomplete_hosts": 3,
+        "breakdown": {"os_only": 1, "bmc_only": 1, "unlinked": 1},
+        "confirmed_pairs": 3,
+        "patterns": [
+            {
+                "source_prefix": "10.10.0.0/16",
+                "target_prefix": "10.30.0.0/16",
+                "support": 2,
+                "contradictions": 1,
+                "coverage_percent": 66.67,
+            }
+        ],
+        "ip_type_counts": {"BMC": 4, "OS": 5, "VM": 1, "unknown": 1},
+    }

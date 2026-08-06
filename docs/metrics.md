@@ -26,3 +26,7 @@ catalogs, authentication, Host Completion reads, exports, and connector jobs do
 not add exporter-side metric names. Applied imports and connectors affect these
 counters only through their normal IP asset creates, updates, restores, and
 archives.
+
+Host completion statistics are JSON analytics, not Prometheus series. Read them
+from `GET /api/host-completion/analytics`; doing so does not mutate inventory or
+change the counters above.

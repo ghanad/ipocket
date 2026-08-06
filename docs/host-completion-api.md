@@ -13,9 +13,58 @@ selection.
 
 ## Current endpoints
 
-Both current endpoints are public, consistent with the existing inventory read
+All current endpoints are public, consistent with the existing inventory read
 API. They expose no credentials or Host/IP notes. Future suggestion and apply
 operations will require an explicit authorization design before implementation.
+
+### Read analytics
+
+```http
+GET /api/host-completion/analytics
+```
+
+The analytics response includes total, complete, and incomplete Host counts.
+The incomplete breakdown is mutually exclusive: `os_only` has active OS assets
+only, `bmc_only` has active BMC assets only, and `unlinked` has neither active
+type linked. Assets without `host_id` do not create a Host or confirmed pair,
+but they remain included in `ip_type_counts`.
+
+`confirmed_pairs` counts every OS/BMC address combination on a complete Host. A
+Host with two active OS and two active BMC addresses therefore contributes four
+pairs while contributing one `complete_hosts` entry. Archived assets are
+excluded throughout. `BMC`, `OS`, and `VM` have dedicated type counters; null,
+unexpected, `VIP`, and `OTHER` types are grouped as `unknown`.
+
+For valid same-family IP pairs, analytics groups the OS source and BMC target by
+their `/16` networks. Replacing the source `/16` with the target `/16` explains
+a pair when the remaining address suffix is unchanged. Each returned pattern
+reports explained pairs as `support`, same-prefix-group mismatches as
+`contradictions`, and `support / confirmed_pairs` as `coverage_percent`.
+Patterns with zero support are omitted and results are ordered by descending
+support. Invalid or mixed-family addresses still count as confirmed pairs but
+are safely omitted from pattern inference.
+
+Example response:
+
+```json
+{
+  "total_hosts": 450,
+  "complete_hosts": 310,
+  "incomplete_hosts": 140,
+  "breakdown": {"os_only": 120, "bmc_only": 15, "unlinked": 5},
+  "confirmed_pairs": 310,
+  "patterns": [
+    {
+      "source_prefix": "10.10.0.0/16",
+      "target_prefix": "10.30.0.0/16",
+      "support": 248,
+      "contradictions": 12,
+      "coverage_percent": 80.0
+    }
+  ],
+  "ip_type_counts": {"BMC": 310, "OS": 380, "VM": 85, "unknown": 23}
+}
+```
 
 ### List incomplete Hosts
 

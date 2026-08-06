@@ -396,6 +396,12 @@ List complete OS/BMC Host examples for an external pattern-learning Agent:
 curl -s "http://127.0.0.1:8000/api/host-completion/examples?limit=100"
 ```
 
+Read Host completion counts and inferred `/16` address mappings:
+
+```bash
+curl -s "http://127.0.0.1:8000/api/host-completion/analytics"
+```
+
 These Host Completion endpoints are read-only and public like the existing
 inventory read routes. Follow `next_cursor` with a `cursor` query parameter to
 read subsequent pages. They do not run an Agent or persist suggestions. See

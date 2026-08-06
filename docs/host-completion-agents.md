@@ -5,8 +5,9 @@ implemented or exposed by the current product unless explicitly identified as
 an existing capability.
 
 Implementation note: the initial read-only boundary is now available through
-`GET /api/host-completion/cases` and
-`GET /api/host-completion/examples`. See
+`GET /api/host-completion/cases`,
+`GET /api/host-completion/examples`, and
+`GET /api/host-completion/analytics`. See
 [Host Completion API](host-completion-api.md). Agent execution, template
 learning, suggestions, feedback persistence, and application remain proposed.
 
@@ -44,6 +45,8 @@ types. The existing REST API can provide enough raw data for a proof of concept:
 - `PATCH /ip-assets/{ip_address}` can update its type and Host assignment.
 - `GET /api/host-completion/cases` returns one-sided OS/BMC Hosts.
 - `GET /api/host-completion/examples` returns complete OS/BMC Host examples.
+- `GET /api/host-completion/analytics` returns read-only completion totals,
+  confirmed-pair patterns, and active IP type counts.
 
 A prototype could read `GET /ip-assets`, group assets by `host_id`, use complete
 OS/BMC pairs as examples, and identify incomplete Hosts. The current API is not,
