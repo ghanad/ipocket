@@ -73,7 +73,8 @@ def _to_inventory(source: dict[str, object]) -> Inventory:
             archived=bool(item.get("archived")),
         )
         for item in raw_assets
-        if isinstance(item, dict) and item.get("type") in {"OS", "BMC", "VM", "VIP", "OTHER"}
+        if isinstance(item, dict)
+        and item.get("type") in {"OS", "BMC", "VM", "VIP", "OTHER"}
     )
     hosts = tuple(
         Host(id=str(item["id"]), name=str(item["name"]))
@@ -91,7 +92,9 @@ def _to_inventory(source: dict[str, object]) -> Inventory:
             bmc_ip = item.get("bmc_address") or item.get("candidate_ip")
             if os_ip and bmc_ip:
                 decisions.append(
-                    AgentDecision(kind="WRONG_PAIR", os_ip=str(os_ip), bmc_ip=str(bmc_ip))
+                    AgentDecision(
+                        kind="WRONG_PAIR", os_ip=str(os_ip), bmc_ip=str(bmc_ip)
+                    )
                 )
         elif kind == "UNSURE":
             for address in (item.get("os_address"), item.get("bmc_address")):
@@ -121,9 +124,9 @@ def _serialize_finding(finding, inventory: Inventory) -> dict[str, object]:
     assets = [asset_by_id[asset_id] for asset_id in finding.asset_ids]
     return {
         "finding_type": finding.kind,
-        "state": "CONFLICT" if finding.kind == "CONFLICT" else (
-            "UNMATCHED" if finding.kind == "UNMATCHED_ASSET" else "PROPOSED"
-        ),
+        "state": "CONFLICT"
+        if finding.kind == "CONFLICT"
+        else ("UNMATCHED" if finding.kind == "UNMATCHED_ASSET" else "PROPOSED"),
         "proposal_id": finding.proposal_id,
         "inventory_fingerprint": finding.inventory_fingerprint,
         "host_id": int(finding.host_id) if finding.host_id is not None else None,
@@ -167,7 +170,8 @@ def get_summary(connection_or_session) -> dict[str, object]:
     return {
         **result.kpis,
         "states": state_counts,
-        "unexplained_active_assets": state_counts["UNMATCHED"] + state_counts["CONFLICT"],
+        "unexplained_active_assets": state_counts["UNMATCHED"]
+        + state_counts["CONFLICT"],
         "active_assets": len(result.states),
         "rules": [
             {
@@ -180,15 +184,27 @@ def get_summary(connection_or_session) -> dict[str, object]:
                 "active": rule.active,
                 "support": rule.support,
                 "contradictions": rule.contradictions,
-                "examples": [f"{os_ip} -> {bmc_ip}" for os_ip, bmc_ip in rule.examples[:5]],
+                "examples": [
+                    f"{os_ip} -> {bmc_ip}" for os_ip, bmc_ip in rule.examples[:5]
+                ],
             }
             for rule in result.rules
         ],
-        "findings": [_serialize_finding(finding, inventory) for finding in result.findings],
+        "findings": [
+            _serialize_finding(finding, inventory) for finding in result.findings
+        ],
     }
 
 
-def _audit(session: Session, *, user, target_type: str, target_id: int, label: str, changes: str) -> None:
+def _audit(
+    session: Session,
+    *,
+    user,
+    target_type: str,
+    target_id: int,
+    label: str,
+    changes: str,
+) -> None:
     session.add(
         db_schema.AuditLog(
             user_id=user.id,
@@ -230,7 +246,9 @@ def _normalize_counterpart_ip(value: str | None) -> str:
     try:
         address = ipaddress.ip_address(value.strip())
     except ValueError as exc:
-        raise ReconciliationError(422, "counterpart_ip must be a valid IPv4 address.") from exc
+        raise ReconciliationError(
+            422, "counterpart_ip must be a valid IPv4 address."
+        ) from exc
     if address.version != 4:
         raise ReconciliationError(422, "counterpart_ip must be a valid IPv4 address.")
     return str(address)
@@ -238,7 +256,9 @@ def _normalize_counterpart_ip(value: str | None) -> str:
 
 def _attach(session: Session, asset, host, *, user) -> None:
     if bool(asset.archived) or asset.host_id not in {None, host.id}:
-        raise ReconciliationError(409, "Proposal is stale; an asset can no longer be attached.")
+        raise ReconciliationError(
+            409, "Proposal is stale; an asset can no longer be attached."
+        )
     session.execute(
         update(db_schema.IPAsset)
         .where(db_schema.IPAsset.id == asset.id)
@@ -268,7 +288,9 @@ def _validate_bmc_capacity(session: Session, host, assets) -> None:
         )
     )
     if existing_bmc_id is not None:
-        raise ReconciliationError(409, "Target Host already has a different active BMC asset.")
+        raise ReconciliationError(
+            409, "Target Host already has a different active BMC asset."
+        )
 
 
 def _after_asset_link(_asset) -> None:
@@ -318,7 +340,10 @@ def apply_decision(
                 )
             )
             if duplicate is not None:
-                if duplicate.proposal_id != proposal_id or duplicate.decision != decision:
+                if (
+                    duplicate.proposal_id != proposal_id
+                    or duplicate.decision != decision
+                ):
                     raise ReconciliationError(
                         409, "Idempotency key was already used for another decision."
                     )
@@ -329,8 +354,13 @@ def apply_decision(
                 (item for item in result.findings if item.proposal_id == proposal_id),
                 None,
             )
-            if finding is None or finding.inventory_fingerprint != inventory_fingerprint:
-                raise ReconciliationError(409, "Proposal is stale; refresh the reconciliation queue.")
+            if (
+                finding is None
+                or finding.inventory_fingerprint != inventory_fingerprint
+            ):
+                raise ReconciliationError(
+                    409, "Proposal is stale; refresh the reconciliation queue."
+                )
 
             rows = _asset_rows(session, finding.asset_ids)
             by_id = {str(row.id): row for row in rows}
@@ -341,23 +371,31 @@ def apply_decision(
                 if finding.kind == "CREATE_HOST":
                     if not finding.proposed_host_name:
                         raise ReconciliationError(409, "Proposal has no Host name.")
-                    host, created_host = _resolve_host(session, finding.proposed_host_name)
+                    host, created_host = _resolve_host(
+                        session, finding.proposed_host_name
+                    )
                     _validate_bmc_capacity(session, host, rows)
                     for asset_id in finding.asset_ids:
                         _attach(session, by_id[asset_id], host, user=user)
                 elif finding.kind == "COMPLETE_HOST":
                     host = session.get(db_schema.Host, int(finding.host_id or 0))
                     if host is None:
-                        raise ReconciliationError(409, "Proposal Host no longer exists.")
+                        raise ReconciliationError(
+                            409, "Proposal Host no longer exists."
+                        )
                     for asset_id in finding.asset_ids:
                         asset = by_id[asset_id]
                         if asset.host_id is None:
                             _attach(session, asset, host, user=user)
                 else:
-                    raise ReconciliationError(409, "This finding cannot be accepted automatically.")
+                    raise ReconciliationError(
+                        409, "This finding cannot be accepted automatically."
+                    )
             elif decision == "CORRECT":
                 if counterpart_type not in {"OS", "BMC"}:
-                    raise ReconciliationError(422, "counterpart_type must be OS or BMC.")
+                    raise ReconciliationError(
+                        422, "counterpart_type must be OS or BMC."
+                    )
                 normalized_ip = _normalize_counterpart_ip(counterpart_ip)
                 corrected = session.scalar(
                     select(db_schema.IPAsset).where(
@@ -366,7 +404,8 @@ def apply_decision(
                 )
                 if corrected is not None and bool(corrected.archived):
                     raise ReconciliationError(
-                        409, "Counterpart asset is archived and cannot be linked automatically."
+                        409,
+                        "Counterpart asset is archived and cannot be linked automatically.",
                     )
                 if corrected is not None and corrected.type != counterpart_type:
                     raise ReconciliationError(
@@ -382,7 +421,9 @@ def apply_decision(
                     None,
                 )
                 if base is None:
-                    raise ReconciliationError(422, "Correction must pair one OS and one BMC asset.")
+                    raise ReconciliationError(
+                        422, "Correction must pair one OS and one BMC asset."
+                    )
                 if corrected is None:
                     corrected = db_schema.IPAsset(
                         ip_address=normalized_ip,
@@ -420,8 +461,7 @@ def apply_decision(
                 if host is None:
                     raise ReconciliationError(409, "Target Host no longer exists.")
                 if any(
-                    asset.host_id not in {None, host.id}
-                    for asset in (base, corrected)
+                    asset.host_id not in {None, host.id} for asset in (base, corrected)
                 ):
                     raise ReconciliationError(
                         409, "An asset is already attached to a different Host."
@@ -436,9 +476,7 @@ def apply_decision(
                 host = session.get(db_schema.Host, target_host_id)
                 if host is None:
                     raise ReconciliationError(404, "Target Host not found.")
-                if any(
-                    asset.host_id not in {None, target_host_id} for asset in rows
-                ):
+                if any(asset.host_id not in {None, target_host_id} for asset in rows):
                     raise ReconciliationError(
                         409, "A finding asset is attached to a different Host."
                     )
@@ -462,17 +500,27 @@ def apply_decision(
                     changes="Archived from reconciliation workflow.",
                 )
             elif decision == "WRONG_PAIR" and len(rows) < 2:
-                raise ReconciliationError(422, "WRONG_PAIR requires a proposed OS/BMC pair.")
+                raise ReconciliationError(
+                    422, "WRONG_PAIR requires a proposed OS/BMC pair."
+                )
 
-            os_address = next((str(row.ip_address) for row in rows if row.type == "OS"), None)
-            bmc_address = next((str(row.ip_address) for row in rows if row.type == "BMC"), None)
+            os_address = next(
+                (str(row.ip_address) for row in rows if row.type == "OS"), None
+            )
+            bmc_address = next(
+                (str(row.ip_address) for row in rows if row.type == "BMC"), None
+            )
             decision_row = db_schema.HostCompletionDecision(
                 case_type=finding.kind,
                 host_id=int(finding.host_id) if finding.host_id is not None else None,
-                mode="SUGGEST" if finding.kind in {"CREATE_HOST", "COMPLETE_HOST"} else "ASK",
+                mode="SUGGEST"
+                if finding.kind in {"CREATE_HOST", "COMPLETE_HOST"}
+                else "ASK",
                 os_address=os_address,
                 bmc_address=bmc_address,
-                candidate_ip=finding.candidate_ips[0] if finding.candidate_ips else None,
+                candidate_ip=finding.candidate_ips[0]
+                if finding.candidate_ips
+                else None,
                 corrected_ip=(
                     _normalize_counterpart_ip(counterpart_ip)
                     if decision == "CORRECT"
@@ -480,7 +528,9 @@ def apply_decision(
                 ),
                 decision=decision,
                 target_host_id=int(host.id) if host is not None else target_host_id,
-                host_name=str(host.name) if host is not None else finding.proposed_host_name,
+                host_name=str(host.name)
+                if host is not None
+                else finding.proposed_host_name,
                 proposal_id=proposal_id,
                 inventory_fingerprint=inventory_fingerprint,
                 idempotency_key=key,

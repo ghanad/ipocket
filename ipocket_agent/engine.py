@@ -52,8 +52,12 @@ def _pair_transformations(os_ip: str, bmc_ip: str) -> set[Transformation]:
             transformations.add(
                 Transformation(
                     kind=kind,
-                    source=str(ipaddress.ip_network(f"{source}/{length}", strict=False)),
-                    target=str(ipaddress.ip_network(f"{target}/{length}", strict=False)),
+                    source=str(
+                        ipaddress.ip_network(f"{source}/{length}", strict=False)
+                    ),
+                    target=str(
+                        ipaddress.ip_network(f"{target}/{length}", strict=False)
+                    ),
                 )
             )
     source_octets, target_octets = source.packed, target.packed
@@ -73,7 +77,9 @@ def _pair_transformations(os_ip: str, bmc_ip: str) -> set[Transformation]:
     return transformations
 
 
-def _apply(transformation: Transformation, address: str, *, reverse: bool = False) -> str | None:
+def _apply(
+    transformation: Transformation, address: str, *, reverse: bool = False
+) -> str | None:
     try:
         parsed = ipaddress.IPv4Address(address)
     except ipaddress.AddressValueError:
@@ -87,7 +93,11 @@ def _apply(transformation: Transformation, address: str, *, reverse: bool = Fals
             return None
         target_network = ipaddress.ip_network(target)
         host_mask = (1 << (32 - source_network.prefixlen)) - 1
-        return str(ipaddress.IPv4Address(int(target_network.network_address) | (int(parsed) & host_mask)))
+        return str(
+            ipaddress.IPv4Address(
+                int(target_network.network_address) | (int(parsed) & host_mask)
+            )
+        )
     assert transformation.octet_index is not None
     source_octet, target_octet = int(source), int(target)
     scope = transformation.target_scope if reverse else transformation.source_scope
@@ -100,7 +110,9 @@ def _apply(transformation: Transformation, address: str, *, reverse: bool = Fals
     return str(ipaddress.IPv4Address(bytes(octets)))
 
 
-def _rule_strength(support: int, contradictions: int, min_support: int) -> tuple[bool, RuleStrength]:
+def _rule_strength(
+    support: int, contradictions: int, min_support: int
+) -> tuple[bool, RuleStrength]:
     if support < min_support or contradictions >= support:
         return False, "INACTIVE"
     if contradictions == 0:
@@ -114,7 +126,9 @@ def _confirmed_pairs(inventory: Inventory) -> list[tuple[str, str]]:
         for asset in inventory.assets
         if not asset.archived and asset.asset_type in {"OS", "BMC"} and asset.host_id
     ]
-    by_host: dict[str, dict[str, list[str]]] = defaultdict(lambda: {"OS": [], "BMC": []})
+    by_host: dict[str, dict[str, list[str]]] = defaultdict(
+        lambda: {"OS": [], "BMC": []}
+    )
     for asset in active_assets:
         by_host[asset.host_id or ""][asset.asset_type].append(asset.ip_address)
     return sorted(
@@ -132,7 +146,9 @@ def _wrong_pairs(decisions: Iterable[AgentDecision]) -> set[tuple[str, str]]:
     return {
         (decision.os_ip, decision.bmc_ip)
         for decision in decisions
-        if decision.kind == "WRONG_PAIR" and decision.os_ip is not None and decision.bmc_ip is not None
+        if decision.kind == "WRONG_PAIR"
+        and decision.os_ip is not None
+        and decision.bmc_ip is not None
     }
 
 
@@ -146,14 +162,17 @@ def discover_rules(inventory: Inventory, *, min_support: int = 3) -> tuple[Rule,
     wrong_pairs = _wrong_pairs(inventory.decisions)
     rules: list[Rule] = []
     for transformation in candidates:
-        matching = tuple(pair for pair in pairs if _apply(transformation, pair[0]) == pair[1])
+        matching = tuple(
+            pair for pair in pairs if _apply(transformation, pair[0]) == pair[1]
+        )
         support = len(matching)
         # A confirmed pair is a contradiction only if the transformation applies
         # to its OS address but predicts a different BMC.
         contradictions = sum(
             1
             for os_ip, bmc_ip in pairs
-            if _apply(transformation, os_ip) is not None and _apply(transformation, os_ip) != bmc_ip
+            if _apply(transformation, os_ip) is not None
+            and _apply(transformation, os_ip) != bmc_ip
         )
         contradictions += sum(
             1
@@ -161,14 +180,16 @@ def discover_rules(inventory: Inventory, *, min_support: int = 3) -> tuple[Rule,
             if _apply(transformation, os_ip) == bmc_ip
         )
         active, strength = _rule_strength(support, contradictions, min_support)
-        rule_id = _digest((
-            transformation.kind,
-            transformation.source,
-            transformation.target,
-            transformation.octet_index,
-            transformation.source_scope,
-            transformation.target_scope,
-        ))
+        rule_id = _digest(
+            (
+                transformation.kind,
+                transformation.source,
+                transformation.target,
+                transformation.octet_index,
+                transformation.source_scope,
+                transformation.target_scope,
+            )
+        )
         rules.append(
             Rule(
                 id=rule_id,
@@ -180,11 +201,28 @@ def discover_rules(inventory: Inventory, *, min_support: int = 3) -> tuple[Rule,
                 strength=strength,
             )
         )
-    return tuple(sorted(rules, key=lambda rule: (not rule.active, -rule.support, rule.contradictions, rule.id)))
+    return tuple(
+        sorted(
+            rules,
+            key=lambda rule: (
+                not rule.active,
+                -rule.support,
+                rule.contradictions,
+                rule.id,
+            ),
+        )
+    )
 
 
 def _asset_snapshot(asset: Asset) -> tuple[str, ...]:
-    return ("asset", asset.id, asset.ip_address, asset.asset_type, asset.host_id or "", str(asset.archived))
+    return (
+        "asset",
+        asset.id,
+        asset.ip_address,
+        asset.asset_type,
+        asset.host_id or "",
+        str(asset.archived),
+    )
 
 
 def _host_snapshot(host: Host) -> tuple[str, ...]:
@@ -204,16 +242,29 @@ def _finding(
 ) -> Finding:
     asset_list = tuple(sorted(assets, key=lambda asset: asset.id))
     rule_list = tuple(sorted(rules, key=lambda rule: rule.id))
-    assumptions = tuple(_asset_snapshot(asset) for asset in asset_list) + (() if host is None else (_host_snapshot(host),))
+    assumptions = tuple(_asset_snapshot(asset) for asset in asset_list) + (
+        () if host is None else (_host_snapshot(host),)
+    )
     fingerprint = _digest(assumptions)
     candidate_ips = tuple(sorted(set(candidate_ips), key=_ip_key))
-    proposal_id = _digest((kind, tuple(asset.id for asset in asset_list), host.id if host else None, candidate_ips, tuple(rule.id for rule in rule_list), fingerprint))
+    proposal_id = _digest(
+        (
+            kind,
+            tuple(asset.id for asset in asset_list),
+            host.id if host else None,
+            candidate_ips,
+            tuple(rule.id for rule in rule_list),
+            fingerprint,
+        )
+    )
     evidence = tuple(
         f"{rule.support} confirmed pair(s) use {rule.transformation.description}; {rule.contradictions} contradiction(s)."
         for rule in rule_list
     )
     strengths = {rule.strength for rule in rule_list}
-    strength: RuleStrength | None = "STRONG" if strengths == {"STRONG"} else ("MODERATE" if rule_list else None)
+    strength: RuleStrength | None = (
+        "STRONG" if strengths == {"STRONG"} else ("MODERATE" if rule_list else None)
+    )
     return Finding(
         kind=kind,  # type: ignore[arg-type]
         proposal_id=proposal_id,
@@ -250,7 +301,9 @@ def proposal_is_current(finding: Finding, inventory: Inventory) -> bool:
     return _digest(tuple(current)) == finding.inventory_fingerprint
 
 
-def _candidate_rules(address: str, rules: Iterable[Rule], *, reverse: bool = False) -> list[tuple[Rule, str]]:
+def _candidate_rules(
+    address: str, rules: Iterable[Rule], *, reverse: bool = False
+) -> list[tuple[Rule, str]]:
     return [
         (rule, candidate)
         for rule in rules
@@ -260,7 +313,12 @@ def _candidate_rules(address: str, rules: Iterable[Rule], *, reverse: bool = Fal
     ]
 
 
-def reconcile(inventory: Inventory, *, min_support: int = 3, host_name_template: str = "server_{bmc}") -> ReconciliationResult:
+def reconcile(
+    inventory: Inventory,
+    *,
+    min_support: int = 3,
+    host_name_template: str = "server_{bmc}",
+) -> ReconciliationResult:
     """Classify an inventory snapshot without changing it.
 
     Only active OS/BMC assets participate.  Rules are evidence, so only an
@@ -273,21 +331,50 @@ def reconcile(inventory: Inventory, *, min_support: int = 3, host_name_template:
     rules = discover_rules(inventory, min_support=min_support)
     assets_by_ip = {asset.ip_address: asset for asset in inventory.assets}
     hosts = {host.id: host for host in inventory.hosts}
-    active = tuple(asset for asset in inventory.assets if not asset.archived and asset.asset_type in {"OS", "BMC"})
-    by_host: dict[str, dict[str, list[Asset]]] = defaultdict(lambda: {"OS": [], "BMC": []})
+    active = tuple(
+        asset
+        for asset in inventory.assets
+        if not asset.archived and asset.asset_type in {"OS", "BMC"}
+    )
+    by_host: dict[str, dict[str, list[Asset]]] = defaultdict(
+        lambda: {"OS": [], "BMC": []}
+    )
     for asset in active:
         if asset.host_id:
             by_host[asset.host_id][asset.asset_type].append(asset)
-    exceptions = {decision.asset_id for decision in inventory.decisions if decision.kind == "EXCEPTION" and decision.asset_id}
-    deferred = {decision.asset_id for decision in inventory.decisions if decision.kind == "UNSURE" and decision.asset_id}
+    exceptions = {
+        decision.asset_id
+        for decision in inventory.decisions
+        if decision.kind == "EXCEPTION" and decision.asset_id
+    }
+    deferred = {
+        decision.asset_id
+        for decision in inventory.decisions
+        if decision.kind == "UNSURE" and decision.asset_id
+    }
     wrong_pairs = _wrong_pairs(inventory.decisions)
     findings: list[Finding] = []
     proposed_ids: set[str] = set()
     conflict_ids: set[str] = set()
 
-    def conflict(origin: Asset, candidate: Asset | None, candidates: Iterable[str], reason: str, rule_items: Iterable[Rule]) -> None:
+    def conflict(
+        origin: Asset,
+        candidate: Asset | None,
+        candidates: Iterable[str],
+        reason: str,
+        rule_items: Iterable[Rule],
+    ) -> None:
         involved = (origin,) if candidate is None else (origin, candidate)
-        findings.append(_finding(inventory, kind="CONFLICT", assets=involved, candidate_ips=candidates, rules=rule_items, reasons=(reason,)))
+        findings.append(
+            _finding(
+                inventory,
+                kind="CONFLICT",
+                assets=involved,
+                candidate_ips=candidates,
+                rules=rule_items,
+                reasons=(reason,),
+            )
+        )
         conflict_ids.update(asset.id for asset in involved)
 
     # Incomplete hosts are handled before unlinked pairs so their intended host
@@ -302,30 +389,71 @@ def reconcile(inventory: Inventory, *, min_support: int = 3, host_name_template:
         known = sides["OS"] if sides["OS"] else sides["BMC"]
         expected_type = "BMC" if sides["OS"] else "OS"
         for source in known:
-            candidate_rules = _candidate_rules(source.ip_address, rules, reverse=expected_type == "OS")
+            candidate_rules = _candidate_rules(
+                source.ip_address, rules, reverse=expected_type == "OS"
+            )
             valid: list[tuple[Rule, Asset]] = []
             for rule, address in candidate_rules:
                 candidate = assets_by_ip.get(address)
                 if candidate is None or candidate.archived:
                     continue
                 if candidate.asset_type != expected_type:
-                    conflict(source, candidate, (address,), f"Candidate exists with incompatible type {candidate.asset_type}.", (rule,))
+                    conflict(
+                        source,
+                        candidate,
+                        (address,),
+                        f"Candidate exists with incompatible type {candidate.asset_type}.",
+                        (rule,),
+                    )
                 elif candidate.host_id not in {None, host.id}:
-                    conflict(source, candidate, (address,), "Candidate is already attached to another Host.", (rule,))
-                elif candidate.host_id is None and (source.ip_address, address) not in wrong_pairs and (address, source.ip_address) not in wrong_pairs:
+                    conflict(
+                        source,
+                        candidate,
+                        (address,),
+                        "Candidate is already attached to another Host.",
+                        (rule,),
+                    )
+                elif (
+                    candidate.host_id is None
+                    and (source.ip_address, address) not in wrong_pairs
+                    and (address, source.ip_address) not in wrong_pairs
+                ):
                     valid.append((rule, candidate))
             distinct = {candidate.id for _, candidate in valid}
             if len(distinct) > 1:
-                conflict(source, None, (candidate.ip_address for _, candidate in valid), "Multiple strong candidates are ambiguous.", (rule for rule, _ in valid))
+                conflict(
+                    source,
+                    None,
+                    (candidate.ip_address for _, candidate in valid),
+                    "Multiple strong candidates are ambiguous.",
+                    (rule for rule, _ in valid),
+                )
             elif valid:
                 rule, candidate = valid[0]
-                findings.append(_finding(inventory, kind="COMPLETE_HOST", assets=(source, candidate), host=host, candidate_ips=(candidate.ip_address,), rules=(rule,), reasons=(f"Host is missing its {expected_type} relationship.",)))
+                findings.append(
+                    _finding(
+                        inventory,
+                        kind="COMPLETE_HOST",
+                        assets=(source, candidate),
+                        host=host,
+                        candidate_ips=(candidate.ip_address,),
+                        rules=(rule,),
+                        reasons=(f"Host is missing its {expected_type} relationship.",),
+                    )
+                )
                 proposed_ids.update((source.id, candidate.id))
                 consumed_unlinked.add(candidate.id)
 
     # A CREATE_HOST is generated from the OS direction only, so the same physical
     # pair cannot recur in the BMC direction.
-    for os_asset in sorted((asset for asset in active if asset.asset_type == "OS" and asset.host_id is None), key=lambda asset: _ip_key(asset.ip_address)):
+    for os_asset in sorted(
+        (
+            asset
+            for asset in active
+            if asset.asset_type == "OS" and asset.host_id is None
+        ),
+        key=lambda asset: _ip_key(asset.ip_address),
+    ):
         if os_asset.id in consumed_unlinked or os_asset.id in exceptions:
             continue
         valid: list[tuple[Rule, Asset]] = []
@@ -336,18 +464,48 @@ def reconcile(inventory: Inventory, *, min_support: int = 3, host_name_template:
             if (os_asset.ip_address, address) in wrong_pairs:
                 continue
             if candidate.asset_type != "BMC":
-                conflict(os_asset, candidate, (address,), f"Candidate exists with incompatible type {candidate.asset_type}.", (rule,))
+                conflict(
+                    os_asset,
+                    candidate,
+                    (address,),
+                    f"Candidate exists with incompatible type {candidate.asset_type}.",
+                    (rule,),
+                )
             elif candidate.host_id is not None:
-                conflict(os_asset, candidate, (address,), "Candidate is already attached to another Host.", (rule,))
+                conflict(
+                    os_asset,
+                    candidate,
+                    (address,),
+                    "Candidate is already attached to another Host.",
+                    (rule,),
+                )
             else:
                 valid.append((rule, candidate))
         distinct = {candidate.id for _, candidate in valid}
         if len(distinct) > 1:
-            conflict(os_asset, None, (candidate.ip_address for _, candidate in valid), "Multiple strong candidates are ambiguous.", (rule for rule, _ in valid))
+            conflict(
+                os_asset,
+                None,
+                (candidate.ip_address for _, candidate in valid),
+                "Multiple strong candidates are ambiguous.",
+                (rule for rule, _ in valid),
+            )
         elif valid:
             rule, bmc_asset = valid[0]
             if bmc_asset.id not in consumed_unlinked and bmc_asset.id not in exceptions:
-                findings.append(_finding(inventory, kind="CREATE_HOST", assets=(os_asset, bmc_asset), candidate_ips=(bmc_asset.ip_address,), proposed_host_name=host_name_template.format(bmc=bmc_asset.ip_address), rules=(rule,), reasons=("Both active assets are currently unlinked.",)))
+                findings.append(
+                    _finding(
+                        inventory,
+                        kind="CREATE_HOST",
+                        assets=(os_asset, bmc_asset),
+                        candidate_ips=(bmc_asset.ip_address,),
+                        proposed_host_name=host_name_template.format(
+                            bmc=bmc_asset.ip_address
+                        ),
+                        rules=(rule,),
+                        reasons=("Both active assets are currently unlinked.",),
+                    )
+                )
                 proposed_ids.update((os_asset.id, bmc_asset.id))
                 consumed_unlinked.update((os_asset.id, bmc_asset.id))
 
@@ -355,7 +513,14 @@ def reconcile(inventory: Inventory, *, min_support: int = 3, host_name_template:
     represented_unmatched = proposed_ids | conflict_ids | exceptions
     for asset in sorted(active, key=lambda item: (_ip_key(item.ip_address), item.id)):
         if asset.host_id is None and asset.id not in represented_unmatched:
-            findings.append(_finding(inventory, kind="UNMATCHED_ASSET", assets=(asset,), reasons=("No unambiguous strong active counterpart was found.",)))
+            findings.append(
+                _finding(
+                    inventory,
+                    kind="UNMATCHED_ASSET",
+                    assets=(asset,),
+                    reasons=("No unambiguous strong active counterpart was found.",),
+                )
+            )
 
     states: dict[str, str] = {}
     for asset in active:
@@ -369,28 +534,60 @@ def reconcile(inventory: Inventory, *, min_support: int = 3, host_name_template:
             states[asset.id] = "RESOLVED"
         else:
             states[asset.id] = "UNMATCHED"
-    state_counts = {state: sum(1 for value in states.values() if value == state) for state in ("RESOLVED", "PROPOSED", "UNMATCHED", "CONFLICT", "EXCEPTION")}
+    state_counts = {
+        state: sum(1 for value in states.values() if value == state)
+        for state in ("RESOLVED", "PROPOSED", "UNMATCHED", "CONFLICT", "EXCEPTION")
+    }
     kpis: dict[str, int | float] = {
         "active_os_assets": sum(asset.asset_type == "OS" for asset in active),
         "active_bmc_assets": sum(asset.asset_type == "BMC" for asset in active),
-        "os_attached_to_hosts": sum(asset.asset_type == "OS" and asset.host_id is not None for asset in active),
-        "bmc_attached_to_hosts": sum(asset.asset_type == "BMC" and asset.host_id is not None for asset in active),
-        "unresolved_os_assets": sum(asset.asset_type == "OS" and states[asset.id] in {"UNMATCHED", "CONFLICT"} for asset in active),
-        "unresolved_bmc_assets": sum(asset.asset_type == "BMC" and states[asset.id] in {"UNMATCHED", "CONFLICT"} for asset in active),
-        "proposed_host_creations": sum(finding.kind == "CREATE_HOST" for finding in findings),
-        "incomplete_hosts": sum(bool(sides["OS"]) != bool(sides["BMC"]) for sides in by_host.values()),
+        "os_attached_to_hosts": sum(
+            asset.asset_type == "OS" and asset.host_id is not None for asset in active
+        ),
+        "bmc_attached_to_hosts": sum(
+            asset.asset_type == "BMC" and asset.host_id is not None for asset in active
+        ),
+        "unresolved_os_assets": sum(
+            asset.asset_type == "OS" and states[asset.id] in {"UNMATCHED", "CONFLICT"}
+            for asset in active
+        ),
+        "unresolved_bmc_assets": sum(
+            asset.asset_type == "BMC" and states[asset.id] in {"UNMATCHED", "CONFLICT"}
+            for asset in active
+        ),
+        "proposed_host_creations": sum(
+            finding.kind == "CREATE_HOST" for finding in findings
+        ),
+        "incomplete_hosts": sum(
+            bool(sides["OS"]) != bool(sides["BMC"]) for sides in by_host.values()
+        ),
         "conflicts": sum(finding.kind == "CONFLICT" for finding in findings),
         "explicit_exceptions": state_counts["EXCEPTION"],
         "discovered_rules": len(rules),
         "rule_support": sum(rule.support for rule in rules),
         "rule_contradictions": sum(rule.contradictions for rule in rules),
-        "reconciliation_coverage": round((state_counts["RESOLVED"] + state_counts["PROPOSED"] + state_counts["EXCEPTION"]) * 100 / len(active), 2) if active else 100.0,
+        "reconciliation_coverage": round(
+            (
+                state_counts["RESOLVED"]
+                + state_counts["PROPOSED"]
+                + state_counts["EXCEPTION"]
+            )
+            * 100
+            / len(active),
+            2,
+        )
+        if active
+        else 100.0,
     }
     order = {"CREATE_HOST": 0, "COMPLETE_HOST": 1, "CONFLICT": 2, "UNMATCHED_ASSET": 3}
-    findings.sort(key=lambda finding: (
-        all(asset_id in deferred for asset_id in finding.asset_ids),
-        order[finding.kind],
-        finding.candidate_ips[0] if finding.candidate_ips else "",
-        finding.proposal_id,
-    ))
-    return ReconciliationResult(rules=rules, findings=tuple(findings), states=states, kpis=kpis)  # type: ignore[arg-type]
+    findings.sort(
+        key=lambda finding: (
+            all(asset_id in deferred for asset_id in finding.asset_ids),
+            order[finding.kind],
+            finding.candidate_ips[0] if finding.candidate_ips else "",
+            finding.proposal_id,
+        )
+    )
+    return ReconciliationResult(
+        rules=rules, findings=tuple(findings), states=states, kpis=kpis
+    )  # type: ignore[arg-type]

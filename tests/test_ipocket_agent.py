@@ -1,14 +1,38 @@
 from __future__ import annotations
 
-from ipocket_agent import AgentDecision, Asset, Host, Inventory, discover_rules, reconcile
+from ipocket_agent import (
+    AgentDecision,
+    Asset,
+    Host,
+    Inventory,
+    discover_rules,
+    reconcile,
+)
 
 
-def _asset(identifier: str, address: str, kind: str, host_id: str | None = None, *, archived: bool = False) -> Asset:
-    return Asset(id=identifier, ip_address=address, asset_type=kind, host_id=host_id, archived=archived)  # type: ignore[arg-type]
+def _asset(
+    identifier: str,
+    address: str,
+    kind: str,
+    host_id: str | None = None,
+    *,
+    archived: bool = False,
+) -> Asset:
+    return Asset(
+        id=identifier,
+        ip_address=address,
+        asset_type=kind,
+        host_id=host_id,
+        archived=archived,
+    )  # type: ignore[arg-type]
 
 
-def _rule_inventory(*extra: Asset, decisions: tuple[AgentDecision, ...] = ()) -> Inventory:
-    hosts = tuple(Host(id=f"h{index}", name=f"confirmed-{index}") for index in range(1, 4))
+def _rule_inventory(
+    *extra: Asset, decisions: tuple[AgentDecision, ...] = ()
+) -> Inventory:
+    hosts = tuple(
+        Host(id=f"h{index}", name=f"confirmed-{index}") for index in range(1, 4)
+    )
     assets = [
         item
         for index in range(1, 4)
@@ -46,7 +70,9 @@ def test_existing_host_with_only_bmc_gets_complete_host_proposal():
         _asset("candidate-os", "10.10.4.42", "OS"),
         _asset("known-bmc", "10.30.4.42", "BMC", "incomplete"),
     )
-    inventory = Inventory(inventory.assets, inventory.hosts + (Host("incomplete", "server_10.30.4.42"),))
+    inventory = Inventory(
+        inventory.assets, inventory.hosts + (Host("incomplete", "server_10.30.4.42"),)
+    )
 
     finding = _find(reconcile(inventory), "COMPLETE_HOST")[0]
 
@@ -59,7 +85,9 @@ def test_existing_host_with_only_os_gets_complete_host_proposal():
         _asset("known-os", "10.10.4.42", "OS", "incomplete"),
         _asset("candidate-bmc", "10.30.4.42", "BMC"),
     )
-    inventory = Inventory(inventory.assets, inventory.hosts + (Host("incomplete", "server_10.30.4.42"),))
+    inventory = Inventory(
+        inventory.assets, inventory.hosts + (Host("incomplete", "server_10.30.4.42"),)
+    )
 
     finding = _find(reconcile(inventory), "COMPLETE_HOST")[0]
 
@@ -80,7 +108,10 @@ def test_candidate_on_another_host_becomes_conflict_not_proposal():
     result = reconcile(inventory)
 
     assert not _find(result, "CREATE_HOST")
-    assert any("already attached" in finding.reasons[0] for finding in _find(result, "CONFLICT"))
+    assert any(
+        "already attached" in finding.reasons[0]
+        for finding in _find(result, "CONFLICT")
+    )
     assert result.states["known-os"] == "CONFLICT"
 
 
@@ -93,7 +124,10 @@ def test_wrong_candidate_type_becomes_conflict_not_unsafe_suggestion():
     )
 
     assert not _find(result, "CREATE_HOST")
-    assert any("incompatible type OTHER" in finding.reasons[0] for finding in _find(result, "CONFLICT"))
+    assert any(
+        "incompatible type OTHER" in finding.reasons[0]
+        for finding in _find(result, "CONFLICT")
+    )
 
 
 def test_weak_evidence_is_unmatched_and_never_forces_a_match():
@@ -112,14 +146,19 @@ def test_weak_evidence_is_unmatched_and_never_forces_a_match():
     result = reconcile(inventory)
 
     assert not _find(result, "CREATE_HOST")
-    assert {finding.asset_ids[0] for finding in _find(result, "UNMATCHED_ASSET")} >= {"new-os", "new-bmc"}
+    assert {finding.asset_ids[0] for finding in _find(result, "UNMATCHED_ASSET")} >= {
+        "new-os",
+        "new-bmc",
+    }
 
 
 def test_wrong_pair_is_negative_evidence_and_suppresses_exact_match():
     inventory = _rule_inventory(
         _asset("new-os", "10.10.4.42", "OS"),
         _asset("new-bmc", "10.30.4.42", "BMC"),
-        decisions=(AgentDecision("WRONG_PAIR", os_ip="10.10.4.42", bmc_ip="10.30.4.42"),),
+        decisions=(
+            AgentDecision("WRONG_PAIR", os_ip="10.10.4.42", bmc_ip="10.30.4.42"),
+        ),
     )
 
     result = reconcile(inventory)
@@ -132,10 +171,16 @@ def test_wrong_pair_is_negative_evidence_and_suppresses_exact_match():
 def test_unsure_is_not_a_rule_contradiction():
     baseline = discover_rules(_rule_inventory())
     with_unsure = discover_rules(
-        _rule_inventory(decisions=(AgentDecision("UNSURE", os_ip="10.10.4.42", bmc_ip="10.30.4.42"),))
+        _rule_inventory(
+            decisions=(
+                AgentDecision("UNSURE", os_ip="10.10.4.42", bmc_ip="10.30.4.42"),
+            )
+        )
     )
 
-    assert [(rule.id, rule.contradictions) for rule in with_unsure] == [(rule.id, rule.contradictions) for rule in baseline]
+    assert [(rule.id, rule.contradictions) for rule in with_unsure] == [
+        (rule.id, rule.contradictions) for rule in baseline
+    ]
 
 
 def test_unsure_defers_the_same_finding_without_suppressing_it():

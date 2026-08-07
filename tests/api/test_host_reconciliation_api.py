@@ -63,15 +63,27 @@ def test_reconciliation_reads_require_auth_and_allow_viewers(
     finally:
         connection.close()
     viewer_headers = _headers_for(
-        _create_user, _login, _auth_headers, username="reconciliation-viewer", role=UserRole.VIEWER
+        _create_user,
+        _login,
+        _auth_headers,
+        username="reconciliation-viewer",
+        role=UserRole.VIEWER,
     )
 
     assert client.get(FINDINGS_URL).status_code == 401
     assert client.get("/api/host-completion/findings/next").status_code == 401
     assert client.get("/api/host-completion/summary").status_code == 401
     assert client.get(FINDINGS_URL, headers=viewer_headers).status_code == 200
-    assert client.get("/api/host-completion/findings/next", headers=viewer_headers).status_code == 200
-    assert client.get("/api/host-completion/summary", headers=viewer_headers).status_code == 200
+    assert (
+        client.get(
+            "/api/host-completion/findings/next", headers=viewer_headers
+        ).status_code
+        == 200
+    )
+    assert (
+        client.get("/api/host-completion/summary", headers=viewer_headers).status_code
+        == 200
+    )
 
 
 def test_reconciliation_mutation_requires_editor(
@@ -83,11 +95,17 @@ def test_reconciliation_mutation_requires_editor(
     finally:
         connection.close()
     viewer_headers = _headers_for(
-        _create_user, _login, _auth_headers, username="decision-viewer", role=UserRole.VIEWER
+        _create_user,
+        _login,
+        _auth_headers,
+        username="decision-viewer",
+        role=UserRole.VIEWER,
     )
     finding = _create_host_finding(client, viewer_headers)
 
-    response = client.post(DECISIONS_URL, headers=viewer_headers, json=_accept_payload(finding))
+    response = client.post(
+        DECISIONS_URL, headers=viewer_headers, json=_accept_payload(finding)
+    )
 
     assert response.status_code == 403
 
@@ -101,16 +119,24 @@ def test_editor_accepts_one_create_host_finding_and_links_both_assets_atomically
     finally:
         connection.close()
     headers = _headers_for(
-        _create_user, _login, _auth_headers, username="reconciliation-editor", role=UserRole.EDITOR
+        _create_user,
+        _login,
+        _auth_headers,
+        username="reconciliation-editor",
+        role=UserRole.EDITOR,
     )
     finding = _create_host_finding(client, headers)
     connection = _setup_connection()
     try:
-        audit_count_before = connection.execute("SELECT COUNT(*) FROM audit_logs").fetchone()[0]
+        audit_count_before = connection.execute(
+            "SELECT COUNT(*) FROM audit_logs"
+        ).fetchone()[0]
     finally:
         connection.close()
 
-    response = client.post(DECISIONS_URL, headers=headers, json=_accept_payload(finding))
+    response = client.post(
+        DECISIONS_URL, headers=headers, json=_accept_payload(finding)
+    )
 
     assert response.status_code == 200
     payload = response.json()
@@ -121,7 +147,9 @@ def test_editor_accepts_one_create_host_finding_and_links_both_assets_atomically
         host = repository.get_host_by_name(connection, "server_10.30.4.42")
         refreshed_os = repository.get_ip_asset_by_ip(connection, os_asset.ip_address)
         refreshed_bmc = repository.get_ip_asset_by_ip(connection, bmc_asset.ip_address)
-        decisions = connection.execute("SELECT COUNT(*) FROM host_completion_decisions").fetchone()[0]
+        decisions = connection.execute(
+            "SELECT COUNT(*) FROM host_completion_decisions"
+        ).fetchone()[0]
         audits = connection.execute("SELECT COUNT(*) FROM audit_logs").fetchone()[0]
     finally:
         connection.close()
@@ -150,7 +178,9 @@ def test_accept_reuses_the_template_named_host_without_creating_a_duplicate(
     )
     finding = _create_host_finding(client, headers)
 
-    response = client.post(DECISIONS_URL, headers=headers, json=_accept_payload(finding))
+    response = client.post(
+        DECISIONS_URL, headers=headers, json=_accept_payload(finding)
+    )
 
     assert response.status_code == 200
     assert response.json()["host_id"] == existing.id
@@ -178,12 +208,18 @@ def test_failure_after_first_link_rolls_back_host_links_decision_and_audits(
     finally:
         connection.close()
     headers = _headers_for(
-        _create_user, _login, _auth_headers, username="rollback-editor", role=UserRole.EDITOR
+        _create_user,
+        _login,
+        _auth_headers,
+        username="rollback-editor",
+        role=UserRole.EDITOR,
     )
     finding = _create_host_finding(client, headers)
     connection = _setup_connection()
     try:
-        audit_count_before = connection.execute("SELECT COUNT(*) FROM audit_logs").fetchone()[0]
+        audit_count_before = connection.execute(
+            "SELECT COUNT(*) FROM audit_logs"
+        ).fetchone()[0]
     finally:
         connection.close()
 
@@ -199,7 +235,9 @@ def test_failure_after_first_link_rolls_back_host_links_decision_and_audits(
         created_host = repository.get_host_by_name(connection, "server_10.30.4.42")
         refreshed_os = repository.get_ip_asset_by_ip(connection, os_asset.ip_address)
         refreshed_bmc = repository.get_ip_asset_by_ip(connection, bmc_asset.ip_address)
-        decisions = connection.execute("SELECT COUNT(*) FROM host_completion_decisions").fetchone()[0]
+        decisions = connection.execute(
+            "SELECT COUNT(*) FROM host_completion_decisions"
+        ).fetchone()[0]
         audits = connection.execute("SELECT COUNT(*) FROM audit_logs").fetchone()[0]
     finally:
         connection.close()
@@ -219,13 +257,21 @@ def test_repeat_decision_is_idempotent_and_does_not_duplicate_host_or_links(
     finally:
         connection.close()
     headers = _headers_for(
-        _create_user, _login, _auth_headers, username="idempotency-editor", role=UserRole.EDITOR
+        _create_user,
+        _login,
+        _auth_headers,
+        username="idempotency-editor",
+        role=UserRole.EDITOR,
     )
     finding = _create_host_finding(client, headers)
     request_headers = {**headers, "Idempotency-Key": "same-reconciliation-decision"}
 
-    first = client.post(DECISIONS_URL, headers=request_headers, json=_accept_payload(finding))
-    second = client.post(DECISIONS_URL, headers=request_headers, json=_accept_payload(finding))
+    first = client.post(
+        DECISIONS_URL, headers=request_headers, json=_accept_payload(finding)
+    )
+    second = client.post(
+        DECISIONS_URL, headers=request_headers, json=_accept_payload(finding)
+    )
 
     assert first.status_code == second.status_code == 200
     assert first.json()["id"] == second.json()["id"]
@@ -235,7 +281,9 @@ def test_repeat_decision_is_idempotent_and_does_not_duplicate_host_or_links(
         hosts = connection.execute(
             "SELECT COUNT(*) FROM hosts WHERE name = 'server_10.30.4.42'"
         ).fetchone()[0]
-        decisions = connection.execute("SELECT COUNT(*) FROM host_completion_decisions").fetchone()[0]
+        decisions = connection.execute(
+            "SELECT COUNT(*) FROM host_completion_decisions"
+        ).fetchone()[0]
     finally:
         connection.close()
     assert hosts == decisions == 1
@@ -250,7 +298,11 @@ def test_stale_proposal_is_rejected_after_inventory_changes(
     finally:
         connection.close()
     headers = _headers_for(
-        _create_user, _login, _auth_headers, username="stale-editor", role=UserRole.EDITOR
+        _create_user,
+        _login,
+        _auth_headers,
+        username="stale-editor",
+        role=UserRole.EDITOR,
     )
     finding = _create_host_finding(client, headers)
     connection = _setup_connection()
@@ -259,7 +311,9 @@ def test_stale_proposal_is_rejected_after_inventory_changes(
     finally:
         connection.close()
 
-    response = client.post(DECISIONS_URL, headers=headers, json=_accept_payload(finding))
+    response = client.post(
+        DECISIONS_URL, headers=headers, json=_accept_payload(finding)
+    )
 
     assert response.status_code == 409
     assert "stale" in response.json()["detail"].lower()
@@ -274,15 +328,21 @@ def test_archived_candidate_is_excluded_from_reconciliation_findings(
     finally:
         connection.close()
     headers = _headers_for(
-        _create_user, _login, _auth_headers, username="archived-viewer", role=UserRole.VIEWER
+        _create_user,
+        _login,
+        _auth_headers,
+        username="archived-viewer",
+        role=UserRole.VIEWER,
     )
 
     findings = client.get(FINDINGS_URL, headers=headers).json()["items"]
 
     assert not any(item["finding_type"] == "CREATE_HOST" for item in findings)
     unmatched = next(
-        item for item in findings
-        if item["finding_type"] == "UNMATCHED_ASSET" and item["assets"][0]["id"] == os_asset.id
+        item
+        for item in findings
+        if item["finding_type"] == "UNMATCHED_ASSET"
+        and item["assets"][0]["id"] == os_asset.id
     )
     assert unmatched["state"] == "UNMATCHED"
 
