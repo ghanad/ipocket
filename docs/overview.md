@@ -32,13 +32,16 @@ Back/Forward and shareable links preserve state.
   for higher-risk records, exact-value confirmation.
 - OS and BMC assets are paired through a shared Host. An unassigned BMC can
   create/reuse `server_<ip>` when `IPOCKET_AUTO_HOST_FOR_BMC` is enabled.
-- The deterministic Host Completion review queue infers `/16`, `/24`, and
-  single-octet OS-to-BMC mappings from confirmed pairs. Editor decisions can
-  accept, correct, reject, defer, or permanently mark a Host as having no BMC;
-  accepted changes use normal IP Asset validation and audit logging.
-  Unlinked assets can be attached by re-entering or selecting an existing Host
-  name (case-insensitively), and the review card pre-fills names from
-  `HOST_NAME_TEMPLATE` when its BMC address is known.
+- The deterministic `ipocket_agent` package infers `/16`, `/24`, and scoped
+  single-octet OS-to-BMC rules from confirmed Host relationships. It is a
+  read-only analysis component: it receives an inventory snapshot and returns
+  `CREATE_HOST`, `COMPLETE_HOST`, `UNMATCHED_ASSET`, or `CONFLICT` findings.
+- Editors apply stable proposals through ipocket. Proposal fingerprints prevent
+  stale writes, an idempotency key makes retries safe, and Host creation, asset
+  links, the operator decision, and audit entries commit in one transaction.
+  Manual investigation asks for the counterpart IP rather than a database ID:
+  OS findings ask for BMC, and BMC findings ask for OS. ipocket creates the
+  counterpart asset when needed and creates/reuses `server_<bmc-ip>`.
 
 ## Supporting catalogs
 
@@ -77,17 +80,11 @@ details live in their focused documents under `docs/`.
 - `GET /health` returns application/build health metadata.
 - `GET /metrics` exposes required IP inventory counters.
 - `GET /sd/node` provides Prometheus HTTP service discovery.
-- `GET /api/host-completion/analytics` summarizes active Host completeness,
-  confirmed OS/BMC pairs, address-prefix patterns, and IP type counts without
-  changing inventory.
-- `GET /api/host-completion/review-queue` recomputes deterministic pairing,
-  unlinked-asset, and missing-side cases; `POST /api/host-completion/decisions`
-  records Editor feedback and applies audited Host/IP-asset changes.
-- `/host-completion/analytics` presents those counts as a read-only dashboard
-  with completion, incomplete-host, pattern-confidence, and IP-type charts.
-- Editors use `/host-completion/review` to process one eligible Host at a time.
-  ASK cases accept a BMC address, no-BMC decision, or deferral; SUGGEST cases
-  additionally expose the inferred candidate, confidence, reason, rejection,
-  acceptance, and inline correction actions.
+- Authenticated users can read `GET /api/host-completion/summary`,
+  `/findings`, and `/findings/next`. Editor-only
+  `POST /api/host-completion/findings/decisions` applies operator outcomes.
+- `/host-completion/analytics` shows the reconciliation states, the explicitly
+  defined coverage formula, and rule support/contradictions. Editors use
+  `/host-completion/review` for the evidence-first one-at-a-time workflow.
 - Docker, Docker Compose, Helm, local development, CI, and frontend build
   instructions are in [How to run](how-to-run.md).

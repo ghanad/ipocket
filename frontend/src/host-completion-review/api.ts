@@ -18,5 +18,8 @@ export function submitHostCompletionDecision(
   return apiRequest<HostCompletionDecisionResponse>(endpoint, {
     method: "POST",
     json: payload,
+    headers: {
+      "Idempotency-Key": `${payload.proposal_id}:${payload.decision}`,
+    },
   });
 }

@@ -84,12 +84,18 @@ def test_management_react_root_preserves_page_section_spacing() -> None:
 
 
 def test_host_completion_analytics_page_mounts_react_entry(client) -> None:
-    response = client.get("/host-completion/analytics")
+    app.dependency_overrides[ui.get_current_ui_user] = lambda: User(
+        1, "viewer", "x", UserRole.VIEWER, True
+    )
+    try:
+        response = client.get("/host-completion/analytics")
+    finally:
+        app.dependency_overrides.pop(ui.get_current_ui_user, None)
 
     assert response.status_code == 200
-    assert "Host Completion Analytics" in response.text
+    assert "Host Completion" in response.text
     assert 'id="host-completion-analytics-root"' in response.text
-    assert 'data-endpoint="/api/host-completion/analytics"' in response.text
+    assert 'data-endpoint="/api/host-completion/summary"' in response.text
     root_attributes = response.text.split('id="host-completion-analytics-root"', 1)[
         1
     ].split(">", 1)[0]
@@ -114,8 +120,11 @@ def test_host_completion_review_page_mounts_editor_react_entry(client) -> None:
 
     assert response.status_code == 200
     assert 'id="host-completion-review-root"' in response.text
-    assert 'data-endpoint="/api/host-completion/review-queue"' in response.text
-    assert 'data-decisions-endpoint="/api/host-completion/decisions"' in response.text
+    assert 'data-endpoint="/api/host-completion/findings/next"' in response.text
+    assert (
+        'data-decisions-endpoint="/api/host-completion/findings/decisions"'
+        in response.text
+    )
     assert (
         '<script type="module" '
         'src="/static/react/host-completion-review/'
@@ -129,6 +138,15 @@ def test_host_completion_review_page_requires_editor(client) -> None:
     assert response.status_code == 303
     assert response.headers["Location"] == (
         "/ui/login?return_to=/host-completion/review"
+    )
+
+
+def test_host_completion_analytics_page_requires_login(client) -> None:
+    response = client.get("/host-completion/analytics", follow_redirects=False)
+
+    assert response.status_code == 303
+    assert response.headers["Location"] == (
+        "/ui/login?return_to=/host-completion/analytics"
     )
 
 

@@ -1,14 +1,4 @@
-/*
-THESIS: Host Completion review is a focused decision loop, not a dense queue.
-OWN-WORLD: Inherit ipocket's white operational surfaces, blue primary action,
-compact metadata, and restrained semantic green, amber, and red states.
-STORY: Identify one Host, answer one BMC question, and immediately move forward.
-FIRST VIEWPORT: A compact header leads into one centered review card whose Host
-identity, progress, evidence, and controls stay visible without scrolling.
-FORM: A one-at-a-time operations workbench using incumbent cards and controls;
-the precisely specified workflow does not require concept staging or a seed.
-*/
-import { type CSSProperties, type FormEvent, useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 import { ApiError } from "../shared/apiClient";
 import {
@@ -16,14 +6,13 @@ import {
   submitHostCompletionDecision,
 } from "./api";
 import type {
-  HostCompletionDecision,
   HostCompletionDecisionPayload,
-  HostCompletionReviewItem,
   HostCompletionReviewQueue,
-  HostCompletionHostOption,
+  ReconciliationDecision,
+  ReconciliationFinding,
 } from "./types";
 
-interface HostCompletionReviewPageProps {
+interface Props {
   queueEndpoint: string;
   decisionsEndpoint: string;
 }
@@ -33,234 +22,149 @@ interface ToastState {
   message: string;
 }
 
+const findingCopy = {
+  CREATE_HOST: {
+    eyebrow: "Host creation proposed",
+    title: "Create and connect this physical Host",
+    action: "Create Host and attach assets",
+  },
+  COMPLETE_HOST: {
+    eyebrow: "Existing Host incomplete",
+    title: "Attach the missing relationship",
+    action: "Attach missing asset",
+  },
+  UNMATCHED_ASSET: {
+    eyebrow: "Manual investigation",
+    title: "No safe counterpart was found",
+    action: "",
+  },
+  CONFLICT: {
+    eyebrow: "Inventory conflict",
+    title: "Resolve this conflict manually",
+    action: "",
+  },
+} as const;
+
 function errorMessage(error: unknown): string {
   return error instanceof ApiError
     ? error.message
     : "The decision could not be saved. Please try again.";
 }
 
-function confidencePercent(confidence: number | null): number {
-  if (confidence === null) return 0;
-  return Math.round(Math.max(0, Math.min(confidence * 100, 100)));
+function successMessage(decision: ReconciliationDecision): string {
+  const messages: Record<ReconciliationDecision, string> = {
+    ACCEPT: "Proposal applied.",
+    CORRECT: "Corrected relationship applied.",
+    WRONG_PAIR: "Wrong pair recorded as rule evidence.",
+    UNSURE: "Finding left unresolved for later review.",
+    EXCEPTION: "Asset classified as an explicit exception.",
+    ATTACH_EXISTING: "Asset attached to the selected Host.",
+    DEACTIVATE: "Asset archived.",
+  };
+  return messages[decision];
 }
 
-function decisionSuccessMessage(decision: HostCompletionDecision): string {
-  switch (decision) {
-    case "ACCEPT":
-      return "Suggested BMC IP saved.";
-    case "REJECT":
-      return "Suggestion rejected.";
-    case "CORRECTED":
-      return "BMC IP saved.";
-    case "UNSURE":
-      return "Host moved to later.";
-    case "NO_BMC":
-      return "Host marked as having no BMC.";
-    case "NO_OS":
-      return "Host marked as having no OS.";
-    case "CREATE_HOST_ONLY":
-      return "Host created and asset linked.";
-    case "ATTACH_EXISTING":
-      return "Assets linked to the selected host.";
-    case "DEACTIVATE":
-      return "Asset deactivated.";
-  }
-}
-
-export function HostCompletionReviewPage({
-  queueEndpoint,
-  decisionsEndpoint,
-}: HostCompletionReviewPageProps) {
+export function HostCompletionReviewPage({ queueEndpoint, decisionsEndpoint }: Props) {
   const [queue, setQueue] = useState<HostCompletionReviewQueue | null>(null);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [toast, setToast] = useState<ToastState | null>(null);
-  const [askIp, setAskIp] = useState("");
-  const [correctIp, setCorrectIp] = useState("");
-  const [correcting, setCorrecting] = useState(false);
-  const [hostName, setHostName] = useState("");
-  const [hostNameManual, setHostNameManual] = useState(false);
-  const [selectedHost, setSelectedHost] = useState<HostCompletionHostOption | null>(null);
+  const [counterpartIp, setCounterpartIp] = useState("");
+  const [showCorrection, setShowCorrection] = useState(false);
 
   const loadQueue = useCallback(async () => {
     setLoading(true);
     setLoadError(null);
     try {
-      const nextQueue = await fetchHostCompletionReviewQueue(queueEndpoint);
-      setQueue(nextQueue);
-      setAskIp("");
-      setCorrectIp("");
-      setHostName("");
-      setHostNameManual(false);
-      setSelectedHost(null);
-      setCorrecting(false);
+      setQueue(await fetchHostCompletionReviewQueue(queueEndpoint));
+      setCounterpartIp("");
+      setShowCorrection(false);
     } catch {
       setQueue(null);
-      setLoadError("The review queue could not be loaded. Please try again.");
+      setLoadError("The reconciliation queue could not be loaded. Please try again.");
     } finally {
       setLoading(false);
     }
   }, [queueEndpoint]);
 
-  useEffect(() => {
-    void loadQueue();
-  }, [loadQueue]);
-
+  useEffect(() => { void loadQueue(); }, [loadQueue]);
   useEffect(() => {
     if (!toast) return;
     const timeout = window.setTimeout(() => setToast(null), 4_000);
     return () => window.clearTimeout(timeout);
   }, [toast]);
 
+  const submit = useCallback(async (
+    item: ReconciliationFinding,
+    decision: ReconciliationDecision,
+    extra: Partial<HostCompletionDecisionPayload> = {},
+  ) => {
+    if (saving) return;
+    setSaving(true);
+    setToast(null);
+    try {
+      await submitHostCompletionDecision(decisionsEndpoint, {
+        proposal_id: item.proposal_id,
+        inventory_fingerprint: item.inventory_fingerprint,
+        decision,
+        ...extra,
+      });
+      setToast({ type: "success", message: successMessage(decision) });
+      await loadQueue();
+    } catch (error) {
+      setToast({ type: "error", message: errorMessage(error) });
+    } finally {
+      setSaving(false);
+    }
+  }, [decisionsEndpoint, loadQueue, saving]);
+
   const item = queue?.item ?? null;
-  const templateBmc = item?.bmc_asset?.address
-    ?? (item?.case_type === "HOST_MISSING_BMC" ? item.candidate_ip : null)
-    ?? (item?.case_type === "UNLINKED_OS" ? askIp.trim() : null);
-
-  useEffect(() => {
-    if (!item || !templateBmc || hostNameManual || selectedHost) return;
-    setHostName((item.host_name_template ?? "server_{bmc}").replace("{bmc}", templateBmc));
-  }, [hostNameManual, item, selectedHost, templateBmc]);
-
-  const submitDecision = useCallback(
-    async (payload: HostCompletionDecisionPayload) => {
-      if (saving) return;
-      setSaving(true);
-      setToast(null);
-      try {
-        const response = await submitHostCompletionDecision(decisionsEndpoint, payload);
-        setToast({
-          type: "success",
-          message: response.message ?? decisionSuccessMessage(payload.decision),
-        });
-        await loadQueue();
-      } catch (error) {
-        setToast({ type: "error", message: errorMessage(error) });
-      } finally {
-        setSaving(false);
-      }
-    },
-    [decisionsEndpoint, loadQueue, saving],
-  );
-
-  function sharedPayload(item: HostCompletionReviewItem) {
-    return {
-      case_type: item.case_type,
-      mode: item.mode,
-      ...(item.host_id ? { host_id: item.host_id } : {}),
-      ...(item.os_asset ? { os_address: item.os_asset.address } : {}),
-      ...(item.bmc_asset ? { bmc_address: item.bmc_asset.address } : {}),
-      ...(item.candidate_ip ? { candidate_ip: item.candidate_ip } : {}),
-      ...(item.would_create_host && hostName.trim()
-        ? { host_name: hostName.trim() }
-        : {}),
-    };
-  }
-
-  function submitIp(
-    event: FormEvent<HTMLFormElement>,
-    item: HostCompletionReviewItem,
-    value: string,
-  ) {
-    event.preventDefault();
-    const correctedIp = value.trim();
-    if (!correctedIp) return;
-    void submitDecision({
-      ...sharedPayload(item),
-      decision: "CORRECTED",
-      corrected_ip: correctedIp,
-    });
-  }
-
   return (
     <>
       <section className="page-header hcr-page-header">
         <div>
-          <p className="eyebrow">Host Completion</p>
-          <h1>Review Hosts</h1>
-          <p className="subtitle">Resolve missing BMC relationships one host at a time.</p>
+          <p className="eyebrow">Inventory reconciliation</p>
+          <h1>Host Completion</h1>
+          <p className="subtitle">Review deterministic OS/BMC findings before inventory changes.</p>
         </div>
-        <a className="btn btn-outline" href="/host-completion/analytics">
-          View analytics
-        </a>
+        <a className="btn btn-outline" href="/host-completion/analytics">View reconciliation summary</a>
       </section>
 
       {toast ? (
         <div className="toast-container" role="status" aria-live="polite">
           <div className={`toast toast-${toast.type}`}>
             <span className="toast-message">{toast.message}</span>
-            <button
-              className="toast-close"
-              type="button"
-              aria-label="Dismiss notification"
-              onClick={() => setToast(null)}
-            >
-              ×
-            </button>
+            <button className="toast-close" type="button" aria-label="Dismiss notification" onClick={() => setToast(null)}>×</button>
           </div>
         </div>
       ) : null}
 
-      <section
-        className="hcr-workbench"
-        aria-label="Host Completion review queue"
-        aria-live="polite"
-      >
-        {loading ? <ReviewLoadingState /> : null}
-
+      <section className="hcr-workbench" aria-label="Host reconciliation queue" aria-live="polite">
+        {loading ? <LoadingState /> : null}
         {!loading && loadError ? (
           <section className="card hcr-state-card">
-            <div>
-              <h2>Unable to load review queue</h2>
-              <p className="subtitle" role="alert">{loadError}</p>
-            </div>
-            <button className="btn btn-primary" type="button" onClick={() => void loadQueue()}>
-              Try again
-            </button>
+            <div><h2>Unable to load reconciliation queue</h2><p className="subtitle" role="alert">{loadError}</p></div>
+            <button className="btn btn-primary" type="button" onClick={() => void loadQueue()}>Try again</button>
           </section>
         ) : null}
-
         {!loading && !loadError && !item ? (
           <section className="card hcr-empty-state" role="status">
             <span className="hcr-empty-mark" aria-hidden="true">✓</span>
-            <h2>No more cases 🎉</h2>
-            <p className="subtitle">Every eligible Host has been reviewed.</p>
+            <h2>No unexplained findings</h2>
+            <p className="subtitle">Every active OS/BMC asset is resolved, proposed, or explicitly excepted.</p>
           </section>
         ) : null}
-
         {!loading && !loadError && item ? (
-          <ReviewCard
+          <FindingCard
             item={item}
             remaining={queue?.remaining ?? 0}
             saving={saving}
-            askIp={askIp}
-            setAskIp={setAskIp}
-            correctIp={correctIp}
-            setCorrectIp={setCorrectIp}
-            correcting={correcting}
-            setCorrecting={setCorrecting}
-            hostName={hostName}
-            onHostNameChange={(value) => {
-              setHostName(value);
-              setHostNameManual(true);
-              setSelectedHost(null);
-            }}
-            selectedHost={selectedHost}
-            onHostOptionSelect={(option) => {
-              setHostName(option.name);
-              setSelectedHost(option);
-              setHostNameManual(true);
-            }}
-            onSubmitIp={submitIp}
-            onDecision={(decision) =>
-              void submitDecision({ ...sharedPayload(item), decision })
-            }
-            onAttachExisting={(option) => void submitDecision({
-              ...sharedPayload(item),
-              decision: "ATTACH_EXISTING",
-              target_host_id: option.id,
-            })}
+            counterpartIp={counterpartIp}
+            showCorrection={showCorrection}
+            setCounterpartIp={setCounterpartIp}
+            setShowCorrection={setShowCorrection}
+            onDecision={(decision, extra) => void submit(item, decision, extra)}
           />
         ) : null}
       </section>
@@ -268,205 +172,101 @@ export function HostCompletionReviewPage({
   );
 }
 
-interface ReviewCardProps {
-  item: HostCompletionReviewItem;
+interface FindingCardProps {
+  item: ReconciliationFinding;
   remaining: number;
   saving: boolean;
-  askIp: string;
-  setAskIp: (value: string) => void;
-  correctIp: string;
-  setCorrectIp: (value: string) => void;
-  correcting: boolean;
-  setCorrecting: (value: boolean) => void;
-  hostName: string;
-  onHostNameChange: (value: string) => void;
-  selectedHost: HostCompletionHostOption | null;
-  onHostOptionSelect: (option: HostCompletionHostOption) => void;
-  onSubmitIp: (
-    event: FormEvent<HTMLFormElement>,
-    item: HostCompletionReviewItem,
-    value: string,
-  ) => void;
-  onDecision: (decision: Exclude<HostCompletionDecision, "CORRECTED">) => void;
-  onAttachExisting: (option: HostCompletionHostOption) => void;
+  counterpartIp: string;
+  showCorrection: boolean;
+  setCounterpartIp: (value: string) => void;
+  setShowCorrection: (value: boolean) => void;
+  onDecision: (decision: ReconciliationDecision, extra?: Partial<HostCompletionDecisionPayload>) => void;
 }
 
-function ReviewCard({
-  item,
-  remaining,
-  saving,
-  askIp,
-  setAskIp,
-  correctIp,
-  setCorrectIp,
-  correcting,
-  setCorrecting,
-  hostName,
-  onHostNameChange,
-  selectedHost,
-  onHostOptionSelect,
-  onSubmitIp,
-  onDecision,
-  onAttachExisting,
-}: ReviewCardProps) {
-  const confidence = confidencePercent(item.confidence);
-  const knownAsset = item.os_asset ?? item.bmc_asset;
-  const missingLabel = item.case_type.endsWith("BMC") || item.case_type === "UNLINKED_OS"
-    ? "BMC"
-    : "OS";
-  const noSideDecision = missingLabel === "BMC" ? "NO_BMC" : "NO_OS";
-  const needsHostName = item.would_create_host;
-  const hostTemplate = item.host_name_template ?? "server_{bmc}";
-  const hostOptions = item.host_options ?? [];
-  const missingSideAlreadyPresent = selectedHost && (
-    missingLabel === "BMC" ? selectedHost.has_bmc : selectedHost.has_os
-  );
-  const hasPair = Boolean(item.os_asset && item.bmc_asset);
-
+function FindingCard(props: FindingCardProps) {
+  const { item, remaining, saving, counterpartIp, showCorrection,
+    setCounterpartIp, setShowCorrection, onDecision } = props;
+  const copy = findingCopy[item.finding_type];
+  const canAccept = item.finding_type === "CREATE_HOST" || item.finding_type === "COMPLETE_HOST";
+  const hasPair = item.assets.some((asset) => asset.type === "OS") && item.assets.some((asset) => asset.type === "BMC");
+  const subject = item.finding_type === "COMPLETE_HOST"
+    ? item.assets.find((asset) => asset.host_id === item.host_id) ?? item.assets[0]
+    : item.finding_type === "UNMATCHED_ASSET"
+      ? item.assets[0]
+      : item.assets.find((asset) => asset.type === "OS") ?? item.assets[0];
+  const counterpartType = subject?.type === "BMC" ? "OS" : "BMC";
+  const manualEntryVisible = showCorrection || !canAccept;
   return (
-    <article className="card hcr-review-card" aria-busy={saving}>
+    <article className={`card hcr-review-card hcr-${item.state.toLowerCase()}`} aria-busy={saving}>
       <header className="hcr-card-header">
-        <div>
-          <p className="hcr-host-label">{item.host_id ? "Existing host" : "Unlinked assets"}</p>
-          <h2>{item.host_id ? `Host #${item.host_id}` : "Create a host relationship"}</h2>
-          {knownAsset ? <p className="hcr-os-ip"><span>Known address</span>{knownAsset.address}</p> : null}
-        </div>
-        <span className="hcr-remaining">remaining: {remaining}</span>
+        <div><p className="hcr-host-label">{copy.eyebrow}</p><h2>{copy.title}</h2></div>
+        <span className="hcr-remaining">{remaining} remaining</span>
       </header>
 
-      <div className="hcr-divider" />
-
-      {needsHostName ? (
-        <label className="field hcr-host-name-field">
-          <span>Host name</span>
-          <input
-            className="input"
-            type="text"
-            autoComplete="off"
-            placeholder={`e.g. ${hostTemplate.replace("{bmc}", "10.30.1.1")}`}
-            value={hostName}
-            onChange={(event) => {
-              const value = event.target.value;
-              onHostNameChange(value);
-              const option = hostOptions.find((candidate) => candidate.name.toLowerCase() === value.trim().toLowerCase());
-              if (option) onHostOptionSelect(option);
-            }}
-            list="host-completion-host-options"
-            disabled={saving}
-            required
-          />
-          <datalist id="host-completion-host-options">
-            {hostOptions.map((option) => <option key={option.id} value={option.name} />)}
-          </datalist>
-        </label>
-      ) : null}
-
-      {hasPair ? <p className="hcr-pair-summary">Pair ready: OS {item.os_asset?.address} and BMC {item.bmc_asset?.address}.</p> : null}
-
-      {missingSideAlreadyPresent ? (
-        <section className="hcr-decision-panel" aria-labelledby="attach-question">
-          <p className="hcr-mode-label">Existing host selected</p>
-          <h3 id="attach-question">Attach this case to {selectedHost.name}?</h3>
-          <p className="hcr-reason">That host already has the {missingLabel} side, so no address is needed.</p>
-          <div className="hcr-suggestion-actions">
-            <button className="btn btn-primary" type="button" disabled={saving} onClick={() => onAttachExisting(selectedHost)}>Attach to host</button>
-            <button className="btn hcr-later-button" type="button" disabled={saving} onClick={() => onDecision("UNSURE")}>Later</button>
+      <div className="hcr-reconciliation-grid">
+        <section className="hcr-inventory-panel" aria-labelledby="inventory-heading">
+          <h3 id="inventory-heading">Inventory facts</h3>
+          <div className="hcr-asset-list">
+            {item.assets.map((asset) => (
+              <div className="hcr-asset-row" key={asset.id}>
+                <span className={`hcr-type hcr-type-${asset.type.toLowerCase()}`}>{asset.type}</span>
+                <code>{asset.ip_address}</code>
+                <span>{asset.host_id ? `Host #${asset.host_id}` : "Unlinked"}</span>
+              </div>
+            ))}
           </div>
-        </section>
-      ) : item.mode === "ASK" ? (
-        <section className="hcr-decision-panel" aria-labelledby="ask-question">
-          <p className="hcr-mode-label">Address needed</p>
-          <h3 id="ask-question">What is the {missingLabel} IP for this case?</h3>
-          <form className="hcr-ip-form" onSubmit={(event) => onSubmitIp(event, item, askIp)}>
-            <label className="field">
-              <span>{missingLabel} IP address</span>
-              <input
-                className="input"
-                type="text"
-                inputMode="decimal"
-                autoComplete="off"
-                placeholder="192.0.2.10"
-                value={askIp}
-                onChange={(event) => setAskIp(event.target.value)}
-                disabled={saving}
-                required
-                autoFocus
-              />
-            </label>
-            <button className="btn btn-primary" type="submit" disabled={saving || !askIp.trim() || (needsHostName && !hostName.trim())}>
-              {saving ? "Saving…" : "Save"}
-            </button>
-          </form>
-          <div className="hcr-secondary-actions">
-            {item.case_type.startsWith("HOST_MISSING") || item.case_type.startsWith("UNLINKED") ? <button className="btn btn-outline" type="button" disabled={saving || (needsHostName && !hostName.trim())} onClick={() => onDecision(noSideDecision)}>No {missingLabel}</button> : null}
-            <button className="btn hcr-later-button" type="button" disabled={saving} onClick={() => onDecision("UNSURE")}>Later</button>
-          </div>
-        </section>
-      ) : (
-        <section className="hcr-decision-panel" aria-labelledby="suggest-question">
-          <p className="hcr-mode-label">Suggested address</p>
-          <h3 id="suggest-question">Is this the {missingLabel} IP for this case?</h3>
-          <div className="hcr-candidate-block">
-            <code>{item.candidate_ip}</code>
-            <div className="hcr-confidence-copy">
-              <span>Confidence</span>
-              <strong>{confidence}%</strong>
+          {item.proposed_host_name ? (
+            <div className="hcr-outcome">
+              <span>Proposed result</span>
+              <strong>Create {item.proposed_host_name}</strong>
+              <small>Attach both active assets in one transaction</small>
             </div>
-            <div
-              className="hcr-confidence-bar"
-              role="progressbar"
-              aria-label="Suggestion confidence"
-              aria-valuemin={0}
-              aria-valuemax={100}
-              aria-valuenow={confidence}
-            >
-              <span style={{ "--confidence-width": `${confidence}%` } as CSSProperties} />
-            </div>
-            <p className="hcr-reason">{item.reason_text}</p>
-          </div>
-
-          <div className="hcr-suggestion-actions">
-            <button className="btn btn-primary" type="button" disabled={saving || (needsHostName && !hostName.trim())} onClick={() => onDecision("ACCEPT")}>Yes</button>
-            <button className="btn btn-outline" type="button" disabled={saving} onClick={() => onDecision("REJECT")}>No</button>
-            <button className="btn btn-outline" type="button" disabled={saving} aria-expanded={correcting} onClick={() => setCorrecting(!correcting)}>Correct</button>
-            <button className="btn hcr-later-button" type="button" disabled={saving} onClick={() => onDecision("UNSURE")}>Later</button>
-            {item.case_type.startsWith("HOST_MISSING") || item.case_type.startsWith("UNLINKED") ? <button className="btn btn-outline" type="button" disabled={saving || (needsHostName && !hostName.trim())} onClick={() => onDecision(noSideDecision)}>No {missingLabel}</button> : null}
-          </div>
-
-          {correcting ? (
-            <form className="hcr-correct-form" onSubmit={(event) => onSubmitIp(event, item, correctIp)}>
-              <label className="field">
-                <span>Correct {missingLabel} IP address</span>
-                <input
-                  className="input"
-                  type="text"
-                  inputMode="decimal"
-                  autoComplete="off"
-                  placeholder="192.0.2.10"
-                  value={correctIp}
-                  onChange={(event) => setCorrectIp(event.target.value)}
-                  disabled={saving}
-                  required
-                  autoFocus
-                />
-              </label>
-              <button className="btn btn-primary" type="submit" disabled={saving || !correctIp.trim() || (needsHostName && !hostName.trim())}>
-                {saving ? "Saving…" : "Save correction"}
-              </button>
-            </form>
+          ) : item.host_id ? (
+            <div className="hcr-outcome"><span>Proposed result</span><strong>Complete Host #{item.host_id}</strong></div>
           ) : null}
         </section>
-      )}
+
+        <section className="hcr-evidence-panel" aria-labelledby="evidence-heading">
+          <div className="hcr-evidence-title">
+            <h3 id="evidence-heading">Why this finding exists</h3>
+            {item.match_strength ? <span className="hcr-strength">{item.match_strength.toLowerCase()} match</span> : null}
+          </div>
+          {[...item.reasons, ...item.evidence].map((line) => <p key={line}>{line}</p>)}
+          {item.evidence.length === 0 ? <p>No deterministic rule supplied enough evidence for an automatic proposal.</p> : null}
+        </section>
+      </div>
+
+      <footer className="hcr-actions">
+        {canAccept ? <button className="btn btn-primary" type="button" disabled={saving} onClick={() => onDecision("ACCEPT")}>{copy.action}</button> : null}
+        {hasPair ? <button className="btn btn-outline" type="button" disabled={saving} onClick={() => onDecision("WRONG_PAIR")}>Wrong pair</button> : null}
+        {canAccept ? <button className="btn btn-outline" type="button" disabled={saving} onClick={() => setShowCorrection(!showCorrection)}>Use a different counterpart</button> : null}
+        <button className="btn btn-outline" type="button" disabled={saving} onClick={() => onDecision("EXCEPTION")}>Mark exception</button>
+        <button className="btn hcr-later-button" type="button" disabled={saving} onClick={() => onDecision("UNSURE")}>Review later</button>
+      </footer>
+
+      {manualEntryVisible ? (
+        <section className="hcr-manual-panel">
+          <div className="hcr-counterpart-question">
+            <strong>What is the {counterpartType} address for this {subject?.type}?</strong>
+            <span>{subject?.ip_address}</span>
+            <small>{item.host_id
+              ? <>ipocket will attach it to existing Host #{item.host_id} in one transaction.</>
+              : <>ipocket will create or reuse <code>{counterpartType === "BMC" ? `server_${counterpartIp || "<bmc-ip>"}` : `server_${subject?.ip_address}`}</code> and attach both assets.</>}</small>
+          </div>
+          <label className="field"><span>{counterpartType} IP address</span><input className="input" type="text" inputMode="decimal" autoComplete="off" placeholder={counterpartType === "BMC" ? "10.30.4.42" : "10.10.4.42"} value={counterpartIp} onChange={(event) => setCounterpartIp(event.target.value)} /></label>
+          <button className="btn btn-primary" type="button" disabled={saving || !counterpartIp.trim()} onClick={() => onDecision("CORRECT", { counterpart_ip: counterpartIp.trim(), counterpart_type: counterpartType })}>Link {counterpartType} and update Host</button>
+          {item.finding_type === "UNMATCHED_ASSET" ? <button className="btn btn-danger" type="button" disabled={saving} onClick={() => onDecision("DEACTIVATE")}>Archive asset</button> : null}
+        </section>
+      ) : null}
     </article>
   );
 }
 
-function ReviewLoadingState() {
+function LoadingState() {
   return (
     <section className="card hcr-review-card hcr-loading" aria-busy="true">
-      <p role="status">Loading Host Completion review…</p>
+      <p role="status">Loading reconciliation findings…</p>
       <div className="hcr-skeleton hcr-skeleton-title" />
-      <div className="hcr-skeleton hcr-skeleton-meta" />
       <div className="hcr-skeleton hcr-skeleton-question" />
       <div className="hcr-skeleton hcr-skeleton-control" />
     </section>

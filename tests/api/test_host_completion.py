@@ -1,10 +1,26 @@
 from __future__ import annotations
 
+import pytest
+
 from app import repository
+from app.main import app
 from app.models import IPAssetType
+from app.models import User, UserRole
+from app.routes.api.dependencies import require_authenticated_api_or_ui_session
 
 
-def test_host_completion_cases_are_public_filtered_and_cursor_paginated(
+@pytest.fixture(autouse=True)
+def _authenticated_legacy_reads():
+    app.dependency_overrides[require_authenticated_api_or_ui_session] = lambda: User(
+        1, "legacy-viewer", "x", UserRole.VIEWER, True
+    )
+    try:
+        yield
+    finally:
+        app.dependency_overrides.pop(require_authenticated_api_or_ui_session, None)
+
+
+def test_host_completion_cases_are_authenticated_filtered_and_cursor_paginated(
     client, _setup_connection
 ):
     connection = _setup_connection()

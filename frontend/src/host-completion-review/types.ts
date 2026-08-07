@@ -1,73 +1,58 @@
-export type HostCompletionReviewMode = "ASK" | "SUGGEST";
+export type ReconciliationFindingType =
+  | "CREATE_HOST"
+  | "COMPLETE_HOST"
+  | "UNMATCHED_ASSET"
+  | "CONFLICT";
 
-export type HostCompletionCaseType =
-  | "UNLINKED_OS_PAIR"
-  | "UNLINKED_BMC_PAIR"
-  | "UNLINKED_OS"
-  | "UNLINKED_BMC"
-  | "HOST_MISSING_BMC"
-  | "HOST_MISSING_OS";
-
-export interface HostCompletionQueueAsset {
-  address: string;
-  hostname: string | null;
-}
-
-export interface HostCompletionReviewItem {
-  case_type: HostCompletionCaseType;
-  host_id: number | null;
-  os_asset: HostCompletionQueueAsset | null;
-  bmc_asset: HostCompletionQueueAsset | null;
-  would_create_host: boolean;
-  mode: HostCompletionReviewMode;
-  candidate_ip: string | null;
-  confidence: number | null;
-  evidence: string[];
-  reason_text: string;
-  host_name_template: string;
-  host_options: HostCompletionHostOption[];
-}
-
-export interface HostCompletionHostOption {
-  id: number;
-  name: string;
-  has_os: boolean;
-  has_bmc: boolean;
-}
-
-export interface HostCompletionReviewQueue {
-  item: HostCompletionReviewItem | null;
-  remaining: number;
-}
-
-export type HostCompletionDecision =
+export type ReconciliationDecision =
   | "ACCEPT"
-  | "REJECT"
-  | "CORRECTED"
+  | "CORRECT"
+  | "WRONG_PAIR"
   | "UNSURE"
-  | "NO_BMC"
-  | "NO_OS"
-  | "CREATE_HOST_ONLY"
+  | "EXCEPTION"
   | "ATTACH_EXISTING"
   | "DEACTIVATE";
 
+export interface ReconciliationAsset {
+  id: number;
+  ip_address: string;
+  type: "OS" | "BMC" | "VM" | "VIP" | "OTHER";
+  host_id: number | null;
+}
+
+export interface ReconciliationFinding {
+  finding_type: ReconciliationFindingType;
+  state: "PROPOSED" | "UNMATCHED" | "CONFLICT";
+  proposal_id: string;
+  inventory_fingerprint: string;
+  host_id: number | null;
+  proposed_host_name: string | null;
+  assets: ReconciliationAsset[];
+  candidate_ips: string[];
+  match_strength: "STRONG" | "MODERATE" | "WEAK" | "INACTIVE" | null;
+  evidence: string[];
+  reasons: string[];
+  rule_ids: string[];
+}
+
+export interface HostCompletionReviewQueue {
+  item: ReconciliationFinding | null;
+  remaining: number;
+}
+
 export interface HostCompletionDecisionPayload {
-  case_type?: HostCompletionCaseType;
-  mode: HostCompletionReviewMode;
-  host_id?: number;
-  os_address?: string;
-  bmc_address?: string;
-  decision: HostCompletionDecision;
-  candidate_ip?: string;
-  corrected_ip?: string;
-  host_name?: string;
+  proposal_id: string;
+  inventory_fingerprint: string;
+  decision: ReconciliationDecision;
   target_host_id?: number;
+  counterpart_ip?: string;
+  counterpart_type?: "OS" | "BMC";
 }
 
 export interface HostCompletionDecisionResponse {
   id: number;
-  decision: HostCompletionDecision;
-  applied_ip: string | null;
+  decision: ReconciliationDecision;
   host_id: number | null;
-  message: string | null;
+  proposal_id: string;
+  idempotent_replay: boolean;
 }

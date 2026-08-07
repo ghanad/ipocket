@@ -2,13 +2,16 @@ from __future__ import annotations
 
 from typing import Literal, Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, Header, HTTPException, Query
 from pydantic import BaseModel
 
 from app.dependencies import get_connection
-from app.services import host_completion
+from app.services import host_completion, host_reconciliation
 
-from .dependencies import require_editor_api_or_ui_session
+from .dependencies import (
+    require_authenticated_api_or_ui_session,
+    require_editor_api_or_ui_session,
+)
 
 router = APIRouter(prefix="/api/host-completion", tags=["host-completion"])
 
@@ -156,8 +159,36 @@ class HostCompletionDecisionResponse(BaseModel):
     message: Optional[str] = None
 
 
+class ReconciliationDecisionRequest(BaseModel):
+    proposal_id: str
+    inventory_fingerprint: str
+    decision: Literal[
+        "ACCEPT",
+        "CORRECT",
+        "WRONG_PAIR",
+        "UNSURE",
+        "EXCEPTION",
+        "ATTACH_EXISTING",
+        "DEACTIVATE",
+    ]
+    target_host_id: Optional[int] = None
+    counterpart_ip: Optional[str] = None
+    counterpart_type: Optional[Literal["OS", "BMC"]] = None
+
+
+class ReconciliationDecisionResponse(BaseModel):
+    id: int
+    decision: str
+    host_id: Optional[int]
+    proposal_id: str
+    idempotent_replay: bool
+
+
 @router.get("/analytics", response_model=HostCompletionAnalytics)
-def get_host_completion_analytics(connection=Depends(get_connection)):
+def get_host_completion_analytics(
+    connection=Depends(get_connection),
+    _user=Depends(require_authenticated_api_or_ui_session),
+):
     """Return read-only completion counts and confirmed address patterns."""
 
     return host_completion.get_analytics(connection)
@@ -169,6 +200,7 @@ def list_host_completion_cases(
     limit: int = Query(default=100, ge=1, le=500),
     cursor: Optional[int] = Query(default=None, ge=0),
     connection=Depends(get_connection),
+    _user=Depends(require_authenticated_api_or_ui_session),
 ):
     """List Hosts that have exactly one side of their active OS/BMC pair."""
 
@@ -185,6 +217,7 @@ def list_host_completion_examples(
     limit: int = Query(default=100, ge=1, le=500),
     cursor: Optional[int] = Query(default=None, ge=0),
     connection=Depends(get_connection),
+    _user=Depends(require_authenticated_api_or_ui_session),
 ):
     """List confirmed examples: Hosts with active OS and BMC assets."""
 
@@ -196,7 +229,10 @@ def list_host_completion_examples(
 
 
 @router.get("/review-queue", response_model=HostCompletionReviewQueue)
-def get_host_completion_review_queue(connection=Depends(get_connection)):
+def get_host_completion_review_queue(
+    connection=Depends(get_connection),
+    _user=Depends(require_authenticated_api_or_ui_session),
+):
     """Return the next deterministic Host-completion review item."""
 
     return host_completion.build_review_queue(connection)
@@ -226,4 +262,62 @@ def create_host_completion_decision(
             user=user,
         )
     except host_completion.HostCompletionError as exc:
+        raise HTTPException(status_code=exc.status_code, detail=exc.detail) from exc
+
+
+@router.get("/findings")
+def list_reconciliation_findings(
+    connection=Depends(get_connection),
+    _user=Depends(require_authenticated_api_or_ui_session),
+):
+    """Return the deterministic reconciliation queue from the current inventory."""
+
+    return host_reconciliation.list_findings(connection)
+
+
+@router.get("/findings/next")
+def get_next_reconciliation_finding(
+    connection=Depends(get_connection),
+    _user=Depends(require_authenticated_api_or_ui_session),
+):
+    """Return the highest-value current finding and the remaining count."""
+
+    return host_reconciliation.next_finding(connection)
+
+
+@router.get("/summary")
+def get_reconciliation_summary(
+    connection=Depends(get_connection),
+    _user=Depends(require_authenticated_api_or_ui_session),
+):
+    """Return reconciliation states, KPIs, and explainable discovered rules."""
+
+    return host_reconciliation.get_summary(connection)
+
+
+@router.post(
+    "/findings/decisions",
+    response_model=ReconciliationDecisionResponse,
+)
+def apply_reconciliation_decision(
+    payload: ReconciliationDecisionRequest,
+    connection=Depends(get_connection),
+    user=Depends(require_editor_api_or_ui_session),
+    idempotency_key: Optional[str] = Header(default=None, alias="Idempotency-Key"),
+):
+    """Apply an Editor decision after stale-state validation."""
+
+    try:
+        return host_reconciliation.apply_decision(
+            connection,
+            proposal_id=payload.proposal_id,
+            inventory_fingerprint=payload.inventory_fingerprint,
+            decision=payload.decision,
+            target_host_id=payload.target_host_id,
+            counterpart_ip=payload.counterpart_ip,
+            counterpart_type=payload.counterpart_type,
+            idempotency_key=idempotency_key,
+            user=user,
+        )
+    except host_reconciliation.ReconciliationError as exc:
         raise HTTPException(status_code=exc.status_code, detail=exc.detail) from exc

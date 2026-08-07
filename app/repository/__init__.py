@@ -43,6 +43,7 @@ from .host_completion import (
     create_host_completion_decision,
     get_host_completion_engine_source,
     get_host_completion_analytics_source,
+    get_host_reconciliation_snapshot,
     list_host_completion_records,
 )
 from .metadata import (
@@ -134,6 +135,7 @@ __all__ = [
     "update_host",
     "get_host_completion_analytics_source",
     "get_host_completion_engine_source",
+    "get_host_reconciliation_snapshot",
     "create_host_completion_decision",
     "list_host_completion_records",
     "create_project",

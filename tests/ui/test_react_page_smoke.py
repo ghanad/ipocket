@@ -6,6 +6,10 @@ from app import repository
 from app.main import app
 from app.models import IPAssetType, User, UserRole
 from app.routes import ui
+from app.routes.api.dependencies import (
+    require_authenticated_api_or_ui_session,
+    require_editor_api_or_ui_session,
+)
 from tests.react_ui_manifest import REACT_PAGES, ReactPage
 
 
@@ -40,6 +44,8 @@ def authenticated_react_pages():
         ui.get_optional_current_ui_user,
         ui.require_ui_editor,
         ui.require_ui_superuser,
+        require_authenticated_api_or_ui_session,
+        require_editor_api_or_ui_session,
     )
     for dependency in dependencies:
         app.dependency_overrides[dependency] = lambda user=user: user

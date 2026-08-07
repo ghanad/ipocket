@@ -55,6 +55,9 @@ def test_init_db_runs_alembic_migrations(tmp_path) -> None:
             "decision",
             "target_host_id",
             "host_name",
+            "proposal_id",
+            "inventory_fingerprint",
+            "idempotency_key",
             "decided_by",
             "created_at",
         } <= decision_columns
@@ -65,6 +68,7 @@ def test_init_db_runs_alembic_migrations(tmp_path) -> None:
             ).fetchall()
         }
         assert "ix_host_completion_decisions_host_decision" in decision_indexes
+        assert "ix_host_completion_decisions_proposal_id" in decision_indexes
         ip_asset_columns = {
             row["name"]
             for row in connection.execute("PRAGMA table_info(ip_assets)").fetchall()
@@ -121,6 +125,11 @@ def test_existing_0010_database_is_upgraded_to_the_extended_review_schema(
             ).fetchall()
         }
         assert {"case_type", "os_address", "bmc_address", "target_host_id"} <= columns
+        assert {
+            "proposal_id",
+            "inventory_fingerprint",
+            "idempotency_key",
+        } <= columns
     finally:
         connection.close()
 

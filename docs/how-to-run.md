@@ -61,11 +61,10 @@ SQLite file.
 
 ### Host Completion naming
 
-`HOST_NAME_TEMPLATE` controls the review card's BMC-based Host-name prefill and
-name-derived BMC suggestions. It defaults to `server_{bmc}`; `{bmc}` is replaced
-with a dotted-quad BMC address. For example, set
-`HOST_NAME_TEMPLATE='rack-server-{bmc}'` before starting the app to use names
-such as `rack-server-10.30.1.1`.
+Host reconciliation always creates or reuses the convention name
+`server_<bmc-ip>`, for example `server_10.30.1.1`. The legacy prototype still
+reads `HOST_NAME_TEMPLATE`, but the current proposal and manual-counterpart
+workflow intentionally uses the fixed inventory convention.
 
 At runtime, each new SQLite connection enables WAL mode and applies
 `synchronous=NORMAL` with a `busy_timeout` of 5000ms to reduce
@@ -296,11 +295,14 @@ Endpoints:
 - Health check: http://127.0.0.1:8000/health
 - Metrics: http://127.0.0.1:8000/metrics
 - Service discovery: http://127.0.0.1:8000/sd/node
-- Host Completion review queue: http://127.0.0.1:8000/api/host-completion/review-queue
+- Host Completion finding queue: http://127.0.0.1:8000/api/host-completion/findings/next
 - Host Completion one-at-a-time review UI (Editor login required): http://127.0.0.1:8000/host-completion/review
 
-The review queue includes active unlinked OS/BMC assets and Hosts missing one
-side. Creating a Host from the review screen requires a non-empty Host name.
+The queue includes proposed Host creation/completion, unmatched assets, and
+conflicts. Read endpoints require a logged-in UI session or bearer token;
+decision endpoints require Editor permission. Manual findings ask for the
+counterpart IP address (BMC for a known OS, OS for a known BMC); no database IDs
+are required.
 
 Connector CLI examples:
 - Cassandra node import: `python -m app.connectors.cassandra --contact-points 10.0.0.10,10.0.0.11 --mode dry-run --db-path ./ipocket.db`
@@ -415,33 +417,27 @@ List unassigned IPs:
 curl -s "http://127.0.0.1:8000/ip-assets?unassigned-only=true"
 ```
 
-List Hosts that have an OS side but no active BMC side:
+List current reconciliation findings:
 
 ```bash
-curl -s "http://127.0.0.1:8000/api/host-completion/cases?missing=BMC&limit=100"
+curl -s "http://127.0.0.1:8000/api/host-completion/findings" \
+  -H "Authorization: Bearer <token>"
 ```
 
-List complete OS/BMC Host examples for an external pattern-learning Agent:
+Read the reconciliation summary and discovered rule evidence:
 
 ```bash
-curl -s "http://127.0.0.1:8000/api/host-completion/examples?limit=100"
-```
-
-Read Host completion counts and inferred `/16` address mappings:
-
-```bash
-curl -s "http://127.0.0.1:8000/api/host-completion/analytics"
+curl -s "http://127.0.0.1:8000/api/host-completion/summary" \
+  -H "Authorization: Bearer <token>"
 ```
 
 Open the read-only analytics dashboard at
-`http://127.0.0.1:8000/host-completion/analytics`. It charts completion and IP
-type counts, and shows discovered pattern confidence. Reload the page or use
-the retry action after a failed request to fetch current data.
+`http://127.0.0.1:8000/host-completion/analytics`. It shows reconciliation
+states, the unexplained-assets KPI, and rule strength/support/contradictions.
 
-These Host Completion endpoints are read-only and public like the existing
-inventory read routes. Follow `next_cursor` with a `cursor` query parameter to
-read subsequent pages. They do not run an Agent or persist suggestions. See
-[host-completion-api.md](host-completion-api.md) for the current boundary.
+Findings are recomputed from current inventory and operator feedback. They are
+not auto-approved or persisted as authoritative inventory. See
+[host-completion-api.md](host-completion-api.md) for proposal apply examples.
 
 Delete an IP asset (Editor):
 

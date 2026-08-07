@@ -89,6 +89,83 @@ def get_host_completion_engine_source(
     return {"hosts": hosts, "assets": assets, "decisions": decisions}
 
 
+def get_host_reconciliation_snapshot(
+    connection_or_session: sqlite3.Connection | Session,
+) -> dict[str, object]:
+    """Return authoritative inventory facts for the read-only agent engine."""
+
+    with session_scope(connection_or_session) as session:
+        hosts = [
+            {"id": int(row["id"]), "name": str(row["name"])}
+            for row in session.execute(
+                select(db_schema.Host.id, db_schema.Host.name).order_by(
+                    db_schema.Host.id
+                )
+            )
+            .mappings()
+            .all()
+        ]
+        assets = [
+            {
+                "id": int(row["id"]),
+                "host_id": int(row["host_id"]) if row["host_id"] is not None else None,
+                "ip_address": str(row["ip_address"]),
+                "type": str(row["type"]) if row["type"] is not None else None,
+                "archived": bool(row["archived"]),
+                "updated_at": str(row["updated_at"]),
+            }
+            for row in session.execute(
+                select(
+                    db_schema.IPAsset.id,
+                    db_schema.IPAsset.host_id,
+                    db_schema.IPAsset.ip_address,
+                    db_schema.IPAsset.type,
+                    db_schema.IPAsset.archived,
+                    db_schema.IPAsset.updated_at,
+                ).order_by(db_schema.IPAsset.id)
+            )
+            .mappings()
+            .all()
+        ]
+        decisions = [
+            {
+                "id": int(row["id"]),
+                "case_type": str(row["case_type"]),
+                "host_id": int(row["host_id"]) if row["host_id"] is not None else None,
+                "os_address": row["os_address"],
+                "bmc_address": row["bmc_address"],
+                "candidate_ip": row["candidate_ip"],
+                "decision": str(row["decision"]),
+                "target_host_id": (
+                    int(row["target_host_id"])
+                    if row["target_host_id"] is not None
+                    else None
+                ),
+                "proposal_id": row["proposal_id"],
+                "inventory_fingerprint": row["inventory_fingerprint"],
+                "idempotency_key": row["idempotency_key"],
+            }
+            for row in session.execute(
+                select(
+                    db_schema.HostCompletionDecision.id,
+                    db_schema.HostCompletionDecision.case_type,
+                    db_schema.HostCompletionDecision.host_id,
+                    db_schema.HostCompletionDecision.os_address,
+                    db_schema.HostCompletionDecision.bmc_address,
+                    db_schema.HostCompletionDecision.candidate_ip,
+                    db_schema.HostCompletionDecision.decision,
+                    db_schema.HostCompletionDecision.target_host_id,
+                    db_schema.HostCompletionDecision.proposal_id,
+                    db_schema.HostCompletionDecision.inventory_fingerprint,
+                    db_schema.HostCompletionDecision.idempotency_key,
+                ).order_by(db_schema.HostCompletionDecision.id)
+            )
+            .mappings()
+            .all()
+        ]
+    return {"hosts": hosts, "assets": assets, "decisions": decisions}
+
+
 def create_host_completion_decision(
     connection_or_session: sqlite3.Connection | Session,
     *,
@@ -103,6 +180,9 @@ def create_host_completion_decision(
     target_host_id: int | None,
     host_name: str | None,
     decided_by: int,
+    proposal_id: str | None = None,
+    inventory_fingerprint: str | None = None,
+    idempotency_key: str | None = None,
 ) -> int:
     from ._db import write_session_scope
 
@@ -119,6 +199,9 @@ def create_host_completion_decision(
             target_host_id=target_host_id,
             host_name=host_name,
             decided_by=decided_by,
+            proposal_id=proposal_id,
+            inventory_fingerprint=inventory_fingerprint,
+            idempotency_key=idempotency_key,
         )
         session.add(model)
         session.commit()

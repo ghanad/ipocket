@@ -7,9 +7,10 @@ const rootElement = document.getElementById("host-completion-review-root");
 
 if (rootElement) {
   const queueEndpoint =
-    rootElement.dataset.endpoint ?? "/api/host-completion/review-queue";
+    rootElement.dataset.endpoint ?? "/api/host-completion/findings/next";
   const decisionsEndpoint =
-    rootElement.dataset.decisionsEndpoint ?? "/api/host-completion/decisions";
+    rootElement.dataset.decisionsEndpoint ??
+    "/api/host-completion/findings/decisions";
 
   createRoot(rootElement).render(
     <StrictMode>

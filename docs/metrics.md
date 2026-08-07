@@ -27,17 +27,15 @@ not add exporter-side metric names. Applied imports and connectors affect these
 counters only through their normal IP asset creates, updates, restores, and
 archives.
 
-Host completion statistics and deterministic review data are JSON, not
-Prometheus series. Reading analytics or the review queue does not mutate
-inventory or change the counters above. `ACCEPT`, `CORRECTED`,
-`ATTACH_EXISTING`, and `DEACTIVATE` decisions can create, restore, update,
-link, or archive an IP asset through the normal audited mutation path,
-so the existing inventory counters reflect those changes without adding new
-metric names.
+Host reconciliation statistics and deterministic findings are authenticated
+JSON, not Prometheus series. Reading the summary or finding queue does not
+mutate inventory. `ACCEPT`, `CORRECT`, `ATTACH_EXISTING`, and `DEACTIVATE`
+decisions can create a Host, link assets, or archive an asset through one
+audited transaction. `CORRECT` may also create the operator-supplied OS/BMC
+counterpart asset when it is not yet in inventory, so existing counters reflect
+the result without
+adding new metric names.
 
-The `/host-completion/analytics` page visualizes the same JSON. Page views and
-manual reloads do not create exporter-side metrics.
-The `/host-completion/review` page also adds no metrics of its own; accepted or
-corrected BMC links affect only the existing inventory counters.
-Its Host-name template and autocomplete are UI/API workflow metadata only and
-do not create Prometheus series.
+The `/host-completion/analytics` and `/host-completion/review` pages add no
+metrics of their own. Rule support, contradictions, reconciliation states, and
+the unexplained-assets KPI are available from the JSON summary only.

@@ -492,21 +492,27 @@ def _host_options(
         assert isinstance(raw_host, dict)
         host_id = int(raw_host["id"])
         sides = by_host.get(host_id, {"OS": [], "BMC": []})
-        options.append({
-            "id": host_id,
-            "name": str(raw_host["name"]),
-            "has_os": bool(sides["OS"]),
-            "has_bmc": bool(sides["BMC"]),
-        })
-    recent_host_ids = {int(host["id"]) for host in hosts[-20:] if isinstance(host, dict)}
+        options.append(
+            {
+                "id": host_id,
+                "name": str(raw_host["name"]),
+                "has_os": bool(sides["OS"]),
+                "has_bmc": bool(sides["BMC"]),
+            }
+        )
+    recent_host_ids = {
+        int(host["id"]) for host in hosts[-20:] if isinstance(host, dict)
+    }
     # A Host missing either complement is the most useful attachment target,
     # followed by recently created Hosts, then a stable name ordering.
-    options.sort(key=lambda option: (
-        0 if not (bool(option["has_os"]) and bool(option["has_bmc"])) else 1,
-        0 if int(option["id"]) in recent_host_ids else 1,
-        -int(option["id"]) if int(option["id"]) in recent_host_ids else 0,
-        str(option["name"]).lower(),
-    ))
+    options.sort(
+        key=lambda option: (
+            0 if not (bool(option["has_os"]) and bool(option["has_bmc"])) else 1,
+            0 if int(option["id"]) in recent_host_ids else 1,
+            -int(option["id"]) if int(option["id"]) in recent_host_ids else 0,
+            str(option["name"]).lower(),
+        )
+    )
     return options[:20]
 
 
@@ -552,21 +558,31 @@ def build_review_queue(connection_or_session) -> dict[str, object]:
         ):
             name_claims.append((host_id, str(host["name"]), bmc_address))
     named_host_ids = {host_id for host_id, _, _ in name_claims}
-    for host_id, host_name, bmc_address in sorted(name_claims, key=lambda row: _ip_sort_key(row[2])):
-        queued.append((
-            1,
-            _source_16(bmc_address),
-            bmc_address,
-            _review_item(
-                case_type="HOST_MISSING_BMC", host_id=host_id,
-                os_address=None, bmc_address=None, would_create_host=False,
-                suggestion={"mode": "SUGGEST", "candidate_ip": bmc_address,
-                            "confidence": 0.95,
-                            "evidence": ["host name encodes the BMC address"],
-                            "reason_text": f"Host '{host_name}' matches the configured BMC name template."},
-                host_options=host_options,
-            ),
-        ))
+    for host_id, host_name, bmc_address in sorted(
+        name_claims, key=lambda row: _ip_sort_key(row[2])
+    ):
+        queued.append(
+            (
+                1,
+                _source_16(bmc_address),
+                bmc_address,
+                _review_item(
+                    case_type="HOST_MISSING_BMC",
+                    host_id=host_id,
+                    os_address=None,
+                    bmc_address=None,
+                    would_create_host=False,
+                    suggestion={
+                        "mode": "SUGGEST",
+                        "candidate_ip": bmc_address,
+                        "confidence": 0.95,
+                        "evidence": ["host name encodes the BMC address"],
+                        "reason_text": f"Host '{host_name}' matches the configured BMC name template.",
+                    },
+                    host_options=host_options,
+                ),
+            )
+        )
 
     # Pass one records all possible claims before consuming so the strongest rule wins.
     claims: list[tuple[float, str, str, CompletionRule]] = []
@@ -679,7 +695,12 @@ def build_review_queue(connection_or_session) -> dict[str, object]:
         assert isinstance(host, dict)
         host_id = int(host["id"])
         grouped = by_host.get(host_id, {"OS": [], "BMC": []})
-        if grouped["OS"] and not grouped["BMC"] and (host_id, "NO_BMC") not in flags and host_id not in named_host_ids:
+        if (
+            grouped["OS"]
+            and not grouped["BMC"]
+            and (host_id, "NO_BMC") not in flags
+            and host_id not in named_host_ids
+        ):
             host_items.append(
                 (host, "HOST_MISSING_BMC", min(grouped["OS"], key=_ip_sort_key), True)
             )
@@ -819,7 +840,9 @@ def _resolve_or_create_host(connection_or_session, name: str, user) -> tuple[int
     return _create_host(connection_or_session, name, user), False
 
 
-def _validate_bmc_attachment(connection_or_session, host_id: int, bmc_address: str | None) -> None:
+def _validate_bmc_attachment(
+    connection_or_session, host_id: int, bmc_address: str | None
+) -> None:
     """A Host has one active BMC identity; repeating it is safely idempotent."""
 
     if not bmc_address:
@@ -837,7 +860,14 @@ def _validate_bmc_attachment(connection_or_session, host_id: int, bmc_address: s
         )
 
 
-def _host_completion_message(connection_or_session, host_id: int, *, existing: bool, address: str | None, asset_type: str | None) -> str | None:
+def _host_completion_message(
+    connection_or_session,
+    host_id: int,
+    *,
+    existing: bool,
+    address: str | None,
+    asset_type: str | None,
+) -> str | None:
     if not existing:
         return None
     host = repository.get_host_by_id(connection_or_session, host_id)
@@ -849,7 +879,9 @@ def _host_completion_message(connection_or_session, host_id: int, *, existing: b
     sides = by_host.get(host_id, {"OS": [], "BMC": []})
     suffix = " Host is now complete." if sides["OS"] and sides["BMC"] else ""
     if address and asset_type:
-        return f"{asset_type} {address} attached to existing host '{host.name}'.{suffix}"
+        return (
+            f"{asset_type} {address} attached to existing host '{host.name}'.{suffix}"
+        )
     return f"Assets attached to existing host '{host.name}'.{suffix}"
 
 
@@ -1005,7 +1037,9 @@ def record_decision(
                 connection_or_session, _require_host_name(host_name), user
             )
             if resolved_existing_host:
-                _validate_bmc_attachment(connection_or_session, resolved_host_id, chosen_ip or bmc_address)
+                _validate_bmc_attachment(
+                    connection_or_session, resolved_host_id, chosen_ip or bmc_address
+                )
             _link_asset(
                 connection_or_session,
                 address=os_address,
@@ -1032,7 +1066,8 @@ def record_decision(
             )
             if resolved_existing_host:
                 _validate_bmc_attachment(
-                    connection_or_session, resolved_host_id,
+                    connection_or_session,
+                    resolved_host_id,
                     chosen_ip if case_type == "UNLINKED_OS" else bmc_address,
                 )
             _link_asset(
@@ -1154,6 +1189,12 @@ def record_decision(
             resolved_host_id,
             existing=resolved_existing_host or decision == "ATTACH_EXISTING",
             address=os_address or bmc_address or chosen_ip,
-            asset_type="OS" if os_address else "BMC" if bmc_address or chosen_ip else None,
-        ) if resolved_host_id is not None else None,
+            asset_type="OS"
+            if os_address
+            else "BMC"
+            if bmc_address or chosen_ip
+            else None,
+        )
+        if resolved_host_id is not None
+        else None,
     }

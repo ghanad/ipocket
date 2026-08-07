@@ -45,10 +45,10 @@ When enabled, creating a BMC asset without a Host creates or reuses a Host named
 precedence. Set `IPOCKET_AUTO_HOST_FOR_BMC=0|false|no|off` to disable this
 behavior and the matching detail-page action.
 
-Host Completion uses the runtime `HOST_NAME_TEMPLATE` setting (default
-`server_{bmc}`) as a naming aid; it does not add a stored Host column. A name
-matching the template can deterministically identify an active, unlinked BMC
-address for review.
+Current Host reconciliation uses the fixed `server_<bmc-ip>` convention when it
+creates or reuses a Host; it does not add a stored Host column. The legacy
+prototype's name-derived suggestion path still recognizes
+`HOST_NAME_TEMPLATE` for migration compatibility.
 
 ## Vendor
 
@@ -116,24 +116,27 @@ record with `target_id=0` and a compact result summary; dry-runs do not.
 
 ## HostCompletionDecision
 
-- `case_type` identifies a pairing, unlinked asset, or missing-side case
+- `case_type` identifies `CREATE_HOST`, `COMPLETE_HOST`, `UNMATCHED_ASSET`, or
+  `CONFLICT` (legacy prototype values may remain in older rows)
 - `host_id` (nullable foreign key to Host, cascade delete)
 - `mode` (`SUGGEST` or `ASK`)
 - `os_address` and `bmc_address` (nullable case identity fields)
 - `candidate_ip` (nullable)
 - `corrected_ip` (nullable)
-- `decision` (`ACCEPT`, `REJECT`, `CORRECTED`, `UNSURE`, `NO_BMC`, `NO_OS`,
-  `CREATE_HOST_ONLY`, `ATTACH_EXISTING`, or `DEACTIVATE`)
+- `decision` includes `ACCEPT`, `CORRECT`, `WRONG_PAIR`, `UNSURE`, `EXCEPTION`,
+  `ATTACH_EXISTING`, and `DEACTIVATE` (legacy values remain migration-compatible)
 - `target_host_id` and `host_name` (nullable decision context)
+- `proposal_id` and `inventory_fingerprint` bind the decision to a particular
+  derived finding and inventory state
+- `idempotency_key` (nullable unique retry key)
 - `decided_by` (nullable foreign key to User; set null when the User is deleted)
 - `created_at`
 
-Decisions are immutable feedback events. Rules and their support,
-contradictions, rejection counts, and confidence are recomputed from current
-Host/IPAsset relationships plus these events; inferred rules are not stored.
-`NO_BMC` and `NO_OS` exclude a Host from the matching missing-side queue.
-Rejections remain Host/asset/candidate-specific and contribute contradictions
-to derived rules. `UNSURE` is retained as feedback but can return later.
+Decisions are immutable agent state, not authoritative inventory. Rules and
+their support, contradictions, strength, and examples are recomputed from
+current Host/IPAsset relationships plus explicit feedback. Only `WRONG_PAIR`
+is negative mapping evidence; `UNSURE` and `EXCEPTION` are not contradictions.
+The unique idempotency key prevents duplicate mutation events.
 
 ## Assignment workflow
 
@@ -160,16 +163,17 @@ Connector output controls update semantics:
 - Ceph and Kubernetes additionally create/update Hosts and may update Host links,
   Type, and Project; optional cluster/label values become normalized Tags.
 
-Host Completion cases, examples, analytics, and review candidates are
-projections of active Host/IPAsset relationships. Analytics
-classifies Hosts from their linked active OS/BMC assets; an `unlinked` Host has
-neither type linked. Active assets without a Host still contribute to IP type
-counts but cannot form confirmed pairs.
+`ipocket_agent` does not define database models and never imports ipocket's
+repositories. ipocket projects its current Hosts, active/archived IP Assets,
+and minimal operator feedback into the agent. Findings and rules are derived on
+demand; Hosts and IP Assets are never copied into an agent-owned database.
 
-The Host Completion analytics UI at `/host-completion/analytics` reads this
-projection on page load and when the operator retries a failed request. The
-deterministic review engine persists decisions only; it does not persist
-inferred patterns. The Editor-only
-`/host-completion/review` UI submits `ACCEPT`, `REJECT`, `CORRECTED`, `UNSURE`,
-and `NO_BMC` decisions against one queue item at a time, then reloads the
-projection to select the next eligible Host.
+Every active OS/BMC asset is classified as `RESOLVED`, `PROPOSED`, `UNMATCHED`,
+`CONFLICT`, or `EXCEPTION`. Reconciliation coverage is
+`(RESOLVED + PROPOSED + EXCEPTION) / active OS/BMC assets`. The operational KPI
+is `UNMATCHED + CONFLICT`, named **unexplained active assets**, with a goal of 0.
+
+Manual reconciliation is address-driven. The operator supplies the missing OS
+or BMC IP; the API resolves or creates that IP Asset, derives the Host name as
+`server_<bmc-ip>`, and links both sides in the same transaction. Numeric Asset
+and Host IDs are internal implementation details, not normal UI inputs.

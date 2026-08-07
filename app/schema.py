@@ -156,6 +156,9 @@ class HostCompletionDecision(Base):
     decision = Column(Text, nullable=False)
     target_host_id = Column(Integer, ForeignKey("hosts.id", ondelete="SET NULL"))
     host_name = Column(Text)
+    proposal_id = Column(Text)
+    inventory_fingerprint = Column(Text)
+    idempotency_key = Column(Text, unique=True)
     decided_by = Column(
         Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True
     )
@@ -164,8 +167,9 @@ class HostCompletionDecision(Base):
     __table_args__ = (
         CheckConstraint("mode IN ('SUGGEST', 'ASK')", name="ck_host_completion_mode"),
         CheckConstraint(
-            "decision IN ('ACCEPT', 'REJECT', 'CORRECTED', 'UNSURE', "
-            "'NO_BMC', 'NO_OS', 'CREATE_HOST_ONLY', 'ATTACH_EXISTING', 'DEACTIVATE')",
+            "decision IN ('ACCEPT', 'REJECT', 'CORRECTED', 'CORRECT', "
+            "'WRONG_PAIR', 'UNSURE', 'EXCEPTION', 'NO_BMC', 'NO_OS', "
+            "'CREATE_HOST_ONLY', 'ATTACH_EXISTING', 'DEACTIVATE')",
             name="ck_host_completion_decision",
         ),
     )

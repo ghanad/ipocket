@@ -3,275 +3,135 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { HostCompletionReviewPage } from "./HostCompletionReviewPage";
 
-const askQueue = {
-  item: {
-    case_type: "HOST_MISSING_BMC",
-    host_id: 7,
-    os_asset: { address: "10.10.7.7", hostname: null },
-    bmc_asset: null,
-    would_create_host: false,
-    mode: "ASK",
-    candidate_ip: null,
-    confidence: null,
-    evidence: [],
-    reason_text: "No active rule matches this host.",
-  },
-  remaining: 4,
-};
-
-const suggestQueue = {
-  item: {
-    case_type: "HOST_MISSING_BMC",
-    host_id: 8,
-    os_asset: { address: "10.10.8.8", hostname: null },
-    bmc_asset: null,
-    would_create_host: false,
-    mode: "SUGGEST",
-    candidate_ip: "10.30.8.8",
-    confidence: 0.85,
-    evidence: ["10.10.1.1 -> 10.30.1.1"],
-    reason_text: "3 confirmed hosts use this mapping.",
-  },
-  remaining: 2,
-};
+const createHost = {
+  finding_type: "CREATE_HOST",
+  state: "PROPOSED",
+  proposal_id: "proposal-create-1",
+  inventory_fingerprint: "inventory-create-1",
+  host_id: null,
+  proposed_host_name: "server_10.30.1.17",
+  assets: [
+    { id: 11, ip_address: "10.10.1.17", type: "OS", host_id: null },
+    { id: 12, ip_address: "10.30.1.17", type: "BMC", host_id: null },
+  ],
+  candidate_ips: ["10.30.1.17"],
+  match_strength: "STRONG",
+  evidence: ["Rule r-17 maps the final octet."],
+  reasons: ["Both unlinked assets match a confirmed rule."],
+  rule_ids: ["r-17"],
+} as const;
 
 function jsonResponse(payload: unknown, ok = true, status = 200) {
-  return {
-    ok,
-    status,
-    redirected: false,
-    url: "",
-    headers: new Headers(),
-    text: async () => JSON.stringify(payload),
-  };
+  return { ok, status, redirected: false, url: "", headers: new Headers(), text: async () => JSON.stringify(payload) };
 }
 
 function renderPage() {
-  return render(
-    <HostCompletionReviewPage
-      queueEndpoint="/api/host-completion/review-queue"
-      decisionsEndpoint="/api/host-completion/decisions"
-    />,
-  );
+  return render(<HostCompletionReviewPage queueEndpoint="/api/host-completion/findings/next" decisionsEndpoint="/api/host-completion/findings/decisions" />);
 }
 
-afterEach(() => {
-  cleanup();
-  vi.restoreAllMocks();
-  vi.unstubAllGlobals();
-});
+afterEach(() => { cleanup(); vi.restoreAllMocks(); vi.unstubAllGlobals(); });
 
 describe("HostCompletionReviewPage", () => {
-  it("loads and renders one ASK card", async () => {
-    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(jsonResponse(askQueue)));
-
-    renderPage();
-
-    expect(screen.getByText("Loading Host Completion review…")).toBeInTheDocument();
-    expect(await screen.findByRole("heading", { name: "Host #7" })).toBeInTheDocument();
-    expect(screen.getByText("10.10.7.7")).toBeInTheDocument();
-    expect(screen.getByText("remaining: 4")).toBeInTheDocument();
-    expect(screen.getByText("What is the BMC IP for this case?")).toBeInTheDocument();
-    expect(screen.getAllByRole("article")).toHaveLength(1);
-  });
-
-  it("uses the opposite side for direction-aware BMC and OS labels", async () => {
-    const osQueue = {
-      item: { ...askQueue.item, case_type: "HOST_MISSING_OS", os_asset: null, bmc_asset: { address: "10.30.7.7", hostname: null } },
-      remaining: 0,
-    };
-    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(jsonResponse(osQueue)));
-    renderPage();
-
-    expect(await screen.findByText("What is the OS IP for this case?")).toBeInTheDocument();
-    expect(screen.getByLabelText("OS IP address")).toBeInTheDocument();
-  });
-
-  it("saves an entered ASK address and refetches the queue", async () => {
-    const fetchMock = vi
-      .fn()
-      .mockResolvedValueOnce(jsonResponse(askQueue))
-      .mockResolvedValueOnce(jsonResponse({ id: 2, decision: "CORRECTED", applied_ip: "10.40.7.7" }))
+  it("renders loading, error recovery, and the empty queue state", async () => {
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(jsonResponse({ detail: "offline" }, false, 500))
       .mockResolvedValueOnce(jsonResponse({ item: null, remaining: 0 }));
     vi.stubGlobal("fetch", fetchMock);
     renderPage();
 
-    fireEvent.change(await screen.findByLabelText("BMC IP address"), {
-      target: { value: "10.40.7.7" },
-    });
-    fireEvent.click(screen.getByRole("button", { name: "Save" }));
-
-    expect(await screen.findByText("No more cases 🎉")).toBeInTheDocument();
-    expect(screen.getByText("BMC IP saved.")).toBeInTheDocument();
-    expect(fetchMock).toHaveBeenNthCalledWith(
-      2,
-      "/api/host-completion/decisions",
-      expect.objectContaining({
-        method: "POST",
-        body: JSON.stringify({
-          case_type: "HOST_MISSING_BMC",
-          mode: "ASK",
-          host_id: 7,
-          os_address: "10.10.7.7",
-          decision: "CORRECTED",
-          corrected_ip: "10.40.7.7",
-        }),
-      }),
-    );
-    expect(fetchMock).toHaveBeenCalledTimes(3);
+    expect(screen.getByText("Loading reconciliation findings…")).toBeInTheDocument();
+    expect(await screen.findByRole("alert")).toHaveTextContent("reconciliation queue could not be loaded");
+    fireEvent.click(screen.getByRole("button", { name: "Try again" }));
+    expect(await screen.findByText("No unexplained findings")).toBeInTheDocument();
+    expect(screen.getByText("Every active OS/BMC asset is resolved, proposed, or explicitly excepted.")).toBeInTheDocument();
   });
 
-  it("renders a suggestion and handles Yes", async () => {
-    const fetchMock = vi
-      .fn()
-      .mockResolvedValueOnce(jsonResponse(suggestQueue))
-      .mockResolvedValueOnce(jsonResponse({ id: 3, decision: "ACCEPT", applied_ip: "10.30.8.8" }))
+  it("shows CREATE_HOST inventory and deterministic evidence, then accepts with proposal identity", async () => {
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(jsonResponse({ item: createHost, remaining: 3 }))
+      .mockResolvedValueOnce(jsonResponse({ id: 9, decision: "ACCEPT", host_id: 42, proposal_id: createHost.proposal_id, idempotent_replay: false }))
       .mockResolvedValueOnce(jsonResponse({ item: null, remaining: 0 }));
     vi.stubGlobal("fetch", fetchMock);
     renderPage();
 
-    expect(await screen.findByText("10.30.8.8")).toBeInTheDocument();
-    expect(screen.getByText("3 confirmed hosts use this mapping.")).toBeInTheDocument();
-    expect(screen.getByRole("progressbar", { name: "Suggestion confidence" })).toHaveAttribute("aria-valuenow", "85");
-    fireEvent.click(screen.getByRole("button", { name: "Yes" }));
-
-    expect(await screen.findByText("Suggested BMC IP saved.")).toBeInTheDocument();
-    expect(fetchMock).toHaveBeenNthCalledWith(
-      2,
-      "/api/host-completion/decisions",
-      expect.objectContaining({
-        body: JSON.stringify({
-          case_type: "HOST_MISSING_BMC",
-          mode: "SUGGEST",
-          host_id: 8,
-          os_address: "10.10.8.8",
-          candidate_ip: "10.30.8.8",
-          decision: "ACCEPT",
-        }),
-      }),
-    );
-  });
-
-  it("reveals and submits the inline correction", async () => {
-    const fetchMock = vi
-      .fn()
-      .mockResolvedValueOnce(jsonResponse(suggestQueue))
-      .mockResolvedValueOnce(jsonResponse({ id: 4, decision: "CORRECTED", applied_ip: "10.40.8.8" }))
-      .mockResolvedValueOnce(jsonResponse({ item: null, remaining: 0 }));
-    vi.stubGlobal("fetch", fetchMock);
-    renderPage();
-
-    fireEvent.click(await screen.findByRole("button", { name: "Correct" }));
-    fireEvent.change(screen.getByLabelText("Correct BMC IP address"), {
-      target: { value: "10.40.8.8" },
-    });
-    fireEvent.click(screen.getByRole("button", { name: "Save correction" }));
+    expect(await screen.findByRole("heading", { name: "Create and connect this physical Host" })).toBeInTheDocument();
+    expect(screen.getByText("Create server_10.30.1.17")).toBeInTheDocument();
+    expect(screen.getByText("Attach both active assets in one transaction")).toBeInTheDocument();
+    expect(screen.getByText("Both unlinked assets match a confirmed rule.")).toBeInTheDocument();
+    expect(screen.getByText("Rule r-17 maps the final octet.")).toBeInTheDocument();
+    expect(screen.getByText("strong match")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Create Host and attach assets" }));
 
     await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(3));
-    expect(fetchMock).toHaveBeenNthCalledWith(
-      2,
-      "/api/host-completion/decisions",
-      expect.objectContaining({
-        body: JSON.stringify({
-          case_type: "HOST_MISSING_BMC",
-          mode: "SUGGEST",
-          host_id: 8,
-          os_address: "10.10.8.8",
-          candidate_ip: "10.30.8.8",
-          decision: "CORRECTED",
-          corrected_ip: "10.40.8.8",
-        }),
-      }),
-    );
+    expect(JSON.parse(fetchMock.mock.calls[1][1].body)).toEqual({
+      proposal_id: "proposal-create-1",
+      inventory_fingerprint: "inventory-create-1",
+      decision: "ACCEPT",
+    });
+    expect(screen.getByText("Proposal applied.")).toBeInTheDocument();
+  });
+
+  it("asks for a BMC address when the unmatched asset is an OS", async () => {
+    const unmatched = { ...createHost, finding_type: "UNMATCHED_ASSET", state: "UNMATCHED", proposal_id: "proposal-unmatched", assets: [createHost.assets[0]], proposed_host_name: null, match_strength: null, evidence: [], reasons: ["No safe counterpart exists."], rule_ids: [] } as const;
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(jsonResponse({ item: unmatched, remaining: 1 }))
+      .mockResolvedValueOnce(jsonResponse({ id: 10, decision: "CORRECT", host_id: 55, proposal_id: unmatched.proposal_id, idempotent_replay: false }))
+      .mockResolvedValueOnce(jsonResponse({ item: null, remaining: 0 }));
+    vi.stubGlobal("fetch", fetchMock);
+    renderPage();
+
+    expect(await screen.findByText("No safe counterpart was found")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /attach assets/i })).not.toBeInTheDocument();
+    expect(screen.getByText("No deterministic rule supplied enough evidence for an automatic proposal.")).toBeInTheDocument();
+    expect(screen.getByText("What is the BMC address for this OS?")).toBeInTheDocument();
+    expect(screen.getByText("server_<bmc-ip>")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Mark exception" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Archive asset" })).toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText("BMC IP address"), { target: { value: "10.30.1.17" } });
+    expect(screen.getByText("server_10.30.1.17")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Link BMC and update Host" }));
+
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(3));
+    expect(JSON.parse(fetchMock.mock.calls[1][1].body)).toEqual({ proposal_id: "proposal-unmatched", inventory_fingerprint: "inventory-create-1", decision: "CORRECT", counterpart_ip: "10.30.1.17", counterpart_type: "BMC" });
   });
 
   it.each([
-    ["No", "REJECT"],
-    ["Later", "UNSURE"],
-    ["No BMC", "NO_BMC"],
-  ])("maps %s to %s", async (buttonName, decision) => {
-    const fetchMock = vi
-      .fn()
-      .mockResolvedValueOnce(jsonResponse(suggestQueue))
-      .mockResolvedValueOnce(jsonResponse({ id: 5, decision, applied_ip: null }))
-      .mockResolvedValueOnce(jsonResponse({ item: null, remaining: 0 }));
-    vi.stubGlobal("fetch", fetchMock);
-    renderPage();
-
-    fireEvent.click(await screen.findByRole("button", { name: buttonName }));
-
-    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(3));
-    expect(JSON.parse(fetchMock.mock.calls[1][1].body)).toMatchObject({
-      candidate_ip: "10.30.8.8",
-      decision,
-    });
-  });
-
-  it("shows load and decision errors with recovery controls", async () => {
-    const fetchMock = vi
-      .fn()
-      .mockResolvedValueOnce(jsonResponse({ detail: "broken" }, false, 500))
-      .mockResolvedValueOnce(jsonResponse(suggestQueue))
-      .mockResolvedValueOnce(jsonResponse({ detail: "Candidate is no longer available." }, false, 409));
-    vi.stubGlobal("fetch", fetchMock);
-    renderPage();
-
-    expect(await screen.findByRole("alert")).toHaveTextContent("review queue could not be loaded");
-    fireEvent.click(screen.getByRole("button", { name: "Try again" }));
-    fireEvent.click(await screen.findByRole("button", { name: "Yes" }));
-
-    expect(await screen.findByText("Candidate is no longer available.")).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "Host #8" })).toBeInTheDocument();
-  });
-
-  it("prefills the configured host template from a known or entered BMC and preserves manual edits", async () => {
-    const queue = {
-      item: {
-        ...askQueue.item,
-        case_type: "UNLINKED_OS",
-        host_id: null,
-        would_create_host: true,
-        host_name_template: "server_{bmc}",
-        host_options: [],
-      },
-      remaining: 0,
-    };
-    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(jsonResponse(queue)));
-    renderPage();
-
-    const name = await screen.findByLabelText("Host name");
-    expect(name).toHaveValue("");
-    fireEvent.change(screen.getByLabelText("BMC IP address"), { target: { value: "10.30.1.1" } });
-    expect(name).toHaveValue("server_10.30.1.1");
-    fireEvent.change(name, { target: { value: "manual-name" } });
-    fireEvent.change(screen.getByLabelText("BMC IP address"), { target: { value: "10.30.1.2" } });
-    expect(name).toHaveValue("manual-name");
-  });
-
-  it("uses an attach confirmation when an autocomplete host already has the missing side", async () => {
-    const queue = {
-      item: {
-        ...askQueue.item,
-        case_type: "UNLINKED_OS",
-        host_id: null,
-        would_create_host: true,
-        host_name_template: "server_{bmc}",
-        host_options: [{ id: 42, name: "server_10.30.1.1", has_os: true, has_bmc: true }],
-      },
-      remaining: 0,
-    };
+    ["Mark exception", "EXCEPTION"],
+    ["Archive asset", "DEACTIVATE"],
+  ])("records %s for an unmatched asset", async (buttonName, decision) => {
+    const unmatched = { ...createHost, finding_type: "UNMATCHED_ASSET", state: "UNMATCHED", proposal_id: `proposal-${decision}`, assets: [createHost.assets[0]], proposed_host_name: null, match_strength: null, evidence: [], reasons: [], rule_ids: [] } as const;
     const fetchMock = vi.fn()
-      .mockResolvedValueOnce(jsonResponse(queue))
-      .mockResolvedValueOnce(jsonResponse({ id: 9, decision: "ATTACH_EXISTING", applied_ip: null, host_id: 42, message: "Assets attached." }))
+      .mockResolvedValueOnce(jsonResponse({ item: unmatched, remaining: 1 }))
+      .mockResolvedValueOnce(jsonResponse({ id: 11, decision, host_id: null, proposal_id: unmatched.proposal_id, idempotent_replay: false }))
       .mockResolvedValueOnce(jsonResponse({ item: null, remaining: 0 }));
     vi.stubGlobal("fetch", fetchMock);
     renderPage();
 
-    fireEvent.change(await screen.findByLabelText("Host name"), { target: { value: "server_10.30.1.1" } });
-    expect(screen.getByRole("heading", { name: "Attach this case to server_10.30.1.1?" })).toBeInTheDocument();
-    expect(screen.queryByLabelText("BMC IP address")).not.toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: "Attach to host" }));
+    await screen.findByText("No safe counterpart was found");
+    fireEvent.click(screen.getByRole("button", { name: buttonName }));
     await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(3));
-    expect(JSON.parse(fetchMock.mock.calls[1][1].body)).toMatchObject({ decision: "ATTACH_EXISTING", target_host_id: 42 });
+    expect(JSON.parse(fetchMock.mock.calls[1][1].body)).toEqual({ proposal_id: unmatched.proposal_id, inventory_fingerprint: "inventory-create-1", decision });
+  });
+
+  it("never presents an automatic accept action for conflicts", async () => {
+    const conflict = { ...createHost, finding_type: "CONFLICT", state: "CONFLICT", proposal_id: "proposal-conflict", proposed_host_name: null, match_strength: "WEAK", reasons: ["The candidate is attached elsewhere."] } as const;
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(jsonResponse({ item: conflict, remaining: 1 })));
+    renderPage();
+
+    expect(await screen.findByText("Resolve this conflict manually")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /attach missing asset|create host/i })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Wrong pair" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Mark exception" })).toBeInTheDocument();
+    expect(screen.getByLabelText("BMC IP address")).toBeInTheDocument();
+  });
+
+  it("asks for an OS address when the unmatched asset is a BMC", async () => {
+    const unmatchedBmc = { ...createHost, finding_type: "UNMATCHED_ASSET", state: "UNMATCHED", proposal_id: "proposal-bmc", assets: [createHost.assets[1]], proposed_host_name: null, match_strength: null, evidence: [], reasons: [], rule_ids: [] } as const;
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(jsonResponse({ item: unmatchedBmc, remaining: 0 })));
+    renderPage();
+
+    expect(await screen.findByText("What is the OS address for this BMC?")).toBeInTheDocument();
+    expect(screen.getByLabelText("OS IP address")).toBeInTheDocument();
+    expect(screen.getByText("server_10.30.1.17")).toBeInTheDocument();
   });
 });

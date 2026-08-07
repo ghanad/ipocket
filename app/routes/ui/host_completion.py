@@ -3,13 +3,15 @@ from __future__ import annotations
 from fastapi import APIRouter, Depends, Request
 from fastapi.responses import HTMLResponse
 
-from .utils import _render_template, require_ui_editor
+from .utils import _render_template, get_current_ui_user, require_ui_editor
 
 router = APIRouter()
 
 
 @router.get("/host-completion/analytics", response_class=HTMLResponse)
-def host_completion_analytics_page(request: Request) -> HTMLResponse:
+def host_completion_analytics_page(
+    request: Request, _user=Depends(get_current_ui_user)
+) -> HTMLResponse:
     return _render_template(
         request,
         "host_completion_analytics.html",

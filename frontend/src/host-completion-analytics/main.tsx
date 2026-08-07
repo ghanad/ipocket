@@ -7,7 +7,7 @@ const rootElement = document.getElementById("host-completion-analytics-root");
 
 if (rootElement) {
   const endpoint =
-    rootElement.dataset.endpoint ?? "/api/host-completion/analytics";
+    rootElement.dataset.endpoint ?? "/api/host-completion/summary";
 
   createRoot(rootElement).render(
     <StrictMode>
