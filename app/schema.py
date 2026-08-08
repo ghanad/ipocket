@@ -191,9 +191,13 @@ class HostCompletionManualRule(Base):
     updated_at = Column(Text, nullable=False, server_default=text("CURRENT_TIMESTAMP"))
 
     __table_args__ = (
-        CheckConstraint("prefix_length IN (16, 24)", name="ck_manual_rule_prefix_length"),
+        CheckConstraint(
+            "prefix_length IN (16, 24)", name="ck_manual_rule_prefix_length"
+        ),
         UniqueConstraint(
-            "source_prefix", "target_prefix", "prefix_length",
+            "source_prefix",
+            "target_prefix",
+            "prefix_length",
             name="uq_manual_rule_transformation",
         ),
     )

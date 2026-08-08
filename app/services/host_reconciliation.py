@@ -156,7 +156,9 @@ def _manual_rules(source: dict[str, object]) -> tuple[Rule, ...]:
     return tuple(rules)
 
 
-def _manual_rule_payload(model: db_schema.HostCompletionManualRule) -> dict[str, object]:
+def _manual_rule_payload(
+    model: db_schema.HostCompletionManualRule,
+) -> dict[str, object]:
     return {
         "id": model.id,
         "source_prefix": model.source_prefix,
@@ -178,7 +180,9 @@ def _normalize_manual_rule(
             422, "Source and target must be valid IPv4 network prefixes."
         ) from exc
     if source.version != 4 or target.version != 4:
-        raise ReconciliationError(422, "Source and target must be IPv4 network prefixes.")
+        raise ReconciliationError(
+            422, "Source and target must be IPv4 network prefixes."
+        )
     if source.prefixlen not in {16, 24} or target.prefixlen != source.prefixlen:
         raise ReconciliationError(
             422, "Source and target must use the same /16 or /24 prefix length."
@@ -367,9 +371,7 @@ def get_summary(connection_or_session) -> dict[str, object]:
                     else None
                 ),
                 "notes": (
-                    manual_by_id[rule.id]["notes"]
-                    if rule.id in manual_by_id
-                    else None
+                    manual_by_id[rule.id]["notes"] if rule.id in manual_by_id else None
                 ),
             }
             for rule in result.rules

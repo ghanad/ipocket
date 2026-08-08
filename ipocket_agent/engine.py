@@ -334,14 +334,15 @@ def reconcile(
     # learned rule. This keeps the displayed policy and the proposal engine in
     # sync without hiding either category of rule from callers.
     manual_rule_items = tuple(sorted(manual_rules, key=lambda rule: rule.id))
-    manual_transformations = {
-        rule.transformation for rule in manual_rule_items
-    }
-    rules = tuple(
-        rule
-        for rule in discovered_rules
-        if rule.transformation not in manual_transformations
-    ) + manual_rule_items
+    manual_transformations = {rule.transformation for rule in manual_rule_items}
+    rules = (
+        tuple(
+            rule
+            for rule in discovered_rules
+            if rule.transformation not in manual_transformations
+        )
+        + manual_rule_items
+    )
     assets_by_ip = {asset.ip_address: asset for asset in inventory.assets}
     hosts = {host.id: host for host in inventory.hosts}
     active = tuple(

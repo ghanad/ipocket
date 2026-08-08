@@ -82,7 +82,11 @@ def test_init_db_runs_alembic_migrations(tmp_path) -> None:
             ).fetchall()
         }
         assert {
-            "source_prefix", "target_prefix", "prefix_length", "active", "notes"
+            "source_prefix",
+            "target_prefix",
+            "prefix_length",
+            "active",
+            "notes",
         } <= manual_rule_columns
     finally:
         connection.close()
