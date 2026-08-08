@@ -8,10 +8,11 @@ const rootElement = document.getElementById("host-completion-analytics-root");
 if (rootElement) {
   const endpoint =
     rootElement.dataset.endpoint ?? "/api/host-completion/summary";
+  const canManageRules = rootElement.dataset.canManageRules === "true";
 
   createRoot(rootElement).render(
     <StrictMode>
-      <HostCompletionAnalyticsPage endpoint={endpoint} />
+      <HostCompletionAnalyticsPage endpoint={endpoint} canManageRules={canManageRules} />
     </StrictMode>,
   );
 }

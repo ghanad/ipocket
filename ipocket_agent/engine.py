@@ -318,6 +318,7 @@ def reconcile(
     *,
     min_support: int = 3,
     host_name_template: str = "server_{bmc}",
+    manual_rules: Iterable[Rule] = (),
 ) -> ReconciliationResult:
     """Classify an inventory snapshot without changing it.
 
@@ -328,7 +329,19 @@ def reconcile(
 
     if host_name_template.count("{bmc}") != 1:
         raise ValueError("host_name_template must contain exactly one {bmc}")
-    rules = discover_rules(inventory, min_support=min_support)
+    discovered_rules = discover_rules(inventory, min_support=min_support)
+    # A persisted administrator rule intentionally wins over an equivalent
+    # learned rule. This keeps the displayed policy and the proposal engine in
+    # sync without hiding either category of rule from callers.
+    manual_rule_items = tuple(sorted(manual_rules, key=lambda rule: rule.id))
+    manual_transformations = {
+        rule.transformation for rule in manual_rule_items
+    }
+    rules = tuple(
+        rule
+        for rule in discovered_rules
+        if rule.transformation not in manual_transformations
+    ) + manual_rule_items
     assets_by_ip = {asset.ip_address: asset for asset in inventory.assets}
     hosts = {host.id: host for host in inventory.hosts}
     active = tuple(

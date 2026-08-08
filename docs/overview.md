@@ -84,7 +84,9 @@ details live in their focused documents under `docs/`.
   `/findings`, and `/findings/next`. Editor-only
   `POST /api/host-completion/findings/decisions` applies operator outcomes.
 - `/host-completion/analytics` shows the reconciliation states, the explicitly
-  defined coverage formula, and rule support/contradictions. Editors use
+  defined coverage formula, and rule support/contradictions. Superusers can
+  add, edit, or deactivate explicit `/16` and `/24` IPv4 mappings there;
+  deactivation preserves the rule and its audit history. Editors use
   `/host-completion/review` for the evidence-first one-at-a-time workflow.
 - Docker, Docker Compose, Helm, local development, CI, and frontend build
   instructions are in [How to run](how-to-run.md).

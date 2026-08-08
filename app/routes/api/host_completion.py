@@ -11,6 +11,7 @@ from app.services import host_completion, host_reconciliation
 from .dependencies import (
     require_authenticated_api_or_ui_session,
     require_editor_api_or_ui_session,
+    require_superuser_api_or_ui_session,
 )
 
 router = APIRouter(prefix="/api/host-completion", tags=["host-completion"])
@@ -184,6 +185,22 @@ class ReconciliationDecisionResponse(BaseModel):
     idempotent_replay: bool
 
 
+class ManualRuleRequest(BaseModel):
+    source_prefix: str
+    target_prefix: str
+    active: bool = True
+    notes: Optional[str] = None
+
+
+class ManualRuleResponse(BaseModel):
+    id: int
+    source_prefix: str
+    target_prefix: str
+    prefix_length: Literal[16, 24]
+    active: bool
+    notes: Optional[str]
+
+
 @router.get("/analytics", response_model=HostCompletionAnalytics)
 def get_host_completion_analytics(
     connection=Depends(get_connection),
@@ -293,6 +310,50 @@ def get_reconciliation_summary(
     """Return reconciliation states, KPIs, and explainable discovered rules."""
 
     return host_reconciliation.get_summary(connection)
+
+
+@router.post("/rules", response_model=ManualRuleResponse, status_code=201)
+def create_manual_reconciliation_rule(
+    payload: ManualRuleRequest,
+    connection=Depends(get_connection),
+    user=Depends(require_superuser_api_or_ui_session),
+):
+    """Create an administrator-owned, deterministic OS-to-BMC mapping."""
+
+    try:
+        return host_reconciliation.create_manual_rule(
+            connection,
+            source_prefix=payload.source_prefix,
+            target_prefix=payload.target_prefix,
+            active=payload.active,
+            notes=payload.notes,
+            user=user,
+        )
+    except host_reconciliation.ReconciliationError as exc:
+        raise HTTPException(status_code=exc.status_code, detail=exc.detail) from exc
+
+
+@router.put("/rules/{rule_id}", response_model=ManualRuleResponse)
+def update_manual_reconciliation_rule(
+    rule_id: int,
+    payload: ManualRuleRequest,
+    connection=Depends(get_connection),
+    user=Depends(require_superuser_api_or_ui_session),
+):
+    """Update or deactivate a manual rule while retaining its audit history."""
+
+    try:
+        return host_reconciliation.update_manual_rule(
+            connection,
+            rule_id=rule_id,
+            source_prefix=payload.source_prefix,
+            target_prefix=payload.target_prefix,
+            active=payload.active,
+            notes=payload.notes,
+            user=user,
+        )
+    except host_reconciliation.ReconciliationError as exc:
+        raise HTTPException(status_code=exc.status_code, detail=exc.detail) from exc
 
 
 @router.post(

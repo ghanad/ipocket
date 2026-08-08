@@ -173,3 +173,27 @@ class HostCompletionDecision(Base):
             name="ck_host_completion_decision",
         ),
     )
+
+
+class HostCompletionManualRule(Base):
+    """Administrator-owned deterministic OS-to-BMC mapping."""
+
+    __tablename__ = "host_completion_manual_rules"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    source_prefix = Column(Text, nullable=False)
+    target_prefix = Column(Text, nullable=False)
+    prefix_length = Column(Integer, nullable=False)
+    active = Column(Integer, nullable=False, server_default=text("1"))
+    notes = Column(Text)
+    created_by = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"))
+    created_at = Column(Text, nullable=False, server_default=text("CURRENT_TIMESTAMP"))
+    updated_at = Column(Text, nullable=False, server_default=text("CURRENT_TIMESTAMP"))
+
+    __table_args__ = (
+        CheckConstraint("prefix_length IN (16, 24)", name="ck_manual_rule_prefix_length"),
+        UniqueConstraint(
+            "source_prefix", "target_prefix", "prefix_length",
+            name="uq_manual_rule_transformation",
+        ),
+    )

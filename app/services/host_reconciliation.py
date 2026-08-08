@@ -18,8 +18,17 @@ from sqlalchemy.orm import Session
 
 from app import repository, schema as db_schema
 from app.dependencies import create_db_session
+from app.repository._db import write_session_scope as _write_scope
 from app.utils import ipv4_to_int
-from ipocket_agent import AgentDecision, Asset, Host, Inventory, reconcile
+from ipocket_agent import (
+    AgentDecision,
+    Asset,
+    Host,
+    Inventory,
+    Rule,
+    Transformation,
+    reconcile,
+)
 
 
 Decision = Literal[
@@ -116,7 +125,159 @@ def _result(connection_or_session):
         inventory,
         min_support=_min_support(),
         host_name_template=_host_name_template(),
+        manual_rules=_manual_rules(source),
     )
+
+
+def _manual_rules(source: dict[str, object]) -> tuple[Rule, ...]:
+    raw_rules = source.get("manual_rules", [])
+    assert isinstance(raw_rules, list)
+    rules: list[Rule] = []
+    for item in raw_rules:
+        if not isinstance(item, dict):
+            continue
+        prefix_length = int(item["prefix_length"])
+        source_prefix = str(item["source_prefix"])
+        target_prefix = str(item["target_prefix"])
+        rules.append(
+            Rule(
+                id=f"manual-{item['id']}",
+                transformation=Transformation(
+                    kind="PREFIX_16" if prefix_length == 16 else "PREFIX_24",
+                    source=source_prefix,
+                    target=target_prefix,
+                ),
+                support=0,
+                contradictions=0,
+                active=bool(item["active"]),
+                strength="STRONG" if bool(item["active"]) else "INACTIVE",
+            )
+        )
+    return tuple(rules)
+
+
+def _manual_rule_payload(model: db_schema.HostCompletionManualRule) -> dict[str, object]:
+    return {
+        "id": model.id,
+        "source_prefix": model.source_prefix,
+        "target_prefix": model.target_prefix,
+        "prefix_length": model.prefix_length,
+        "active": bool(model.active),
+        "notes": model.notes,
+    }
+
+
+def _normalize_manual_rule(
+    source_prefix: str, target_prefix: str
+) -> tuple[str, str, int]:
+    try:
+        source = ipaddress.ip_network(source_prefix.strip(), strict=True)
+        target = ipaddress.ip_network(target_prefix.strip(), strict=True)
+    except ValueError as exc:
+        raise ReconciliationError(
+            422, "Source and target must be valid IPv4 network prefixes."
+        ) from exc
+    if source.version != 4 or target.version != 4:
+        raise ReconciliationError(422, "Source and target must be IPv4 network prefixes.")
+    if source.prefixlen not in {16, 24} or target.prefixlen != source.prefixlen:
+        raise ReconciliationError(
+            422, "Source and target must use the same /16 or /24 prefix length."
+        )
+    if source == target:
+        raise ReconciliationError(422, "Source and target prefixes must differ.")
+    return str(source), str(target), source.prefixlen
+
+
+def create_manual_rule(
+    connection_or_session,
+    *,
+    source_prefix: str,
+    target_prefix: str,
+    active: bool,
+    notes: str | None,
+    user,
+) -> dict[str, object]:
+    source, target, prefix_length = _normalize_manual_rule(source_prefix, target_prefix)
+    with _write_scope(connection_or_session) as session:
+        existing = session.scalar(
+            select(db_schema.HostCompletionManualRule).where(
+                db_schema.HostCompletionManualRule.source_prefix == source,
+                db_schema.HostCompletionManualRule.target_prefix == target,
+                db_schema.HostCompletionManualRule.prefix_length == prefix_length,
+            )
+        )
+        if existing is not None:
+            raise ReconciliationError(409, "This manual rule already exists.")
+        model = db_schema.HostCompletionManualRule(
+            source_prefix=source,
+            target_prefix=target,
+            prefix_length=prefix_length,
+            active=int(active),
+            notes=notes.strip() if notes and notes.strip() else None,
+            created_by=user.id,
+        )
+        session.add(model)
+        session.flush()
+        _audit(
+            session,
+            user=user,
+            target_type="HOST_COMPLETION_RULE",
+            target_id=model.id,
+            label=f"{source} -> {target}",
+            changes=f"Created manual rule (active={int(active)}).",
+            action="CREATE",
+        )
+        session.commit()
+        return _manual_rule_payload(model)
+
+
+def update_manual_rule(
+    connection_or_session,
+    *,
+    rule_id: int,
+    source_prefix: str,
+    target_prefix: str,
+    active: bool,
+    notes: str | None,
+    user,
+) -> dict[str, object]:
+    source, target, prefix_length = _normalize_manual_rule(source_prefix, target_prefix)
+    with _write_scope(connection_or_session) as session:
+        model = session.get(db_schema.HostCompletionManualRule, rule_id)
+        if model is None:
+            raise ReconciliationError(404, "Manual rule was not found.")
+        duplicate = session.scalar(
+            select(db_schema.HostCompletionManualRule).where(
+                db_schema.HostCompletionManualRule.source_prefix == source,
+                db_schema.HostCompletionManualRule.target_prefix == target,
+                db_schema.HostCompletionManualRule.prefix_length == prefix_length,
+                db_schema.HostCompletionManualRule.id != rule_id,
+            )
+        )
+        if duplicate is not None:
+            raise ReconciliationError(409, "This manual rule already exists.")
+        before = _manual_rule_payload(model)
+        model.source_prefix = source
+        model.target_prefix = target
+        model.prefix_length = prefix_length
+        model.active = int(active)
+        model.notes = notes.strip() if notes and notes.strip() else None
+        model.updated_at = func.current_timestamp()
+        session.flush()
+        _audit(
+            session,
+            user=user,
+            target_type="HOST_COMPLETION_RULE",
+            target_id=model.id,
+            label=f"{source} -> {target}",
+            changes=(
+                f"Updated manual rule from {before['source_prefix']} -> "
+                f"{before['target_prefix']} (active={int(bool(before['active']))}) "
+                f"to active={int(active)}."
+            ),
+        )
+        session.commit()
+        return _manual_rule_payload(model)
 
 
 def _serialize_finding(finding, inventory: Inventory) -> dict[str, object]:
@@ -162,7 +323,19 @@ def next_finding(connection_or_session) -> dict[str, object]:
 
 
 def get_summary(connection_or_session) -> dict[str, object]:
-    inventory, result = _result(connection_or_session)
+    source = repository.get_host_reconciliation_snapshot(connection_or_session)
+    inventory = _to_inventory(source)
+    result = reconcile(
+        inventory,
+        min_support=_min_support(),
+        host_name_template=_host_name_template(),
+        manual_rules=_manual_rules(source),
+    )
+    manual_by_id = {
+        f"manual-{item['id']}": item
+        for item in source["manual_rules"]
+        if isinstance(item, dict)
+    }
     state_counts = {
         state: sum(value == state for value in result.states.values())
         for state in ("RESOLVED", "PROPOSED", "UNMATCHED", "CONFLICT", "EXCEPTION")
@@ -187,6 +360,17 @@ def get_summary(connection_or_session) -> dict[str, object]:
                 "examples": [
                     f"{os_ip} -> {bmc_ip}" for os_ip, bmc_ip in rule.examples[:5]
                 ],
+                "managed": rule.id in manual_by_id,
+                "manual_rule_id": (
+                    int(manual_by_id[rule.id]["id"])
+                    if rule.id in manual_by_id
+                    else None
+                ),
+                "notes": (
+                    manual_by_id[rule.id]["notes"]
+                    if rule.id in manual_by_id
+                    else None
+                ),
             }
             for rule in result.rules
         ],
@@ -204,6 +388,7 @@ def _audit(
     target_id: int,
     label: str,
     changes: str,
+    action: str = "UPDATE",
 ) -> None:
     session.add(
         db_schema.AuditLog(
@@ -212,7 +397,7 @@ def _audit(
             target_type=target_type,
             target_id=target_id,
             target_label=label,
-            action="UPDATE",
+            action=action,
             changes=changes,
         )
     )

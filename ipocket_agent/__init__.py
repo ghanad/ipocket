@@ -18,6 +18,7 @@ from .models import (
     ReconciliationState,
     Rule,
     RuleStrength,
+    Transformation,
 )
 
 __all__ = [
@@ -32,6 +33,7 @@ __all__ = [
     "ReconciliationState",
     "Rule",
     "RuleStrength",
+    "Transformation",
     "discover_rules",
     "proposal_is_current",
     "reconcile",

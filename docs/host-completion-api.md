@@ -1,7 +1,8 @@
 # Host reconciliation API
 
 Host reconciliation is deterministic and human-in-the-loop. All endpoints
-require ipocket authentication; mutations require an Editor. The in-process
+require ipocket authentication; proposal mutations require an Editor and
+manual-rule mutations require a Superuser. The in-process
 `ipocket_agent` package reads an inventory projection and never writes SQLite.
 
 ## Read current findings
@@ -33,6 +34,32 @@ The summary exposes active OS/BMC totals, attached/unresolved counts, proposed
 Host creations, incomplete Hosts, conflicts, exceptions, discovered rule
 support/contradictions/examples, reconciliation coverage, and unexplained
 active assets. Coverage is `(RESOLVED + PROPOSED + EXCEPTION) / active OS/BMC`.
+
+Summary rules include `managed`, `manual_rule_id`, and `notes` for
+administrator-managed rules. Learned rules remain derived evidence.
+
+## Manage explicit rules (Superuser)
+
+Managed rules are IPv4 `/16` or `/24` source/target mappings with equal prefix
+lengths. A disabled rule remains visible for auditability but does not create
+proposals; there is intentionally no physical-delete endpoint.
+
+```http
+POST /api/host-completion/rules
+PUT /api/host-completion/rules/{rule_id}
+Authorization: Bearer <superuser-token>
+Content-Type: application/json
+
+{
+  "source_prefix": "10.10.0.0/16",
+  "target_prefix": "10.30.0.0/16",
+  "active": true,
+  "notes": "Rack B management network"
+}
+```
+
+Changes write `HOST_COMPLETION_RULE` audit records. A managed mapping overrides
+an equivalent learned mapping and is applied as strong deterministic policy.
 
 ## Apply an operator decision
 

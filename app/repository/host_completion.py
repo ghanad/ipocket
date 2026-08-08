@@ -163,7 +163,34 @@ def get_host_reconciliation_snapshot(
             .mappings()
             .all()
         ]
-    return {"hosts": hosts, "assets": assets, "decisions": decisions}
+        manual_rules = [
+            {
+                "id": int(row["id"]),
+                "source_prefix": str(row["source_prefix"]),
+                "target_prefix": str(row["target_prefix"]),
+                "prefix_length": int(row["prefix_length"]),
+                "active": bool(row["active"]),
+                "notes": row["notes"],
+            }
+            for row in session.execute(
+                select(
+                    db_schema.HostCompletionManualRule.id,
+                    db_schema.HostCompletionManualRule.source_prefix,
+                    db_schema.HostCompletionManualRule.target_prefix,
+                    db_schema.HostCompletionManualRule.prefix_length,
+                    db_schema.HostCompletionManualRule.active,
+                    db_schema.HostCompletionManualRule.notes,
+                ).order_by(db_schema.HostCompletionManualRule.id)
+            )
+            .mappings()
+            .all()
+        ]
+    return {
+        "hosts": hosts,
+        "assets": assets,
+        "decisions": decisions,
+        "manual_rules": manual_rules,
+    }
 
 
 def create_host_completion_decision(

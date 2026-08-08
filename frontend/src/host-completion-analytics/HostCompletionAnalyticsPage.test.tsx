@@ -66,6 +66,15 @@ describe("HostCompletionAnalyticsPage", () => {
     expect(await screen.findByText("No rule has enough confirmed evidence yet.")).toBeInTheDocument();
   });
 
+  it("shows managed-rule controls only when the page grants Superuser access", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(jsonResponse()));
+    render(<HostCompletionAnalyticsPage endpoint="/api/host-completion/summary" canManageRules />);
+    expect(await screen.findByRole("button", { name: "Add rule" })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Add rule" }));
+    expect(screen.getByRole("form", { name: "Add managed rule" })).toBeInTheDocument();
+    expect(screen.getByLabelText("Source prefix")).toBeInTheDocument();
+  });
+
   it("shows an error and retries the summary request", async () => {
     const fetchMock = vi.fn()
       .mockResolvedValueOnce(jsonResponse({ detail: "Unavailable" }, false, 500))

@@ -9,6 +9,9 @@ export interface ReconciliationRule {
   support: number;
   contradictions: number;
   examples: string[];
+  managed: boolean;
+  manual_rule_id: number | null;
+  notes: string | null;
 }
 
 export interface HostCompletionAnalytics {

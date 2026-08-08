@@ -138,6 +138,15 @@ current Host/IPAsset relationships plus explicit feedback. Only `WRONG_PAIR`
 is negative mapping evidence; `UNSURE` and `EXCEPTION` are not contradictions.
 The unique idempotency key prevents duplicate mutation events.
 
+## HostCompletionManualRule
+
+Superusers may persist an explicit OS-to-BMC IPv4 mapping with
+`source_prefix`, `target_prefix`, a shared `prefix_length` (`16` or `24`),
+`active`, optional `notes`, creator, and timestamps. An active manual rule is
+treated as strong deterministic policy; it overrides an equivalent learned
+rule. Deactivation retains the row and its `HOST_COMPLETION_RULE` audit entries
+but removes it from proposal generation.
+
 ## Assignment workflow
 
 Project assignment is managed from the main IP Assets list. **Project

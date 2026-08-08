@@ -29,7 +29,8 @@ archives.
 
 Host reconciliation statistics and deterministic findings are authenticated
 JSON, not Prometheus series. Reading the summary or finding queue does not
-mutate inventory. `ACCEPT`, `CORRECT`, `ATTACH_EXISTING`, and `DEACTIVATE`
+mutate inventory. Superuser-managed manual mappings affect the JSON findings
+but add no Prometheus metric. `ACCEPT`, `CORRECT`, `ATTACH_EXISTING`, and `DEACTIVATE`
 decisions can create a Host, link assets, or archive an asset through one
 audited transaction. `CORRECT` may also create the operator-supplied OS/BMC
 counterpart asset when it is not yet in inventory, so existing counters reflect

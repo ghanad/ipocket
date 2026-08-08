@@ -51,6 +51,23 @@ def require_editor_api_or_ui_session(
     return user
 
 
+def require_superuser_api_or_ui_session(
+    request: Request,
+    authorization: Optional[str] = Header(default=None),
+    connection=Depends(get_connection),
+):
+    """Allow only the Superuser bearer token or signed browser session."""
+
+    user = require_authenticated_api_or_ui_session(
+        request=request,
+        authorization=authorization,
+        connection=connection,
+    )
+    if user.role != UserRole.SUPERUSER:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN)
+    return user
+
+
 def require_authenticated_api_or_ui_session(
     request: Request,
     authorization: Optional[str] = Header(default=None),

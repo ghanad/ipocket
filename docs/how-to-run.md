@@ -431,9 +431,12 @@ curl -s "http://127.0.0.1:8000/api/host-completion/summary" \
   -H "Authorization: Bearer <token>"
 ```
 
-Open the read-only analytics dashboard at
+Open the analytics dashboard at
 `http://127.0.0.1:8000/host-completion/analytics`. It shows reconciliation
 states, the unexplained-assets KPI, and rule strength/support/contradictions.
+Authenticated users can view it. Superusers can add or edit an explicit IPv4
+`/16` or `/24` OS-to-BMC mapping, or deactivate a managed mapping; deactivation
+keeps audit history and stops future proposals from using it.
 
 Findings are recomputed from current inventory and operator feedback. They are
 not auto-approved or persisted as authoritative inventory. See

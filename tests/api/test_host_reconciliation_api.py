@@ -9,6 +9,7 @@ from app.services import host_reconciliation
 
 FINDINGS_URL = "/api/host-completion/findings"
 DECISIONS_URL = "/api/host-completion/findings/decisions"
+RULES_URL = "/api/host-completion/rules"
 
 
 def _seed_create_host_finding(connection, *, archived_candidate: bool = False):
@@ -108,6 +109,76 @@ def test_reconciliation_mutation_requires_editor(
     )
 
     assert response.status_code == 403
+
+
+def test_superuser_can_manage_manual_rules_and_their_audit_history(
+    client, _setup_connection, _create_user, _login, _auth_headers
+):
+    connection = _setup_connection()
+    try:
+        os_asset = repository.create_ip_asset(
+            connection, "10.10.4.42", IPAssetType.OS
+        )
+        bmc_asset = repository.create_ip_asset(
+            connection, "10.30.4.42", IPAssetType.BMC
+        )
+    finally:
+        connection.close()
+    superuser_headers = _headers_for(
+        _create_user, _login, _auth_headers,
+        username="rule-superuser", role=UserRole.SUPERUSER,
+    )
+    editor_headers = _headers_for(
+        _create_user, _login, _auth_headers,
+        username="rule-editor", role=UserRole.EDITOR,
+    )
+    body = {
+        "source_prefix": "10.10.0.0/16",
+        "target_prefix": "10.30.0.0/16",
+        "active": True,
+        "notes": "Rack B management network",
+    }
+
+    assert client.post(RULES_URL, headers=editor_headers, json=body).status_code == 403
+    created = client.post(RULES_URL, headers=superuser_headers, json=body)
+    assert created.status_code == 201
+    assert created.json() == {
+        "id": 1,
+        "source_prefix": "10.10.0.0/16",
+        "target_prefix": "10.30.0.0/16",
+        "prefix_length": 16,
+        "active": True,
+        "notes": "Rack B management network",
+    }
+
+    summary = client.get("/api/host-completion/summary", headers=editor_headers)
+    assert summary.status_code == 200
+    managed = next(rule for rule in summary.json()["rules"] if rule["id"] == "manual-1")
+    assert managed["managed"] is True
+    assert managed["notes"] == "Rack B management network"
+    finding = next(item for item in summary.json()["findings"] if item["finding_type"] == "CREATE_HOST")
+    assert finding["assets"][0]["id"] == os_asset.id
+    assert finding["assets"][1]["id"] == bmc_asset.id
+
+    disabled = client.put(
+        f"{RULES_URL}/1", headers=superuser_headers,
+        json={**body, "active": False, "notes": "Retired rack"},
+    )
+    assert disabled.status_code == 200
+    assert disabled.json()["active"] is False
+    summary = client.get("/api/host-completion/summary", headers=editor_headers).json()
+    assert not any(item["finding_type"] == "CREATE_HOST" for item in summary["findings"])
+    connection = _setup_connection()
+    try:
+        audits = connection.execute(
+            "SELECT action, target_type FROM audit_logs WHERE target_type = 'HOST_COMPLETION_RULE'"
+        ).fetchall()
+    finally:
+        connection.close()
+    assert [(row["action"], row["target_type"]) for row in audits] == [
+        ("CREATE", "HOST_COMPLETION_RULE"),
+        ("UPDATE", "HOST_COMPLETION_RULE"),
+    ]
 
 
 def test_editor_accepts_one_create_host_finding_and_links_both_assets_atomically(

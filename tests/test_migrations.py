@@ -26,6 +26,7 @@ def test_init_db_runs_alembic_migrations(tmp_path) -> None:
         assert "ip_asset_tags" in tables
         assert "sessions" in tables
         assert "host_completion_decisions" in tables
+        assert "host_completion_manual_rules" in tables
 
         tag_columns = {
             row["name"]
@@ -74,6 +75,15 @@ def test_init_db_runs_alembic_migrations(tmp_path) -> None:
             for row in connection.execute("PRAGMA table_info(ip_assets)").fetchall()
         }
         assert "ip_int" in ip_asset_columns
+        manual_rule_columns = {
+            row["name"]
+            for row in connection.execute(
+                "PRAGMA table_info(host_completion_manual_rules)"
+            ).fetchall()
+        }
+        assert {
+            "source_prefix", "target_prefix", "prefix_length", "active", "notes"
+        } <= manual_rule_columns
     finally:
         connection.close()
 
