@@ -130,6 +130,11 @@ export function IPAssetsPage({
     const timeout = window.setTimeout(() => setDebouncedQuery(filters.q), 500);
     return () => window.clearTimeout(timeout);
   }, [filters.q]);
+  useEffect(() => {
+    if (!toast) return;
+    const timeout = window.setTimeout(() => setToast(null), 4_000);
+    return () => window.clearTimeout(timeout);
+  }, [toast]);
   const query = useMemo(
     () => searchFromFilters({ ...filters, q: debouncedQuery }),
     [debouncedQuery, filters],
