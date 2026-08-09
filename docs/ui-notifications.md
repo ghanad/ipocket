@@ -50,8 +50,8 @@ connector validation stays in the form.
 ## Defaults
 
 - Shell auto-dismiss: approximately four seconds.
-- IP Assets action toasts auto-dismiss after approximately four seconds; a new
-  toast replaces and restarts the timer for the previous one.
+- IP Assets and Hosts action toasts auto-dismiss after approximately four
+  seconds; a new toast replaces and restarts the timer for the previous one.
 - Shell location: top-right.
 - Use success/info for completed actions, warning for recoverable partial
   outcomes, and error for page-level failures.
