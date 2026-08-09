@@ -36,25 +36,31 @@
   </div>
 {% if show_nav %}
 <div class="app-shell">
-  <aside class="sidebar">
+  <aside class="sidebar" aria-label="Primary navigation">
     <div class="sidebar-brand">
-      <div class="brand-mark">ip</div>
+      <div class="brand-mark" aria-hidden="true">ip</div>
       <div>
         <p class="brand-title">ipocket</p>
-        <p class="brand-subtitle">IP inventory</p>
+        <p class="brand-subtitle">Inventory workspace</p>
       </div>
     </div>
     <nav class="sidebar-nav">
+      <p class="sidebar-section-title">Workspace</p>
       <a class="nav-link{% if active_nav == 'management' %} nav-link-active{% endif %}" href="/ui/management">Management</a>
       <a class="nav-link{% if active_nav == 'ip-assets' %} nav-link-active{% endif %}" href="/ui/ip-assets">IP Assets</a>
       <a class="nav-link{% if active_nav == 'hosts' %} nav-link-active{% endif %}" href="/ui/hosts">Hosts</a>
       <a class="nav-link{% if active_nav == 'host-completion' %} nav-link-active{% endif %}" href="/host-completion/analytics">Host Completion</a>
+
+      <p class="sidebar-section-title">Catalog</p>
       <a class="nav-link{% if active_nav == 'ranges' %} nav-link-active{% endif %}" href="/ui/ranges">Ranges</a>
       <a class="nav-link{% if active_nav == 'library' %} nav-link-active{% endif %}" href="/ui/projects">Library</a>
+
+      <p class="sidebar-section-title">Operations</p>
       <a class="nav-link{% if active_nav == 'connectors' %} nav-link-active{% endif %}" href="/ui/connectors">Connectors</a>
       <a class="nav-link{% if active_nav == 'audit-log' %} nav-link-active{% endif %}" href="/ui/audit-log">Audit Log</a>
       <a class="nav-link{% if active_nav == 'data-ops' %} nav-link-active{% endif %}" href="/ui/import">Data Ops</a>
       {% if is_superuser %}
+      <p class="sidebar-section-title">Administration</p>
       <a class="nav-link{% if active_nav == 'users' %} nav-link-active{% endif %}" href="/ui/users">Users</a>
       {% endif %}
     </nav>
@@ -63,16 +69,16 @@
         <p class="sidebar-section-title">Account</p>
         {% if is_authenticated %}
         <div class="sidebar-account-actions">
-          <a class="nav-link sidebar-password-link" href="/ui/account/password">Change Password</a>
+          <a class="sidebar-account-link sidebar-password-link" href="/ui/account/password">Change Password</a>
           <form method="post" action="/ui/logout">
-            <button type="submit" class="nav-link sidebar-logout-button sidebar-account-danger">Logout</button>
+            <button type="submit" class="sidebar-account-link sidebar-logout-button sidebar-account-danger">Logout</button>
           </form>
         </div>
         {% else %}
-        <a class="nav-link sidebar-login-link" href="/ui/login">Login</a>
+        <a class="sidebar-account-link sidebar-login-link" href="/ui/login">Login</a>
         {% endif %}
       </div>
-      <p class="sidebar-note">{% if build_info %}ipocket {{ build_info.version }} ({{ build_info.commit }}) • built {{ build_info.build_time }} · {% endif %}<a href="/ui/about">About</a></p>
+      <p class="sidebar-note">{% if build_info %}ipocket {{ build_info.version }} ({{ build_info.commit }}) · built {{ build_info.build_time }} · {% endif %}<a href="/ui/about">About ipocket</a></p>
     </div>
   </aside>
   <div class="app-main">

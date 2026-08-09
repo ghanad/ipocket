@@ -18,6 +18,12 @@ Audit Log, Data Operations, Users, Account Password, About, and the related
 detail/login pages. List filters and pagination are URL-backed so browser
 Back/Forward and shareable links preserve state.
 
+The shared desktop shell uses a grouped sidebar: Workspace contains the daily
+inventory views, Catalog contains reusable IP data, and Operations contains
+connectors, audit history, and import/export tools. It uses a light, cool-toned
+surface aligned with the application canvas, remains fixed without its own scroll
+bar, and keeps compact text-only account actions in the sidebar footer.
+
 ## Inventory and assignment
 
 - IP assets store a unique address, type (`OS`, `BMC`, `VM`, `VIP`, `OTHER`),
