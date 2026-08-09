@@ -35,5 +35,8 @@ def test_sidebar_account_actions_are_compact_text_links(client, monkeypatch) -> 
     response = client.get("/ui/management")
 
     assert 'class="sidebar-account-link sidebar-password-link"' in response.text
-    assert 'class="sidebar-account-link sidebar-logout-button sidebar-account-danger"' in response.text
+    assert (
+        'class="sidebar-account-link sidebar-logout-button sidebar-account-danger"'
+        in response.text
+    )
     assert "sidebar-account-heading" not in response.text
