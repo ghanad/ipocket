@@ -2,6 +2,10 @@
 
 ipocket uses compact success, information, warning, and error toasts for
 page-level feedback. Field validation remains inline beside the affected form.
+The shared visual treatment uses a neutral elevated surface, a semantic status
+icon, and a keyboard-focusable dismiss control. Status color is reserved for
+the icon so messages remain readable without relying on color alone. Toasts use
+a short entrance transition that is disabled when reduced motion is requested.
 
 ## Shell flash messages
 
@@ -46,7 +50,11 @@ connector validation stays in the form.
 ## Defaults
 
 - Shell auto-dismiss: approximately four seconds.
+- IP Assets and Hosts action toasts auto-dismiss after approximately four
+  seconds; a new toast replaces and restarts the timer for the previous one.
 - Shell location: top-right.
 - Use success/info for completed actions, warning for recoverable partial
   outcomes, and error for page-level failures.
+- Keep the shared `.toast-*` markup and styles so server-rendered and React
+  notifications remain visually consistent.
 - Never replace field-specific validation with a toast.

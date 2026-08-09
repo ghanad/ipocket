@@ -1,4 +1,5 @@
 import {
+  act,
   cleanup,
   fireEvent,
   render,
@@ -296,6 +297,44 @@ describe("IPAssetsPage", () => {
     fireEvent.click(screen.getByRole("button", { name: "Edit" }));
     fireEvent.click(screen.getByRole("button", { name: "Create host" }));
     expect(await screen.findByText(/Created and assigned node-01/)).toBeVisible();
+  });
+
+  it("automatically dismisses a successful edit toast after four seconds", async () => {
+    const nativeSetTimeout = window.setTimeout.bind(window);
+    const setTimeoutSpy = vi
+      .spyOn(window, "setTimeout")
+      .mockImplementation((handler, timeout, ...args) =>
+        nativeSetTimeout(handler, timeout, ...args) as unknown as ReturnType<
+          typeof setTimeout
+        >,
+      );
+    vi.stubGlobal(
+      "fetch",
+      vi.fn()
+        .mockResolvedValueOnce(ok())
+        .mockResolvedValueOnce(ok())
+        .mockResolvedValueOnce(ok()),
+    );
+    render(<IPAssetsPage endpoint="/api/ui/ip-assets" />);
+    await screen.findByText("10.0.0.7");
+
+    fireEvent.click(screen.getByRole("button", { name: "Edit" }));
+    fireEvent.change(screen.getByLabelText("Notes"), {
+      target: { value: "Updated management interface" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
+    expect(await screen.findByText("IP asset updated.")).toBeVisible();
+
+    const dismissCall = setTimeoutSpy.mock.calls.find(
+      ([, timeout]) => timeout === 4_000,
+    );
+    expect(dismissCall).toBeDefined();
+    act(() => {
+      const handler = dismissCall?.[0];
+      if (typeof handler === "function") handler();
+    });
+
+    expect(screen.queryByText("IP asset updated.")).not.toBeInTheDocument();
   });
 
   it("shows every available tag when the edit drawer tag input is focused", async () => {

@@ -132,6 +132,19 @@ def test_application_css_is_split_into_focused_modules(client) -> None:
         assert response.status_code == 200
 
 
+def test_toast_visual_system_has_semantic_and_accessible_states() -> None:
+    repo_root = Path(__file__).resolve().parents[1]
+    css = (repo_root / "app/static/css/utility-pages.css").read_text(encoding="utf-8")
+
+    assert "grid-template-columns: 34px minmax(0, 1fr) 32px;" in css
+    assert ".toast::before {" in css
+    assert "--toast-accent: var(--color-info);" in css
+    assert ".toast-close:focus-visible {" in css
+    assert "@keyframes toast-arrive" in css
+    assert "@media (prefers-reduced-motion: reduce)" in css
+    assert "animation: none;" in css
+
+
 def test_favicon_asset_is_available() -> None:
     repo_root = Path(__file__).resolve().parents[1]
     favicon = repo_root / "app/static/favicon.png"

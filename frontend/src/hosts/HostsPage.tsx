@@ -104,6 +104,7 @@ export function HostsPage({
   const [saving, setSaving] = useState(false);
   const [acknowledged, setAcknowledged] = useState(false);
   const [confirmName, setConfirmName] = useState("");
+  const [toast, setToast] = useState<string | null>(null);
   const requestId = useRef(0);
   const legacyDrawerApplied = useRef(false);
 
@@ -111,6 +112,12 @@ export function HostsPage({
     const timeout = window.setTimeout(() => setDebouncedQuery(filters.q), 400);
     return () => window.clearTimeout(timeout);
   }, [filters.q]);
+
+  useEffect(() => {
+    if (!toast) return;
+    const timeout = window.setTimeout(() => setToast(null), 4_000);
+    return () => window.clearTimeout(timeout);
+  }, [toast]);
 
   const query = useMemo(
     () => searchFromFilters({ ...filters, q: debouncedQuery }),
@@ -243,6 +250,13 @@ export function HostsPage({
         await updateHost(endpoint, activeHost.id, values);
       if (mode === "delete" && activeHost)
         await deleteHost(endpoint, activeHost.id, confirmName);
+      setToast(
+        mode === "create"
+          ? "Host created."
+          : mode === "delete"
+            ? "Host deleted."
+            : "Host updated.",
+      );
       setMode(null);
       await load(false);
     } catch (error) {
@@ -258,6 +272,21 @@ export function HostsPage({
 
   return (
     <>
+      {toast && (
+        <div className="toast-container" role="status" aria-live="polite">
+          <div className="toast toast-success">
+            <span className="toast-message">{toast}</span>
+            <button
+              className="toast-close"
+              type="button"
+              aria-label="Dismiss notification"
+              onClick={() => setToast(null)}
+            >
+              ×
+            </button>
+          </div>
+        </div>
+      )}
       <section className="page-header">
         <div>
           <p className="eyebrow">Inventory</p>

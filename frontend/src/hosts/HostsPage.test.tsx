@@ -301,12 +301,14 @@ describe("HostsPage", () => {
     });
     fireEvent.click(screen.getByRole("button", { name: "Create Host" }));
     await screen.findByText("edge-01");
+    expect(screen.getByText("Host created.")).toBeVisible();
     fireEvent.click(screen.getByRole("button", { name: "Edit" }));
     fireEvent.change(screen.getByRole("textbox", { name: "Name" }), {
       target: { value: "edge-renamed" },
     });
     fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
     await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(6));
+    expect(screen.getByText("Host updated.")).toBeVisible();
   });
 
   it("requires delete acknowledgement and exact name, and confirms dirty close", async () => {
