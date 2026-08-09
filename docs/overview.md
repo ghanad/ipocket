@@ -18,6 +18,15 @@ Audit Log, Data Operations, Users, Account Password, About, and the related
 detail/login pages. List filters and pagination are URL-backed so browser
 Back/Forward and shareable links preserve state.
 
+Management is a read-only operational dashboard: it provides direct inventory links and makes subnet
+capacity easier to scan with available/monitor/action-needed labels derived from range utilization.
+
+The shared desktop shell uses a grouped sidebar: Workspace contains the daily
+inventory views, Catalog contains reusable IP data, and Operations contains
+connectors, audit history, and import/export tools. It uses a light, cool-toned
+surface aligned with the application canvas, remains fixed without its own scroll
+bar, and keeps compact text-only account actions in the sidebar footer.
+
 ## Inventory and assignment
 
 - IP assets store a unique address, type (`OS`, `BMC`, `VM`, `VIP`, `OTHER`),
@@ -50,6 +59,8 @@ Back/Forward and shareable links preserve state.
 - Projects, Vendors, and Tags are managed from Library. Deleting a Project or
   Vendor clears the corresponding assignments; deleting a Tag removes its asset
   relationships.
+- Library's Vendors tab (`/ui/projects?tab=vendors`) is the canonical Vendor UI.
+  The legacy `/ui/vendors` URL redirects there for compatibility.
 - IPv4 CIDR ranges provide used/free utilization and a paginated address view
   with Project, Type, Tag, IP, and status filters.
 

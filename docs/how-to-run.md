@@ -238,8 +238,11 @@ IPOCKET_DOCKER_ASSETS=0
 ```
 
 ### Version metadata
-ipocket includes build metadata in `/health` and in the sidebar footer in the UI
-(including signed-out pages that render the sidebar).
+ipocket includes build metadata in `/health` and in the grouped sidebar footer
+in the UI (including signed-out pages that render the sidebar). The desktop
+sidebar keeps Workspace, Catalog, and Operations navigation visually separate;
+the active route is highlighted, it does not scroll independently, and account
+actions remain at the bottom.
 The sidebar renders the version value as-is (for example: `ipocket dev (abc1234)`).
 The authenticated `/ui/about` React page obtains its safe display metadata from
 `GET /api/ui/about`; its lightweight Jinja mount does not embed that metadata.

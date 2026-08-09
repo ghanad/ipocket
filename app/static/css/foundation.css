@@ -61,30 +61,32 @@ p {
 }
 
 .sidebar {
-  width: 240px;
-  background: var(--color-surface);
-  border-right: 1px solid var(--color-border);
-  padding: 24px;
+  width: 264px;
+  background: #edf3f8;
+  border-right: 1px solid #d7e1eb;
+  padding: 18px 16px 14px;
   display: flex;
   flex-direction: column;
-  gap: 24px;
+  gap: 20px;
   height: 100vh;
   position: sticky;
   top: 0;
-  overflow-y: auto;
+  overflow: hidden;
 }
 
 .sidebar-brand {
   display: flex;
-  gap: 12px;
+  gap: 11px;
   align-items: center;
+  padding: 0 8px;
 }
 
 .brand-mark {
-  width: 40px;
-  height: 40px;
-  border-radius: 12px;
-  background: var(--color-primary);
+  width: 38px;
+  height: 38px;
+  border-radius: 11px;
+  background: #4fc7bf;
+  box-shadow: 0 5px 12px rgba(30, 126, 132, 0.16);
   color: #fff;
   display: grid;
   place-items: center;
@@ -94,55 +96,68 @@ p {
 .brand-title {
   font-weight: 700;
   font-size: 16px;
+  color: #10243a;
 }
 
 .brand-subtitle {
-  color: var(--color-muted);
+  color: #60748c;
   font-size: 12px;
+  margin-top: 2px;
 }
 
 .sidebar-nav {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 4px;
 }
 
 .nav-link {
-  padding: 10px 12px;
-  border-radius: 10px;
-  color: var(--color-muted);
+  min-height: 38px;
+  padding: 8px 11px;
+  border-radius: 9px;
+  color: #52677e;
   font-weight: 600;
-  transition: background 0.2s ease, color 0.2s ease;
+  display: flex;
+  align-items: center;
+  transition: background 0.16s ease, color 0.16s ease;
 }
 
 .nav-link:hover {
-  background: #eef2ff;
-  color: var(--color-primary);
+  background: #dfeaf4;
+  color: #163a5d;
 }
 
 .nav-link-active {
-  background: #e8f0ff;
-  color: var(--color-primary);
-  border: 1px solid #c7dcff;
+  background: #d4e7f8;
+  color: var(--color-primary-dark);
+  box-shadow: inset 0 0 0 1px #bdd9f0;
+}
+
+.nav-link-active:hover {
+  background: #c9e0f4;
 }
 
 .sidebar-footer {
   margin-top: auto;
-  padding-top: 16px;
-  border-top: 1px solid var(--color-border);
+  padding: 14px 8px 0;
+  border-top: 1px solid #d7e1eb;
 }
 
 .sidebar-account {
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  margin-bottom: 14px;
+  gap: 3px;
+  margin-bottom: 10px;
 }
 
 .sidebar-account-actions {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 1px;
+}
+
+.sidebar-account .sidebar-section-title {
+  margin: 0 0 2px;
 }
 
 .sidebar-account form {
@@ -152,7 +167,7 @@ p {
 .sidebar-logout-button {
   width: 100%;
   border: 0;
-  background: transparent;
+  background: none;
   appearance: none;
   -webkit-appearance: none;
   cursor: pointer;
@@ -161,29 +176,72 @@ p {
   color: inherit;
 }
 
+.sidebar-account-link {
+  display: inline-flex;
+  align-items: center;
+  width: fit-content;
+  min-height: 28px;
+  padding: 4px 0;
+  border-radius: 5px;
+  color: #3f5f7e;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.3;
+}
+
+.sidebar-account-link:hover {
+  color: var(--color-primary-dark);
+}
+
+.sidebar-account-link:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
 .sidebar-account-danger {
-  color: #b91c1c;
+  color: #b5475b;
 }
 
 .sidebar-account-danger:hover {
-  background: #fee2e2;
-  color: #991b1b;
+  color: #983447;
 }
 
 .sidebar-section-title {
+  margin: 10px 10px 4px;
   font-size: 11px;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: var(--color-muted-light);
+  color: #6d829b;
   font-weight: 700;
 }
 
 .sidebar-note {
   font-size: 12px;
-  color: var(--color-muted-light);
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  font-weight: 600;
+  color: #6d829b;
+  line-height: 1.5;
+}
+
+.sidebar-note a {
+  color: #3f5f7e;
+}
+
+.sidebar-note a:hover {
+  color: var(--color-primary);
+}
+
+.sidebar .nav-link:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sidebar .nav-link {
+    transition: none;
+  }
+
+  .sidebar .nav-link:hover {
+    transition: none;
+  }
 }
 
 .app-main {
@@ -234,4 +292,3 @@ p {
   gap: 12px;
   flex-wrap: wrap;
 }
-

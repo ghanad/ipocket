@@ -65,22 +65,11 @@ def test_hosts_ui_uses_react_mount_for_vendor_selection(
     assert "/static/react/hosts/hosts.js" in response.text
 
 
-def test_vendors_ui_page_uses_drawer_actions(client, _setup_connection) -> None:
-    connection = _setup_connection()
-    try:
-        vendor = repository.create_vendor(connection, "Lenovo")
-    finally:
-        connection.close()
+def test_vendors_ui_page_redirects_to_library_vendors_tab(client) -> None:
+    response = client.get("/ui/vendors", follow_redirects=False)
 
-    response = client.get("/ui/vendors")
-
-    assert response.status_code == 200
-    assert "data-vendor-add" in response.text
-    assert "data-vendor-create-drawer" in response.text
-    assert "data-vendor-edit-drawer" in response.text
-    assert "data-vendor-delete-drawer" in response.text
-    assert f'data-vendor-edit="{vendor.id}"' in response.text
-    assert f'data-vendor-delete="{vendor.id}"' in response.text
+    assert response.status_code == 303
+    assert response.headers["location"].endswith("/ui/projects?tab=vendors")
 
 
 def test_vendors_ui_edit_and_delete_flow(client, _setup_connection) -> None:

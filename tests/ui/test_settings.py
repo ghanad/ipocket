@@ -345,8 +345,18 @@ def test_vendor_listing_create_edit_delete_branches(
     finally:
         connection.close()
 
-    assert client.get("/ui/vendors?edit=999").status_code == 404
-    assert client.get("/ui/vendors?delete=999").status_code == 404
+    vendor_listing = client.get("/ui/vendors", follow_redirects=False)
+    legacy_edit = client.get("/ui/vendors?edit=999", follow_redirects=False)
+    legacy_delete = client.get("/ui/vendors?delete=999", follow_redirects=False)
+
+    assert vendor_listing.status_code == 303
+    assert vendor_listing.headers["location"].endswith("/ui/projects?tab=vendors")
+    assert legacy_edit.status_code == 303
+    assert legacy_edit.headers["location"].endswith("/ui/projects?tab=vendors&edit=999")
+    assert legacy_delete.status_code == 303
+    assert legacy_delete.headers["location"].endswith(
+        "/ui/projects?tab=vendors&delete=999"
+    )
 
     _override_editor(user)
     try:

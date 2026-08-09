@@ -54,7 +54,8 @@ def test_ui_assets_are_local() -> None:
     assert 'font-family: "Inter"' in css
     assert "height: 100vh" in css
     assert "position: sticky" in css
-    assert "overflow-y: auto" in css
+    assert ".sidebar {" in css
+    assert "overflow: hidden;" in css
     assert ".field > span {" in css
     assert ".table.table-ip-assets .tag {" in css
     assert "padding: 3px 9px;" in css
