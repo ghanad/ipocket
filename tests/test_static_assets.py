@@ -134,9 +134,7 @@ def test_application_css_is_split_into_focused_modules(client) -> None:
 
 def test_toast_visual_system_has_semantic_and_accessible_states() -> None:
     repo_root = Path(__file__).resolve().parents[1]
-    css = (repo_root / "app/static/css/utility-pages.css").read_text(
-        encoding="utf-8"
-    )
+    css = (repo_root / "app/static/css/utility-pages.css").read_text(encoding="utf-8")
 
     assert "grid-template-columns: 34px minmax(0, 1fr) 32px;" in css
     assert ".toast::before {" in css
