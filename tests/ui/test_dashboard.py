@@ -70,7 +70,7 @@ def test_management_page_shows_summary_counts(client) -> None:
     assert 'class="management-root"' in response.text
     assert 'data-endpoint="/api/management/overview"' in response.text
     assert (
-        '<script type="module" src="/static/react/management/management.js"></script>'
+        '<script type="module" src="/static/react/management/management.js?v=management-dashboard-library"></script>'
         in response.text
     )
 

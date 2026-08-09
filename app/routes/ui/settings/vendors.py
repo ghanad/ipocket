@@ -43,26 +43,17 @@ def ui_list_vendors(
     request: Request,
     edit: Optional[int] = Query(default=None),
     delete: Optional[int] = Query(default=None),
-    session=Depends(get_session),
-) -> HTMLResponse:
-    edit_vendor = None
-    delete_vendor = None
+) -> RedirectResponse:
+    query = {"tab": "vendors"}
     if edit is not None:
-        edit_vendor = repository.get_vendor_by_id(session, edit)
-        if edit_vendor is None:
-            raise HTTPException(status_code=404, detail="Vendor not found")
+        query["edit"] = str(edit)
     if delete is not None:
-        delete_vendor = repository.get_vendor_by_id(session, delete)
-        if delete_vendor is None:
-            raise HTTPException(status_code=404, detail="Vendor not found")
-
-    return _render_template(
+        query["delete"] = str(delete)
+    return _redirect_with_flash(
         request,
-        "projects.html",
-        _vendors_template_context(
-            session, edit_vendor=edit_vendor, delete_vendor=delete_vendor
-        ),
-        active_nav="library",
+        f"/ui/projects?{urlencode(query)}",
+        "",
+        status_code=303,
     )
 
 

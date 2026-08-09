@@ -4,6 +4,207 @@
   gap: 24px;
 }
 
+.management-section-kicker {
+  margin: 0 0 6px;
+  color: var(--color-muted-light);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.management-loading,
+.management-error,
+.management-inventory,
+.management-capacity {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-sm);
+}
+
+.management-loading {
+  min-height: 168px;
+  display: grid;
+  place-items: center;
+  color: var(--color-muted);
+}
+
+.management-error {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  padding: 24px;
+}
+
+.management-error h2,
+.management-capacity h2 {
+  margin-bottom: 6px;
+}
+
+.management-inventory {
+  display: grid;
+  grid-template-columns: minmax(260px, 1.15fr) minmax(0, 2fr);
+  overflow: hidden;
+}
+
+.management-inventory-primary {
+  padding: 28px;
+  background: #f4f8fc;
+}
+
+.management-inventory-primary h2 {
+  margin-bottom: 8px;
+  font-size: 30px;
+  letter-spacing: -0.03em;
+}
+
+.management-inventory-primary > p:not(.management-section-kicker) {
+  color: var(--color-muted);
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.management-inline-link {
+  display: inline-flex;
+  gap: 7px;
+  margin-top: 20px;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.management-inline-link span {
+  transition: transform 160ms ease;
+}
+
+.management-inline-link:hover span {
+  transform: translateX(3px);
+}
+
+.management-metric-list {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.management-metric {
+  display: grid;
+  align-content: center;
+  gap: 6px;
+  min-height: 166px;
+  padding: 24px 20px;
+  color: var(--color-text);
+  border-inline-start: 1px solid var(--color-border);
+  transition: background 160ms ease, color 160ms ease;
+}
+
+.management-metric:hover {
+  background: #f8fafc;
+  color: var(--color-primary-dark);
+}
+
+.management-metric:focus-visible,
+.management-range-link:focus-visible,
+.management-inline-link:focus-visible {
+  outline: 3px solid rgba(19, 91, 236, 0.3);
+  outline-offset: -3px;
+}
+
+.management-metric-label {
+  color: var(--color-muted-light);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.management-metric strong {
+  font-size: 24px;
+  letter-spacing: -0.02em;
+}
+
+.management-metric-helper {
+  color: var(--color-muted);
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.management-capacity {
+  overflow: hidden;
+}
+
+.management-capacity-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 24px;
+  padding: 24px 24px 20px;
+}
+
+.management-utilization-table th:last-child,
+.management-utilization-table td:last-child {
+  min-width: 208px;
+}
+
+.management-range-link {
+  color: var(--color-text);
+  font-weight: 700;
+}
+
+.management-range-link:hover {
+  color: var(--color-primary-dark);
+}
+
+.management-cidr {
+  color: var(--color-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.management-capacity-meter {
+  display: grid;
+  gap: 7px;
+  min-width: 156px;
+}
+
+.management-capacity-meter-copy {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+.management-capacity-status {
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.management-capacity-status.is-available { color: #15803d; }
+.management-capacity-status.is-watch { color: #b45309; }
+.management-capacity-status.is-critical { color: #b91c1c; }
+
+.management-capacity-track {
+  height: 6px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: #e2e8f0;
+}
+
+.management-capacity-fill {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+}
+
+.management-capacity-fill.is-available { background: var(--color-success); }
+.management-capacity-fill.is-watch { background: var(--color-warning); }
+.management-capacity-fill.is-critical { background: var(--color-danger); }
+
+@media (prefers-reduced-motion: reduce) {
+  .management-metric,
+  .management-inline-link span { transition: none; }
+}
+
 .about-root {
   display: flex;
   flex-direction: column;
