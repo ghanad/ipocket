@@ -1,5 +1,6 @@
 import { type FormEvent, useState } from "react";
 
+import { tagColorStyle } from "../shared/tagColor";
 import type {
   AssetFilters,
   ColorOption,
@@ -146,12 +147,7 @@ export function IPAssetsFilters({
                     <span className="tag-filter-entry" key={name}>
                       <button
                         className="tag tag-color tag-filter-chip"
-                        style={
-                          {
-                            "--tag-color":
-                              catalog.get(name)?.color ?? "#e2e8f0",
-                          } as React.CSSProperties
-                        }
+                        style={tagColorStyle(catalog.get(name)?.color ?? "#e2e8f0")}
                         type="button"
                         onClick={() =>
                           onChange({

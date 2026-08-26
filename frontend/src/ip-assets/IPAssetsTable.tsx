@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 
 import { RowActions } from "../shared/RowActions";
+import { projectColorStyle, tagColorStyle } from "../shared/tagColor";
 import { TagOverflowPopover } from "./TagOverflowPopover";
 import type { AssetRow } from "./types";
 
@@ -176,12 +177,7 @@ export function IPAssetsTable({
                     ) : (
                       <button
                         className="tag tag-project tag-filter-chip"
-                        style={
-                          {
-                            "--project-color":
-                              asset.project_color || "#94a3b8",
-                          } as React.CSSProperties
-                        }
+                        style={projectColorStyle(asset.project_color || "#94a3b8")}
                         type="button"
                         onClick={() =>
                           onQuickFilter("project_id", String(asset.project_id))
@@ -207,9 +203,7 @@ export function IPAssetsTable({
                           <button
                             key={tag.name}
                             className="tag tag-color tag-filter-chip"
-                            style={
-                              { "--tag-color": tag.color } as React.CSSProperties
-                            }
+                            style={tagColorStyle(tag.color)}
                             type="button"
                             onClick={() => onQuickFilter("tag_any", tag.name)}
                           >

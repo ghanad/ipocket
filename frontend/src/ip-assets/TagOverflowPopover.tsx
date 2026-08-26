@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 
+import { tagColorStyle } from "../shared/tagColor";
 import type { AssetRow } from "./types";
 
 export function TagOverflowPopover({
@@ -56,7 +57,7 @@ export function TagOverflowPopover({
           <button
             key={tag.name}
             className="tag tag-color tag-filter-chip"
-            style={{ "--tag-color": tag.color } as React.CSSProperties}
+            style={tagColorStyle(tag.color)}
             type="button"
             onClick={() => onSelect(tag.name)}
           >

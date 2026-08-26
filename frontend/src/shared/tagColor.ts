@@ -45,3 +45,10 @@ export function tagColorStyle(color: string): CSSProperties {
     "--tag-color-text": tagTextColor(color),
   } as CSSProperties;
 }
+
+export function projectColorStyle(color: string): CSSProperties {
+  return {
+    "--project-color": color,
+    "--project-color-text": tagTextColor(color),
+  } as CSSProperties;
+}
