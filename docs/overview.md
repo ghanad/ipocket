@@ -85,6 +85,8 @@ details live in their focused documents under `docs/`.
   imports, and Superuser additionally manages users.
 - IP Asset, User, and successful import/connector Apply operations create audit
   records. Dry-runs and no-op updates do not create run-level change entries.
+  Audit rows written during an import apply carry the username of the account that
+  ran the import or connector.
 
 ## Operations
 

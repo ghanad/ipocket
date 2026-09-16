@@ -88,7 +88,9 @@ other cards are disabled only while one import request is running.
 - Successful `apply` runs for bundle and CSV imports create one run-level audit record with `target_type=IMPORT_RUN`.
 - The audit summary includes source, input type, and create/update/skip/warnings/errors counts.
 - `dry-run` imports do not create run-level audit entries.
-- Per-IP audit behavior remains unchanged for underlying asset create/update/delete operations.
+- Entity-level audit records written while applying an import (IP Asset `CREATE`/`UPDATE`
+  and Host `CREATE`) are attributed to the same user as the run, so connector and UI
+  imports show who applied each change, not only that a run happened.
 
 ## Permissions
 

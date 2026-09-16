@@ -73,7 +73,12 @@ def run_import(
             warnings=validation.warnings,
         )
 
-    applied = apply_bundle(connection, bundle, dry_run=dry_run)
+    applied = apply_bundle(
+        connection,
+        bundle,
+        dry_run=dry_run,
+        current_user=audit_context.user if audit_context is not None else None,
+    )
     applied.warnings = validation.warnings + applied.warnings
     if (
         not dry_run

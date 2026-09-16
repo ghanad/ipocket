@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import json
-from app import db, repository
+from app import auth, db, repository
 from app.connectors import prometheus
 from app.connectors.cassandra import (
     CassandraNodeRecord,
@@ -23,6 +23,7 @@ from app.connectors.prometheus import (
 from app.connectors.prometheus import (
     import_bundle_via_pipeline as prometheus_apply,
 )
+from app.models import UserRole
 
 
 class _FakeResponse:
@@ -271,7 +272,9 @@ def test_import_bundle_via_pipeline_calls_run_import(monkeypatch) -> None:
     }
 
 
-def _apply_cassandra_asset(connection, *, ip_address: str, tags: list[str]) -> None:
+def _apply_cassandra_asset(
+    connection, *, ip_address: str, tags: list[str], user=None
+) -> None:
     records = CassandraNodeRecords(
         [
             CassandraNodeRecord(
@@ -289,10 +292,12 @@ def _apply_cassandra_asset(connection, *, ip_address: str, tags: list[str]) -> N
     assert extraction_warnings == []
     bundle, bundle_warnings = build_import_bundle_from_cassandra(ip_assets)
     assert bundle_warnings == []
-    cassandra_apply(connection, bundle=bundle, user=None, dry_run=False)
+    cassandra_apply(connection, bundle=bundle, user=user, dry_run=False)
 
 
-def _apply_prometheus_asset(connection, *, ip_address: str, tags: list[str] | None):
+def _apply_prometheus_asset(
+    connection, *, ip_address: str, tags: list[str] | None, user=None
+):
     records = [
         PrometheusMetricRecord(
             labels={"__name__": "up", "instance": f"{ip_address}:9100"}, value="1"
@@ -308,7 +313,7 @@ def _apply_prometheus_asset(connection, *, ip_address: str, tags: list[str] | No
     assert extraction_warnings == []
     bundle, bundle_warnings = build_import_bundle_from_prometheus(ip_assets)
     assert bundle_warnings == []
-    return prometheus_apply(connection, bundle=bundle, user=None, dry_run=False)
+    return prometheus_apply(connection, bundle=bundle, user=user, dry_run=False)
 
 
 def test_prometheus_apply_merges_into_tags_written_by_another_connector(
@@ -371,5 +376,51 @@ def test_prometheus_apply_without_tags_keeps_existing_tags_and_is_idempotent(
             asset.id
         ]
         assert tags_after == ["cassandra", "prod-dc1", "prometheus"]
+    finally:
+        connection.close()
+
+
+def test_import_apply_audit_rows_follow_the_acting_connector_user(db_path) -> None:
+    """CREATE/UPDATE audit rows must name the user who ran each connector."""
+    connection = db.connect(str(db_path))
+    try:
+        db.init_db(connection)
+        alice = repository.create_user(
+            connection,
+            username="alice-cass",
+            hashed_password=auth.hash_password("alice-pass"),
+            role=UserRole.EDITOR,
+        )
+        bob = repository.create_user(
+            connection,
+            username="bob-prom",
+            hashed_password=auth.hash_password("bob-pass"),
+            role=UserRole.EDITOR,
+        )
+
+        _apply_cassandra_asset(
+            connection, ip_address="10.0.0.20", tags=["cassandra"], user=alice
+        )
+        _apply_prometheus_asset(
+            connection, ip_address="10.0.0.20", tags=["prometheus"], user=bob
+        )
+
+        asset = repository.get_ip_asset_by_ip(connection, "10.0.0.20")
+        assert asset is not None
+        asset_owners = {
+            row.action: row.username
+            for row in repository.get_audit_logs_for_ip(connection, asset.id)
+        }
+        assert asset_owners["CREATE"] == "alice-cass"
+        assert asset_owners["UPDATE"] == "bob-prom"
+
+        run_owners = {
+            row.target_label: row.username
+            for row in repository.list_audit_logs(
+                connection, target_type="IMPORT_RUN", limit=10
+            )
+        }
+        assert run_owners["connector_cassandra"] == "alice-cass"
+        assert run_owners["connector_prometheus"] == "bob-prom"
     finally:
         connection.close()

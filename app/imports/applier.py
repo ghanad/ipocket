@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from typing import Optional
+
 from app import repository
 from app.imports.models import (
     ImportApplyResult,
@@ -7,12 +9,15 @@ from app.imports.models import (
     ImportIssue,
     ImportSummary,
 )
-from app.models import IPAssetType
+from app.models import IPAssetType, User
 from app.utils import normalize_tag_names
 
 
 def apply_bundle(
-    connection, bundle: ImportBundle, dry_run: bool = False
+    connection,
+    bundle: ImportBundle,
+    dry_run: bool = False,
+    current_user: Optional[User] = None,
 ) -> ImportApplyResult:
     summary = ImportSummary()
     warnings: list[ImportIssue] = []
@@ -29,6 +34,7 @@ def apply_bundle(
         vendor_id_map,
         summary,
         dry_run=dry_run,
+        current_user=current_user,
     )
     _upsert_ip_assets(
         connection,
@@ -37,6 +43,7 @@ def apply_bundle(
         host_id_map,
         summary,
         dry_run=dry_run,
+        current_user=current_user,
     )
 
     if vendor_updates or project_updates or host_updates:
@@ -142,6 +149,7 @@ def _upsert_hosts(
     vendor_id_map: dict[str, int],
     summary: ImportSummary,
     dry_run: bool,
+    current_user: Optional[User] = None,
 ) -> tuple[dict[str, int], bool]:
     existing = {host.name: host for host in repository.list_hosts(connection)}
     id_map = {name: host.id for name, host in existing.items()}
@@ -174,6 +182,7 @@ def _upsert_hosts(
                 name=name,
                 notes=host.notes,
                 vendor=vendor_name_value,
+                current_user=current_user,
             )
             id_map[name] = created.id
             continue
@@ -208,6 +217,7 @@ def _upsert_ip_assets(
     host_id_map: dict[str, int],
     summary: ImportSummary,
     dry_run: bool,
+    current_user: Optional[User] = None,
 ) -> None:
     for asset in bundle.ip_assets:
         ip_address = asset.ip_address.strip()
@@ -232,6 +242,7 @@ def _upsert_ip_assets(
                 host_id=host_id,
                 notes=asset.notes,
                 tags=asset.tags,
+                current_user=current_user,
             )
             if asset.archived is True:
                 repository.set_ip_asset_archived(
@@ -287,6 +298,7 @@ def _upsert_ip_assets(
             notes=asset.notes if notes_should_update else None,
             tags=target_tags,
             notes_provided=notes_should_update,
+            current_user=current_user,
         )
         if asset.archived is not None:
             repository.set_ip_asset_archived(

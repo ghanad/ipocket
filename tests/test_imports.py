@@ -544,6 +544,73 @@ def test_bundle_apply_prometheus_style_update_preserves_type_and_merges_tags(
         connection.close()
 
 
+def test_bundle_apply_audit_rows_are_attributed_to_acting_user(client) -> None:
+    test_client, db_path = client
+    _create_user(db_path, "editor-audit-owner", "editor-pass", UserRole.EDITOR)
+    editor_token = _login(test_client, "editor-audit-owner", "editor-pass")
+
+    def _payload(tags: list[str]) -> str:
+        return json.dumps(
+            {
+                "app": "ipocket",
+                "schema_version": "1",
+                "exported_at": "2024-01-01T12:00:00+00:00",
+                "data": {
+                    "vendors": [],
+                    "projects": [],
+                    "hosts": [{"name": "audit-node-01"}],
+                    "ip_assets": [
+                        {
+                            "ip_address": "10.0.0.95",
+                            "type": "OS",
+                            "tags": tags,
+                            "merge_tags": True,
+                            "archived": False,
+                        }
+                    ],
+                },
+            }
+        )
+
+    first = test_client.post(
+        "/import/bundle",
+        headers=_auth_headers(editor_token),
+        files={"file": ("bundle.json", _payload(["edge"]), "application/json")},
+    )
+    assert first.status_code == 200
+    assert first.json()["summary"]["ip_assets"]["would_create"] == 1
+
+    second = test_client.post(
+        "/import/bundle",
+        headers=_auth_headers(editor_token),
+        files={"file": ("bundle.json", _payload(["core"]), "application/json")},
+    )
+    assert second.status_code == 200
+    assert second.json()["summary"]["ip_assets"]["would_update"] == 1
+
+    connection = db.connect(str(db_path))
+    try:
+        asset = repository.get_ip_asset_by_ip(connection, "10.0.0.95")
+        assert asset is not None
+        asset_owners = {
+            row.action: row.username
+            for row in repository.get_audit_logs_for_ip(connection, asset.id)
+        }
+        assert asset_owners["CREATE"] == "editor-audit-owner"
+        assert asset_owners["UPDATE"] == "editor-audit-owner"
+
+        host_rows = [
+            (row.action, row.username)
+            for row in repository.list_audit_logs(
+                connection, target_type="HOST", limit=20
+            )
+            if row.target_label == "audit-node-01"
+        ]
+        assert host_rows == [("CREATE", "editor-audit-owner")]
+    finally:
+        connection.close()
+
+
 def test_bundle_apply_elasticsearch_style_update_merges_tags_overwrites_note_type_and_project(
     client,
 ) -> None:
