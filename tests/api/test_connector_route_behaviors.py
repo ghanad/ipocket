@@ -280,6 +280,54 @@ def test_prometheus_per_ip_detail_builder_reports_create_update_and_skip(
     assert any("[SKIP] 10.2.0.12" in line for line in logs)
 
 
+def test_prometheus_dry_run_reports_tag_merge_for_ips_from_other_connectors(
+    monkeypatch,
+) -> None:
+    existing = SimpleNamespace(
+        id=1,
+        project_id=None,
+        host_id=None,
+        asset_type=IPAssetType.OTHER,
+        notes="from cassandra",
+        archived=False,
+    )
+    monkeypatch.setattr(
+        "app.routes.ui.connector_routes.prometheus_preview.repository.list_projects",
+        lambda _connection: [],
+    )
+    monkeypatch.setattr(
+        "app.routes.ui.connector_routes.prometheus_preview.repository.list_hosts",
+        lambda _connection: [],
+    )
+    monkeypatch.setattr(
+        "app.routes.ui.connector_routes.prometheus_preview.repository.list_tags_for_ip_assets",
+        lambda _connection, ids: {item: ["cassandra", "prod-dc1"] for item in ids},
+    )
+    monkeypatch.setattr(
+        "app.routes.ui.connector_routes.prometheus_preview.repository.get_ip_asset_by_ip",
+        lambda _connection, ip: existing if ip == "10.2.0.11" else None,
+    )
+    ip_assets, extraction_warnings = prometheus_connector.extract_ip_assets_from_result(
+        [
+            PrometheusMetricRecord(
+                labels={"__name__": "up", "instance": "10.2.0.11:9100"}, value="1"
+            )
+        ],
+        ip_label="instance",
+        default_type="OTHER",
+        tags=["prometheus"],
+        query="up == 1",
+    )
+    assert extraction_warnings == []
+
+    logs = _build_prometheus_dry_run_change_logs("db", ip_assets=ip_assets)
+
+    update_lines = [line for line in logs if "[UPDATE] 10.2.0.11" in line]
+    assert len(update_lines) == 1
+    assert "+[prometheus]" in update_lines[0]
+    assert "-[" not in update_lines[0]
+
+
 def test_kubernetes_dry_run_keeps_ip_preview_host_and_asset_summaries(
     monkeypatch,
 ) -> None:

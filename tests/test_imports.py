@@ -475,7 +475,9 @@ def test_bundle_apply_vcenter_style_update_overwrites_type_merges_tags_and_prese
         connection.close()
 
 
-def test_bundle_apply_prometheus_style_update_preserves_existing_type(client) -> None:
+def test_bundle_apply_prometheus_style_update_preserves_type_and_merges_tags(
+    client,
+) -> None:
     test_client, db_path = client
     _create_user(db_path, "editor-prom-type-preserve", "editor-pass", UserRole.EDITOR)
     editor_token = _login(test_client, "editor-prom-type-preserve", "editor-pass")
@@ -515,6 +517,7 @@ def test_bundle_apply_prometheus_style_update_preserves_existing_type(client) ->
                     "notes": "Imported from Prometheus query 'up' using label 'instance'.",
                     "preserve_existing_notes": True,
                     "preserve_existing_type": True,
+                    "merge_tags": True,
                     "archived": False,
                 }
             ],
@@ -536,7 +539,7 @@ def test_bundle_apply_prometheus_style_update_preserves_existing_type(client) ->
         assert updated.project_id == core_project.id
         assert updated.notes == "manual note"
         tag_map = repository.list_tags_for_ip_assets(connection, [updated.id])
-        assert tag_map[updated.id] == ["monitoring"]
+        assert tag_map[updated.id] == ["legacy", "monitoring"]
     finally:
         connection.close()
 

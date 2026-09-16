@@ -1,7 +1,17 @@
 from __future__ import annotations
 
 import json
+from app import db, repository
 from app.connectors import prometheus
+from app.connectors.cassandra import (
+    CassandraNodeRecord,
+    CassandraNodeRecords,
+    build_import_bundle_from_cassandra,
+    extract_ip_assets_from_nodes,
+)
+from app.connectors.cassandra import (
+    import_bundle_via_pipeline as cassandra_apply,
+)
 from app.connectors.prometheus import (
     PrometheusConnectorError,
     PrometheusMetricRecord,
@@ -9,6 +19,9 @@ from app.connectors.prometheus import (
     extract_ip_assets_from_result,
     fetch_prometheus_query_result,
     import_bundle_via_pipeline,
+)
+from app.connectors.prometheus import (
+    import_bundle_via_pipeline as prometheus_apply,
 )
 
 
@@ -184,6 +197,7 @@ def test_extract_ip_assets_from_result_uses_custom_label_and_deduplicates() -> N
     assert ip_assets[0]["archived"] is False
     assert ip_assets[0]["preserve_existing_notes"] is True
     assert ip_assets[0]["preserve_existing_type"] is True
+    assert ip_assets[0]["merge_tags"] is True
     assert "node_uname_info" in str(ip_assets[0]["notes"])
 
     assert len(warnings) == 4
@@ -255,3 +269,107 @@ def test_import_bundle_via_pipeline_calls_run_import(monkeypatch) -> None:
         "schema_version": "1",
         "data": {},
     }
+
+
+def _apply_cassandra_asset(connection, *, ip_address: str, tags: list[str]) -> None:
+    records = CassandraNodeRecords(
+        [
+            CassandraNodeRecord(
+                address=ip_address, host_id="node-1", cluster_name="Prod DC1"
+            )
+        ],
+        cluster_name="Prod DC1",
+    )
+    ip_assets, extraction_warnings = extract_ip_assets_from_nodes(
+        records,
+        default_type="OS",
+        tags=tags,
+        include_cluster_name_tag=True,
+    )
+    assert extraction_warnings == []
+    bundle, bundle_warnings = build_import_bundle_from_cassandra(ip_assets)
+    assert bundle_warnings == []
+    cassandra_apply(connection, bundle=bundle, user=None, dry_run=False)
+
+
+def _apply_prometheus_asset(connection, *, ip_address: str, tags: list[str] | None):
+    records = [
+        PrometheusMetricRecord(
+            labels={"__name__": "up", "instance": f"{ip_address}:9100"}, value="1"
+        )
+    ]
+    ip_assets, extraction_warnings = extract_ip_assets_from_result(
+        records,
+        ip_label="instance",
+        default_type="OTHER",
+        tags=tags,
+        query="up == 1",
+    )
+    assert extraction_warnings == []
+    bundle, bundle_warnings = build_import_bundle_from_prometheus(ip_assets)
+    assert bundle_warnings == []
+    return prometheus_apply(connection, bundle=bundle, user=None, dry_run=False)
+
+
+def test_prometheus_apply_merges_into_tags_written_by_another_connector(
+    db_path,
+) -> None:
+    """Regression: a Prometheus run must not drop tags owned by another connector."""
+    connection = db.connect(str(db_path))
+    try:
+        db.init_db(connection)
+        _apply_cassandra_asset(connection, ip_address="10.0.0.10", tags=["cassandra"])
+
+        result = _apply_prometheus_asset(
+            connection, ip_address="10.0.0.10", tags=["prometheus"]
+        )
+
+        assert result.errors == []
+        assert result.summary.ip_assets.would_create == 0
+        assert result.summary.ip_assets.would_update == 1
+
+        asset = repository.get_ip_asset_by_ip(connection, "10.0.0.10")
+        assert asset is not None
+        tags = repository.list_tags_for_ip_assets(connection, [asset.id])[asset.id]
+        assert tags == ["cassandra", "prod-dc1", "prometheus"]
+
+        exported = repository.list_ip_assets_for_export(
+            connection, include_archived=True
+        )
+        assert [row["ip_address"] for row in exported] == ["10.0.0.10"]
+    finally:
+        connection.close()
+
+
+def test_prometheus_apply_without_tags_keeps_existing_tags_and_is_idempotent(
+    db_path,
+) -> None:
+    connection = db.connect(str(db_path))
+    try:
+        db.init_db(connection)
+        _apply_cassandra_asset(connection, ip_address="10.0.0.11", tags=["cassandra"])
+
+        first = _apply_prometheus_asset(
+            connection, ip_address="10.0.0.11", tags=["prometheus"]
+        )
+        assert first.summary.ip_assets.would_update == 1
+
+        second = _apply_prometheus_asset(
+            connection, ip_address="10.0.0.11", tags=["prometheus"]
+        )
+        assert second.summary.ip_assets.would_update == 0
+        assert second.summary.ip_assets.would_skip == 1
+
+        asset = repository.get_ip_asset_by_ip(connection, "10.0.0.11")
+        assert asset is not None
+        tags = repository.list_tags_for_ip_assets(connection, [asset.id])[asset.id]
+        assert tags == ["cassandra", "prod-dc1", "prometheus"]
+
+        third = _apply_prometheus_asset(connection, ip_address="10.0.0.11", tags=None)
+        assert third.summary.ip_assets.would_skip == 1
+        tags_after = repository.list_tags_for_ip_assets(connection, [asset.id])[
+            asset.id
+        ]
+        assert tags_after == ["cassandra", "prod-dc1", "prometheus"]
+    finally:
+        connection.close()

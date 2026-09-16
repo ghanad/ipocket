@@ -86,6 +86,7 @@ Each extracted IPv4 becomes one bundle `ip_assets` entry:
 - `notes`: generated from query context for traceability
 - `preserve_existing_notes`: `true` (keep non-empty existing notes on update)
 - `preserve_existing_type`: `true` (keep existing type on update)
+- `merge_tags`: `true` (append to existing tags on update)
 - `archived`: `false`
 
 Connector behavior:
@@ -122,4 +123,8 @@ bundle imports:
 - Prometheus connector updates keep the current IP `type` for existing records,
   even when connector input contains a different `asset_type`. New records still
   use the selected/default connector `asset_type`.
+- Prometheus connector updates append provided `tags` to the tags already on the
+  IP asset (normalized and deduplicated), so tags written by another connector or
+  by hand are never removed. Removing a tag stays a manual action on the Tags
+  page. When `tags` is omitted, existing tags stay untouched.
 - No new schema/table is introduced.
