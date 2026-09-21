@@ -1,5 +1,15 @@
 replicaCount: 1
 
+# Rolling upgrade strategy for the Deployment.
+# maxSurge: 0 + maxUnavailable: 1: the old pod is terminated first so the
+# ReadWriteOnce PVC is released, then the new pod is created and binds the
+# claim. The inverse ordering (new pod first) deadlocks: the new pod waits on
+# the PVC while the pod refuses to terminate until the new pod is Ready.
+strategy:
+  rollingUpdate:
+    maxSurge: 0
+    maxUnavailable: 1
+
 image:
   repository: ipocket
   pullPolicy: IfNotPresent

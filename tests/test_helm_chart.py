@@ -34,6 +34,27 @@ def test_helm_deployment_template_runs_migrations_and_health_checks() -> None:
     assert "IPAM_DB_PATH" in deployment_template
 
 
+def test_helm_deployment_pins_rolling_strategy_for_pvc_handoff() -> None:
+    deployment_template = (CHART_ROOT / "templates" / "deployment.yaml").read_text(
+        encoding="utf-8"
+    )
+    values_yaml = (CHART_ROOT / "values.yaml").read_text(encoding="utf-8")
+
+    assert "strategy:" in deployment_template
+    assert (
+        "maxSurge: {{ .Values.strategy.rollingUpdate.maxSurge }}" in deployment_template
+    )
+    assert (
+        "maxUnavailable: {{ .Values.strategy.rollingUpdate.maxUnavailable }}"
+        in deployment_template
+    )
+    # The default must terminate the old pod before the the new pod is created
+    # (maxSurge 0 / maxUnavailable 1) so the ReadWriteOnce PVC is released
+    # before the new pod may bind it; the reverse ordering deadlocks.
+    assert "maxSurge: 0" in values_yaml
+    assert "maxUnavailable: 1" in values_yaml
+
+
 def test_helm_templates_include_service_and_secret() -> None:
     service_template = (CHART_ROOT / "templates" / "service.yaml").read_text(
         encoding="utf-8"

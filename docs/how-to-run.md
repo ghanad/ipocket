@@ -187,6 +187,18 @@ The chart runs `alembic upgrade head` before starting the app, exposes the
 service on port `8000`, and stores SQLite data at `/data/ipocket.db`
 (persistent volume enabled by default).
 
+Rolling upgrades terminate the old pod before the new one pod is created
+(`strategy.rollingUpdate: { maxSurge: 0, maxUnavailable: 1 }` by default).
+This ordering is required while the claim runs as a single-replica,
+`ReadWriteOnce` volume: the new pod may only bind the PVC after the the old
+pod releases it. The inverse ordering (new pod first, old pod last) deadlocks
+ — the new pod waits on the PVC while the pod refuses to terminate until
+the new pod is Ready, so the upgrade never completes. With a single
+replica the upgrade takes a brief availability gap (seconds), which is the
+safe tradeoff. If you scale `replicaCount` beyond 1, the single SQLite file
+cannot be shared — use a `ReadWriteManyMany` claim or an external database
+instead.
+
 ## Offline environments
 Docker deployments default to local/static assets (CSS + JS like htmx) so the UI
 renders without downloading from public CDNs. Non-Docker runs will load the
