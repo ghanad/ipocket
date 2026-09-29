@@ -37,7 +37,9 @@ bar, and keeps compact text-only account actions in the sidebar footer.
 - Search, project/type/assignment filters, OR/AND/NOT tag filters, numeric IP
   sorting, pagination, bulk edits, and archived-only URLs are supported.
 - Editors use right-side drawers for create/edit/archive/delete and bulk Project,
-  Tag, Type, and Notes changes. Destructive actions require acknowledgement and,
+  Tag, Type, and Notes changes. The Host field provides a unified searchable
+  combobox with real-time filtering, single-click selection, unassign support, and
+  keyboard navigation. Destructive actions require acknowledgement and,
   for higher-risk records, exact-value confirmation.
 - OS and BMC assets are paired through a shared Host. An unassigned BMC can
   create/reuse `server_<ip>` when `IPOCKET_AUTO_HOST_FOR_BMC` is enabled.
