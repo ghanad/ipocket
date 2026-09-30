@@ -35,7 +35,8 @@ bar, and keeps compact text-only account actions in the sidebar footer.
   Assignment → Unassigned only** or **Project → Unassigned** to find missing
   project assignments; there is no separate Needs Assignment page.
 - Search, project/type/assignment filters, OR/AND/NOT tag filters, numeric IP
-  sorting, pagination, bulk edits, and archived-only URLs are supported.
+  sorting, pagination, bulk edits, archived-only URLs, and direct CSV/JSON export of
+  filtered results are supported.
 - Editors use right-side drawers for create/edit/archive/delete and bulk Project,
   Tag, Type, and Notes changes. The Host field provides a unified searchable
   combobox with real-time filtering, single-click selection, unassign support, and

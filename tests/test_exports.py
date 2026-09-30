@@ -286,3 +286,134 @@ def test_hosts_csv_export_includes_project_and_os_bmc_pair_fields(client) -> Non
             "bmc_ip": "10.10.0.11",
         }
     ]
+
+
+def test_export_ip_assets_with_query_and_filters(client) -> None:
+    test_client, db_path = client
+    _create_user(db_path, "filter-exporter", "export-pass")
+    connection = db.connect(str(db_path))
+    try:
+        db.init_db(connection)
+        p1 = repository.create_project(
+            connection, "frontend-proj", "Frontend", color="#111111"
+        )
+        p2 = repository.create_project(
+            connection, "backend-proj", "Backend", color="#222222"
+        )
+        h1 = repository.create_host(connection, name="srv-01", notes="app server")
+
+        repository.create_ip_asset(
+            connection,
+            ip_address="10.0.1.1",
+            asset_type=IPAssetType.VM,
+            project_id=p1.id,
+            host_id=h1.id,
+            notes="frontend portal",
+            tags=["web", "prod"],
+        )
+        repository.create_ip_asset(
+            connection,
+            ip_address="10.0.1.2",
+            asset_type=IPAssetType.OS,
+            project_id=p2.id,
+            notes="backend api",
+            tags=["api", "prod"],
+        )
+        repository.create_ip_asset(
+            connection,
+            ip_address="10.0.1.3",
+            asset_type=IPAssetType.OTHER,
+            project_id=None,
+            notes="unassigned gateway",
+            tags=["infra"],
+        )
+        repository.create_ip_asset(
+            connection,
+            ip_address="10.0.1.4",
+            asset_type=IPAssetType.VIP,
+            project_id=p1.id,
+            notes="decommissioned vip",
+        )
+        repository.archive_ip_asset(connection, "10.0.1.4")
+    finally:
+        connection.close()
+
+    session_cookie = _login_ui(test_client, "filter-exporter", "export-pass")
+    headers = _auth_headers(session_cookie)
+
+    # Filter by search keyword q (matching notes)
+    res = test_client.get("/export/ip-assets.csv?q=portal", headers=headers)
+    assert res.status_code == 200
+    rows = _parse_csv_rows(res.text)
+    assert len(rows) == 1
+    assert rows[0]["ip_address"] == "10.0.1.1"
+    assert rows[0]["project_name"] == "frontend-proj"
+    assert rows[0]["host_name"] == "srv-01"
+
+    # Filter by asset type
+    res = test_client.get("/export/ip-assets.json?type=OS", headers=headers)
+    assert res.status_code == 200
+    data = res.json()
+    assert [d["ip_address"] for d in data] == ["10.0.1.2"]
+
+    # Filter by project_id
+    res = test_client.get(
+        f"/export/ip-assets.json?project_id={p2.id}", headers=headers
+    )
+    assert res.status_code == 200
+    data = res.json()
+    assert [d["ip_address"] for d in data] == ["10.0.1.2"]
+
+    # Filter by project_id=unassigned
+    res = test_client.get(
+        "/export/ip-assets.csv?project_id=unassigned", headers=headers
+    )
+    assert res.status_code == 200
+    rows = _parse_csv_rows(res.text)
+    assert [r["ip_address"] for r in rows] == ["10.0.1.3"]
+
+    # Filter by unassigned-only=true
+    res = test_client.get(
+        "/export/ip-assets.json?unassigned-only=true", headers=headers
+    )
+    assert res.status_code == 200
+    data = res.json()
+    assert [d["ip_address"] for d in data] == ["10.0.1.3"]
+
+    # Filter by assigned-only=true
+    res = test_client.get(
+        "/export/ip-assets.json?assigned-only=true", headers=headers
+    )
+    assert res.status_code == 200
+    data = res.json()
+    assert {d["ip_address"] for d in data} == {"10.0.1.1", "10.0.1.2"}
+
+    # Filter by archived-only=true
+    res = test_client.get("/export/ip-assets.csv?archived-only=true", headers=headers)
+    assert res.status_code == 200
+    rows = _parse_csv_rows(res.text)
+    assert [r["ip_address"] for r in rows] == ["10.0.1.4"]
+    assert rows[0]["archived"] == "True"
+
+    # Filter by tags: tag_any=api
+    res = test_client.get("/export/ip-assets.json?tag_any=api", headers=headers)
+    assert res.status_code == 200
+    data = res.json()
+    assert [d["ip_address"] for d in data] == ["10.0.1.2"]
+
+    # Filter by tags: tag_all=prod&tag_all=web
+    res = test_client.get(
+        "/export/ip-assets.json?tag_all=prod&tag_all=web", headers=headers
+    )
+    assert res.status_code == 200
+    data = res.json()
+    assert [d["ip_address"] for d in data] == ["10.0.1.1"]
+
+    # Filter by tags: tag_not=web (prod without web -> 10.0.1.2)
+    res = test_client.get(
+        "/export/ip-assets.json?tag_any=prod&tag_not=web", headers=headers
+    )
+    assert res.status_code == 200
+    data = res.json()
+    assert [d["ip_address"] for d in data] == ["10.0.1.2"]
+

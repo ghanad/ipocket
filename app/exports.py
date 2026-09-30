@@ -60,6 +60,17 @@ def export_ip_assets(
     asset_type: Optional[IPAssetType] = None,
     project_name: Optional[str] = None,
     host_name: Optional[str] = None,
+    *,
+    project_id: Optional[int] = None,
+    project_unassigned_only: bool = False,
+    project_assigned_only: bool = False,
+    unassigned_only: bool = False,
+    query_text: Optional[str] = None,
+    tag_names: Optional[list[str]] = None,
+    tag_all_names: Optional[list[str]] = None,
+    tag_any_names: Optional[list[str]] = None,
+    tag_not_names: Optional[list[str]] = None,
+    archived_only: bool = False,
 ) -> list[dict[str, object]]:
     return repository.list_ip_assets_for_export(
         connection,
@@ -67,6 +78,16 @@ def export_ip_assets(
         asset_type=asset_type,
         project_name=project_name,
         host_name=host_name,
+        project_id=project_id,
+        project_unassigned_only=project_unassigned_only,
+        project_assigned_only=project_assigned_only,
+        unassigned_only=unassigned_only,
+        query_text=query_text,
+        tag_names=tag_names,
+        tag_all_names=tag_all_names,
+        tag_any_names=tag_any_names,
+        tag_not_names=tag_not_names,
+        archived_only=archived_only,
     )
 
 

@@ -28,6 +28,7 @@ from app.imports.uploads import (
     read_upload_limited,
 )
 from app.models import UserRole
+from app.routes.ui.ip_assets.listing import normalize_ip_asset_list_query
 from .utils import (
     _build_csv_content,
     _csv_response,
@@ -488,19 +489,51 @@ async def ui_import_csv(
 
 @router.get("/export/ip-assets.csv")
 def export_ip_assets_csv(
-    include_archived: bool = Query(default=False),
+    q: Optional[str] = Query(default=None),
+    project_id: Optional[str] = Query(default=None),
+    tag: Optional[list[str]] = Query(default=None),
+    tag_all: Optional[list[str]] = Query(default=None),
+    tag_any: Optional[list[str]] = Query(default=None),
+    tag_not: Optional[list[str]] = Query(default=None),
     asset_type: Optional[str] = Query(default=None, alias="type"),
+    assigned_only: bool = Query(default=False, alias="assigned-only"),
+    unassigned_only: bool = Query(default=False, alias="unassigned-only"),
+    archived_only: bool = Query(default=False, alias="archived-only"),
+    include_archived: bool = Query(default=False),
     project: Optional[str] = Query(default=None),
     host: Optional[str] = Query(default=None),
     connection=Depends(get_connection),
     _user=Depends(get_current_ui_user),
 ) -> Response:
+    query = normalize_ip_asset_list_query(
+        q=q,
+        project_id=project_id,
+        tag=tag,
+        tag_all=tag_all,
+        tag_any=tag_any,
+        tag_not=tag_not,
+        asset_type=asset_type,
+        assigned_only=assigned_only,
+        unassigned_only=unassigned_only,
+        archived_only=archived_only,
+        page=None,
+        per_page=None,
+    )
     export_rows = exports.export_ip_assets(
         connection,
         include_archived=include_archived,
-        asset_type=_normalize_export_asset_type(asset_type),
+        asset_type=query.asset_type,
         project_name=project,
         host_name=host,
+        project_id=query.project_id,
+        project_unassigned_only=query.project_unassigned_only,
+        project_assigned_only=query.project_assigned_only,
+        unassigned_only=query.unassigned_only,
+        query_text=query.q or None,
+        tag_all_names=query.tag_all,
+        tag_any_names=query.tag_any,
+        tag_not_names=query.tag_not,
+        archived_only=query.archived_only,
     )
     headers = [
         "ip_address",
@@ -520,19 +553,51 @@ def export_ip_assets_csv(
 
 @router.get("/export/ip-assets.json")
 def export_ip_assets_json(
-    include_archived: bool = Query(default=False),
+    q: Optional[str] = Query(default=None),
+    project_id: Optional[str] = Query(default=None),
+    tag: Optional[list[str]] = Query(default=None),
+    tag_all: Optional[list[str]] = Query(default=None),
+    tag_any: Optional[list[str]] = Query(default=None),
+    tag_not: Optional[list[str]] = Query(default=None),
     asset_type: Optional[str] = Query(default=None, alias="type"),
+    assigned_only: bool = Query(default=False, alias="assigned-only"),
+    unassigned_only: bool = Query(default=False, alias="unassigned-only"),
+    archived_only: bool = Query(default=False, alias="archived-only"),
+    include_archived: bool = Query(default=False),
     project: Optional[str] = Query(default=None),
     host: Optional[str] = Query(default=None),
     connection=Depends(get_connection),
     _user=Depends(get_current_ui_user),
 ) -> Response:
+    query = normalize_ip_asset_list_query(
+        q=q,
+        project_id=project_id,
+        tag=tag,
+        tag_all=tag_all,
+        tag_any=tag_any,
+        tag_not=tag_not,
+        asset_type=asset_type,
+        assigned_only=assigned_only,
+        unassigned_only=unassigned_only,
+        archived_only=archived_only,
+        page=None,
+        per_page=None,
+    )
     export_rows = exports.export_ip_assets(
         connection,
         include_archived=include_archived,
-        asset_type=_normalize_export_asset_type(asset_type),
+        asset_type=query.asset_type,
         project_name=project,
         host_name=host,
+        project_id=query.project_id,
+        project_unassigned_only=query.project_unassigned_only,
+        project_assigned_only=query.project_assigned_only,
+        unassigned_only=query.unassigned_only,
+        query_text=query.q or None,
+        tag_all_names=query.tag_all,
+        tag_any_names=query.tag_any,
+        tag_not_names=query.tag_not,
+        archived_only=query.archived_only,
     )
     return _json_response("ip-assets.json", export_rows)
 

@@ -16,27 +16,35 @@ from .mappers import _row_to_ip_asset
 def _apply_asset_filters(
     statement,
     *,
-    project_id: Optional[int],
-    project_unassigned_only: bool,
-    project_assigned_only: bool,
-    asset_type: Optional[IPAssetType],
-    unassigned_only: bool,
-    query_text: Optional[str],
-    tag_names: Optional[list[str]],
-    tag_all_names: Optional[list[str]],
-    tag_any_names: Optional[list[str]],
-    tag_not_names: Optional[list[str]],
-    archived_only: bool,
+    project_id: Optional[int] = None,
+    project_unassigned_only: bool = False,
+    project_assigned_only: bool = False,
+    asset_type: Optional[IPAssetType] = None,
+    unassigned_only: bool = False,
+    query_text: Optional[str] = None,
+    tag_names: Optional[list[str]] = None,
+    tag_all_names: Optional[list[str]] = None,
+    tag_any_names: Optional[list[str]] = None,
+    tag_not_names: Optional[list[str]] = None,
+    archived_only: bool = False,
+    include_archived: bool = False,
+    project_name: Optional[str] = None,
+    host_name: Optional[str] = None,
 ):
-    statement = statement.where(
-        db_schema.IPAsset.archived == (1 if archived_only else 0)
-    )
+    if archived_only:
+        statement = statement.where(db_schema.IPAsset.archived == 1)
+    elif not include_archived:
+        statement = statement.where(db_schema.IPAsset.archived == 0)
     if project_unassigned_only:
         statement = statement.where(db_schema.IPAsset.project_id.is_(None))
     elif project_assigned_only:
         statement = statement.where(db_schema.IPAsset.project_id.is_not(None))
     elif project_id is not None:
         statement = statement.where(db_schema.IPAsset.project_id == project_id)
+    if project_name:
+        statement = statement.where(db_schema.Project.name == project_name)
+    if host_name:
+        statement = statement.where(db_schema.Host.name == host_name)
     if asset_type is not None:
         statement = statement.where(db_schema.IPAsset.type == asset_type.value)
     if unassigned_only:

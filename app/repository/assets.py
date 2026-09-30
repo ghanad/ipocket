@@ -14,7 +14,7 @@ from app.utils import ipv4_to_int, normalize_tag_names
 from ._asset_audit import (
     _summarize_ip_asset_changes as _summarize_ip_asset_changes,
 )
-from ._asset_filters import count_active_assets, list_active_assets
+from ._asset_filters import _apply_asset_filters, count_active_assets, list_active_assets
 from ._asset_tags import (
     list_tag_details_for_ip_assets as list_tag_details_for_ip_assets,
     list_tags_for_ip_assets as list_tags_for_ip_assets,
@@ -383,6 +383,17 @@ def list_ip_assets_for_export(
     asset_type: Optional[IPAssetType] = None,
     project_name: Optional[str] = None,
     host_name: Optional[str] = None,
+    *,
+    project_id: Optional[int] = None,
+    project_unassigned_only: bool = False,
+    project_assigned_only: bool = False,
+    unassigned_only: bool = False,
+    query_text: Optional[str] = None,
+    tag_names: Optional[list[str]] = None,
+    tag_all_names: Optional[list[str]] = None,
+    tag_any_names: Optional[list[str]] = None,
+    tag_not_names: Optional[list[str]] = None,
+    archived_only: bool = False,
 ) -> list[dict[str, object]]:
     statement = (
         select(
@@ -407,14 +418,23 @@ def list_ip_assets_for_export(
             db_schema.Host, db_schema.Host.id == db_schema.IPAsset.host_id, isouter=True
         )
     )
-    if not include_archived:
-        statement = statement.where(db_schema.IPAsset.archived == 0)
-    if asset_type is not None:
-        statement = statement.where(db_schema.IPAsset.type == asset_type.value)
-    if project_name:
-        statement = statement.where(db_schema.Project.name == project_name)
-    if host_name:
-        statement = statement.where(db_schema.Host.name == host_name)
+    statement = _apply_asset_filters(
+        statement,
+        project_id=project_id,
+        project_unassigned_only=project_unassigned_only,
+        project_assigned_only=project_assigned_only,
+        asset_type=asset_type,
+        unassigned_only=unassigned_only,
+        query_text=query_text,
+        tag_names=tag_names,
+        tag_all_names=tag_all_names,
+        tag_any_names=tag_any_names,
+        tag_not_names=tag_not_names,
+        archived_only=archived_only,
+        include_archived=include_archived,
+        project_name=project_name,
+        host_name=host_name,
+    )
     statement = statement.order_by(
         db_schema.IPAsset.ip_int.is_(None),
         db_schema.IPAsset.ip_int,

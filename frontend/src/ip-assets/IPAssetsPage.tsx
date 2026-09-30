@@ -88,6 +88,25 @@ export function searchFromFilters(filters: AssetFilters): string {
   return params.toString();
 }
 
+export function exportQueryFromFilters(
+  filters: Omit<AssetFilters, "page" | "per_page">,
+): string {
+  const params = new URLSearchParams();
+  if (filters.q.trim()) params.set("q", filters.q.trim());
+  if (filters.project_id) params.set("project_id", filters.project_id);
+  if (filters.type) params.set("type", filters.type);
+  if (filters.unassigned_only) {
+    params.set("unassigned-only", "true");
+  } else if (filters.assigned_only) {
+    params.set("assigned-only", "true");
+  }
+  if (filters.archived_only) params.set("archived-only", "true");
+  filters.tag_any.forEach((tag) => params.append("tag_any", tag));
+  filters.tag_all.forEach((tag) => params.append("tag_all", tag));
+  filters.tag_not.forEach((tag) => params.append("tag_not", tag));
+  return params.toString();
+}
+
 function valuesForAsset(asset: AssetRow): AssetFormValues {
   return {
     ip_address: asset.ip_address,
@@ -139,6 +158,12 @@ export function IPAssetsPage({
     () => searchFromFilters({ ...filters, q: debouncedQuery }),
     [debouncedQuery, filters],
   );
+  const exportQuery = useMemo(
+    () => exportQueryFromFilters({ ...filters, q: debouncedQuery }),
+    [debouncedQuery, filters],
+  );
+  const exportCsvUrl = `/export/ip-assets.csv${exportQuery ? `?${exportQuery}` : ""}`;
+  const exportJsonUrl = `/export/ip-assets.json${exportQuery ? `?${exportQuery}` : ""}`;
   const load = useCallback(
     async (showLoading = true) => {
       const id = ++requestId.current;
@@ -355,11 +380,27 @@ export function IPAssetsPage({
           <h1>IP Assets</h1>
           <p className="subtitle">Manage and monitor network address assignments across all zones.</p>
         </div>
-        {data?.can_edit && (
-          <div className="page-header-actions">
+        <div className="page-header-actions header-actions">
+          <a
+            className="btn btn-secondary"
+            href={exportCsvUrl}
+            download="ip-assets.csv"
+            onClick={() => setToast("Export started.")}
+          >
+            Export CSV
+          </a>
+          <a
+            className="btn btn-secondary"
+            href={exportJsonUrl}
+            download="ip-assets.json"
+            onClick={() => setToast("Export started.")}
+          >
+            Export JSON
+          </a>
+          {data?.can_edit && (
             <button className="btn btn-primary" type="button" onClick={openCreate}>Add IP</button>
-          </div>
-        )}
+          )}
+        </div>
       </section>
       <IPAssetsFilters
         filters={filters}

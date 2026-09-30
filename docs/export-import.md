@@ -56,6 +56,21 @@ Starting a download shows a non-blocking notification; React does not fetch or
 buffer the export file. Export and sample CSV links remain ordinary browser
 navigation/download links and do not pass through the shared API transport.
 
+### Filtered IP Assets Export (IP Assets Page)
+
+The IP Assets page (`/ui/ip-assets`) provides header actions for **Export CSV** and **Export JSON**.
+These exports automatically respect all currently active filters on the view:
+- Search text (`q`): matches IP address and notes.
+- Project filter (`project_id`): specific project ID or `unassigned`.
+- Asset type (`type`): `OS`, `BMC`, `VM`, `VIP`, `OTHER`.
+- Assignment status: `assigned-only` or `unassigned-only`.
+- Archive status: `archived-only`.
+- Tag filters: `tag_any`, `tag_all`, and `tag_not`.
+
+Filtered exports return all matching records regardless of the current pagination settings (`page` and `per-page` are omitted from the export request).
+
+The endpoints `/export/ip-assets.csv` and `/export/ip-assets.json` accept these parameters directly as query strings and return formatted CSV or JSON files.
+
 The Export tab uses the same responsive multi-card layout pattern as Import.
 `ip-assets.csv` export rows are sorted by numeric IP value (for example `10.0.0.2` before `10.0.0.10`), with fallback numeric parsing when `ip_int` is null.
 

@@ -519,4 +519,49 @@ describe("IPAssetsPage", () => {
     fireEvent.click(screen.getByRole("button", { name: "Try again" }));
     expect(await screen.findByText("No IP assets found.")).toBeVisible();
   });
+
+  it("renders export links reflecting active filters and triggers export toast", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(ok(response)));
+    render(
+      <IPAssetsPage
+        endpoint="/api/ui/ip-assets"
+        initialQuery="?q=prod&type=VM&project_id=3&assigned-only=true&tag_any=alpha&page=2&per-page=50"
+      />,
+    );
+
+    const csvLink = await screen.findByRole("link", { name: "Export CSV" });
+    const jsonLink = screen.getByRole("link", { name: "Export JSON" });
+
+    expect(csvLink).toHaveAttribute("download", "ip-assets.csv");
+    expect(jsonLink).toHaveAttribute("download", "ip-assets.json");
+
+    // The export URL must reflect filter params (q, type, project_id, assigned-only, tag_any)
+    // but MUST NOT include pagination params (page, per-page)
+    const csvHref = csvLink.getAttribute("href") ?? "";
+    expect(csvHref).toContain("/export/ip-assets.csv?");
+    expect(csvHref).toContain("q=prod");
+    expect(csvHref).toContain("type=VM");
+    expect(csvHref).toContain("project_id=3");
+    expect(csvHref).toContain("assigned-only=true");
+    expect(csvHref).toContain("tag_any=alpha");
+    expect(csvHref).not.toContain("page=");
+    expect(csvHref).not.toContain("per-page=");
+
+    const jsonHref = jsonLink.getAttribute("href") ?? "";
+    expect(jsonHref).toContain("/export/ip-assets.json?");
+    expect(jsonHref).toContain("q=prod");
+
+    // Clicking export triggers toast feedback without suppressing navigation
+    const click = new MouseEvent("click", { bubbles: true, cancelable: true });
+    let componentPreventedNavigation = true;
+    const stopJSDOMNavigation = (event: MouseEvent) => {
+      componentPreventedNavigation = event.defaultPrevented;
+      event.preventDefault();
+    };
+    document.addEventListener("click", stopJSDOMNavigation);
+    csvLink.dispatchEvent(click);
+    document.removeEventListener("click", stopJSDOMNavigation);
+    expect(componentPreventedNavigation).toBe(false);
+    expect(await screen.findByText("Export started.")).toBeVisible();
+  });
 });
