@@ -383,3 +383,20 @@ def test_hosts_drawer_css_matches_ip_drawer_layout_baseline() -> None:
     assert "transform: translateX(100%);" in css
     assert ".host-drawer-form {" in css
     assert "flex-direction: column;" in css
+
+
+def test_swagger_and_redoc_vendor_assets_exist() -> None:
+    repo_root = Path(__file__).resolve().parents[1]
+    vendor_dir = repo_root / "app/static/vendor"
+
+    swagger_js = vendor_dir / "swagger-ui" / "swagger-ui-bundle.js"
+    swagger_css = vendor_dir / "swagger-ui" / "swagger-ui.css"
+    redoc_js = vendor_dir / "redoc" / "redoc.standalone.js"
+
+    assert swagger_js.is_file()
+    assert swagger_js.stat().st_size > 100_000
+    assert swagger_css.is_file()
+    assert swagger_css.stat().st_size > 10_000
+    assert redoc_js.is_file()
+    assert redoc_js.stat().st_size > 100_000
+

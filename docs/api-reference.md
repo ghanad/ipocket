@@ -13,6 +13,9 @@ You can view, search, and test all API endpoints directly in your browser:
 - **ReDoc (API Reference):** [`/redoc`](http://localhost:8000/redoc)
 - **OpenAPI JSON Schema:** [`/openapi.json`](http://localhost:8000/openapi.json)
 
+> **Offline / Air-Gapped Production Support:**
+> All JavaScript, CSS, and favicon assets for Swagger UI and ReDoc are self-hosted locally under `/static/vendor/`. No external CDN (e.g. `cdn.jsdelivr.net`) or external font requests (e.g. Google Fonts) are made, ensuring complete functionality in production networks without internet access.
+
 ---
 
 ## IP Assets Endpoints

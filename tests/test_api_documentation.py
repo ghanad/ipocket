@@ -42,11 +42,29 @@ def test_openapi_schema_documents_ip_assets_filtering(client) -> None:
     assert "BMC" in ui_type_param["description"]
 
 
-def test_swagger_and_redoc_endpoints_accessible(client) -> None:
+def test_swagger_and_redoc_endpoints_use_local_offline_assets(client) -> None:
     docs_resp = client.get("/docs")
     assert docs_resp.status_code == 200
-    assert "swagger" in docs_resp.text.lower() or "html" in docs_resp.text.lower()
+    assert "/static/vendor/swagger-ui/swagger-ui-bundle.js" in docs_resp.text
+    assert "/static/vendor/swagger-ui/swagger-ui.css" in docs_resp.text
+    assert "cdn.jsdelivr.net" not in docs_resp.text
 
     redoc_resp = client.get("/redoc")
     assert redoc_resp.status_code == 200
-    assert "redoc" in redoc_resp.text.lower() or "html" in redoc_resp.text.lower()
+    assert "/static/vendor/redoc/redoc.standalone.js" in redoc_resp.text
+    assert "cdn.jsdelivr.net" not in redoc_resp.text
+    assert "fonts.googleapis.com" not in redoc_resp.text
+
+
+def test_swagger_and_redoc_static_assets_are_served(client) -> None:
+    swagger_js = client.get("/static/vendor/swagger-ui/swagger-ui-bundle.js")
+    assert swagger_js.status_code == 200
+    assert len(swagger_js.content) > 100_000
+
+    swagger_css = client.get("/static/vendor/swagger-ui/swagger-ui.css")
+    assert swagger_css.status_code == 200
+    assert len(swagger_css.content) > 10_000
+
+    redoc_js = client.get("/static/vendor/redoc/redoc.standalone.js")
+    assert redoc_js.status_code == 200
+    assert len(redoc_js.content) > 100_000

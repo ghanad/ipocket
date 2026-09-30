@@ -8,7 +8,7 @@ from app.routes import api, ui
 from app.startup import configure_logging, init_database
 
 configure_logging()
-app = FastAPI()
+app = FastAPI(docs_url=None, redoc_url=None)
 app.mount("/static", StaticFiles(directory="app/static"), name="static")
 try:
     app.state.templates = Jinja2Templates(directory="app/templates")

@@ -3,8 +3,9 @@ from __future__ import annotations
 import os
 from typing import Literal, Optional
 
-from fastapi import APIRouter, Depends, Header, Query
-from fastapi.responses import JSONResponse, Response
+from fastapi import APIRouter, Depends, Header, Query, Request
+from fastapi.openapi.docs import get_redoc_html, get_swagger_ui_html
+from fastapi.responses import HTMLResponse, JSONResponse, Response
 
 from app import build_info, repository
 from app.dependencies import get_connection
@@ -17,6 +18,32 @@ from .utils import (
 )
 
 router = APIRouter()
+
+
+@router.get("/docs", include_in_schema=False)
+def swagger_ui(req: Request) -> HTMLResponse:
+    root_path = req.scope.get("root_path", "").rstrip("/")
+    openapi_url = root_path + "/openapi.json"
+    return get_swagger_ui_html(
+        openapi_url=openapi_url,
+        title="ipocket - Swagger UI",
+        swagger_js_url="/static/vendor/swagger-ui/swagger-ui-bundle.js",
+        swagger_css_url="/static/vendor/swagger-ui/swagger-ui.css",
+        swagger_favicon_url="/static/favicon.png",
+    )
+
+
+@router.get("/redoc", include_in_schema=False)
+def redoc(req: Request) -> HTMLResponse:
+    root_path = req.scope.get("root_path", "").rstrip("/")
+    openapi_url = root_path + "/openapi.json"
+    return get_redoc_html(
+        openapi_url=openapi_url,
+        title="ipocket - ReDoc",
+        redoc_js_url="/static/vendor/redoc/redoc.standalone.js",
+        redoc_favicon_url="/static/favicon.png",
+        with_google_fonts=False,
+    )
 
 
 @router.get("/health")
