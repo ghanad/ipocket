@@ -520,7 +520,7 @@ describe("IPAssetsPage", () => {
     expect(await screen.findByText("No IP assets found.")).toBeVisible();
   });
 
-  it("renders export links reflecting active filters and triggers export toast", async () => {
+  it("renders export dropdown reflecting active filters and triggers export toast", async () => {
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue(ok(response)));
     render(
       <IPAssetsPage
@@ -529,8 +529,12 @@ describe("IPAssetsPage", () => {
       />,
     );
 
-    const csvLink = await screen.findByRole("link", { name: "Export CSV" });
-    const jsonLink = screen.getByRole("link", { name: "Export JSON" });
+    const exportTrigger = await screen.findByRole("button", { name: "Export options" });
+    expect(exportTrigger).toBeInTheDocument();
+    fireEvent.click(exportTrigger);
+
+    const csvLink = screen.getByRole("menuitem", { name: "Export as CSV" });
+    const jsonLink = screen.getByRole("menuitem", { name: "Export as JSON" });
 
     expect(csvLink).toHaveAttribute("download", "ip-assets.csv");
     expect(jsonLink).toHaveAttribute("download", "ip-assets.json");

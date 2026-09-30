@@ -18,6 +18,7 @@ import {
 } from "./api";
 import { BulkActionToolbar } from "./BulkActionToolbar";
 import { BulkUpdateDrawer } from "./BulkUpdateDrawer";
+import { ExportDropdown } from "./ExportDropdown";
 import { IPAssetListDrawer } from "./IPAssetListDrawer";
 import { IPAssetsFilters } from "./IPAssetsFilters";
 import { IPAssetsTable } from "./IPAssetsTable";
@@ -381,22 +382,12 @@ export function IPAssetsPage({
           <p className="subtitle">Manage and monitor network address assignments across all zones.</p>
         </div>
         <div className="page-header-actions header-actions">
-          <a
-            className="btn btn-secondary"
-            href={exportCsvUrl}
-            download="ip-assets.csv"
-            onClick={() => setToast("Export started.")}
-          >
-            Export CSV
-          </a>
-          <a
-            className="btn btn-secondary"
-            href={exportJsonUrl}
-            download="ip-assets.json"
-            onClick={() => setToast("Export started.")}
-          >
-            Export JSON
-          </a>
+          <ExportDropdown
+            csvUrl={exportCsvUrl}
+            jsonUrl={exportJsonUrl}
+            totalCount={data?.pagination.total}
+            onExportStarted={() => setToast("Export started.")}
+          />
           {data?.can_edit && (
             <button className="btn btn-primary" type="button" onClick={openCreate}>Add IP</button>
           )}
