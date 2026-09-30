@@ -86,7 +86,12 @@ def test_about_api_returns_only_safe_structured_build_data(client, monkeypatch) 
             "commit": "abc1234",
             "build_time": "2026-07-17T12:34:56Z",
         },
-        "links": {"health": "/health", "metrics": "/metrics"},
+        "links": {
+            "health": "/health",
+            "metrics": "/metrics",
+            "docs": "/docs",
+            "redoc": "/redoc",
+        },
     }
     assert "must-not-leak" not in response.text
     assert "DATABASE_PASSWORD" not in response.text

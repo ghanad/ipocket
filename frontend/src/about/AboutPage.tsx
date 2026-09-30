@@ -109,7 +109,7 @@ export function AboutPage({ endpoint }: AboutPageProps) {
 
       <section className="card action-card" aria-labelledby="operational-links-heading">
         <h2 id="operational-links-heading">Operational links</h2>
-        <p className="subtitle">Inspect service health or Prometheus metrics directly.</p>
+        <p className="subtitle">Inspect service health, Prometheus metrics, or interactive API documentation.</p>
         <div className="action-row">
           <a className="btn btn-secondary" href={data.links.health}>
             Health
@@ -117,6 +117,26 @@ export function AboutPage({ endpoint }: AboutPageProps) {
           <a className="btn btn-secondary" href={data.links.metrics}>
             Prometheus Metrics
           </a>
+          {data.links.docs && (
+            <a
+              className="btn btn-secondary"
+              href={data.links.docs}
+              target="_blank"
+              rel="noreferrer"
+            >
+              API Docs (Swagger)
+            </a>
+          )}
+          {data.links.redoc && (
+            <a
+              className="btn btn-secondary"
+              href={data.links.redoc}
+              target="_blank"
+              rel="noreferrer"
+            >
+              API Reference (ReDoc)
+            </a>
+          )}
         </div>
       </section>
     </>

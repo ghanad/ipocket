@@ -63,11 +63,15 @@ def create_ip_asset(
     return asset_payload(asset, tags=tag_map.get(asset.id, []))
 
 
-@router.get("/ip-assets")
+@router.get(
+    "/ip-assets",
+    summary="List active IP assets",
+    description="Retrieve a list of active IP assets with optional filtering by project, asset type (OS, BMC, VM, VIP, OTHER), or assignment status.",
+)
 def list_ip_assets(
-    project_id: Optional[int] = None,
-    asset_type: Optional[str] = Query(default=None, alias="type"),
-    unassigned_only: bool = Query(default=False, alias="unassigned-only"),
+    project_id: Optional[int] = Query(default=None, description="Filter by assigned project ID"),
+    asset_type: Optional[str] = Query(default=None, alias="type", description="Filter by asset type: OS, BMC, VM, VIP, OTHER"),
+    unassigned_only: bool = Query(default=False, alias="unassigned-only", description="Only return IP assets not assigned to any project"),
     connection=Depends(get_connection),
 ):
     normalized_asset_type = (

@@ -10,5 +10,7 @@ export interface AboutData {
   links: {
     health: string;
     metrics: string;
+    docs?: string;
+    redoc?: string;
   };
 }

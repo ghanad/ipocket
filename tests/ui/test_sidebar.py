@@ -40,3 +40,12 @@ def test_sidebar_account_actions_are_compact_text_links(client, monkeypatch) -> 
         in response.text
     )
     assert "sidebar-account-heading" not in response.text
+
+
+def test_sidebar_includes_api_docs_links(client) -> None:
+    response = client.get("/ui/management")
+
+    assert response.status_code == 200
+    assert '<a class="nav-link" href="/docs" target="_blank" rel="noreferrer">API Docs</a>' in response.text
+    assert '<a href="/docs" target="_blank" rel="noreferrer">API Docs</a> · <a href="/ui/about">About ipocket</a>' in response.text
+

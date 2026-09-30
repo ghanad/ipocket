@@ -95,6 +95,7 @@ details live in their focused documents under `docs/`.
 - `GET /health` returns application/build health metadata.
 - `GET /metrics` exposes required IP inventory counters.
 - `GET /sd/node` provides Prometheus HTTP service discovery.
+- `GET /docs` (Swagger UI) and `GET /redoc` provide interactive API documentation accessible directly from the UI sidebar and About page. See [API reference](api-reference.md) for details on endpoints and query filtering.
 - Authenticated users can read `GET /api/host-completion/summary`,
   `/findings`, and `/findings/next`. Editor-only
   `POST /api/host-completion/findings/decisions` applies operator outcomes.

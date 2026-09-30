@@ -43,6 +43,8 @@ def ui_about_data(
         "links": {
             "health": "/health",
             "metrics": "/metrics",
+            "docs": "/docs",
+            "redoc": "/redoc",
         },
     }
 

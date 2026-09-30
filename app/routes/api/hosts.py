@@ -12,7 +12,11 @@ from .utils import asset_payload, host_payload
 router = APIRouter()
 
 
-@router.get("/hosts")
+@router.get(
+    "/hosts",
+    summary="List hosts",
+    description="Retrieve a list of all managed hosts (servers/machines) with vendor and notes.",
+)
 def list_hosts(connection=Depends(get_connection)):
     hosts = repository.list_hosts(connection)
     return [host_payload(host) for host in hosts]
@@ -44,7 +48,11 @@ def create_host(
     return host_payload(host)
 
 
-@router.get("/hosts/{host_id}")
+@router.get(
+    "/hosts/{host_id}",
+    summary="Get host details with linked IP assets",
+    description="Retrieve a host by ID along with linked IP assets grouped by type (os, bmc, other).",
+)
 def get_host(host_id: int, connection=Depends(get_connection)):
     host = repository.get_host_by_id(connection, host_id)
     if host is None:

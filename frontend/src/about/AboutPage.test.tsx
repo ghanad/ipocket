@@ -61,6 +61,32 @@ describe("AboutPage", () => {
     expect(screen.getByRole("link", { name: "Prometheus Metrics" })).toHaveAttribute("href", "/metrics");
   });
 
+  it("renders interactive API documentation links when provided", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        successfulResponse({
+          ...aboutData,
+          links: {
+            ...aboutData.links,
+            docs: "/docs",
+            redoc: "/redoc",
+          },
+        }),
+      ),
+    );
+
+    render(<AboutPage endpoint="/api/ui/about" />);
+
+    const swaggerLink = await screen.findByRole("link", { name: "API Docs (Swagger)" });
+    expect(swaggerLink).toHaveAttribute("href", "/docs");
+    expect(swaggerLink).toHaveAttribute("target", "_blank");
+
+    const redocLink = screen.getByRole("link", { name: "API Reference (ReDoc)" });
+    expect(redocLink).toHaveAttribute("href", "/redoc");
+    expect(redocLink).toHaveAttribute("target", "_blank");
+  });
+
   it("shows an accessible error when the API request fails", async () => {
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: false, status: 500 }));
 

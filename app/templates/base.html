@@ -59,6 +59,7 @@
       <a class="nav-link{% if active_nav == 'connectors' %} nav-link-active{% endif %}" href="/ui/connectors">Connectors</a>
       <a class="nav-link{% if active_nav == 'audit-log' %} nav-link-active{% endif %}" href="/ui/audit-log">Audit Log</a>
       <a class="nav-link{% if active_nav == 'data-ops' %} nav-link-active{% endif %}" href="/ui/import">Data Ops</a>
+      <a class="nav-link" href="/docs" target="_blank" rel="noreferrer">API Docs</a>
       {% if is_superuser %}
       <p class="sidebar-section-title">Administration</p>
       <a class="nav-link{% if active_nav == 'users' %} nav-link-active{% endif %}" href="/ui/users">Users</a>
@@ -78,7 +79,7 @@
         <a class="sidebar-account-link sidebar-login-link" href="/ui/login">Login</a>
         {% endif %}
       </div>
-      <p class="sidebar-note">{% if build_info %}ipocket {{ build_info.version }} ({{ build_info.commit }}) · built {{ build_info.build_time }} · {% endif %}<a href="/ui/about">About ipocket</a></p>
+      <p class="sidebar-note">{% if build_info %}ipocket {{ build_info.version }} ({{ build_info.commit }}) · built {{ build_info.build_time }} · {% endif %}<a href="/docs" target="_blank" rel="noreferrer">API Docs</a> · <a href="/ui/about">About ipocket</a></p>
     </div>
   </aside>
   <div class="app-main">
