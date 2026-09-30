@@ -2,10 +2,9 @@ from __future__ import annotations
 
 import socket
 from unittest.mock import MagicMock, patch
-import pytest
 
 from app import repository
-from app.models import IPAssetType, User, UserRole
+from app.models import UserRole
 from app.services import bmc_discovery
 
 
@@ -13,10 +12,16 @@ def test_normalize_vendor_identifies_all_major_vendors():
     # Dell
     assert bmc_discovery.normalize_vendor("CN=idrac-ABC, O=Dell Inc.") == "Dell"
     assert bmc_discovery.normalize_vendor("PowerEdge R740xd") == "Dell"
-    assert bmc_discovery.normalize_vendor("Integrated Dell Remote Access Controller") == "Dell"
+    assert (
+        bmc_discovery.normalize_vendor("Integrated Dell Remote Access Controller")
+        == "Dell"
+    )
 
     # HPE
-    assert bmc_discovery.normalize_vendor("CN=ILO4-SERVER, O=Hewlett Packard Enterprise") == "HPE"
+    assert (
+        bmc_discovery.normalize_vendor("CN=ILO4-SERVER, O=Hewlett Packard Enterprise")
+        == "HPE"
+    )
     assert bmc_discovery.normalize_vendor("ProLiant DL380 Gen10") == "HPE"
     assert bmc_discovery.normalize_vendor("Hewlett-Packard Company") == "HPE"
 
@@ -32,7 +37,10 @@ def test_normalize_vendor_identifies_all_major_vendors():
     # Lenovo
     assert bmc_discovery.normalize_vendor("Lenovo XClarity Controller") == "Lenovo"
     assert bmc_discovery.normalize_vendor("ThinkSystem SR650") == "Lenovo"
-    assert bmc_discovery.normalize_vendor("Integrated Management Module 2 IMM2") == "Lenovo"
+    assert (
+        bmc_discovery.normalize_vendor("Integrated Management Module 2 IMM2")
+        == "Lenovo"
+    )
 
     # Huawei
     assert bmc_discovery.normalize_vendor("Huawei iBMC Controller") == "Huawei"

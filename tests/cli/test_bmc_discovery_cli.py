@@ -22,7 +22,10 @@ def test_bmc_discovery_cli_dry_run_and_json(mock_probe, _setup_connection, capsy
     try:
         host = repository.create_host(conn, name="srv-cli-test", vendor=None)
         repository.create_ip_asset(
-            conn, ip_address="192.168.10.99", asset_type=IPAssetType.BMC, host_id=host.id
+            conn,
+            ip_address="192.168.10.99",
+            asset_type=IPAssetType.BMC,
+            host_id=host.id,
         )
     finally:
         conn.close()
@@ -61,7 +64,10 @@ def test_bmc_discovery_cli_apply(mock_probe, _setup_connection, capsys):
     try:
         host = repository.create_host(conn, name="srv-cli-apply", vendor=None)
         repository.create_ip_asset(
-            conn, ip_address="192.168.10.98", asset_type=IPAssetType.BMC, host_id=host.id
+            conn,
+            ip_address="192.168.10.98",
+            asset_type=IPAssetType.BMC,
+            host_id=host.id,
         )
     finally:
         conn.close()

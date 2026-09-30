@@ -12,7 +12,7 @@ import sqlite3
 from app import repository
 from app.models import User
 from app.repository.audit import create_audit_log
-from app.repository._db import session_scope, write_session_scope
+from app.repository._db import write_session_scope
 
 # Vendor normalization patterns (canonical_name, pattern_list)
 VENDOR_PATTERNS: list[tuple[str, list[re.Pattern[str]]]] = [
@@ -177,7 +177,9 @@ def probe_bmc_tls(ip: str, port: int = 443, timeout: float = 2.0) -> dict[str, A
         "status": "unmatched",
         "detected_vendor": None,
         "confidence": None,
-        "fingerprint_summary": joined_evidence[:120] if joined_evidence else "No certificate strings found",
+        "fingerprint_summary": joined_evidence[:120]
+        if joined_evidence
+        else "No certificate strings found",
         "error": None,
     }
 

@@ -116,7 +116,9 @@ def run(args: argparse.Namespace) -> int:
 
         # Tabular output
         print(f"\nDiscovered {len(results)} host(s):")
-        print(f"{'Host ID':<8} {'Host Name':<25} {'BMC IP':<16} {'Vendor':<15} {'Status':<10} {'Evidence'}")
+        print(
+            f"{'Host ID':<8} {'Host Name':<25} {'BMC IP':<16} {'Vendor':<15} {'Status':<10} {'Evidence'}"
+        )
         print("-" * 95)
         for r in results:
             print(
@@ -133,7 +135,9 @@ def run(args: argparse.Namespace) -> int:
             print(f"\nApplied vendor changes to {len(applied)} host(s).")
         else:
             matched_count = sum(1 for r in results if r.get("status") == "matched")
-            print(f"\nDry-run complete. {matched_count} match(es) found. Run with --apply to commit changes.")
+            print(
+                f"\nDry-run complete. {matched_count} match(es) found. Run with --apply to commit changes."
+            )
 
         return 0
     finally:

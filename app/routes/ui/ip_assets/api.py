@@ -36,18 +36,43 @@ router = APIRouter()
     description="Query IP assets with search, tags, asset type (OS, BMC, VM, VIP, OTHER), project, assignment status, and pagination.",
 )
 def list_ip_assets_for_ui(
-    q: str | None = Query(default=None, description="Search term matching IP address, hostname, notes, or tags"),
-    project_id: str | None = Query(default=None, description="Project ID number or 'unassigned'"),
+    q: str | None = Query(
+        default=None,
+        description="Search term matching IP address, hostname, notes, or tags",
+    ),
+    project_id: str | None = Query(
+        default=None, description="Project ID number or 'unassigned'"
+    ),
     tag: list[str] | None = Query(default=None, description="Filter by tag name"),
-    tag_all: list[str] | None = Query(default=None, description="Filter requiring all specified tags"),
-    tag_any: list[str] | None = Query(default=None, description="Filter matching any specified tags"),
-    tag_not: list[str] | None = Query(default=None, description="Exclude assets with specified tags"),
-    asset_type: str | None = Query(default=None, alias="type", description="Filter by asset type: OS, BMC, VM, VIP, OTHER"),
-    assigned_only: bool = Query(default=False, alias="assigned-only", description="Only return assigned assets"),
-    unassigned_only: bool = Query(default=False, alias="unassigned-only", description="Only return unassigned assets"),
-    archived_only: bool = Query(default=False, alias="archived-only", description="Only return archived assets"),
+    tag_all: list[str] | None = Query(
+        default=None, description="Filter requiring all specified tags"
+    ),
+    tag_any: list[str] | None = Query(
+        default=None, description="Filter matching any specified tags"
+    ),
+    tag_not: list[str] | None = Query(
+        default=None, description="Exclude assets with specified tags"
+    ),
+    asset_type: str | None = Query(
+        default=None,
+        alias="type",
+        description="Filter by asset type: OS, BMC, VM, VIP, OTHER",
+    ),
+    assigned_only: bool = Query(
+        default=False, alias="assigned-only", description="Only return assigned assets"
+    ),
+    unassigned_only: bool = Query(
+        default=False,
+        alias="unassigned-only",
+        description="Only return unassigned assets",
+    ),
+    archived_only: bool = Query(
+        default=False, alias="archived-only", description="Only return archived assets"
+    ),
     page: str | None = Query(default=None, description="Page number (1-based)"),
-    per_page: str | None = Query(default=None, alias="per-page", description="Items per page: 10, 20, 50, 100"),
+    per_page: str | None = Query(
+        default=None, alias="per-page", description="Items per page: 10, 20, 50, 100"
+    ),
     connection=Depends(get_connection),
     user=Depends(get_optional_current_ui_user),
 ):

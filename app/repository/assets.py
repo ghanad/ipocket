@@ -14,7 +14,11 @@ from app.utils import ipv4_to_int, normalize_tag_names
 from ._asset_audit import (
     _summarize_ip_asset_changes as _summarize_ip_asset_changes,
 )
-from ._asset_filters import _apply_asset_filters, count_active_assets, list_active_assets
+from ._asset_filters import (
+    _apply_asset_filters,
+    count_active_assets,
+    list_active_assets,
+)
 from ._asset_tags import (
     list_tag_details_for_ip_assets as list_tag_details_for_ip_assets,
     list_tags_for_ip_assets as list_tags_for_ip_assets,

@@ -69,9 +69,19 @@ def create_ip_asset(
     description="Retrieve a list of active IP assets with optional filtering by project, asset type (OS, BMC, VM, VIP, OTHER), or assignment status.",
 )
 def list_ip_assets(
-    project_id: Optional[int] = Query(default=None, description="Filter by assigned project ID"),
-    asset_type: Optional[str] = Query(default=None, alias="type", description="Filter by asset type: OS, BMC, VM, VIP, OTHER"),
-    unassigned_only: bool = Query(default=False, alias="unassigned-only", description="Only return IP assets not assigned to any project"),
+    project_id: Optional[int] = Query(
+        default=None, description="Filter by assigned project ID"
+    ),
+    asset_type: Optional[str] = Query(
+        default=None,
+        alias="type",
+        description="Filter by asset type: OS, BMC, VM, VIP, OTHER",
+    ),
+    unassigned_only: bool = Query(
+        default=False,
+        alias="unassigned-only",
+        description="Only return IP assets not assigned to any project",
+    ),
     connection=Depends(get_connection),
 ):
     normalized_asset_type = (

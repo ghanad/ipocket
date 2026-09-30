@@ -357,9 +357,7 @@ def test_export_ip_assets_with_query_and_filters(client) -> None:
     assert [d["ip_address"] for d in data] == ["10.0.1.2"]
 
     # Filter by project_id
-    res = test_client.get(
-        f"/export/ip-assets.json?project_id={p2.id}", headers=headers
-    )
+    res = test_client.get(f"/export/ip-assets.json?project_id={p2.id}", headers=headers)
     assert res.status_code == 200
     data = res.json()
     assert [d["ip_address"] for d in data] == ["10.0.1.2"]
@@ -381,9 +379,7 @@ def test_export_ip_assets_with_query_and_filters(client) -> None:
     assert [d["ip_address"] for d in data] == ["10.0.1.3"]
 
     # Filter by assigned-only=true
-    res = test_client.get(
-        "/export/ip-assets.json?assigned-only=true", headers=headers
-    )
+    res = test_client.get("/export/ip-assets.json?assigned-only=true", headers=headers)
     assert res.status_code == 200
     data = res.json()
     assert {d["ip_address"] for d in data} == {"10.0.1.1", "10.0.1.2"}
@@ -416,4 +412,3 @@ def test_export_ip_assets_with_query_and_filters(client) -> None:
     assert res.status_code == 200
     data = res.json()
     assert [d["ip_address"] for d in data] == ["10.0.1.2"]
-

@@ -7,7 +7,9 @@ from app import repository
 from app.models import IPAssetType, UserRole
 
 
-def test_bmc_discovery_targets_api(client: TestClient, _create_user, _login, _auth_headers, _setup_connection):
+def test_bmc_discovery_targets_api(
+    client: TestClient, _create_user, _login, _auth_headers, _setup_connection
+):
     _create_user("editor_user", "password123", UserRole.EDITOR)
     token = _login("editor_user", "password123")
     headers = _auth_headers(token)
@@ -16,7 +18,10 @@ def test_bmc_discovery_targets_api(client: TestClient, _create_user, _login, _au
     try:
         host = repository.create_host(conn, name="srv-api-target", vendor=None)
         repository.create_ip_asset(
-            conn, ip_address="192.168.10.10", asset_type=IPAssetType.BMC, host_id=host.id
+            conn,
+            ip_address="192.168.10.10",
+            asset_type=IPAssetType.BMC,
+            host_id=host.id,
         )
     finally:
         conn.close()
@@ -36,7 +41,14 @@ def test_bmc_discovery_targets_api(client: TestClient, _create_user, _login, _au
 
 
 @patch("app.services.bmc_discovery.probe_bmc_tls")
-def test_bmc_discovery_scan_api(mock_probe, client: TestClient, _create_user, _login, _auth_headers, _setup_connection):
+def test_bmc_discovery_scan_api(
+    mock_probe,
+    client: TestClient,
+    _create_user,
+    _login,
+    _auth_headers,
+    _setup_connection,
+):
     _create_user("editor_user", "password123", UserRole.EDITOR)
     token = _login("editor_user", "password123")
     headers = _auth_headers(token)
@@ -53,7 +65,10 @@ def test_bmc_discovery_scan_api(mock_probe, client: TestClient, _create_user, _l
     try:
         host = repository.create_host(conn, name="srv-scan-test", vendor=None)
         repository.create_ip_asset(
-            conn, ip_address="192.168.10.20", asset_type=IPAssetType.BMC, host_id=host.id
+            conn,
+            ip_address="192.168.10.20",
+            asset_type=IPAssetType.BMC,
+            host_id=host.id,
         )
     finally:
         conn.close()
@@ -68,7 +83,9 @@ def test_bmc_discovery_scan_api(mock_probe, client: TestClient, _create_user, _l
     assert data["results"][0]["status"] == "matched"
 
 
-def test_bmc_discovery_apply_api(client: TestClient, _create_user, _login, _auth_headers, _setup_connection):
+def test_bmc_discovery_apply_api(
+    client: TestClient, _create_user, _login, _auth_headers, _setup_connection
+):
     _create_user("editor_user", "password123", UserRole.EDITOR)
     _create_user("viewer_user", "password123", UserRole.VIEWER)
 
@@ -81,11 +98,7 @@ def test_bmc_discovery_apply_api(client: TestClient, _create_user, _login, _auth
     finally:
         conn.close()
 
-    apply_payload = {
-        "items": [
-            {"host_id": host.id, "vendor_name": "HPE"}
-        ]
-    }
+    apply_payload = {"items": [{"host_id": host.id, "vendor_name": "HPE"}]}
 
     # Viewer should be forbidden
     resp = client.post(

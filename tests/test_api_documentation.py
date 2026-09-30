@@ -30,9 +30,7 @@ def test_openapi_schema_documents_ip_assets_filtering(client) -> None:
     assert "/ip-assets" in paths
     ip_assets_get = paths["/ip-assets"]["get"]
     assert "active IP assets" in ip_assets_get["description"]
-    type_param = next(
-        p for p in ip_assets_get["parameters"] if p["name"] == "type"
-    )
+    type_param = next(p for p in ip_assets_get["parameters"] if p["name"] == "type")
     assert "BMC" in type_param["description"]
 
     # Verify /api/ui/ip-assets

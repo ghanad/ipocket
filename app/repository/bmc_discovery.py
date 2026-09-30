@@ -27,7 +27,9 @@ def get_bmc_discovery_targets(
                 db_schema.IPAsset.ip_address.label("ip_address"),
             )
             .select_from(db_schema.Host)
-            .outerjoin(db_schema.Vendor, db_schema.Vendor.id == db_schema.Host.vendor_id)
+            .outerjoin(
+                db_schema.Vendor, db_schema.Vendor.id == db_schema.Host.vendor_id
+            )
             .join(
                 db_schema.IPAsset,
                 (db_schema.IPAsset.host_id == db_schema.Host.id)
