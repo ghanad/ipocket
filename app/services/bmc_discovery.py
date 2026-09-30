@@ -152,7 +152,9 @@ def _build_permissive_ssl_context(
     return ctx
 
 
-def probe_bmc_rmcp(ip: str, port: int = 623, timeout: float = 1.0) -> Optional[dict[str, Any]]:
+def probe_bmc_rmcp(
+    ip: str, port: int = 623, timeout: float = 1.0
+) -> Optional[dict[str, Any]]:
     """Sends an ASF Presence Ping on UDP port 623 and extracts IANA Enterprise ID."""
     asf_ping = b"\x06\x00\xff\x07\x00\x00\x11\xbe\x80\x01\x00\x00"
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -181,12 +183,16 @@ def probe_bmc_rmcp(ip: str, port: int = 623, timeout: float = 1.0) -> Optional[d
     return None
 
 
-def probe_bmc_http(ip: str, port: int = 80, timeout: float = 1.5) -> Optional[dict[str, Any]]:
+def probe_bmc_http(
+    ip: str, port: int = 80, timeout: float = 1.5
+) -> Optional[dict[str, Any]]:
     """Probes port 80 for HTTP Server headers, redirects, or HTML titles."""
     try:
         with socket.create_connection((ip, port), timeout=timeout) as sock:
             sock.settimeout(timeout)
-            req = f"GET / HTTP/1.1\r\nHost: {ip}\r\nUser-Agent: ipocket-scanner/1.0\r\nConnection: close\r\n\r\n".encode("ascii")
+            req = f"GET / HTTP/1.1\r\nHost: {ip}\r\nUser-Agent: ipocket-scanner/1.0\r\nConnection: close\r\n\r\n".encode(
+                "ascii"
+            )
             sock.sendall(req)
             resp_bytes = sock.recv(4096)
             text = resp_bytes.decode("latin1", errors="ignore")
@@ -194,7 +200,11 @@ def probe_bmc_http(ip: str, port: int = 80, timeout: float = 1.5) -> Optional[di
             if vendor:
                 lines = text.splitlines()
                 evidence = next(
-                    (line.strip() for line in lines if normalize_vendor(line) == vendor),
+                    (
+                        line.strip()
+                        for line in lines
+                        if normalize_vendor(line) == vendor
+                    ),
                     text[:100].strip(),
                 )
                 return {

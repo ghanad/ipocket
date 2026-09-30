@@ -228,7 +228,9 @@ def test_probe_bmc_tls_handshake_failure_recovery(mock_attempt):
     assert mock_attempt.call_args_list[1][1]["server_hostname"] == "10.0.0.2"
 
 
-@patch("app.services.bmc_discovery._attempt_tls", return_value=(None, "timeout", "Timeout"))
+@patch(
+    "app.services.bmc_discovery._attempt_tls", return_value=(None, "timeout", "Timeout")
+)
 @patch("app.services.bmc_discovery.probe_bmc_http")
 def test_probe_bmc_tls_http_fallback(mock_http, mock_attempt):
     mock_http.return_value = {
@@ -245,7 +247,9 @@ def test_probe_bmc_tls_http_fallback(mock_http, mock_attempt):
     assert "HTTP port 80" in result["fingerprint_summary"]
 
 
-@patch("app.services.bmc_discovery._attempt_tls", return_value=(None, "timeout", "Timeout"))
+@patch(
+    "app.services.bmc_discovery._attempt_tls", return_value=(None, "timeout", "Timeout")
+)
 @patch("app.services.bmc_discovery.probe_bmc_http", return_value=None)
 @patch("app.services.bmc_discovery.probe_bmc_rmcp")
 def test_probe_bmc_tls_rmcp_fallback(mock_rmcp, mock_http, mock_attempt):
@@ -261,4 +265,3 @@ def test_probe_bmc_tls_rmcp_fallback(mock_rmcp, mock_http, mock_attempt):
     assert result["status"] == "matched"
     assert result["detected_vendor"] == "Supermicro"
     assert "UDP 623" in result["fingerprint_summary"]
-

@@ -399,4 +399,3 @@ def test_swagger_and_redoc_vendor_assets_exist() -> None:
     assert swagger_css.stat().st_size > 10_000
     assert redoc_js.is_file()
     assert redoc_js.stat().st_size > 100_000
-
