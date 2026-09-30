@@ -12,12 +12,13 @@ This mechanism requires **zero credentials** on the BMCs, non-destructively prob
 1. **Target Selection**:
    The engine queries for active (non-archived) IP assets of type `BMC` linked to hosts where `host.vendor_id` is currently unassigned (or specific hosts requested by the operator).
 
-2. **Zero-Credentials SSL/TLS Probing**:
-   The scanner connects to port 443 of each BMC IP and initiates a TLS handshake with certificate verification disabled (`CERT_NONE`) to support factory and self-signed certificates.
-   It extracts human-readable strings from the ASN.1 DER certificate, including:
-   - Subject Common Name (`CN`) and Organization (`O`)
-   - Issuer Common Name and Organization
-   - Subject Alternative Names (`SAN`)
+2. **Resilient Multi-Layer Probing**:
+   - **Permissive SSL/TLS on Port 443**: Initiates a TLS handshake with certificate verification disabled (`CERT_NONE`) to support factory and self-signed certificates.
+     - **DH Key Too Small (`dh_key_too_small`)**: Handled by setting OpenSSL `@SECLEVEL=0` and automatically retrying with DHE ciphers disabled (`DEFAULT:!DH:!DHE:@SECLEVEL=0`) if weak DH parameters are encountered, forcing the BMC to negotiate standard RSA/ECDHE.
+     - **Handshake Failures (`sslv3_alert_handshake_failure`)**: Handled by allowing legacy TLS 1.0/1.1 protocols and adapting Server Name Indication (SNI) behaviour for older embedded BMC webservers.
+     - Extracts human-readable strings from the ASN.1 DER certificate (Subject `CN`, `O`, Issuer, and `SAN`).
+   - **HTTP Port 80 Banner Fallback**: If port 443 fails or times out, the scanner checks port 80 for HTTP `Server:` headers (e.g. `Server: HP-iLO-Server`), redirect `Location:` headers, and HTML `<title>` tags.
+   - **UDP Port 623 IPMI RMCP Ping Fallback**: If web ports are unresponsive, a 12-byte ASF Presence Ping is sent to UDP port 623. The response ASF Pong yields the hardware manufacturer's IANA Enterprise ID (e.g. 674 for Dell, 232 for HPE, 10876 for Supermicro) with zero credentials.
 
 3. **Vendor Normalization**:
    The extracted text is matched against signature rules to resolve standard vendor names:

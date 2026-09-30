@@ -194,3 +194,71 @@ def test_apply_discovered_vendors(_setup_connection):
         assert any("Supermicro" in (log.changes or "") for log in audit_logs)
     finally:
         db_connection.close()
+
+
+@patch("app.services.bmc_discovery._attempt_tls")
+def test_probe_bmc_tls_dh_key_too_small_recovery(mock_attempt):
+    # First attempt fails with dh_key_too_small, second attempt with no-DH succeeds
+    mock_attempt.side_effect = [
+        (None, "dh_key_too_small", "SSL: DH_KEY_TOO_SMALL"),
+        (["CN=idrac-test", "Dell Inc."], None, None),
+    ]
+
+    result = bmc_discovery.probe_bmc_tls("10.0.0.1", 443, timeout=1.0)
+    assert result["status"] == "matched"
+    assert result["detected_vendor"] == "Dell"
+    assert mock_attempt.call_count == 2
+    # Verify second call used the DEFAULT:!DH:!DHE:@SECLEVEL=0 ciphers
+    assert "!DH" in mock_attempt.call_args_list[1][0][3]
+
+
+@patch("app.services.bmc_discovery._attempt_tls")
+def test_probe_bmc_tls_handshake_failure_recovery(mock_attempt):
+    # First attempt without SNI fails with handshake_failure, second attempt with SNI succeeds
+    mock_attempt.side_effect = [
+        (None, "handshake_failure", "SSLV3_ALERT_HANDSHAKE_FAILURE"),
+        (["O=Hewlett Packard Enterprise", "iLO 5"], None, None),
+    ]
+
+    result = bmc_discovery.probe_bmc_tls("10.0.0.2", 443, timeout=1.0)
+    assert result["status"] == "matched"
+    assert result["detected_vendor"] == "HPE"
+    assert mock_attempt.call_count == 2
+    # Verify second call sent server_hostname
+    assert mock_attempt.call_args_list[1][1]["server_hostname"] == "10.0.0.2"
+
+
+@patch("app.services.bmc_discovery._attempt_tls", return_value=(None, "timeout", "Timeout"))
+@patch("app.services.bmc_discovery.probe_bmc_http")
+def test_probe_bmc_tls_http_fallback(mock_http, mock_attempt):
+    mock_http.return_value = {
+        "status": "matched",
+        "detected_vendor": "HPE",
+        "confidence": "high",
+        "fingerprint_summary": "HTTP port 80: Server: HP-iLO-Server",
+        "error": None,
+    }
+
+    result = bmc_discovery.probe_bmc_tls("10.0.0.3", 443, timeout=1.0)
+    assert result["status"] == "matched"
+    assert result["detected_vendor"] == "HPE"
+    assert "HTTP port 80" in result["fingerprint_summary"]
+
+
+@patch("app.services.bmc_discovery._attempt_tls", return_value=(None, "timeout", "Timeout"))
+@patch("app.services.bmc_discovery.probe_bmc_http", return_value=None)
+@patch("app.services.bmc_discovery.probe_bmc_rmcp")
+def test_probe_bmc_tls_rmcp_fallback(mock_rmcp, mock_http, mock_attempt):
+    mock_rmcp.return_value = {
+        "status": "matched",
+        "detected_vendor": "Supermicro",
+        "confidence": "high",
+        "fingerprint_summary": "IPMI RMCP (UDP 623) Enterprise ID 10876 (Supermicro)",
+        "error": None,
+    }
+
+    result = bmc_discovery.probe_bmc_tls("10.0.0.4", 443, timeout=1.0)
+    assert result["status"] == "matched"
+    assert result["detected_vendor"] == "Supermicro"
+    assert "UDP 623" in result["fingerprint_summary"]
+

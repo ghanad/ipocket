@@ -116,24 +116,189 @@ def extract_der_strings(der_bytes: bytes) -> list[str]:
     return extracted
 
 
-def probe_bmc_tls(ip: str, port: int = 443, timeout: float = 2.0) -> dict[str, Any]:
-    """Probes a BMC IP over SSL/TLS port 443 without credentials.
+IANA_ENTERPRISE_MAP: dict[int, str] = {
+    674: "Dell",
+    232: "HPE",
+    10876: "Supermicro",
+    47692: "Supermicro",
+    20301: "Lenovo",
+    2011: "Huawei",
+    9: "Cisco",
+    7244: "Quanta",
+    311: "Microsoft",
+}
 
-    Returns discovery information including detected vendor and certificate evidence.
-    """
+
+def _build_permissive_ssl_context(
+    ciphers: str = "ALL:!aNULL:!eNULL:@SECLEVEL=0",
+) -> ssl.SSLContext:
     ctx = ssl.create_default_context()
     ctx.check_hostname = False
     ctx.verify_mode = ssl.CERT_NONE
+    try:
+        import warnings
 
-    evidence_parts: list[str] = []
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", DeprecationWarning)
+            ctx.minimum_version = ssl.TLSVersion.TLSv1
+    except (AttributeError, ValueError):
+        pass
+    for cipher_spec in [ciphers, "DEFAULT:@SECLEVEL=0", "ALL:!aNULL"]:
+        try:
+            ctx.set_ciphers(cipher_spec)
+            break
+        except ssl.SSLError:
+            continue
+    return ctx
+
+
+def probe_bmc_rmcp(ip: str, port: int = 623, timeout: float = 1.0) -> Optional[dict[str, Any]]:
+    """Sends an ASF Presence Ping on UDP port 623 and extracts IANA Enterprise ID."""
+    asf_ping = b"\x06\x00\xff\x07\x00\x00\x11\xbe\x80\x01\x00\x00"
+    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    sock.settimeout(timeout)
+    try:
+        sock.sendto(asf_ping, (ip, port))
+        data, _ = sock.recvfrom(512)
+        if len(data) >= 16 and data[8:9] == b"\x40":
+            iana_id = int.from_bytes(data[12:16], "big")
+            vendor = IANA_ENTERPRISE_MAP.get(iana_id)
+            if not vendor and len(data) >= 20:
+                iana_id = int.from_bytes(data[16:20], "big")
+                vendor = IANA_ENTERPRISE_MAP.get(iana_id)
+            if vendor:
+                return {
+                    "status": "matched",
+                    "detected_vendor": vendor,
+                    "confidence": "high",
+                    "fingerprint_summary": f"IPMI RMCP (UDP 623) Enterprise ID {iana_id} ({vendor})",
+                    "error": None,
+                }
+    except Exception:
+        pass
+    finally:
+        sock.close()
+    return None
+
+
+def probe_bmc_http(ip: str, port: int = 80, timeout: float = 1.5) -> Optional[dict[str, Any]]:
+    """Probes port 80 for HTTP Server headers, redirects, or HTML titles."""
     try:
         with socket.create_connection((ip, port), timeout=timeout) as sock:
-            with ctx.wrap_socket(sock, server_hostname=ip) as ssock:
+            sock.settimeout(timeout)
+            req = f"GET / HTTP/1.1\r\nHost: {ip}\r\nUser-Agent: ipocket-scanner/1.0\r\nConnection: close\r\n\r\n".encode("ascii")
+            sock.sendall(req)
+            resp_bytes = sock.recv(4096)
+            text = resp_bytes.decode("latin1", errors="ignore")
+            vendor = normalize_vendor(text)
+            if vendor:
+                lines = text.splitlines()
+                evidence = next(
+                    (line.strip() for line in lines if normalize_vendor(line) == vendor),
+                    text[:100].strip(),
+                )
+                return {
+                    "status": "matched",
+                    "detected_vendor": vendor,
+                    "confidence": "high",
+                    "fingerprint_summary": f"HTTP port 80: {evidence[:100]}",
+                    "error": None,
+                }
+    except Exception:
+        pass
+    return None
+
+
+def _attempt_tls(
+    ip: str,
+    port: int,
+    timeout: float,
+    ciphers: str,
+    server_hostname: Optional[str],
+) -> tuple[Optional[list[str]], Optional[str], Optional[str]]:
+    """Attempts TLS connection. Returns (evidence_strings, error_kind, raw_error_message)."""
+    ctx = _build_permissive_ssl_context(ciphers)
+    try:
+        with socket.create_connection((ip, port), timeout=timeout) as sock:
+            with ctx.wrap_socket(sock, server_hostname=server_hostname) as ssock:
                 der_cert = ssock.getpeercert(binary_form=True)
                 if der_cert:
-                    strings = extract_der_strings(der_cert)
-                    evidence_parts.extend(strings)
+                    return extract_der_strings(der_cert), None, None
+                return [], None, None
     except socket.timeout:
+        return None, "timeout", "Timeout connecting to port 443"
+    except ConnectionRefusedError:
+        return None, "refused", "Port 443 connection refused"
+    except ssl.SSLError as exc:
+        err = str(exc).lower()
+        if "dh_key_too_small" in err or "dh key too small" in err:
+            return None, "dh_key_too_small", str(exc)
+        if "handshake_failure" in err or "alert" in err:
+            return None, "handshake_failure", str(exc)
+        return None, "ssl_error", str(exc)
+    except Exception as exc:
+        return None, "error", str(exc)
+
+
+def probe_bmc_tls(ip: str, port: int = 443, timeout: float = 2.0) -> dict[str, Any]:
+    """Probes a BMC IP over SSL/TLS port 443 with fallback to HTTP and RMCP.
+
+    Gracefully handles legacy BMC firmware issues like:
+    - dh_key_too_small (disables DHE or lowers SECLEVEL to 0)
+    - sslv3_alert_handshake_failure (allows TLS 1.0/1.1 and handles SNI)
+    - Port 443 timeout / closed (falls back to port 80 HTTP and port 623 RMCP)
+    """
+    evidence_parts: list[str] = []
+    last_error_kind: Optional[str] = None
+    last_raw_error: Optional[str] = None
+
+    # Step 1: Attempt TLS without SNI and permissive ciphers (@SECLEVEL=0)
+    strings, err_kind, raw_err = _attempt_tls(
+        ip, port, timeout, "ALL:!aNULL:!eNULL:@SECLEVEL=0", server_hostname=None
+    )
+
+    # Step 2: Handle dh_key_too_small by retrying with DHE ciphers disabled
+    if err_kind == "dh_key_too_small":
+        strings, err_kind, raw_err = _attempt_tls(
+            ip, port, timeout, "DEFAULT:!DH:!DHE:@SECLEVEL=0", server_hostname=None
+        )
+
+    # Step 3: Handle handshake_failure by trying with SNI
+    if err_kind == "handshake_failure":
+        strings, err_kind, raw_err = _attempt_tls(
+            ip, port, timeout, "ALL:!aNULL:!eNULL:@SECLEVEL=0", server_hostname=ip
+        )
+
+    if strings is not None:
+        evidence_parts.extend(strings)
+        joined_evidence = " | ".join(evidence_parts)
+        vendor = normalize_vendor(joined_evidence)
+        if vendor:
+            relevant = [s for s in evidence_parts if normalize_vendor(s) == vendor]
+            summary = ", ".join(relevant[:3]) if relevant else joined_evidence[:120]
+            return {
+                "status": "matched",
+                "detected_vendor": vendor,
+                "confidence": "high",
+                "fingerprint_summary": summary,
+                "error": None,
+            }
+    else:
+        last_error_kind = err_kind
+        last_raw_error = raw_err
+
+    # Step 4: Fallback to Port 80 HTTP banner
+    http_result = probe_bmc_http(ip, port=80, timeout=min(timeout, 1.5))
+    if http_result and http_result.get("detected_vendor"):
+        return http_result
+
+    # Step 5: Fallback to UDP 623 IPMI RMCP Presence Ping
+    rmcp_result = probe_bmc_rmcp(ip, port=623, timeout=min(timeout, 1.0))
+    if rmcp_result and rmcp_result.get("detected_vendor"):
+        return rmcp_result
+
+    # If all probes failed or didn't produce a vendor
+    if last_error_kind == "timeout":
         return {
             "status": "timeout",
             "detected_vendor": None,
@@ -141,7 +306,7 @@ def probe_bmc_tls(ip: str, port: int = 443, timeout: float = 2.0) -> dict[str, A
             "fingerprint_summary": "Connection timed out",
             "error": "Timeout connecting to port 443",
         }
-    except ConnectionRefusedError:
+    if last_error_kind == "refused":
         return {
             "status": "unmatched",
             "detected_vendor": None,
@@ -149,37 +314,23 @@ def probe_bmc_tls(ip: str, port: int = 443, timeout: float = 2.0) -> dict[str, A
             "fingerprint_summary": "Port 443 connection refused",
             "error": "Connection refused",
         }
-    except Exception as exc:
+    if last_raw_error:
         return {
             "status": "error",
             "detected_vendor": None,
             "confidence": None,
-            "fingerprint_summary": f"Probe error: {exc}",
-            "error": str(exc),
+            "fingerprint_summary": f"TLS error: {last_raw_error[:100]}",
+            "error": last_raw_error,
         }
 
     joined_evidence = " | ".join(evidence_parts)
-    vendor = normalize_vendor(joined_evidence)
-
-    if vendor:
-        # Build concise summary highlighting why this vendor matched
-        relevant = [s for s in evidence_parts if normalize_vendor(s) == vendor]
-        summary = ", ".join(relevant[:3]) if relevant else joined_evidence[:120]
-        return {
-            "status": "matched",
-            "detected_vendor": vendor,
-            "confidence": "high",
-            "fingerprint_summary": summary,
-            "error": None,
-        }
-
     return {
         "status": "unmatched",
         "detected_vendor": None,
         "confidence": None,
         "fingerprint_summary": joined_evidence[:120]
         if joined_evidence
-        else "No certificate strings found",
+        else "No certificate or banner strings found",
         "error": None,
     }
 
