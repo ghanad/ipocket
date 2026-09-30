@@ -39,6 +39,7 @@ from .hosts import (
     list_hosts_with_ip_counts_paginated,
     update_host,
 )
+from .bmc_discovery import get_bmc_discovery_targets
 from .host_completion import (
     create_host_completion_decision,
     get_host_completion_engine_source,
@@ -128,6 +129,7 @@ __all__ = [
     "get_host_by_name",
     "get_host_linked_assets_grouped",
     "get_host_with_ip_counts",
+    "get_bmc_discovery_targets",
     "list_host_pair_ips_for_hosts",
     "list_hosts",
     "list_hosts_with_ip_counts",

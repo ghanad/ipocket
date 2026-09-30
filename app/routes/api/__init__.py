@@ -5,6 +5,7 @@ from fastapi import APIRouter
 from . import (
     assets,
     auth,
+    bmc_discovery,
     host_completion,
     hosts,
     imports,
@@ -28,6 +29,7 @@ router.include_router(system.router)
 router.include_router(auth.router)
 router.include_router(assets.router)
 router.include_router(hosts.router)
+router.include_router(bmc_discovery.router)
 router.include_router(host_completion.router)
 router.include_router(metadata.router)
 router.include_router(imports.router)

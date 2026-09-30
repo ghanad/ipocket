@@ -15,6 +15,7 @@ import {
   updateHost,
 } from "./api";
 import { HostDrawer } from "./HostDrawer";
+import { BMCDiscoveryDrawer } from "./BMCDiscoveryDrawer";
 import { HostsFilters } from "./HostsFilters";
 import { HostsTable } from "./HostsTable";
 import type {
@@ -97,6 +98,7 @@ export function HostsPage({
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [mode, setMode] = useState<"create" | "edit" | "delete" | null>(null);
+  const [bmcDiscoveryOpen, setBmcDiscoveryOpen] = useState(false);
   const [activeHost, setActiveHost] = useState<HostRow | null>(null);
   const [values, setValues] = useState(emptyValues);
   const [initialValues, setInitialValues] = useState(emptyValues);
@@ -297,6 +299,13 @@ export function HostsPage({
         </div>
         {data?.can_edit && (
           <div className="page-header-actions">
+            <button
+              className="btn btn-secondary"
+              type="button"
+              onClick={() => setBmcDiscoveryOpen(true)}
+            >
+              Discover Vendors (BMC)
+            </button>
             <button className="btn btn-primary" type="button" onClick={openCreate}>
               New Host
             </button>
@@ -422,6 +431,15 @@ export function HostsPage({
         onConfirmName={setConfirmName}
         onClose={closeDrawer}
         onSubmit={submit}
+      />
+      <BMCDiscoveryDrawer
+        open={bmcDiscoveryOpen}
+        onClose={() => setBmcDiscoveryOpen(false)}
+        onApplied={() => {
+          void load();
+          setToast("Applied BMC vendor discovery changes.");
+        }}
+        vendors={data?.filters.vendors ?? []}
       />
     </>
   );

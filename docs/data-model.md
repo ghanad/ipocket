@@ -50,6 +50,10 @@ creates or reuses a Host; it does not add a stored Host column. The legacy
 prototype's name-derived suggestion path still recognizes
 `HOST_NAME_TEMPLATE` for migration compatibility.
 
+Host `vendor_id` assignments can also be populated automatically via BMC SSL/TLS
+discovery by probing linked BMC IP addresses on port 443 (see
+[BMC vendor discovery](bmc-vendor-discovery.md)).
+
 ## Vendor
 
 - `name` (unique)

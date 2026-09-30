@@ -64,6 +64,10 @@ bar, and keeps compact text-only account actions in the sidebar footer.
   relationships.
 - Library's Vendors tab (`/ui/projects?tab=vendors`) is the canonical Vendor UI.
   The legacy `/ui/vendors` URL redirects there for compatibility.
+- BMC Vendor Auto-Discovery allows automatic detection and assignment of server
+  hardware vendors (Dell, HPE, Supermicro, Cisco, Lenovo, Huawei, Inspur, etc.)
+  by probing linked BMC IP addresses over SSL/TLS port 443 with zero credentials.
+  See [BMC vendor discovery](bmc-vendor-discovery.md) for details.
 - IPv4 CIDR ranges provide used/free utilization and a paginated address view
   with Project, Type, Tag, IP, and status filters.
 
